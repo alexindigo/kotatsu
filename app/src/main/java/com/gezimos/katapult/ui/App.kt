@@ -45,6 +45,13 @@ fun App(
             Screen.SETTINGS -> SettingsScreen(viewModel)
         }
         com.gezimos.katapult.lockscreen.LockscreenReEnableSheet(viewModel)
+        if (viewModel.showReorderExit) {
+            ReorderExitSheet(
+                onSave = viewModel::saveReorderExit,
+                onDiscard = viewModel::discardReorderExit,
+                onCancel = viewModel::cancelReorderExit,
+            )
+        }
         if (viewModel.iconImportError) {
             val context = LocalContext.current
             val message = stringResource(R.string.icon_import_failed)

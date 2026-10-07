@@ -4,7 +4,7 @@ plugins {
 }
 
 base {
-    archivesName.set("katapult-v1.6")
+    archivesName.set("kotatsu-v1.6")
 }
 
 android {
@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.gezimos.katapult"
+        applicationId = "io.github.alexindigo.kotatsu"
         minSdk = 30
         targetSdk = 36
         versionCode = 7

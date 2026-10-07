@@ -3,31 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Katapult, a minimal launcher for the Mudita Kompakt</title>
-    <meta name="description" content="Katapult is a minimal launcher for the Mudita Kompakt, with notification badges, reorderable apps, and customizable home shortcuts.">
-    <meta name="author" content="Gezim">
-    <meta name="keywords" content="Katapult, Mudita Kompakt, launcher, E-Ink launcher, minimal launcher, Android launcher, notification badges">
+    <title>Kotatsu — a comfortable launcher.</title>
+    <meta name="description" content="Kotatsu is a separately installable Katapult fork with optional setup and reorderable apps. Current graphics are inherited placeholders.">
+    <meta name="author" content="Kotatsu contributors; upstream Katapult by Gezim (gezimos)">
+    <meta name="keywords" content="Kotatsu, Katapult fork, Mudita Kompakt, launcher, E-Ink launcher, Android launcher">
     <meta name="theme-color" content="#f0f0f0">
-    <link rel="canonical" href="https://katapult.gez.im/">
+    <link rel="canonical" href="https://github.com/alexindigo/kotatsu">
 
     <!-- Open Graph -->
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="Katapult">
-    <meta property="og:title" content="Katapult, a minimal launcher for the Mudita Kompakt">
-    <meta property="og:description" content="Katapult is a minimal launcher for the Mudita Kompakt, with notification badges, reorderable apps, and customizable home shortcuts.">
+    <meta property="og:site_name" content="Kotatsu">
+    <meta property="og:title" content="Kotatsu — a comfortable launcher.">
+    <meta property="og:description" content="A separately installable Katapult fork; final graphical branding is deferred.">
     <meta property="og:image" content="https://katapult.gez.im/img/screenshots/home-rounded.png">
     <meta property="og:image:type" content="image/png">
     <meta property="og:image:width" content="480">
     <meta property="og:image:height" content="800">
-    <meta property="og:image:alt" content="Katapult home screen on the Mudita Kompakt">
-    <meta property="og:url" content="https://katapult.gez.im/">
+    <meta property="og:image:alt" content="Upstream Katapult reference screenshot on the Mudita Kompakt">
+    <meta property="og:url" content="https://github.com/alexindigo/kotatsu">
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Katapult, a minimal launcher for the Mudita Kompakt">
-    <meta name="twitter:description" content="Katapult is a minimal launcher for the Mudita Kompakt, with notification badges, reorderable apps, and customizable home shortcuts.">
+    <meta name="twitter:title" content="Kotatsu — a comfortable launcher.">
+    <meta name="twitter:description" content="A separately installable Katapult fork; current graphics are inherited placeholders.">
     <meta name="twitter:image" content="https://katapult.gez.im/img/screenshots/home-rounded.png">
-    <meta name="twitter:image:alt" content="Katapult home screen on the Mudita Kompakt">
+    <meta name="twitter:image:alt" content="Upstream Katapult reference screenshot on the Mudita Kompakt">
 
     <link rel="icon" href="img/K.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="img/katapult.png">
@@ -37,19 +37,20 @@
     {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
-        "name": "Katapult",
-        "description": "Katapult is a minimal launcher for the Mudita Kompakt, with notification badges, reorderable apps, and customizable home shortcuts.",
-        "url": "https://katapult.gez.im/",
+        "name": "Kotatsu",
+        "description": "Kotatsu — a comfortable launcher. Separately installable fork; current graphics are inherited placeholders.",
+        "url": "https://github.com/alexindigo/kotatsu",
+        "isBasedOn": "https://github.com/gezimos/Katapult",
+        "creditText": "Original Katapult by Gezim (gezimos). Final Kotatsu artwork is deferred.",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Android",
-        "downloadUrl": "https://github.com/gezimos/Katapult/releases",
         "softwareVersion": "1.6",
         "image": "https://katapult.gez.im/img/screenshots/home-rounded.png",
-        "license": "https://github.com/gezimos/Katapult/blob/main/LICENSE",
+        "license": "https://github.com/alexindigo/kotatsu/blob/main/LICENSE",
         "isAccessibleForFree": true,
         "author": {
             "@type": "Person",
-            "name": "Gezim"
+            "name": "alexindigo"
         },
         "offers": {
             "@type": "Offer",
@@ -63,12 +64,12 @@
 
 <header class="site-header">
     <div class="container header-inner">
-        <a href="index.html" class="wordmark"><img src="img/katapult.svg" alt="Katapult"></a>
+        <a href="index.html" class="wordmark"><img src="img/katapult.svg" alt="Temporary inherited upstream wordmark"></a>
         <nav class="site-nav">
             <a href="#features">Features</a>
             <a href="#gallery">Screenshots</a>
             <a href="#faq">FAQ</a>
-            <a href="https://github.com/gezimos/Katapult" target="_blank" rel="noopener">GitHub</a>
+            <a href="https://github.com/alexindigo/kotatsu" target="_blank" rel="noopener">Kotatsu source</a>
         </nav>
         <a href="https://www.buymeacoffee.com/gezimos" target="_blank" rel="noopener" class="bmc-btn"><img src="img/bmc.svg" alt="Buy me a coffee"></a>
     </div>
@@ -78,11 +79,12 @@
 
     <section class="hero">
         <div class="hero-copy">
-            <h1 class="hero-title">A minimal launcher for the Mudita Kompakt.</h1>
-            <p class="hero-lead">Katapult keeps the familiar grid of the stock launcher and adds what it leaves out: notification badges, reorderable apps, and customizable home shortcuts.</p>
+            <h1 class="hero-title">Kotatsu — a comfortable launcher.</h1>
+            <p class="hero-lead">A separately installable fork of Katapult by gezimos, with optional setup, a familiar app grid and customizable home shortcuts. Graphical branding is temporarily inherited while final artwork is developed separately.</p>
+            <p>Kotatsu has no built-in updater or Internet permission. External browser/document-provider/Mudita weather handoffs and Android-managed backup/device transfer remain and can network independently. The graphics, demo and screenshots below are upstream references, not final Kotatsu artwork.</p>
             <div class="actions">
-                <a href="https://github.com/gezimos/Katapult/releases/download/v1.6/katapult-v1.6-release.apk" class="btn btn-solid">Download APK</a>
-                <a href="https://github.com/gezimos/Katapult" class="btn">Source Code</a>
+                <a href="https://github.com/alexindigo/kotatsu" class="btn btn-solid">Kotatsu Source</a>
+                <a href="https://github.com/gezimos/Katapult/releases" class="btn">Upstream Katapult releases</a>
             </div>
         </div>
         <div class="hero-art">
@@ -93,7 +95,7 @@
                     <span class="dot"></span>
                 </div>
                 <div class="video">
-                    <iframe src="https://www.youtube.com/embed/m7vobm0FJdE" title="Katapult demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                    <iframe src="https://www.youtube.com/embed/m7vobm0FJdE" title="Upstream Katapult reference demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
                 </div>
                 <div class="browser-foot">
                     <a href="https://youtube.com/@gezimos" target="_blank" rel="noopener">youtube.com/@gezimos</a>
@@ -119,7 +121,7 @@
             <div class="faq-list">
                 <details>
                     <summary>How to install</summary>
-                    <p>Download the APK, then install it on your Mudita Kompakt using the Mudita Center desktop software.</p>
+                    <p>Build Kotatsu from the source repository. Upstream Katapult releases are separate distributions, not Kotatsu updates. Final release/signing and device acceptance are separate verification gates.</p>
                 </details>
                 <details>
                     <summary>How to access Settings</summary>
@@ -149,7 +151,7 @@
                 <div class="feat"><h3>Lockscreen Notifications</h3><p>Experimental: per-app notification counts on the lock screen. Movable and resizable.</p></div>
                 <div class="feat"><h3>Music Widget</h3><p>Playback controls with song info. Works with Auxio, Spotify, Fossify Music, Foobar, and more.</p></div>
                 <div class="feat"><h3>Icon Tinting &amp; Shaping</h3><p>Circle or rounded shapes. Uniform black &amp; white across ~95% of apps.</p></div>
-                <div class="feat"><h3>Custom &amp; Material Icons</h3><p>Swap any app's icon for a bundled Katapult one, a 133-strong outlined Material set, or your own PNG or SVG.</p></div>
+                <div class="feat"><h3>Custom &amp; Material Icons</h3><p>Use inherited bundled icons, a 133-strong outlined Material set, or your own PNG or SVG.</p></div>
                 <div class="feat"><h3>Notification Badges</h3><p>Badge counts on app icons. Works with any app that sends notifications. Long-press an app to clear its badge.</p></div>
                 <div class="feat"><h3>Call &amp; SMS Badges</h3><p>Kompakt only. Missed, declined, and voicemail counts on Phone, unread counts on Messages, matching the stock Mudita launcher.</p></div>
                 <div class="feat"><h3>E-Ink Optimized</h3><p>Zero animations, instant swaps, screen refresh on home press to clear ghosting.</p></div>
@@ -161,7 +163,6 @@
                 <div class="feat"><h3>Double-Tap Action</h3><p>Double-tap the background to toggle brightness or lock the phone. Or leave it off.</p></div>
                 <div class="feat"><h3>Hide Status Bar</h3><p>Remove the Android status bar for a cleaner look, or keep it and hide just its duplicate clock.</p></div>
                 <div class="feat"><h3>Config Backup</h3><p>Export every setting to a JSON file and restore it later. Foreign or corrupted files are rejected, not applied.</p></div>
-                <div class="feat"><h3>Check for Updates</h3><p>See the latest release and its notes from inside the launcher, then download and install without a trip to GitHub.</p></div>
             </div>
         </div>
     </section>
@@ -178,7 +179,7 @@
                 </details>
                 <details>
                     <summary>System Settings</summary>
-                    <p>Required for the double-tap brightness toggle. Katapult needs write access to system settings to change screen brightness. Grant it in Settings &gt; Apps &gt; Katapult &gt; Modify System Settings.</p>
+                    <p>Optional for the double-tap brightness feature. Kotatsu needs write access to system settings only for that action. Grant it deliberately in Settings &gt; Apps &gt; Kotatsu &gt; Modify System Settings.</p>
                 </details>
                 <details>
                     <summary>Package Access</summary>
@@ -186,11 +187,11 @@
                 </details>
                 <details>
                     <summary>Call Log &amp; SMS (Mudita Kompakt only)</summary>
-                    <p>Badges for the Mudita Phone and Messages apps can't come from the notification listener, so Katapult reads the call log and SMS databases directly to count missed calls, declined calls, voicemail, and unread messages. This is the same approach the stock Mudita launcher takes. Write access to the call log is used for one thing only: clearing the Phone badge when you ask it to, by marking those calls as seen. Nothing is read from or written to your messages. These permissions are only requested on Mudita Kompakt devices.</p>
+                    <p>Optional on supported Mudita Kompakt devices. Kotatsu requests SMS-read and call-log-read access separately for badge counts; neither is required to finish setup. Call-log write access is a separate deliberate acknowledgment action, not part of initial read setup.</p>
                 </details>
                 <details>
                     <summary>Accessibility Service (optional features only)</summary>
-                    <p>Listed as <strong>Katapult Action Service</strong>. An accessibility overlay is the only way an app can draw over the lock screen, so the experimental Lockscreen Notifications widget needs this. The same service also covers hiding the duplicate status bar clock, locking the phone on double-tap, and the screensaver. The permission sounds scary, but Katapult reads only the lock screen itself, never your apps, so the widget can hide when the PIN screen appears. It records and shares nothing; the open source code is the proof. Not requested unless you turn one of those features on.</p>
+                    <p>Listed as <strong>Kotatsu Action Service</strong>. This optional inherited service supports lockscreen overlays, clock cover, locking and screensaver features. Enable it deliberately only for features you choose; it is not needed for ordinary launcher preview use.</p>
                 </details>
             </div>
         </div>
@@ -198,7 +199,7 @@
 
     <section class="block" id="gallery">
         <div class="block-head">
-            <h2>Screenshots</h2>
+            <h2>Upstream reference screenshots</h2>
         </div>
         <div class="block-body">
             <div class="shot-grid">
@@ -261,7 +262,7 @@
                 </details>
                 <details>
                     <summary>Found a bug, or have a question?</summary>
-                    <p>Open an issue on <a href="https://github.com/gezimos/Katapult/issues" target="_blank" rel="noopener">GitHub Issues</a>. </p>
+                    <p>Source and project discussion: <a href="https://github.com/alexindigo/kotatsu" target="_blank" rel="noopener">Kotatsu repository</a>. </p>
                 </details>
             </div>
         </div>
@@ -272,8 +273,8 @@
             <h2>Disclaimer</h2>
         </div>
         <div class="block-body disclaimer">
-            <p>Katapult is an independent, open source project. It is not affiliated with or endorsed by Mudita. Mudita and Mudita Kompakt are trademarks of their respective owner.</p>
-            <p>The app is free. If you find it useful, you can support the work below.</p>
+            <p>Kotatsu is an independent fork of <a href="https://github.com/gezimos/Katapult">Katapult by gezimos</a>. It is not affiliated with or endorsed by Mudita. Mudita and Mudita Kompakt are trademarks of their respective owner.</p>
+            <p>The donation/media links and inherited website-domain configuration belong to upstream references, not a new Kotatsu hosting or support destination. The button below supports the upstream Katapult author.</p>
             <a href="https://www.buymeacoffee.com/gezimos" target="_blank" rel="noopener" class="bmc-btn"><img src="img/bmc.svg" alt="Buy me a coffee"></a>
         </div>
     </section>

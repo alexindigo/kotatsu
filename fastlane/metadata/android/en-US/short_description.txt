@@ -1,1 +1,1 @@
-A simple black-and-white grid launcher for Mudita Kompakt.
+Kotatsu — a comfortable launcher.

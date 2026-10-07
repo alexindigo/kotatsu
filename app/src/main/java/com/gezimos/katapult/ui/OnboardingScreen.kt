@@ -30,6 +30,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalView
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,46 +74,31 @@ fun OnboardingScreen(viewModel: MainViewModel) {
 
     var hasNotificationPermission by remember { mutableStateOf(false) }
     var isDefaultLauncher by remember { mutableStateOf(false) }
-    var hasCallSmsPermission by remember { mutableStateOf(false) }
-    var showHighlight by remember { mutableStateOf(false) }
-
-    // Flash animation for asterisks
-    val flashTransition = rememberInfiniteTransition(label = "flash")
-    val flashAlpha by flashTransition.animateFloat(
-        initialValue = 1f,
-        targetValue = 0f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(500, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "flashAlpha",
-    )
-
-    // Poll permission state
-    LaunchedEffect(context) {
-        while (true) {
-            hasNotificationPermission = NotificationManagerCompat.getEnabledListenerPackages(context)
-                .contains(context.packageName)
-
-            isDefaultLauncher = DeviceHelper.isDefaultLauncher(context)
-
-            hasCallSmsPermission =
-                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
-
-            kotlinx.coroutines.delay(1000)
+    var hasSmsPermission by remember { mutableStateOf(false) }
+    var hasCallPermission by remember { mutableStateOf(false) }
+    val refreshStatus = {
+        hasNotificationPermission = NotificationManagerCompat.getEnabledListenerPackages(context)
+            .contains(context.packageName)
+        isDefaultLauncher = DeviceHelper.isDefaultLauncher(context)
+        hasSmsPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_SMS) == PackageManager.PERMISSION_GRANTED
+        hasCallPermission = ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CALL_LOG) == PackageManager.PERMISSION_GRANTED
+    }
+    val owner = LocalView.current.findViewTreeLifecycleOwner()
+    DisposableEffect(owner, context) {
+        val observer = object : DefaultLifecycleObserver {
+            override fun onResume(owner: LifecycleOwner) { refreshStatus() }
         }
+        owner?.lifecycle?.addObserver(observer)
+        refreshStatus()
+        onDispose { owner?.lifecycle?.removeObserver(observer) }
     }
-
-    val allDone = hasNotificationPermission && isDefaultLauncher &&
-        (!isMudita || hasCallSmsPermission)
-    LaunchedEffect(allDone) {
-        if (allDone) showHighlight = false
+    val smsRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { refreshStatus() }
+    val callRequest = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { refreshStatus() }
+    val openAppSettings = {
+        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+            data = Uri.fromParts("package", context.packageName, null)
+        })
     }
-
-    val notifAsterisk = " *"
-    val launcherAsterisk = " *"
-    val callSmsAsterisk = if (isMudita) " *" else ""
 
     Column(
         modifier = Modifier
@@ -116,21 +108,36 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             .navigationBarsPadding()
             .padding(16.dp),
     ) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
         // Logo
         Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
             Icon(
                 painter = painterResource(R.drawable.katapult_logo),
-                contentDescription = null,
+                contentDescription = stringResource(R.string.inherited_logo_description),
                 tint = ink,
                 modifier = Modifier.width(160.dp).height(43.dp),
             )
         }
 
-        Spacer(Modifier.weight(1f))
+        Text(
+            text = stringResource(R.string.welcome_title),
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            fontFamily = LatoFamily,
+            color = ink,
+            modifier = Modifier.padding(top = 16.dp),
+        )
+        Text(stringResource(R.string.kotatsu_tagline), color = ink, fontFamily = LatoFamily)
+        Text(
+            stringResource(R.string.onboarding_optional_desc),
+            color = ink,
+            fontFamily = LatoFamily,
+            modifier = Modifier.padding(top = 8.dp, bottom = 16.dp),
+        )
 
         // 1. Notification Indicators
         SettingsToggleRow(
-            title = stringResource(R.string.notification_indicators) + notifAsterisk,
+            title = stringResource(R.string.perm_notification_access),
             description = stringResource(R.string.onboarding_notification_desc),
             checked = hasNotificationPermission,
             onCheckedChange = {
@@ -146,47 +153,27 @@ fun OnboardingScreen(viewModel: MainViewModel) {
 
         // 2. Call & SMS Badges (Mudita Kompakt only)
         if (isMudita) {
-            val callSmsPermissions = remember {
-                arrayOf(
-                    Manifest.permission.READ_CALL_LOG,
-                    Manifest.permission.WRITE_CALL_LOG,
-                    Manifest.permission.READ_SMS,
-                )
-            }
-            val openAppSettings = {
-                try {
-                    context.startActivity(
-                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                            data = Uri.fromParts("package", context.packageName, null)
-                        }
-                    )
-                } catch (_: Exception) {}
-            }
-            val callSmsLauncher = rememberLauncherForActivityResult(
-                ActivityResultContracts.RequestMultiplePermissions()
-            ) { result ->
-                if (result.values.any { !it }) {
-                    val activity = context as? Activity
-                    val canAskAgain = activity != null && callSmsPermissions.any {
-                        ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
-                    }
-                    if (!canAskAgain) openAppSettings()
-                }
-            }
             SettingsToggleRow(
-                title = stringResource(R.string.call_sms_badges) + callSmsAsterisk,
-                description = stringResource(R.string.call_sms_badges_desc),
-                checked = hasCallSmsPermission,
+                title = stringResource(R.string.perm_sms),
+                description = stringResource(R.string.perm_sms_desc),
+                checked = hasSmsPermission,
                 onCheckedChange = {
-                    if (hasCallSmsPermission) openAppSettings()
-                    else callSmsLauncher.launch(callSmsPermissions)
+                    if (hasSmsPermission) openAppSettings() else smsRequest.launch(Manifest.permission.READ_SMS)
+                },
+            )
+            SettingsToggleRow(
+                title = stringResource(R.string.perm_call_log),
+                description = stringResource(R.string.perm_call_log_desc),
+                checked = hasCallPermission,
+                onCheckedChange = {
+                    if (hasCallPermission) openAppSettings() else callRequest.launch(Manifest.permission.READ_CALL_LOG)
                 },
             )
         }
 
         // 3. Default Launcher
         SettingsToggleRow(
-            title = stringResource(R.string.set_default_launcher) + launcherAsterisk,
+            title = stringResource(R.string.set_default_launcher),
             description = stringResource(R.string.onboarding_launcher_desc),
             checked = isDefaultLauncher,
             onCheckedChange = {
@@ -194,47 +181,18 @@ fun OnboardingScreen(viewModel: MainViewModel) {
             },
         )
 
-        // Required hint
-        Text(
-            text = stringResource(R.string.required_hint),
-            fontSize = 14.sp,
-            fontFamily = LatoFamily,
-            color = ink.copy(alpha = if (showHighlight && !allDone) flashAlpha else 1f),
-            modifier = Modifier.padding(top = 8.dp),
-        )
-
-        Spacer(Modifier.weight(1f))
+        }
+        Spacer(Modifier.height(12.dp))
 
         // Finish button
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (allDone) Modifier
-                        .border(2.5.dp, ink, RoundedCornerShape(10.dp))
-                        .clickable {
-                            viewModel.prefs.onboardingComplete = true
-                            viewModel.prefs.notificationIndicators = true
-                            viewModel.navigateTo(Screen.HOME)
-                        }
-                    else Modifier
-                        .drawBehind {
-                            val stroke = 1.5.dp.toPx()
-                            val dash = 8.dp.toPx()
-                            val gap = 6.dp.toPx()
-                            val cr = 10.dp.toPx()
-                            drawRoundRect(
-                                color = ink,
-                                size = Size(size.width, size.height),
-                                cornerRadius = CornerRadius(cr, cr),
-                                style = Stroke(
-                                    width = stroke,
-                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(dash, gap)),
-                                ),
-                            )
-                        }
-                        .clickable { showHighlight = true }
-                )
+                .border(2.5.dp, ink, RoundedCornerShape(10.dp))
+                .clickable {
+                    viewModel.prefs.onboardingComplete = true
+                    viewModel.navigateTo(Screen.HOME)
+                }
                 .padding(vertical = 14.dp),
             contentAlignment = Alignment.Center,
         ) {

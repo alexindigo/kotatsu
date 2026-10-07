@@ -19,6 +19,8 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.gezimos.katapult", appContext.packageName)
+        val expected = InstrumentationRegistry.getArguments().getString("expectedApplicationId")
+        assertNotNull("Runner must supply expectedApplicationId", expected)
+        assertEquals(expected, appContext.packageName)
     }
 }

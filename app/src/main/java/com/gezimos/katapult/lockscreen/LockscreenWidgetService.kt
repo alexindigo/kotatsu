@@ -327,7 +327,7 @@ class LockscreenWidgetService :
 
     /**
      * The stock MuditaOS lockscreen media widget is wired to its own player, so anything else
-     * playing leaves the lock screen with no transport controls. Draw Katapult's widget in the
+     * playing leaves the lock screen with no transport controls. Draw Kotatsu's widget in the
      * same place for those sessions only, so we never double up with the stock one.
      */
     private fun applyMusicWidget(onLockscreen: Boolean) {

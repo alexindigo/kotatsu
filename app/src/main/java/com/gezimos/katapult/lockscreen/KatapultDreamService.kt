@@ -18,7 +18,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * Optional charging screensaver: Android auto-starts the selected system screen saver while
  * the device sleeps on a charger. Shows [ScreensaverView] (the same UI as the on-demand
  * screensaver). Purely a bonus — the main, zero-setup path is [ScreensaverActivity], which
- * needs no screen-saver selection. To use this one, pick Katapult under the system Screen
+ * needs no screen-saver selection. To use this one, pick Kotatsu under the system Screen
  * saver settings.
  *
  * Part of the self-contained experimental .lockscreen package; to remove, also delete the

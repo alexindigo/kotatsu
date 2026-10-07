@@ -12,9 +12,7 @@ class ScreensaverLaunchActivity : Activity() {
         try {
             startActivity(
                 Intent(this, ScreensaverActivity::class.java).addFlags(
-                    Intent.FLAG_ACTIVITY_NEW_TASK or
-                        Intent.FLAG_ACTIVITY_CLEAR_TASK or
-                        Intent.FLAG_ACTIVITY_TASK_ON_HOME,
+                    Intent.FLAG_ACTIVITY_NEW_TASK,
                 ),
             )
         } catch (_: Exception) {}

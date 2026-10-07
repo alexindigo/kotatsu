@@ -18,11 +18,13 @@ import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentDialog
 import androidx.activity.addCallback
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -72,6 +74,7 @@ fun BottomSheet(
     val layoutDirection = LocalLayoutDirection.current
     val composition = rememberCompositionContext()
     val currentContent by rememberUpdatedState(content)
+    val currentOnDismiss by rememberUpdatedState(onDismiss)
     val currentImePadding by rememberUpdatedState(imePadding)
     val dialogId = rememberSaveable { UUID.randomUUID() }
     val statusBarHidden = remember {
@@ -95,10 +98,15 @@ fun BottomSheet(
                         .semantics { dialog() },
                     contentAlignment = Alignment.BottomCenter,
                 ) {
+                    Box(
+                        Modifier.fillMaxSize().clickable { currentOnDismiss() },
+                    )
                     Column(
                         Modifier
-                            .fillMaxWidth()
-                            .background(LocalSurface.current)
+                             .fillMaxWidth()
+                             .background(LocalSurface.current)
+                             .navigationBarsPadding()
+                             .clickable { /* The sheet body consumes background taps. */ }
                     ) {
                         Box(
                             Modifier

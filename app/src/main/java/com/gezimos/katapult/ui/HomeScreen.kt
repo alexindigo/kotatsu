@@ -56,7 +56,6 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Bedtime
-import androidx.compose.material.icons.rounded.FavoriteBorder
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Wallpaper
@@ -85,6 +84,8 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -389,9 +390,12 @@ fun HomeScreen(
                             onLongClick = { handleSlotLongPress("center") },
                         )
                     } else {
+                        val allAppsDescription = stringResource(R.string.all_apps)
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.clickable { viewModel.navigateTo(Screen.ALL_APPS) },
+                            modifier = Modifier
+                                .semantics { contentDescription = allAppsDescription }
+                                .clickable { viewModel.navigateTo(Screen.ALL_APPS) },
                         ) {
                             val strokeWidth = 2.5.dp
                             val isRounded = viewModel.roundedIcons
@@ -482,10 +486,6 @@ fun HomeScreen(
                     showMenu = false
                     viewModel.startScreensaver(context)
                 }
-            }
-            BottomSheetOption(stringResource(R.string.donate_label), icon = Icons.Rounded.FavoriteBorder) {
-                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://www.buymeacoffee.com/gezimos")))
-                showMenu = false
             }
         }
     }

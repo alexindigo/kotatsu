@@ -1,12 +1,16 @@
 <div align="center">
-	<img src="docs/img/katapult_w.svg" alt="Katapult logo" height="48">
+	<img src="docs/img/katapult_w.svg" alt="Temporary inherited upstream wordmark" height="48">
 	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 	<a href="https://buymeacoffee.com/gezimos"><img src="docs/img/bmc-button.png" alt="Buy me a coffee" height="48"></a>
-	<h2>Katapult — A simple grid launcher for Mudita Kompakt</h2>
+	<h2>Kotatsu — a comfortable launcher.</h2>
 </div>
 
+Kotatsu is a separately installable fork of [Katapult by gezimos](https://github.com/gezimos/Katapult). Its source is [alexindigo/kotatsu](https://github.com/alexindigo/kotatsu). Current graphical wordmarks/icons are intentionally inherited placeholders while final artwork is developed separately.
+
 > [!NOTE]
-> To install, download the latest APK from [Releases](https://github.com/gezimos/Katapult/releases) and install it on your device using Mudita Center or ADB/webADB.
+> Build Kotatsu from this source tree. [Upstream Katapult releases](https://github.com/gezimos/Katapult/releases) are Katapult distributions, not Kotatsu updates. Kotatsu has no built-in updater or Internet permission. External browser/document-provider/Mudita weather handoffs and Android-managed backup/device transfer remain; their providers can network independently. Release and wider feature acceptance remain separate verification gates.
+
+The following images are **upstream Katapult reference screenshots**, not screenshots of final Kotatsu artwork.
 
 <div align="center">
     <table>
@@ -26,6 +30,8 @@
 </div>
 
 ## Setup
+
+Finish onboarding without granting sensitive access or changing your default HOME app. Notification access, supported-device SMS/call-read access and default-HOME selection are optional setup actions. Back exits a nondefault Kotatsu preview after internal navigation/dialogs are resolved.
 
 - **Settings**: Long-press on any empty area of the home screen
 - **Replace home apps**: Long-press on the Phone, SMS, or extra row shortcuts
@@ -49,9 +55,9 @@
 - **Hide apps**: from the app context menu or bulk-hide from the home menu
 - **Rename apps**: long-press any app in the grid
 - **App context menu**: Reorder, Rename, Hide, App Info, Uninstall
-- **Reorder apps**: swap-based reordering from the context menu, with reset to alphabetical option
+- **Reorder apps**: swap-based reordering from the context menu. Dirty exits ask Save/Discard/Cancel; Reset changes the draft until you save.
 - **Lockscreen Notifications (experimental)**: per-app notification counts on the lock screen, with an app allowlist and sort order. Long-press the widget to move/resize it, tap to save.
-- **Screensaver (experimental)**: a Katapult screen saver showing the home clock, date, alarm, battery, and up to 4 notification rows. Start it with a two-finger long-press on the home screen (or the home long-press menu); the power button exits. Select Katapult once in system Screen saver settings (Settings → Experimental → Screensaver opens it).
+- **Screensaver (experimental)**: a Kotatsu screen saver showing the home clock, date, alarm, battery, and up to 4 notification rows. Start it with a two-finger long-press on the home screen (or the home long-press menu); the power button exits. Select Kotatsu once in system Screen saver settings (Settings → Experimental → Screensaver opens it).
 
 ## Permissions
 
@@ -63,7 +69,7 @@
 | `BIND_NOTIFICATION_LISTENER_SERVICE` | Read notifications for badge counts |
 | `READ_CALL_LOG` | Missed call badge on Mudita Phone (Mudita Kompakt only) |
 | `READ_SMS` | Unread SMS badge on Mudita Messages (Mudita Kompakt only) |
-| `BIND_ACCESSIBILITY_SERVICE` | Draws the experimental lockscreen widget over the lock screen — an accessibility overlay is the only way a normal app can display there. The permission sounds scary, but Katapult reads only the lock screen itself — never your apps — so the widget can hide when the PIN screen appears. It records and shares nothing; this open source code is the proof. |
+| `BIND_ACCESSIBILITY_SERVICE` | Optional inherited lockscreen/widget features; enable the Kotatsu Action Service deliberately in Android settings. |
 
 ## FAQ
 
@@ -75,7 +81,7 @@
 | Will it get as many features as inkOS? | No. |
 | Can I add more apps to the home screen? | No. |
 | Can I adjust the opacity of the wallpaper? | No. |
-| Can I change date/clock formats? | No. It follows Android settings. Change it there. |
+| Can I change date/clock formats? | Yes, or leave them on System to follow Android settings. |
 | Can I add AM/PM to a 12-hour clock? | Yes. It's in the settings. |
 | Can I reorder apps? | Yes. Long-press an app, tap Reorder, then tap another app to swap. Tap Save when done. |
 | Will this launcher have a notification tray or letters screen? | No. |
@@ -83,19 +89,19 @@
 ## Troubleshooting
 
 ### Notification indicator not showing
-Go to Settings > Notification Log and check if the notification exists in Android. Many apps require Google Play Services for push notifications. If it's not in the log, it doesn't exist for Android and Katapult can't read it.
+Go to Settings > Notification Log and check if the notification exists in Android. Many apps require Google Play Services for push notifications. If it's not in the log, it doesn't exist for Android and Kotatsu can't read it.
 
 ### Notification not clearing
-Check the Notification Log. If Android doesn't clear it, Katapult can't either.
+Check the Notification Log. If Android doesn't clear it, Kotatsu can't either.
 
 ### How to disable notification dots for a specific app
 There are no allowlists. Go to Settings > App Notifications, tap the app, and disable "Allow notification dot".
 
-## Support the project
+## Upstream attribution and support
 
 <table><tr>
 <td><a href="https://buymeacoffee.com/gezimos"><img src="docs/img/bmc-button.png" alt="Buy me a coffee" height="40" style="max-width:200px;"></a></td>
-<td valign="middle">Katapult is free, open source, and ad-free forever. If it's made your phone better, consider supporting development.</td>
+<td valign="middle">This donation link supports gezimos, the upstream Katapult author. It is not a Kotatsu donation destination.</td>
 </tr></table>
 
 ## Acknowledgments

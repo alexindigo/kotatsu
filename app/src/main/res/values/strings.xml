@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Katapult</string>
+    <string name="app_name">Kotatsu</string>
 
     <string name="save">Save</string>
     <string name="save_uppercase">SAVE</string>
@@ -18,7 +18,6 @@
     <string name="hidden_apps_count">Hidden Apps (%1$d)</string>
     <string name="clear_wallpaper">Clear Wallpaper</string>
     <string name="set_wallpaper">Set Wallpaper</string>
-    <string name="donate_label">buymeacoffee.com/gezimos</string>
     <string name="no_media">No media</string>
     <string name="battery_percent">%1$d%%</string>
     <string name="weather_temp">%1$d\u00B0%2$s</string>
@@ -75,7 +74,7 @@
     <string name="theme_dark">Dark</string>
     <string name="change_icon">Change Icon</string>
     <string name="import_icon">Import Icon</string>
-    <string name="katapult_icons">Katapult Icons</string>
+    <string name="katapult_icons">Kotatsu Icons</string>
     <string name="material_icons">Material Icons</string>
     <string name="choose_png">Import icon (png, svg)</string>
     <string name="icon_import_failed">Could not import that icon. Try again.</string>
@@ -86,7 +85,7 @@
     <string name="hide_status_bar_desc">Hide the system status bar</string>
     <string name="hide_status_bar_clock">Hide Status Bar Clock</string>
     <string name="hide_status_bar_clock_desc">Cover the duplicate clock in the status bar, needs the accessibility service</string>
-    <string name="hide_status_bar_clock_a11y">The clock cover is drawn by the Katapult accessibility service. Enable it in system settings to use this feature.</string>
+    <string name="hide_status_bar_clock_a11y">The clock cover is drawn by the Kotatsu accessibility service. Enable it in system settings to use this feature.</string>
     <string name="eink_refresh">E-Ink Refresh on Home</string>
     <string name="eink_refresh_desc">Clear-ghosting when home button is pressed</string>
     <string name="eink_auto_mode">E-Ink Mode</string>
@@ -108,8 +107,8 @@
     <string name="show_alarm_desc">Display the next alarm above the clock</string>
     <string name="show_weather">Show Weather</string>
     <string name="show_weather_desc">Display weather widget above clock</string>
-    <string name="show_katapult_icon">Show Katapult Icon</string>
-    <string name="show_katapult_icon_desc">Show Katapult in the app list</string>
+    <string name="show_katapult_icon">Show Kotatsu Icon</string>
+    <string name="show_katapult_icon_desc">Show Kotatsu in the app list</string>
     <string name="hide_app_names">Hide App Names</string>
     <string name="hide_app_names_desc">Hide labels under app icons</string>
     <string name="hide_arrow_buttons">Hide Arrow Buttons</string>
@@ -139,7 +138,7 @@
     <string name="notification_history">Notification History</string>
     <string name="notification_history_desc">Android\'s notification history</string>
     <string name="set_default_launcher">Set as Default Launcher</string>
-    <string name="set_default_launcher_desc">Choose Katapult as your home</string>
+    <string name="set_default_launcher_desc">Choose Kotatsu as your home</string>
     <string name="search_settings">Search Settings</string>
     <string name="search_settings_desc">Find a setting in the Android system settings</string>
     <string name="config_backup">Config Export/Import</string>
@@ -147,32 +146,28 @@
     <string name="config_export">Export</string>
     <string name="config_import">Import</string>
     <string name="config_clear">Clear All Data</string>
-    <string name="config_clear_confirm">Erase all settings and restart Katapult?</string>
+    <string name="config_clear_confirm">Erase all settings and restart Kotatsu?</string>
     <string name="config_exported">Config exported</string>
     <string name="config_export_failed">Export failed</string>
     <string name="config_import_failed">Import failed, not a valid config file</string>
     <string name="app_shortcuts">App Shortcuts</string>
     <string name="remove_shortcut">Remove Shortcut</string>
-    <string name="no_app_shortcuts">No shortcuts available. Katapult must be the default launcher.</string>
+    <string name="no_app_shortcuts">No shortcuts available. Kotatsu must be the default launcher.</string>
     <string name="no_app_shortcuts_app">This app has no shortcuts.</string>
     <string name="shortcut_pinned">%1$s added to All Apps</string>
     <string name="shortcut_already_added">%1$s is already in All Apps</string>
-    <string name="check_updates">Check for Updates</string>
-    <string name="check_updates_desc">Download the latest version from GitHub</string>
     <string name="permissions">Permissions</string>
-    <string name="permissions_desc">See and manage what Katapult can access</string>
+    <string name="permissions_desc">See and manage what Kotatsu can access</string>
     <string name="perm_notification_access">Notification Access</string>
     <string name="perm_call_log">Call Log</string>
     <string name="perm_sms">SMS</string>
     <string name="perm_write_settings">Modify System Settings</string>
-    <string name="perm_install_apps">Install Unknown Apps</string>
-    <string name="perm_action_service">Katapult Action Service</string>
+    <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Notification badges and lockscreen notifications</string>
     <string name="perm_action_service_desc">Lockscreen widgets, clock cover, screensaver and locking</string>
     <string name="perm_call_log_desc">Missed calls in the Phone badge</string>
     <string name="perm_sms_desc">Unread messages in the Messages badge</string>
     <string name="perm_write_settings_desc">Brightness control</string>
-    <string name="perm_install_apps_desc">In-app updates</string>
     <string name="app_sort_order">Order Apps</string>
     <string name="app_sort_order_desc">A-Z, Most recent, Most used</string>
     <string name="app_sort_alphabetical">Alphabetical</string>
@@ -180,27 +175,15 @@
     <string name="app_sort_used">Most Used</string>
     <string name="perm_usage_access">Usage Access</string>
     <string name="perm_usage_access_desc">Sorting apps by most recent or most used</string>
-    <string name="update_checking">Checking for updates…</string>
-    <string name="update_up_to_date">You\'re on the latest version (v%1$s).</string>
-    <string name="update_available">Version %1$s is available</string>
-    <string name="update_current_version">Installed: v%1$s</string>
-    <string name="update_notes_title">What\'s new</string>
-    <string name="update_download_install">Download</string>
-    <string name="update_downloading">Downloading… %1$d%%</string>
-    <string name="update_error">Couldn\'t check for updates. Check your connection and try again.</string>
-    <string name="update_ready_install">Downloaded. If Android asks, allow Katapult to install apps, then come back and tap Install.</string>
-    <string name="update_install">Install</string>
-    <string name="update_download_failed">Download failed. Check your connection and try again.</string>
-    <string name="retry">Retry</string>
 
     <string name="notification_access_title">Enable Notification Access</string>
-    <string name="notification_access_message">Katapult needs notification access to show notification badges. Grant access in Settings?</string>
+    <string name="notification_access_message">Kotatsu needs notification access to show notification badges. Grant access in Settings?</string>
     <string name="no_alarm">No alarm set</string>
 
     <string name="onboarding_icon">K</string>
-    <string name="welcome_title">Welcome to Katapult</string>
+    <string name="welcome_title">Welcome to Kotatsu</string>
     <string name="onboarding_notification_desc">Enables notification badges on third-party apps like WhatsApp, Signal, etc.</string>
-    <string name="onboarding_launcher_desc">Make Katapult your home screen so pressing the home button brings you here</string>
+    <string name="onboarding_launcher_desc">Make Kotatsu your home screen so pressing the home button brings you here</string>
     <string name="required_hint">* required</string>
     <string name="call_sms_badges">Call &amp; SMS Badges</string>
     <string name="call_sms_badges_desc">Reads call log and SMS directly for Mudita Phone &amp; SMS, which don\'t work with the notification listener</string>
@@ -209,8 +192,8 @@
     <string name="lockscreen_music_widget">Lockscreen Music Controls</string>
     <string name="lockscreen_music_widget_desc">Show media controls on the lock screen for players other than the Mudita one</string>
     <string name="lockscreen_widget_desc">Show notification counts on the lock screen.</string>
-    <string name="a11y_service_label">Katapult Action Service</string>
-    <string name="a11y_shortcut_warning">In accessibility settings, turn on only the Katapult Action Service itself, not its shortcut. The shortcut adds a floating accessibility button to your screen.</string>
+    <string name="a11y_service_label">Kotatsu Action Service</string>
+    <string name="a11y_shortcut_warning">In accessibility settings, turn on only the Kotatsu Action Service itself, not its shortcut. The shortcut adds a floating accessibility button to your screen.</string>
     <string name="lockscreen_widget_a11y_desc">Used for the lockscreen notification widget, covering the status bar clock, locking the phone, and the screensaver. Draws only over the lock screen and status bar; reads nothing from your apps.</string>
     <string name="lockscreen_widget_apps">Lockscreen Notification Apps</string>
     <string name="lockscreen_widget_apps_desc">Choose which apps appear on the lockscreen widget</string>
@@ -224,12 +207,12 @@
     <string name="lockscreen_reenable_disable">Turn off these features</string>
     <string name="lockscreen_readme">Read Me</string>
     <string name="lockscreen_readme_desc">About the accessibility permission and widget controls</string>
-    <string name="lockscreen_readme_privacy">This feature draws over the lock screen using an accessibility overlay. That permission sounds scary, but Katapult uses it only to display the widget and to read the lock screen itself, never your apps, so the widget can hide when the PIN screen appears. Nothing is recorded or shared; the open source code is the proof.</string>
+    <string name="lockscreen_readme_privacy">This feature draws over the lock screen using an accessibility overlay. That permission sounds scary, but Kotatsu uses it only to display the widget and to read the lock screen itself, never your apps, so the widget can hide when the PIN screen appears. Nothing is recorded or shared; the open source code is the proof.</string>
     <string name="lockscreen_readme_usage">Long-press the widget to adjust it: drag to move, drag the handle below it to resize. Tap it once to save and finish.</string>
     <string name="screensaver">Screensaver</string>
-    <string name="screensaver_setup_message">Katapult isn\'t selected as the screen saver yet. Open Screen saver settings and choose Katapult, then start it from the home menu.</string>
+    <string name="screensaver_setup_message">Kotatsu isn\'t selected as the screen saver yet. Open Screen saver settings and choose Kotatsu, then start it from the home menu.</string>
     <string name="screensaver_open_settings">Open screensaver settings</string>
-    <string name="screensaver_settings_desc">Change the current screen saver to Katapult for this</string>
+    <string name="screensaver_settings_desc">Change the current screen saver to Kotatsu for this</string>
     <string name="screensaver_islands">Screensaver Text Backgrounds</string>
     <string name="screensaver_wallpaper">Screensaver Background</string>
     <string name="screensaver_wallpaper_desc">Show a background image behind the screensaver</string>
@@ -241,13 +224,8 @@
     <string name="screensaver_show_notifications_desc">Show notification counts on the screensaver</string>
     <string name="screensaver_enable_desc">Show a clock and notifications with a pinch on home</string>
     <string name="screensaver_system">System Screen Saver</string>
-    <string name="donate_desc">Support Katapult on Buy Me a Coffee</string>
-    <string name="github_label">github.com/gezimos</string>
-    <string name="github_desc">Source code and other projects</string>
-    <string name="youtube_label">youtube.com/@gezimos</string>
-    <string name="youtube_desc">Videos and updates</string>
-    <string name="inkos_label">inkOS</string>
-    <string name="inkos_desc">E-ink launcher by the same developer</string>
+    <string name="github_label">github.com/alexindigo/kotatsu</string>
+    <string name="github_desc">Kotatsu source code</string>
     <string name="lic_app_title">App License</string>
     <string name="lic_app_desc">GNU General Public License v3.0</string>
     <string name="lic_font_title">Font License</string>
@@ -277,7 +255,7 @@
     <string name="cat_home">Home</string>
     <string name="screensaver_on_power">Open on Power Button</string>
     <string name="screensaver_on_power_desc">Show the screensaver when the screen turns off, needs the accessibility service</string>
-    <string name="screensaver_app_label">Katapult Screensaver</string>
+    <string name="screensaver_app_label">Kotatsu Screensaver</string>
     <string name="screensaver_app_icon">Screensaver Icon</string>
     <string name="screensaver_app_icon_desc">Adds a screensaver icon to the app drawer</string>
     <string name="screensaver_wallpaper_custom">Custom image</string>
@@ -285,10 +263,10 @@
     <string name="screensaver_image">Screensaver Image</string>
     <string name="clear_image">Clear Image</string>
     <string name="notifications_readme_desc">About controlling and debugging notifications</string>
-    <string name="notifications_readme_control">Katapult only shows notification badges, it doesn\'t manage notifications itself. Use App Notifications, an Android settings screen, to choose which apps can notify you and turn any of them off.</string>
+    <string name="notifications_readme_control">Kotatsu only shows notification badges, it doesn\'t manage notifications itself. Use App Notifications, an Android settings screen, to choose which apps can notify you and turn any of them off.</string>
     <string name="notifications_readme_debug">If you hear a notification but can\'t find it, open the Notification Log to see every notification the Android system has posted and track down where it came from.</string>
     <string name="screensaver_readme_desc">About the screensaver and how to open it</string>
-    <string name="screensaver_readme_accessibility">Open on Power Button needs the Katapult Action Service enabled.</string>
+    <string name="screensaver_readme_accessibility">Open on Power Button needs the Kotatsu Action Service enabled.</string>
     <string name="screensaver_readme_about">This uses the screensaver to mimic an Always On Display. It shows the clock, date, battery, notification counts and wallpaper, like the home screen.</string>
     <string name="screensaver_readme_use">Open it with a pinch-in (zoom-out) gesture on home, from the home long-press menu, or turn on Open on Power Button so it appears after you lock the phone. If Double-Tap Brightness is on, the screen stays dark and a double-tap lights it up. To exit, press Back or Home. While it\'s showing, press power to turn the display off again.</string>
     <string name="screensaver_readme_modes">Update Mode sets how often it refreshes: Static never updates (best for wallpapers), Auto updates in real time, and Timed updates every few minutes. This is not a true AOD, the phone doesn\'t go idle, so don\'t leave it on all the time, it can use more power than the display being fully off.</string>
@@ -298,4 +276,11 @@
     <string name="gestures_readme_desc">About page navigation and swipe gestures</string>
     <string name="gestures_readme_nav">By default you navigate pages horizontally, or with the arrow buttons. You can change the gesture direction to vertical and hide the arrows if you prefer.</string>
     <string name="gestures_readme_apps">Swipe for All Apps lets you swipe up or left to open the All Apps page, depending on the gesture direction.</string>
+    <string name="discard">Discard</string>
+    <string name="reorder_unsaved">Save app order changes?</string>
+    <string name="onboarding_optional_desc">Setup is optional. You can use Kotatsu without access permissions or changing your default launcher.</string>
+    <string name="inherited_logo_description">Temporary inherited upstream graphic</string>
+    <string name="upstream_source_label">Forked from Katapult</string>
+    <string name="upstream_source_desc">Original launcher by gezimos</string>
+    <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
 </resources>

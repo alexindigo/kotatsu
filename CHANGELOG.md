@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Katapult are documented here.
+Kotatsu changelog. The entries below are inherited Katapult history through v1.6.
 
 ## [1.6]
 

@@ -46,6 +46,8 @@ import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.ReorderBaseline
+import com.gezimos.katapult.util.ReorderChoice
 import com.gezimos.katapult.util.ShortcutHelper
 import com.gezimos.katapult.util.UsageHelper
 import java.io.File
@@ -72,6 +74,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var showRenameDialog by mutableStateOf(false)
     var reorderMode by mutableStateOf(false)
     var reorderHighlightIndex by mutableIntStateOf(-1)
+    var showReorderExit by mutableStateOf(false)
+        private set
+    private var reorderBaseline: ReorderBaseline? = null
+    private var reorderBaselineApps: List<AppModel> = emptyList()
+    private var pendingReorderExit: (() -> Unit)? = null
+    private var appRefreshDeferred = false
     var iconOverrideTarget by mutableStateOf<String?>(null)
     var iconImportError by mutableStateOf(false)
     var sheetDismissSignal by mutableIntStateOf(0)
@@ -126,47 +134,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         showLockscreenReEnable = false
     }
 
-    var updateProgress by mutableIntStateOf(-1)
-        private set
-    var updateReadyTag by mutableStateOf<String?>(null)
-        private set
-    var updateFailed by mutableStateOf(false)
-        private set
-
-    fun downloadUpdate(info: com.gezimos.katapult.util.UpdateChecker.ReleaseInfo) {
-        if (updateProgress >= 0) return
-        updateProgress = 0
-        updateFailed = false
-        updateReadyTag = null
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val ok = try {
-                val file = com.gezimos.katapult.util.UpdateChecker.apkFile(ctx)
-                com.gezimos.katapult.util.UpdateChecker.downloadApk(info.apkUrl, file) { p ->
-                    if (p >= updateProgress + 5 || p == 100) updateProgress = p
-                }
-            } catch (_: Exception) {
-                false
-            }
-            if (ok) updateReadyTag = info.tag else updateFailed = true
-            updateProgress = -1
-        }
-    }
-
-    fun clearDownloadedUpdate() {
-        updateReadyTag = null
-        updateFailed = false
-        try {
-            com.gezimos.katapult.util.UpdateChecker.apkFile(ctx).delete()
-        } catch (_: Exception) {}
-    }
-
     fun startScreensaver(context: Context) {
-        try {
-            context.startActivity(
-                Intent(context, com.gezimos.katapult.lockscreen.ScreensaverActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-            )
-        } catch (_: Exception) {}
+        requestReorderExit {
+            try {
+                context.startActivity(
+                    Intent(context, com.gezimos.katapult.lockscreen.ScreensaverActivity::class.java)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                )
+            } catch (_: Exception) {}
+        }
     }
 
     val gridColumns = 3
@@ -329,6 +305,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun loadApps() {
+        if (reorderMode) {
+            appRefreshDeferred = true
+            return
+        }
         val previousKeys = orderedApps.map { it.key }.toSet()
         val currentApps = AppLoader.loadApps(ctx, showSelf = prefs.showKatapultIcon) +
             ShortcutHelper.installedShortcuts(ctx, prefs)
@@ -381,9 +361,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun navigateTo(target: Screen) {
-        if (reorderMode) finishReorder()
-        if (target == Screen.ALL_APPS) currentPage = 0
-        screen = target
+        requestReorderExit {
+            if (target == Screen.ALL_APPS) currentPage = 0
+            screen = target
+        }
+    }
+
+    fun onHomeIntent() {
+        requestReorderExit {
+            dismissAllSheets()
+            if (screen != Screen.ONBOARDING) screen = Screen.HOME
+        }
     }
 
     fun dismissAllSheets() {
@@ -391,10 +379,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun goBack(): Boolean {
+        if (showReorderExit) {
+            cancelReorderExit()
+            return true
+        }
         if (reorderMode) {
-            reorderMode = false
-            reorderHighlightIndex = -1
-            loadApps()
+            requestReorderExit {}
             return true
         }
         if (contextMenuApp != null) { contextMenuApp = null; showRenameDialog = false; return true }
@@ -409,6 +399,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun enterReorderMode(app: AppModel) {
         val index = orderedApps.indexOfFirst { it.key == app.key }
         if (index >= 0) {
+            if (!reorderMode) {
+                reorderBaselineApps = orderedApps.toList()
+                reorderBaseline = ReorderBaseline(orderedApps.map { it.key }, prefs.loadAppOrder()?.toList())
+            }
             reorderHighlightIndex = index
             reorderMode = true
         }
@@ -416,6 +410,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun reorderTap(targetIndex: Int) {
+        if (!reorderMode || targetIndex !in orderedApps.indices) return
         if (reorderHighlightIndex < 0) {
             reorderHighlightIndex = targetIndex
         } else if (targetIndex == reorderHighlightIndex) {
@@ -431,15 +426,59 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun finishReorder() {
+        resolveReorderExit(ReorderChoice.SAVE)
+    }
+
+    private fun requestReorderExit(exit: () -> Unit) {
+        if (!reorderMode) {
+            exit()
+            return
+        }
+        // An already-present decision retains its original destination.
+        if (showReorderExit) return
+        val baseline = reorderBaseline ?: return
+        pendingReorderExit = exit
+        if (baseline.isDirty(orderedApps.map { it.key })) {
+            showReorderExit = true
+        } else {
+            resolveReorderExit(ReorderChoice.DISCARD)
+        }
+    }
+
+    fun saveReorderExit() = resolveReorderExit(ReorderChoice.SAVE)
+
+    fun discardReorderExit() = resolveReorderExit(ReorderChoice.DISCARD)
+
+    fun cancelReorderExit() = resolveReorderExit(ReorderChoice.CANCEL)
+
+    private fun resolveReorderExit(choice: ReorderChoice) {
+        val baseline = reorderBaseline ?: return
+        val resolution = baseline.resolve(choice, orderedApps.map { it.key })
+        if (resolution == null) {
+            showReorderExit = false
+            pendingReorderExit = null
+            return
+        }
+        if (resolution.persist) prefs.saveAppOrder(resolution.keys)
+        if (choice == ReorderChoice.DISCARD) orderedApps = reorderBaselineApps
+        val exit = pendingReorderExit
+        pendingReorderExit = null
+        showReorderExit = false
         reorderMode = false
         reorderHighlightIndex = -1
-        prefs.saveAppOrder(orderedApps.map { it.key })
+        reorderBaseline = null
+        reorderBaselineApps = emptyList()
+        if (appRefreshDeferred) {
+            appRefreshDeferred = false
+            loadApps()
+        }
+        exit?.invoke()
     }
 
     fun resetOrder() {
         orderedApps = orderedApps.sortedBy { it.label.lowercase() }
         reorderHighlightIndex = -1
-        prefs.saveAppOrder(orderedApps.map { it.key })
+        if (!reorderMode) prefs.saveAppOrder(orderedApps.map { it.key })
     }
 
     fun hideApp(key: String) {

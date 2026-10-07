@@ -32,8 +32,13 @@ class MainActivity : ComponentActivity() {
 
     private val backCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
-            viewModel.goBack()
-            // On home with nothing to close: do nothing. This is a launcher.
+            if (viewModel.goBack() || DeviceHelper.isDefaultLauncher(this@MainActivity)) return
+            isEnabled = false
+            try {
+                onBackPressedDispatcher.onBackPressed()
+            } finally {
+                isEnabled = true
+            }
         }
     }
 
@@ -100,10 +105,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         overridePendingTransition(0, 0)
-        viewModel.dismissAllSheets()
-        if (viewModel.screen != Screen.ONBOARDING) {
-            viewModel.navigateTo(Screen.HOME)
-        }
+        viewModel.onHomeIntent()
 
         val savedMode = viewModel.prefs.einkHelperMode
         if (savedMode != EinkHelper.MEINK_MODE_DISABLED) {

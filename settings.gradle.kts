@@ -22,5 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Katapult"
+rootProject.name = "Kotatsu"
 include(":app")
