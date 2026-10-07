@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Derivado do Katapult</string>
     <string name="upstream_source_desc">Launcher original de gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Acesso a dados sensíveis</string>
+    <string name="sensitive_access_desc">Escolhas independentes do app e estado do acesso do Android</string>
+    <string name="policy_sms_badges">Coletar contadores de SMS</string>
+    <string name="policy_call_badges">Coletar contadores de chamadas</string>
+    <string name="policy_notification_badges">Coletar contadores de notificações</string>
+    <string name="policy_media_info">Coletar informações de mídia</string>
+    <string name="policy_usage_stats">Coletar estatísticas de uso</string>
+    <string name="policy_notification_dismissal">Permitir dispensar notificações</string>
+    <string name="policy_call_acknowledgment">Permitir confirmar chamadas</string>
+    <string name="policy_media_controls">Permitir controles de mídia</string>
+    <string name="policy_accessibility_features">Permitir funções de acessibilidade</string>
+    <string name="policy_boundary">Estas são escolhas do app, não permissões do Android. Ativá-las não solicita acesso nem seleciona funções opcionais. O Android ainda pode entregar notificações com sua permissão existente quando os contadores estão desativados e as informações de mídia estão ativadas.</string>
+    <string name="policy_action_boundary">Confirmar chamadas altera as marcas de nova/lida; não exclui chamadas. Dispensar notificações pode afetar o app de origem. Abra Permissões deliberadamente para revogar o acesso do Android.</string>
+    <string name="policy_grants_separate">Revisar ou revogar as permissões do Android separadamente</string>
+    <string name="policy_unsupported">Fonte direta não suportada neste dispositivo</string>
+    <string name="policy_granted">Acesso do Android concedido; também é necessária uma função selecionada e ativa</string>
+    <string name="policy_granted_disconnected">Acesso do Android concedido; serviço não conectado</string>
+    <string name="policy_not_granted">Acesso do Android não concedido</string>
+    <string name="policy_import_confirmation">Confirmar alterações no acesso a dados sensíveis</string>
+    <string name="policy_enabled">Ativado</string>
+    <string name="policy_disabled">Desativado</string>
+    <string name="acknowledge_calls">Confirmar chamadas (marcar como vistas)</string>
 </resources>

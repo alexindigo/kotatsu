@@ -65,6 +65,11 @@ import kotlinx.coroutines.launch
 import com.gezimos.katapult.R
 import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.service.NotificationListener
+import com.gezimos.katapult.service.BadgeSources
+import com.gezimos.katapult.util.SensitiveAccess
+import com.gezimos.katapult.util.AccessibilityPolicy
+import com.gezimos.katapult.util.AccessibilitySelection
+import com.gezimos.katapult.util.AccessibilityConsumers
 import com.gezimos.katapult.ui.EinkTintMatrix
 import com.gezimos.katapult.ui.EinkTintMatrixDark
 import com.gezimos.katapult.util.DeviceHelper
@@ -122,7 +127,9 @@ class LockscreenWidgetService :
          * Returns false when the service isn't enabled (nothing an app can do then).
          */
         fun lockScreen(): Boolean = try {
-            instance?.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN) ?: false
+            val self = instance
+            if (self == null || !self.currentDemand(false).lockAction) false
+            else self.performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
         } catch (_: Exception) {
             false
         }
@@ -143,8 +150,7 @@ class LockscreenWidgetService :
         }
 
         private fun refreshClockCover() {
-            val show = launcherForeground || screensaverForeground
-            instance?.let { s -> s.mainHandler.post { s.applyClockCover(show) } }
+            instance?.let { s -> s.mainHandler.post { s.evaluate() } }
         }
 
         private var launcherForeground = false
@@ -186,6 +192,53 @@ class LockscreenWidgetService :
 
     private val badgeListener: () -> Unit = { mainHandler.post { evaluate() } }
     private lateinit var prefs: PrefsManager
+    private val badgeOwner = Any()
+    private val mediaOwner = Any()
+    private val consumers = AccessibilityConsumers(
+        acquireBadges = { SensitiveAccess.acquireBadges(badgeOwner) },
+        acquireMedia = { SensitiveAccess.acquireMedia(mediaOwner) },
+        subscriptions = ::syncSourceSubscriptions,
+        clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); musicState.value = null },
+        clearInspection = {
+            mainHandler.removeCallbacks(keyguardRecheck)
+            lastPinShowing = false
+            burstUntil = 0L
+        },
+    )
+    private var policySubscription: AutoCloseable? = null
+    private var badgeListening = false
+
+    private fun currentDemand(lockscreenActive: Boolean) = AccessibilityPolicy.demand(
+        SensitiveAccess.accessibility(),
+        AccessibilitySelection(prefs.lockscreenWidget, prefs.lockscreenMusicWidget, !prefs.lockscreenMessage.isNullOrBlank(),
+            prefs.hideStatusBarClock && !prefs.hideStatusBar && DeviceHelper.isMuditaKompakt(),
+            prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK, prefs.screensaverEnabled, prefs.screensaverOnPower),
+        lockscreenActive, launcherForeground, screensaverForeground || ScreensaverActivity.isShowing,
+    )
+
+    private fun syncSourceSubscriptions(badges: Boolean, media: Boolean) {
+        if (badges && !badgeListening) {
+            directBadges?.addListener(badgeListener)
+            NotificationListener.addListener(badgeListener)
+            badgeListening = true
+        } else if (!badges && badgeListening) {
+            directBadges?.removeListener(badgeListener)
+            NotificationListener.removeListener(badgeListener)
+            badgeListening = false
+        }
+        if (media && mediaScope == null) {
+            mediaScope = CoroutineScope(Dispatchers.Main + SupervisorJob()).also { scope ->
+                scope.launch {
+                    AudioWidgetHelper.getInstance(this@LockscreenWidgetService).state.collect { info ->
+                        musicState.value = if (SensitiveAccess.mediaInfo()) info else null
+                        evaluate()
+                    }
+                }
+            }
+        } else if (!media) {
+            mediaScope?.cancel(); mediaScope = null; musicState.value = null
+        }
+    }
 
     // Edit-mode state for the current overlay
     private var editing = false
@@ -215,11 +268,11 @@ class LockscreenWidgetService :
 
     private fun maybeStartScreensaver() {
         if (!::prefs.isInitialized) return
-        if (!prefs.screensaverEnabled || !prefs.screensaverOnPower) return
+        if (!currentDemand(false).powerEntry) return
         if (ScreensaverActivity.isShowing || ScreensaverActivity.recentlyActive()) return
         try {
             startActivity(
-                Intent(this, ScreensaverActivity::class.java)
+                Intent(Intent.ACTION_VIEW).setClass(this, ScreensaverActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     .putExtra(ScreensaverActivity.EXTRA_FROM_POWER, true),
             )
@@ -229,28 +282,19 @@ class LockscreenWidgetService :
     override fun onServiceConnected() {
         instance = this
         prefs = PrefsManager(this)
+        SensitiveAccess.initialize(this)
+        SensitiveAccess.accessibilityConnection(true)
+        policySubscription = SensitiveAccess.subscribe { mainHandler.post { evaluate() } }
         savedStateController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
-        mediaScope = CoroutineScope(Dispatchers.Main + SupervisorJob()).also { scope ->
-            scope.launch {
-                AudioWidgetHelper.getInstance(this@LockscreenWidgetService).state.collect { info ->
-                    musicState.value = info
-                    evaluate()
-                }
-            }
-        }
         registerReceiver(screenReceiver, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_ON)
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_USER_PRESENT)
         })
         if (DeviceHelper.isMuditaKompakt()) {
-            directBadges = DirectBadgeHelper.getInstance(this).apply {
-                addListener(badgeListener)
-                acquire()
-            }
+            directBadges = DirectBadgeHelper.getInstance(this)
         }
-        NotificationListener.onCountsChangedExtra = { mainHandler.post { evaluate() } }
         keyguardPossible = try {
             getSystemService(KeyguardManager::class.java).isKeyguardLocked
         } catch (_: Exception) {
@@ -261,15 +305,31 @@ class LockscreenWidgetService :
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        if (!SensitiveAccess.accessibility() ||
+            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && prefs.lockscreenMessage.isNullOrBlank())) return
         if (!keyguardPossible) return
         burstUntil = SystemClock.elapsedRealtime() + KEYGUARD_BURST_MS
         evaluate()
     }
 
-    override fun onInterrupt() {}
+    override fun onInterrupt() {
+        syncSourceSubscriptions(false, false)
+        releaseSensitiveConsumers()
+        removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeClockCover()
+        mainHandler.removeCallbacks(keyguardRecheck)
+    }
+
+    private fun releaseSensitiveConsumers() {
+        consumers.close()
+        musicState.value = null
+    }
 
     override fun onDestroy() {
         if (instance === this) instance = null
+        SensitiveAccess.accessibilityConnection(false)
+        policySubscription?.close(); policySubscription = null
+        releaseSensitiveConsumers()
+        syncSourceSubscriptions(false, false)
         mainHandler.removeCallbacks(keyguardRecheck)
         mediaScope?.cancel()
         mediaScope = null
@@ -277,10 +337,9 @@ class LockscreenWidgetService :
         removeMessageOverlay()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         viewModelStoreInstance.clear()
-        NotificationListener.onCountsChangedExtra = null
+        NotificationListener.removeListener(badgeListener)
         directBadges?.let {
             it.removeListener(badgeListener)
-            it.release()
         }
         directBadges = null
         try { unregisterReceiver(screenReceiver) } catch (_: Exception) {}
@@ -299,7 +358,7 @@ class LockscreenWidgetService :
      */
     fun applyClockCover(show: Boolean) {
         if (!::prefs.isInitialized) return
-        val want = show && prefs.hideStatusBarClock && !prefs.hideStatusBar && DeviceHelper.isMuditaKompakt()
+        val want = show && currentDemand(false).clockCover
         if (want && clockCover != null) return
         removeClockCover()
         if (!want) return
@@ -333,7 +392,7 @@ class LockscreenWidgetService :
     private fun applyMusicWidget(onLockscreen: Boolean) {
         if (!::prefs.isInitialized) return
         val info = musicState.value
-        val want = onLockscreen &&
+        val want = SensitiveAccess.mediaInfo() && onLockscreen &&
             prefs.lockscreenMusicWidget &&
             info != null &&
             info.packageName != MUDITA_AUDIO_PLAYER
@@ -416,7 +475,9 @@ class LockscreenWidgetService :
 
     private fun scheduleKeyguardRecheck() {
         mainHandler.removeCallbacks(keyguardRecheck)
-        if (overlay == null && musicOverlay == null && messageOverlay == null) return
+        if (!SensitiveAccess.accessibility()) return
+        if (overlay == null && musicOverlay == null && messageOverlay == null && !consumers.badgesActive &&
+            !consumers.mediaActive && !consumers.inspectionActive) return
         val bursting = SystemClock.elapsedRealtime() < burstUntil
         val delay = if (bursting) KEYGUARD_RECHECK_MS else KEYGUARD_IDLE_RECHECK_MS
         mainHandler.postDelayed(keyguardRecheck, delay)
@@ -487,14 +548,30 @@ class LockscreenWidgetService :
 
     private fun evaluate() {
         if (!::prefs.isInitialized) return
+        applyClockCover(launcherForeground || screensaverForeground)
+        if (!SensitiveAccess.accessibility() ||
+            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && prefs.lockscreenMessage.isNullOrBlank())) {
+            releaseSensitiveConsumers()
+            syncSourceSubscriptions(false, false)
+            mainHandler.removeCallbacks(keyguardRecheck)
+            removeOverlay(); removeMusicOverlay(); removeMessageOverlay()
+            lastPinShowing = false
+            burstUntil = 0L
+            return
+        }
         val keyguard = getSystemService(KeyguardManager::class.java)
         val power = getSystemService(PowerManager::class.java)
-        val onLockscreen = keyguard.isKeyguardLocked &&
+        val selectedActive = keyguard.isKeyguardLocked &&
             power.isInteractive &&
             !KatapultDreamService.isDreaming &&
             !ScreensaverActivity.isShowing &&
-            !inCall() &&
-            !pinShowing(SystemClock.elapsedRealtime() < burstUntil)
+            !inCall()
+        val inspection = currentDemand(selectedActive).inspectPin
+        val onLockscreen = selectedActive && (!inspection || !pinShowing(lastPinShowing || SystemClock.elapsedRealtime() < burstUntil))
+        val demand = currentDemand(onLockscreen)
+        // PIN visibility suppresses overlays/collectors, not the selected PIN
+        // recheck itself; otherwise teardown would forget that PIN is visible.
+        consumers.reconcile(demand.copy(inspectPin = inspection))
         applyMusicWidget(onLockscreen)
         applyLockscreenMessage(onLockscreen)
         if (!onLockscreen || !prefs.lockscreenWidget) {
@@ -531,6 +608,7 @@ class LockscreenWidgetService :
     private var lastPinShowing = false
 
     private fun pinShowing(check: Boolean): Boolean {
+        if (!SensitiveAccess.accessibility()) { lastPinShowing = false; return false }
         if (!check) return lastPinShowing
         lastPinShowing = try {
             val focus = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
@@ -558,8 +636,7 @@ class LockscreenWidgetService :
     }
 
     private fun currentCounts(): Map<String, Int> {
-        val merged = NotificationListener.getAllCounts().toMutableMap()
-        directBadges?.getCounts()?.forEach { (pkg, count) -> merged[pkg] = (merged[pkg] ?: 0) + count }
+        val merged = BadgeSources.counts(this)
         val excluded = prefs.getLockscreenExcludedApps()
         return merged.filter { (pkg, count) -> count > 0 && pkg !in excluded }
     }

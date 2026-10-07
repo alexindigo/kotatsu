@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Derivato da Katapult</string>
     <string name="upstream_source_desc">Launcher originale di gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Accesso ai dati sensibili</string>
+    <string name="sensitive_access_desc">Scelte indipendenti dell’app e stato dell’accesso Android</string>
+    <string name="policy_sms_badges">Raccogli contatori SMS</string>
+    <string name="policy_call_badges">Raccogli contatori delle chiamate</string>
+    <string name="policy_notification_badges">Raccogli contatori delle notifiche</string>
+    <string name="policy_media_info">Raccogli informazioni multimediali</string>
+    <string name="policy_usage_stats">Raccogli statistiche di utilizzo</string>
+    <string name="policy_notification_dismissal">Consenti la rimozione delle notifiche</string>
+    <string name="policy_call_acknowledgment">Consenti la conferma delle chiamate</string>
+    <string name="policy_media_controls">Consenti i controlli multimediali</string>
+    <string name="policy_accessibility_features">Consenti le funzioni di accessibilità</string>
+    <string name="policy_boundary">Queste sono scelte dell’app, non autorizzazioni Android. Attivarle non richiede accesso e non seleziona funzioni facoltative. Android può ancora fornire notifiche con l’autorizzazione esistente quando i contatori sono disattivati e le informazioni multimediali sono attivate.</string>
+    <string name="policy_action_boundary">Confermare le chiamate modifica gli indicatori nuovo/letto; non elimina chiamate. Rimuovere le notifiche può influire sull’app di origine. Apri deliberatamente Autorizzazioni per revocare l’accesso Android.</string>
+    <string name="policy_grants_separate">Controlla o revoca separatamente le autorizzazioni Android</string>
+    <string name="policy_unsupported">Fonte diretta non supportata su questo dispositivo</string>
+    <string name="policy_granted">Accesso Android concesso; serve anche una funzione selezionata e attiva</string>
+    <string name="policy_granted_disconnected">Accesso Android concesso; servizio non connesso</string>
+    <string name="policy_not_granted">Accesso Android non concesso</string>
+    <string name="policy_import_confirmation">Conferma le modifiche all’accesso ai dati sensibili</string>
+    <string name="policy_enabled">Attivato</string>
+    <string name="policy_disabled">Disattivato</string>
+    <string name="acknowledge_calls">Conferma chiamate (segna come viste)</string>
 </resources>

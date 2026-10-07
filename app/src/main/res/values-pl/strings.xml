@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Na bazie Katapult</string>
     <string name="upstream_source_desc">Oryginalny launcher autorstwa gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Dostęp do danych wrażliwych</string>
+    <string name="sensitive_access_desc">Niezależne wybory aplikacji i stan dostępu w Androidzie</string>
+    <string name="policy_sms_badges">Zbieraj liczniki SMS</string>
+    <string name="policy_call_badges">Zbieraj liczniki połączeń</string>
+    <string name="policy_notification_badges">Zbieraj liczniki powiadomień</string>
+    <string name="policy_media_info">Zbieraj informacje o multimediach</string>
+    <string name="policy_usage_stats">Zbieraj statystyki użycia</string>
+    <string name="policy_notification_dismissal">Zezwalaj na usuwanie powiadomień</string>
+    <string name="policy_call_acknowledgment">Zezwalaj na potwierdzanie połączeń</string>
+    <string name="policy_media_controls">Zezwalaj na sterowanie multimediami</string>
+    <string name="policy_accessibility_features">Zezwalaj na funkcje dostępności</string>
+    <string name="policy_boundary">To wybory aplikacji, nie uprawnienia Androida. Ich włączenie nie żąda dostępu ani nie wybiera opcjonalnych funkcji. Android może nadal dostarczać powiadomienia z istniejącym uprawnieniem, gdy liczniki są wyłączone, a informacje o multimediach włączone.</string>
+    <string name="policy_action_boundary">Potwierdzanie połączeń zmienia znaczniki nowe/przeczytane; nie usuwa połączeń. Usuwanie powiadomień może wpływać na aplikację źródłową. Aby cofnąć dostęp Androida, świadomie otwórz Uprawnienia.</string>
+    <string name="policy_grants_separate">Osobno sprawdź lub cofnij uprawnienia Androida</string>
+    <string name="policy_unsupported">Źródło bezpośrednie nie jest obsługiwane na tym urządzeniu</string>
+    <string name="policy_granted">Przyznano dostęp w Androidzie; wymagana jest też wybrana aktywna funkcja</string>
+    <string name="policy_granted_disconnected">Przyznano dostęp w Androidzie; usługa nie jest połączona</string>
+    <string name="policy_not_granted">Nie przyznano dostępu w Androidzie</string>
+    <string name="policy_import_confirmation">Potwierdź zmiany dostępu do danych wrażliwych</string>
+    <string name="policy_enabled">Włączone</string>
+    <string name="policy_disabled">Wyłączone</string>
+    <string name="acknowledge_calls">Potwierdź połączenia (oznacz jako widziane)</string>
 </resources>

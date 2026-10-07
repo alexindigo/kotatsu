@@ -98,14 +98,12 @@ fun AppContextMenu(
     showReorder: Boolean,
     showHide: Boolean,
     onDismiss: () -> Unit,
+    onClearBadge: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var changeIconApp by remember { mutableStateOf<AppModel?>(null) }
     var shortcutsApp by remember { mutableStateOf<AppModel?>(null) }
-
-    val callLogPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> if (granted) viewModel.clearMissedCalls() }
+    val policyRefresh = viewModel.policyRefresh
 
     if (!viewModel.showRenameDialog && !viewModel.reorderMode &&
         changeIconApp == null && shortcutsApp == null
@@ -169,31 +167,14 @@ fun AppContextMenu(
                         putExtra(Settings.EXTRA_APP_PACKAGE, app.packageName)
                     })
                 }
-                val isDirectBadge = DeviceHelper.isMuditaKompakt() &&
-                    app.packageName in DirectBadgeHelper.DIRECT_PACKAGES
-                val isMuditaDial = DeviceHelper.isMuditaKompakt() &&
-                    app.packageName == DirectBadgeHelper.MUDITA_DIAL
-                val canClear = if (isDirectBadge) {
-                    isMuditaDial && viewModel.hasMissedCalls()
-                } else {
-                    (viewModel.notificationCounts[app.packageName] ?: 0) > 0
-                }
+                val canClear = viewModel.canClearBadge(app.packageName)
                 if (canClear) {
                     BottomSheetOption(
-                        stringResource(R.string.clear_notifications),
+                        stringResource(if (viewModel.badgeSource(app.packageName) == com.gezimos.katapult.util.BadgeSource.DIRECT_CALLS)
+                            R.string.acknowledge_calls else R.string.clear_notifications),
                         icon = Icons.Rounded.NotificationsOff,
                     ) {
-                        if (isMuditaDial) {
-                            if (viewModel.canWriteCallLog()) {
-                                viewModel.clearMissedCalls()
-                            } else {
-                                callLogPermissionLauncher.launch(
-                                    android.Manifest.permission.WRITE_CALL_LOG,
-                                )
-                            }
-                        } else {
-                            viewModel.clearNotificationsFor(app.packageName)
-                        }
+                        onClearBadge(app.packageName)
                         onDismiss()
                     }
                 }

@@ -9,9 +9,10 @@ class ScreensaverLaunchActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!com.gezimos.katapult.util.PrefsManager(this).screensaverEnabled) { finish(); return }
         try {
             startActivity(
-                Intent(this, ScreensaverActivity::class.java).addFlags(
+                Intent(Intent.ACTION_VIEW).setClass(this, ScreensaverActivity::class.java).addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK,
                 ),
             )

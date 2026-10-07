@@ -43,12 +43,20 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.service.NotificationListener
+import com.gezimos.katapult.service.BadgeSources
+import com.gezimos.katapult.service.BadgeFeed
+import com.gezimos.katapult.service.AndroidBadgeFeed
+import com.gezimos.katapult.util.SensitiveAccess
 import com.gezimos.katapult.ui.AppIconCircle
 import com.gezimos.katapult.ui.ClockDisplay
 import com.gezimos.katapult.ui.EinkColorFilter
@@ -86,6 +94,13 @@ private data class SsRow(val count: Int, val label: String, val bitmap: Bitmap?)
 @Composable
 fun ScreensaverView() {
     val context = LocalContext.current
+    val feed = remember(context) { AndroidBadgeFeed(context) }
+    ScreensaverView(feed)
+}
+
+@Composable
+internal fun ScreensaverView(feed: BadgeFeed) {
+    val context = LocalContext.current
     val prefs = remember { PrefsManager(context) }
     val dark = prefs.darkMode
 
@@ -104,16 +119,39 @@ fun ScreensaverView() {
         }
     }
 
-    val directBadges = remember {
-        if (DeviceHelper.isMuditaKompakt()) DirectBadgeHelper.getInstance(context) else null
-    }
-    DisposableEffect(Unit) {
-        directBadges?.acquire()
-        onDispose { directBadges?.release() }
-    }
-
+    val owner = LocalView.current.findViewTreeLifecycleOwner()
+    val badgeOwner = remember { Any() }
+    var active by remember { mutableStateOf(owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true) }
     var clock by remember { mutableStateOf(computeClock(context, prefs)) }
-    var rowsState by remember { mutableStateOf(computeRows(context, prefs, directBadges)) }
+    var rowsState by remember { mutableStateOf(computeRows(context, prefs, active, feed)) }
+    DisposableEffect(owner, context, feed) {
+        val main = Handler(Looper.getMainLooper())
+        var disposed = false
+        var lease: AutoCloseable? = null
+        val refresh: () -> Unit = {
+            main.post {
+                if (!disposed) {
+                    active = owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true
+                    val want = active && prefs.screensaverEnabled && prefs.screensaverShowNotifications
+                    if (want && lease == null) lease = feed.acquire(badgeOwner)
+                    else if (!want) { val old = lease; lease = null; old?.close() }
+                    rowsState = computeRows(context, prefs, active, feed)
+                }
+            }
+        }
+        val observer = LifecycleEventObserver { _, _ -> refresh() }
+        owner?.lifecycle?.addObserver(observer)
+        val subscription = feed.subscribe(refresh)
+        val preferencesSubscription = prefs.subscribeChanges { refresh() }
+        refresh()
+        onDispose {
+            disposed = true
+            owner?.lifecycle?.removeObserver(observer)
+            subscription.close()
+            preferencesSubscription.close()
+            val old = lease; lease = null; old?.close()
+        }
+    }
 
     when (prefs.screensaverUpdateMode) {
         PrefsManager.SCREENSAVER_MODE_INTERVAL -> {
@@ -121,11 +159,11 @@ fun ScreensaverView() {
                 val interval = prefs.screensaverUpdateMinutes.coerceIn(1, 60)
                 kotlinx.coroutines.delay(300)
                 clock = computeClock(context, prefs)
-                rowsState = computeRows(context, prefs, directBadges)
+                rowsState = computeRows(context, prefs, active, feed)
                 while (true) {
                     kotlinx.coroutines.delay(millisToNextBoundary(interval))
                     clock = computeClock(context, prefs)
-                    rowsState = computeRows(context, prefs, directBadges)
+                    rowsState = computeRows(context, prefs, active, feed)
                 }
             }
         }
@@ -133,7 +171,7 @@ fun ScreensaverView() {
             LaunchedEffect(Unit) {
                 kotlinx.coroutines.delay(300)
                 clock = computeClock(context, prefs)
-                rowsState = computeRows(context, prefs, directBadges)
+                rowsState = computeRows(context, prefs, active, feed)
             }
         }
         else -> {
@@ -163,16 +201,6 @@ fun ScreensaverView() {
                     addAction(Intent.ACTION_BATTERY_CHANGED)
                 })
                 onDispose { try { context.unregisterReceiver(receiver) } catch (_: Exception) {} }
-            }
-            DisposableEffect(Unit) {
-                val main = Handler(Looper.getMainLooper())
-                val refresh: () -> Unit = { main.post { rowsState = computeRows(context, prefs, directBadges) } }
-                directBadges?.addListener(refresh)
-                NotificationListener.onCountsChangedDream = { refresh() }
-                onDispose {
-                    NotificationListener.onCountsChangedDream = null
-                    directBadges?.removeListener(refresh)
-                }
             }
         }
     }
@@ -360,13 +388,14 @@ private fun computeClock(context: Context, prefs: PrefsManager): SsClock {
 private fun computeRows(
     context: Context,
     prefs: PrefsManager,
-    directBadges: DirectBadgeHelper?,
+    active: Boolean,
+    feed: BadgeFeed,
 ): Pair<List<SsRow>, Int> {
-    val merged = NotificationListener.getAllCounts().toMutableMap()
-    directBadges?.getCounts()?.forEach { (pkg, count) -> merged[pkg] = (merged[pkg] ?: 0) + count }
+    if (!active || !prefs.screensaverEnabled || !prefs.screensaverShowNotifications) return emptyList<SsRow>() to 0
+    val merged = feed.counts()
     val excluded = prefs.getLockscreenExcludedApps()
     val counts = merged.filter { (pkg, count) -> count > 0 && pkg !in excluded }
-    val times = NotificationListener.getLastPostTimes()
+    val times = feed.times()
     val comparator = if (prefs.lockscreenWidgetLatestFirst) {
         compareByDescending<Map.Entry<String, Int>> { times[it.key] ?: 0L }
     } else {

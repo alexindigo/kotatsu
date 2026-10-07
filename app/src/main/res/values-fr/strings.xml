@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Dérivé de Katapult</string>
     <string name="upstream_source_desc">Lanceur original de gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Accès aux données sensibles</string>
+    <string name="sensitive_access_desc">Choix indépendants de l’application et état des autorisations Android</string>
+    <string name="policy_sms_badges">Collecter les compteurs SMS</string>
+    <string name="policy_call_badges">Collecter les compteurs d’appels</string>
+    <string name="policy_notification_badges">Collecter les compteurs de notifications</string>
+    <string name="policy_media_info">Collecter les informations multimédias</string>
+    <string name="policy_usage_stats">Collecter les statistiques d’utilisation</string>
+    <string name="policy_notification_dismissal">Autoriser la suppression des notifications</string>
+    <string name="policy_call_acknowledgment">Autoriser la confirmation des appels</string>
+    <string name="policy_media_controls">Autoriser les commandes multimédias</string>
+    <string name="policy_accessibility_features">Autoriser les fonctions d’accessibilité</string>
+    <string name="policy_boundary">Ces choix concernent l’application, pas les autorisations Android. Les activer ne demande aucun accès et ne sélectionne aucune fonction facultative. Android peut toujours transmettre des notifications avec son autorisation existante si les compteurs sont désactivés et les informations multimédias activées.</string>
+    <string name="policy_action_boundary">Confirmer un appel modifie les indicateurs nouveau/lu, sans supprimer les appels. Supprimer une notification peut affecter son application d’origine. Ouvrez délibérément Autorisations pour révoquer l’accès Android.</string>
+    <string name="policy_grants_separate">Vérifier ou révoquer les autorisations Android séparément</string>
+    <string name="policy_unsupported">Source directe non prise en charge sur cet appareil</string>
+    <string name="policy_granted">Accès Android accordé ; une fonction sélectionnée et active est aussi nécessaire</string>
+    <string name="policy_granted_disconnected">Accès Android accordé ; service non connecté</string>
+    <string name="policy_not_granted">Accès Android non accordé</string>
+    <string name="policy_import_confirmation">Confirmer les changements d’accès aux données sensibles</string>
+    <string name="policy_enabled">Activé</string>
+    <string name="policy_disabled">Désactivé</string>
+    <string name="acknowledge_calls">Confirmer les appels (marquer comme vus)</string>
 </resources>

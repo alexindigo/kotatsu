@@ -40,6 +40,12 @@ import androidx.lifecycle.AndroidViewModel
 import com.gezimos.katapult.model.AppModel
 import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.service.NotificationListener
+import com.gezimos.katapult.service.BadgeSources
+import com.gezimos.katapult.util.ActionRequests
+import com.gezimos.katapult.util.BadgeActions
+import com.gezimos.katapult.util.BadgeSource
+import com.gezimos.katapult.util.SensitiveAccess
+import com.gezimos.katapult.util.SensitiveChoice
 import com.gezimos.katapult.ui.IconSize
 import com.gezimos.katapult.util.AppLoader
 import com.gezimos.katapult.util.BitmapHelper
@@ -118,6 +124,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lockscreenReEnableChecked = false
 
     fun checkLockscreenService(context: Context) {
+        if (!prefs.sensitiveChoice(SensitiveChoice.ACCESSIBILITY_FEATURES)) return
         if (lockscreenReEnableChecked || screen != Screen.HOME) return
         if (com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(context)) return
         val needsService = prefs.lockscreenWidget ||
@@ -135,10 +142,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startScreensaver(context: Context) {
+        if (!prefs.screensaverEnabled) return
         requestReorderExit {
             try {
                 context.startActivity(
-                    Intent(context, com.gezimos.katapult.lockscreen.ScreensaverActivity::class.java)
+                    Intent(Intent.ACTION_VIEW).setClass(context, com.gezimos.katapult.lockscreen.ScreensaverActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
                 )
             } catch (_: Exception) {}
@@ -163,6 +171,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val ctx get() = getApplication<Application>()
     private val isMudita = DeviceHelper.isMuditaKompakt()
     private val directBadgeHelper = if (isMudita) DirectBadgeHelper.getInstance(application) else null
+    private val badgeOwner = Any()
+    private val mediaOwner = Any()
+    private var badgeLease: AutoCloseable? = null
+    private var mediaLease: AutoCloseable? = null
+    private val badgeActions = BadgeActions(
+        route = { BadgeSources.route(ctx, it) },
+        dismissAllowed = SensitiveAccess::notificationDismissal,
+        callChoiceAllowed = { prefs.sensitiveChoice(SensitiveChoice.CALL_ACKNOWLEDGMENT) && SensitiveAccess.callBadges() },
+        callWriteGranted = SensitiveAccess::canWriteCallLog,
+        revision = { SensitiveAccess.callActionRevision },
+        acquire = { SensitiveAccess.acquireBadges(Any()) },
+        dismiss = NotificationListener::cancelFor,
+        acknowledge = { current, finished ->
+            directBadgeHelper?.clearMissedCalls(current) { clockHandler.post { finished() } } ?: finished()
+        },
+    )
+    private var foreground = false
+    private var cleared = false
+    private val policySubscription: AutoCloseable
+    var policyRefresh by mutableIntStateOf(0)
+        private set
 
     private val clockHandler = Handler(Looper.getMainLooper())
 
@@ -183,6 +212,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
+        SensitiveAccess.initialize(application)
+        policySubscription = SensitiveAccess.subscribe {
+            clockHandler.post {
+                if (!cleared) {
+                    badgeActions.reconcile()
+                    policyRefresh++
+                    reconcileSensitiveSources()
+                    loadApps()
+                    refreshNotifications()
+                }
+            }
+        }
         loadApps()
         updateClock()
         loadWallpaper()
@@ -191,7 +232,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addAction(Intent.ACTION_POWER_DISCONNECTED)
         })
         viewModelScope.launch {
-            AudioWidgetHelper.getInstance(ctx).state.collect { mediaInfo = it }
+            AudioWidgetHelper.getInstance(ctx).state.collect {
+                mediaInfo = if (foreground && screen == Screen.HOME && !prefs.disableMusicWidget && SensitiveAccess.mediaInfo()) it else null
+            }
         }
         val sizePx = Math.round(iconSize * ctx.resources.displayMetrics.density)
         for (slot in PrefsManager.HOME_SLOTS) {
@@ -319,8 +362,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (customName != null) app.copy(label = customName) else app
         }
         val sortMode = prefs.appSortMode
-        if (sortMode != PrefsManager.APP_SORT_MANUAL && UsageHelper.hasPermission(ctx)) {
-            val stats = UsageHelper.stats(ctx)
+        val stats = if (sortMode != PrefsManager.APP_SORT_MANUAL) UsageHelper.stats(ctx)
+            else { UsageHelper.invalidate(); null }
+        if (stats != null && UsageHelper.available(ctx)) {
             val ignored = UsageHelper.ignoredPackages(ctx)
             orderedApps = renamed.sortedWith(
                 compareByDescending<AppModel> { app ->
@@ -364,6 +408,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         requestReorderExit {
             if (target == Screen.ALL_APPS) currentPage = 0
             screen = target
+            reconcileSensitiveSources()
         }
     }
 
@@ -371,6 +416,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         requestReorderExit {
             dismissAllSheets()
             if (screen != Screen.ONBOARDING) screen = Screen.HOME
+            reconcileSensitiveSources()
         }
     }
 
@@ -390,8 +436,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (contextMenuApp != null) { contextMenuApp = null; showRenameDialog = false; return true }
         return when (screen) {
             Screen.ONBOARDING -> false
-            Screen.SETTINGS -> { screen = Screen.HOME; true }
-            Screen.ALL_APPS -> { screen = Screen.HOME; true }
+            Screen.SETTINGS -> { screen = Screen.HOME; reconcileSensitiveSources(); true }
+            Screen.ALL_APPS -> { screen = Screen.HOME; reconcileSensitiveSources(); true }
             Screen.HOME -> false
         }
     }
@@ -686,26 +732,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun refreshNotifications() {
-        val counts = NotificationListener.getAllCounts()
-        notificationCounts = if (directBadgeHelper != null) {
-            val merged = counts.toMutableMap()
-            directBadgeHelper.getCounts().forEach { (pkg, n) -> merged[pkg] = (merged[pkg] ?: 0) + n }
-            merged
-        } else {
-            counts
-        }
+        notificationCounts = if (foreground && prefs.notificationIndicators && screen in setOf(Screen.HOME, Screen.ALL_APPS))
+            BadgeSources.counts(ctx) else emptyMap()
     }
 
     fun clearNotificationsFor(pkg: String) {
-        NotificationListener.cancelFor(pkg)
+        requestBadgeClear(pkg)
     }
 
     fun hasMissedCalls(): Boolean = directBadgeHelper?.hasMissedCalls() == true
 
     fun canWriteCallLog(): Boolean = directBadgeHelper?.hasWriteCallLogPermission() == true
 
-    fun clearMissedCalls() {
-        directBadgeHelper?.clearMissedCalls()
+    fun canClearBadge(pkg: String): Boolean = BadgeSources.canClear(ctx, pkg)
+    fun badgeSource(pkg: String): BadgeSource = BadgeSources.route(ctx, pkg).source
+
+    /** Returns an ID only when this deliberate action needs WRITE_CALL_LOG. */
+    fun requestBadgeClear(pkg: String): Long? {
+        return badgeActions.request(pkg)
+    }
+
+    fun callAcknowledgmentResult(id: Long?, granted: Boolean) {
+        badgeActions.result(id, granted)
+    }
+
+    private fun cancelPendingBadgeAction() {
+        badgeActions.close()
+    }
+
+    fun reconcileSensitiveSources() {
+        val badges = foreground && prefs.notificationIndicators && screen in setOf(Screen.HOME, Screen.ALL_APPS)
+        if (badges && badgeLease == null) badgeLease = SensitiveAccess.acquireBadges(badgeOwner)
+        else if (!badges) { badgeLease?.close(); badgeLease = null }
+        val media = foreground && screen == Screen.HOME && !prefs.disableMusicWidget
+        if (media && mediaLease == null) mediaLease = SensitiveAccess.acquireMedia(mediaOwner)
+        else if (!media) { mediaLease?.close(); mediaLease = null; mediaInfo = null }
+        directBadgeHelper?.reconcile()
+        audioHelper.reconcile()
     }
 
     private val audioHelper get() = AudioWidgetHelper.getInstance(ctx)
@@ -717,21 +780,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun mediaOpenApp(context: Context) { audioHelper.openApp() }
 
     fun startNotificationListener() {
-        NotificationListener.onCountsChanged = {
-            Handler(Looper.getMainLooper()).post { refreshNotifications() }
-        }
-        directBadgeHelper?.let {
-            it.addListener(badgeListener)
-            it.acquire()
-        }
+        foreground = true
+        NotificationListener.addListener(badgeListener)
+        directBadgeHelper?.addListener(badgeListener)
+        reconcileSensitiveSources()
+        SensitiveAccess.refresh()
     }
 
     fun stopNotificationListener() {
-        NotificationListener.onCountsChanged = null
-        directBadgeHelper?.let {
-            it.removeListener(badgeListener)
-            it.release()
-        }
+        foreground = false
+        NotificationListener.removeListener(badgeListener)
+        directBadgeHelper?.removeListener(badgeListener)
+        reconcileSensitiveSources()
+        notificationCounts = emptyMap()
     }
 
     fun setWallpaper(context: Context, uri: Uri) {
@@ -909,6 +970,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        cleared = true
+        cancelPendingBadgeAction()
+        policySubscription.close()
         super.onCleared()
         stopClock()
         stopNotificationListener()

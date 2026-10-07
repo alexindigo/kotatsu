@@ -232,6 +232,15 @@ class LauncherPreviewInstrumentedTest {
         gridReadback()
         case("actual-icon-worker-callback-preserves-rendered-draft")
 
+        val originalScreensaver = model.prefs.screensaverEnabled
+        val screensaverKeyPresent = context.getSharedPreferences("katapult_prefs", 0).contains("screensaver_enabled")
+        assertFalse(originalScreensaver)
+        instrumentation.runOnMainSync { model.startScreensaver(activity) }
+        assertFalse("Disabled screensaver entry created a reorder decision", model.showReorderExit)
+        assertFalse(ScreensaverActivity.isShowing)
+        assertEquals(controlledDraft, model.orderedApps.map { it.key })
+        instrumentation.runOnMainSync { model.prefs.screensaverEnabled = true }
+        try {
         instrumentation.runOnMainSync { model.startScreensaver(activity) }
         ui.await("App-controlled screensaver exit omitted the dirty decision") { ui.has("Save app order changes?") }
         assertFalse(ScreensaverActivity.isShowing)
@@ -276,6 +285,12 @@ class LauncherPreviewInstrumentedTest {
         assertEquals(draft, model.prefs.loadAppOrder())
         gridReadback()
         case("packaged-shortcut-and-launch-task-return-preserve-draft")
+        } finally {
+            instrumentation.runOnMainSync {
+                if (screensaverKeyPresent) model.prefs.screensaverEnabled = originalScreensaver
+                else context.getSharedPreferences("katapult_prefs", 0).edit().remove("screensaver_enabled").commit()
+            }
+        }
         ui.back()
         ui.click("Discard")
         ui.await("Controlled draft Discard failed") { !model.reorderMode }

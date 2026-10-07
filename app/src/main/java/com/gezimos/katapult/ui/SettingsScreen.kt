@@ -94,10 +94,30 @@ import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.ScreensaverShortcut
 import com.gezimos.katapult.util.ShortcutHelper
 import com.gezimos.katapult.util.UsageHelper
+import com.gezimos.katapult.util.SensitiveChoice
+import com.gezimos.katapult.util.SensitiveAccess
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.toggleableState
+import androidx.compose.ui.state.ToggleableState
 import kotlin.math.abs
 
 private val ClockFormats = listOf("system", "HH:mm", "hh:mm a", "h:mm a", "h:mm")
 private val DateFormats = listOf("system", "EEE, MMM d", "EEEE, MMMM d", "MMMM d, yyyy", "M/d/yyyy", "yyyy-MM-dd")
+private val sensitiveRows = listOf(
+    SensitiveChoice.SMS_BADGES to R.string.policy_sms_badges,
+    SensitiveChoice.CALL_BADGES to R.string.policy_call_badges,
+    SensitiveChoice.NOTIFICATION_BADGES to R.string.policy_notification_badges,
+    SensitiveChoice.MEDIA_INFO to R.string.policy_media_info,
+    SensitiveChoice.USAGE_STATS to R.string.policy_usage_stats,
+    SensitiveChoice.NOTIFICATION_DISMISSAL to R.string.policy_notification_dismissal,
+    SensitiveChoice.CALL_ACKNOWLEDGMENT to R.string.policy_call_acknowledgment,
+    SensitiveChoice.MEDIA_CONTROLS to R.string.policy_media_controls,
+    SensitiveChoice.ACCESSIBILITY_FEATURES to R.string.policy_accessibility_features,
+)
 
 private fun formatLabel(pattern: String): String =
     if (pattern == "system") "System"
@@ -107,6 +127,20 @@ private fun formatLabel(pattern: String): String =
 fun SettingsScreen(viewModel: MainViewModel) {
     val context = LocalContext.current
     val prefs = viewModel.prefs
+    val policyTick = viewModel.policyRefresh
+    val policyChoices = remember(policyTick) { prefs.sensitiveChoices() }
+    var showSensitiveAccess by remember { mutableStateOf(false) }
+    var pendingImportText by remember { mutableStateOf<String?>(null) }
+    var pendingImportPreview by remember { mutableStateOf<PrefsManager.PolicyImportPreview?>(null) }
+    val applyImport: (String, Map<String, Boolean>?) -> Boolean = { text, confirmed ->
+        val ok = prefs.importFromJson(text, confirmed)
+        if (ok) {
+            ShortcutHelper.syncAllPins(context, prefs)
+            IconUtility.invalidateOverrides()
+            restartApp(context)
+        }
+        ok
+    }
     val isMudita = remember { DeviceHelper.isMuditaKompakt() }
     val versionName = remember {
         try {
@@ -140,10 +174,8 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var showLongPressSheet by remember { mutableStateOf(false) }
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
     var showSortSheet by remember { mutableStateOf(false) }
-    var pendingSortMode by remember { mutableStateOf<Int?>(null) }
     var lockscreenMessage by remember { mutableStateOf(prefs.lockscreenMessage.orEmpty()) }
     var showLockscreenMessageSheet by remember { mutableStateOf(false) }
-    var pendingLockscreenMessage by remember { mutableStateOf<String?>(null) }
     var showClockFormatSheet by remember { mutableStateOf(false) }
     var showDateFormatSheet by remember { mutableStateOf(false) }
     var showDoubleTapSheet by remember { mutableStateOf(false) }
@@ -157,7 +189,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var lockscreenWidget by remember { mutableStateOf(prefs.lockscreenWidget) }
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
-    val pendingServiceToggles = remember { androidx.compose.runtime.mutableStateListOf<String>() }
     var showLockscreenApps by remember { mutableStateOf(false) }
     var showLockscreenReadMe by remember { mutableStateOf(false) }
     var showNotificationsReadMe by remember { mutableStateOf(false) }
@@ -195,11 +226,11 @@ fun SettingsScreen(viewModel: MainViewModel) {
             } catch (_: Exception) {
                 null
             }
-            if (text != null && prefs.importFromJson(text)) {
-                ShortcutHelper.syncAllPins(context, prefs)
-                IconUtility.invalidateOverrides()
-                restartApp(context)
-            } else {
+            val preview = text?.let { prefs.previewPolicyImport(it) }
+            if (text != null && preview != null && preview.changes.isNotEmpty()) {
+                pendingImportText = text
+                pendingImportPreview = preview
+            } else if (text == null || preview == null || !applyImport(text, null)) {
                 Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
             }
         }
@@ -226,49 +257,12 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var screensaverOnPower by remember { mutableStateOf(prefs.screensaverOnPower) }
     var screensaverAppIcon by remember { mutableStateOf(ScreensaverShortcut.isIconEnabled(context)) }
 
-    // Existing activation-return handling; stored badge visibility is independent.
+    // Settings returns refresh status only. No remembered activation/sort replay.
     LaunchedEffect(context) {
         while (true) {
             kotlinx.coroutines.delay(1000)
             val serviceOn = LockscreenWidgetService.isEnabled(context)
             if (actionServiceEnabled != serviceOn) actionServiceEnabled = serviceOn
-            if (serviceOn && pendingServiceToggles.isNotEmpty()) {
-                for (pending in pendingServiceToggles.toList()) {
-                    when (pending) {
-                        "clockCover" -> {
-                            hideStatusBarClock = true
-                            prefs.hideStatusBarClock = true
-                            LockscreenWidgetService.onLauncherForeground(true)
-                        }
-                        "widget" -> {
-                            lockscreenWidget = true
-                            prefs.lockscreenWidget = true
-                        }
-                        "music" -> {
-                            lockscreenMusicWidget = true
-                            prefs.lockscreenMusicWidget = true
-                        }
-                        "power" -> {
-                            screensaverOnPower = true
-                            prefs.screensaverOnPower = true
-                        }
-                    }
-                }
-                pendingServiceToggles.clear()
-            }
-            val sortPending = pendingSortMode
-            if (sortPending != null && UsageHelper.hasPermission(context)) {
-                appSortMode = sortPending
-                prefs.appSortMode = sortPending
-                pendingSortMode = null
-                viewModel.loadApps()
-            }
-            val messagePending = pendingLockscreenMessage
-            if (messagePending != null && serviceOn) {
-                lockscreenMessage = messagePending
-                prefs.lockscreenMessage = messagePending
-                pendingLockscreenMessage = null
-            }
         }
     }
 
@@ -401,10 +395,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             hideStatusBarClock = value
                             prefs.hideStatusBarClock = value
                             if (requested && !serviceOn) {
-                                if ("clockCover" !in pendingServiceToggles) pendingServiceToggles.add("clockCover")
                                 showClockCoverSheet = true
-                            } else {
-                                pendingServiceToggles.remove("clockCover")
                             }
                             LockscreenWidgetService.onLauncherForeground(true)
                         },
@@ -755,6 +746,13 @@ fun SettingsScreen(viewModel: MainViewModel) {
             addHeader(R.string.section_system)
             add {
                 SettingsActionRow(
+                    title = stringResource(R.string.sensitive_access),
+                    description = stringResource(R.string.sensitive_access_desc),
+                    onClick = { showSensitiveAccess = true },
+                )
+            }
+            add {
+                SettingsActionRow(
                     title = stringResource(R.string.set_default_launcher),
                     description = stringResource(R.string.set_default_launcher_desc),
                     onClick = {
@@ -881,12 +879,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         lockscreenWidget = value
                         prefs.lockscreenWidget = value
                         if (requested && !serviceOn) {
-                            if ("widget" !in pendingServiceToggles) pendingServiceToggles.add("widget")
                             try {
                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             } catch (_: Exception) {}
-                        } else {
-                            pendingServiceToggles.remove("widget")
                         }
                     },
                 )
@@ -903,12 +898,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
                         lockscreenMusicWidget = value
                         prefs.lockscreenMusicWidget = value
                         if (requested && !serviceOn) {
-                            if ("music" !in pendingServiceToggles) pendingServiceToggles.add("music")
                             try {
                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                             } catch (_: Exception) {}
-                        } else {
-                            pendingServiceToggles.remove("music")
                         }
                     },
                 )
@@ -1055,12 +1047,9 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             screensaverOnPower = value
                             prefs.screensaverOnPower = value
                             if (requested && !serviceOn) {
-                                if ("power" !in pendingServiceToggles) pendingServiceToggles.add("power")
                                 try {
                                     context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                                 } catch (_: Exception) {}
-                            } else {
-                                pendingServiceToggles.remove("power")
                             }
                         },
                     )
@@ -1339,18 +1328,80 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 showLockscreenMessageSheet = false
                 val serviceOn = LockscreenWidgetService.isEnabled(context)
                 actionServiceEnabled = serviceOn
-                if (text.isBlank() || serviceOn) {
-                    pendingLockscreenMessage = null
-                    lockscreenMessage = text
-                    prefs.lockscreenMessage = text
-                } else {
-                    pendingLockscreenMessage = text
+                lockscreenMessage = text
+                prefs.lockscreenMessage = text
+                if (text.isNotBlank() && !serviceOn) {
                     try {
                         context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                     } catch (_: Exception) {}
                 }
             },
         )
+    }
+
+    if (showSensitiveAccess) {
+        BottomSheet(onDismiss = { showSensitiveAccess = false }) {
+            Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f).verticalScroll(rememberScrollState())) {
+                Text(stringResource(R.string.sensitive_access), fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                    fontFamily = LatoFamily, color = LocalInk.current)
+                Text(stringResource(R.string.policy_boundary), fontFamily = LatoFamily, color = LocalInk.current)
+                for ((choice, title) in sensitiveRows) {
+                    val grant = when (choice) {
+                        SensitiveChoice.SMS_BADGES -> context.checkSelfPermission(android.Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        SensitiveChoice.CALL_BADGES -> context.checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        SensitiveChoice.CALL_ACKNOWLEDGMENT -> context.checkSelfPermission(android.Manifest.permission.WRITE_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                        SensitiveChoice.USAGE_STATS -> UsageHelper.hasPermission(context)
+                        SensitiveChoice.ACCESSIBILITY_FEATURES -> LockscreenWidgetService.isEnabled(context)
+                        else -> NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+                    }
+                    val supported = choice !in setOf(SensitiveChoice.SMS_BADGES, SensitiveChoice.CALL_BADGES,
+                        SensitiveChoice.CALL_ACKNOWLEDGMENT) || isMudita
+                    val connected = when (choice) {
+                        SensitiveChoice.NOTIFICATION_BADGES, SensitiveChoice.NOTIFICATION_DISMISSAL,
+                        SensitiveChoice.MEDIA_INFO, SensitiveChoice.MEDIA_CONTROLS -> SensitiveAccess.notificationConnected
+                        SensitiveChoice.ACCESSIBILITY_FEATURES -> SensitiveAccess.accessibilityConnected
+                        else -> true
+                    }
+                    val status = stringResource(if (!supported) R.string.policy_unsupported else if (!grant)
+                        R.string.policy_not_granted else if (!connected) R.string.policy_granted_disconnected else R.string.policy_granted)
+                    SettingsToggleRow(
+                        title = stringResource(title),
+                        description = status,
+                        checked = policyChoices.getValue(choice.key),
+                        onCheckedChange = { prefs.setSensitiveChoice(choice, it) },
+                    )
+                }
+                Text(stringResource(R.string.policy_action_boundary), fontFamily = LatoFamily, color = LocalInk.current)
+                SettingsActionRow(title = stringResource(R.string.permissions),
+                    description = stringResource(R.string.policy_grants_separate),
+                    onClick = { showSensitiveAccess = false; showPermissionsSheet = true })
+            }
+        }
+    }
+
+    pendingImportPreview?.let { preview ->
+        BottomSheet(onDismiss = { pendingImportPreview = null; pendingImportText = null }) {
+            Text(stringResource(R.string.policy_import_confirmation), fontSize = 18.sp, fontWeight = FontWeight.Bold,
+                fontFamily = LatoFamily, color = LocalInk.current)
+            for ((choice, title) in sensitiveRows) {
+                preview.changes[choice.key]?.let { incoming ->
+                    Text(stringResource(title) + ": " + stringResource(if (incoming) R.string.policy_enabled else R.string.policy_disabled),
+                        fontFamily = LatoFamily, color = LocalInk.current)
+                }
+            }
+            BottomSheetOption(stringResource(R.string.config_import)) {
+                val text = pendingImportText
+                val current = text?.let { prefs.previewPolicyImport(it) }
+                if (current != null && current.localChoices != preview.localChoices) {
+                    pendingImportPreview = current
+                } else if (text != null && current != null && applyImport(text, preview.localChoices)) {
+                    pendingImportPreview = null; pendingImportText = null
+                } else {
+                    Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
+                }
+            }
+            BottomSheetOption(stringResource(R.string.cancel)) { pendingImportPreview = null; pendingImportText = null }
+        }
     }
 
     if (showPermissionsSheet) {
@@ -1452,13 +1503,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
             ),
             selected = appSortMode,
             onSelect = { mode ->
-                if (mode == PrefsManager.APP_SORT_MANUAL || UsageHelper.hasPermission(context)) {
-                    pendingSortMode = null
-                    appSortMode = mode
-                    prefs.appSortMode = mode
-                    viewModel.loadApps()
-                } else {
-                    pendingSortMode = mode
+                appSortMode = mode
+                prefs.appSortMode = mode
+                viewModel.loadApps()
+                if (mode != PrefsManager.APP_SORT_MANUAL && !UsageHelper.hasPermission(context)) {
                     UsageHelper.openSettings(context)
                 }
             },
@@ -2221,6 +2269,10 @@ fun SettingsToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .semantics {
+                role = Role.Switch
+                toggleableState = if (checked) ToggleableState.On else ToggleableState.Off
+            }
             .clickable { onCheckedChange(!checked) }
             .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,

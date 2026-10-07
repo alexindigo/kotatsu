@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Afgeleid van Katapult</string>
     <string name="upstream_source_desc">Oorspronkelijke launcher van gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Toegang tot gevoelige gegevens</string>
+    <string name="sensitive_access_desc">Onafhankelijke appkeuzes en Android-toegangsstatus</string>
+    <string name="policy_sms_badges">Sms-tellers verzamelen</string>
+    <string name="policy_call_badges">Oproeptellers verzamelen</string>
+    <string name="policy_notification_badges">Meldingentellers verzamelen</string>
+    <string name="policy_media_info">Media-informatie verzamelen</string>
+    <string name="policy_usage_stats">Gebruiksstatistieken verzamelen</string>
+    <string name="policy_notification_dismissal">Meldingen verwijderen toestaan</string>
+    <string name="policy_call_acknowledgment">Oproepen bevestigen toestaan</string>
+    <string name="policy_media_controls">Mediabediening toestaan</string>
+    <string name="policy_accessibility_features">Toegankelijkheidsfuncties toestaan</string>
+    <string name="policy_boundary">Dit zijn appkeuzes, geen Android-machtigingen. Inschakelen vraagt geen toegang aan en kiest geen optionele functie. Android kan met de bestaande machtiging nog meldingen leveren als tellers uitstaan en media-informatie aanstaat.</string>
+    <string name="policy_action_boundary">Oproepen bevestigen wijzigt nieuw/gelezen-markeringen; het verwijdert geen oproepen. Meldingen verwijderen kan de bronapp beïnvloeden. Open bewust Machtigingen om Android-toegang in te trekken.</string>
+    <string name="policy_grants_separate">Android-machtigingen afzonderlijk bekijken of intrekken</string>
+    <string name="policy_unsupported">Directe bron wordt op dit apparaat niet ondersteund</string>
+    <string name="policy_granted">Android-toegang verleend; een gekozen actieve functie is ook vereist</string>
+    <string name="policy_granted_disconnected">Android-toegang verleend; dienst niet verbonden</string>
+    <string name="policy_not_granted">Android-toegang niet verleend</string>
+    <string name="policy_import_confirmation">Wijzigingen in toegang tot gevoelige gegevens bevestigen</string>
+    <string name="policy_enabled">Ingeschakeld</string>
+    <string name="policy_disabled">Uitgeschakeld</string>
+    <string name="acknowledge_calls">Oproepen bevestigen (als gezien markeren)</string>
 </resources>

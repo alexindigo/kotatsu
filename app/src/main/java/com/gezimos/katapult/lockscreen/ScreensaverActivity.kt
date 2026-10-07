@@ -11,8 +11,10 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.gezimos.katapult.util.EinkRefreshHelper
 import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.SensitiveAccess
 
 class ScreensaverActivity : ComponentActivity() {
+    private var policySubscription: AutoCloseable? = null
 
     companion object {
         const val EXTRA_FROM_POWER = "from_power"
@@ -29,10 +31,16 @@ class ScreensaverActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        isShowing = true
-        val fromPower = intent.getBooleanExtra(EXTRA_FROM_POWER, false)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val prefs = PrefsManager(this)
+        if (!prefs.screensaverEnabled) { finish(); return }
+        val fromPower = intent.getBooleanExtra(EXTRA_FROM_POWER, false)
+        SensitiveAccess.initialize(this)
+        if (fromPower && (!prefs.screensaverOnPower || !SensitiveAccess.accessibility())) { finish(); return }
+        policySubscription = prefs.subscribeChanges {
+            if (!prefs.screensaverEnabled) runOnUiThread { finish() }
+        }
+        isShowing = true
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.attributes = window.attributes.apply { screenBrightness = 0f }
         setShowWhenLocked(true)
         setTurnScreenOn(true)
@@ -61,6 +69,9 @@ class ScreensaverActivity : ComponentActivity() {
 
     override fun onStart() {
         super.onStart()
+        if (!PrefsManager(this).screensaverEnabled) { finish(); return }
+        if (intent.getBooleanExtra(EXTRA_FROM_POWER, false) &&
+            (!PrefsManager(this).screensaverOnPower || !SensitiveAccess.accessibility())) { finish(); return }
         isShowing = true
         lastActive = SystemClock.elapsedRealtime()
         LockscreenWidgetService.onScreensaverVisible(true)
@@ -75,5 +86,10 @@ class ScreensaverActivity : ComponentActivity() {
         if (power != null && !power.isInteractive) {
             finish()
         }
+    }
+
+    override fun onDestroy() {
+        policySubscription?.close(); policySubscription = null
+        super.onDestroy()
     }
 }

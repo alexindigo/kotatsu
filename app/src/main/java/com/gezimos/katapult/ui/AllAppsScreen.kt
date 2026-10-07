@@ -93,7 +93,7 @@ import kotlin.math.abs
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
-fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<Array<String>>) {
+fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<Array<String>>, onClearBadge: (String) -> Unit) {
     val context = LocalContext.current
     var showResetConfirm by remember { mutableStateOf(false) }
 
@@ -265,6 +265,7 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
 
     viewModel.contextMenuApp?.let { menuApp ->
         AppContextMenu(
+            onClearBadge = onClearBadge,
             viewModel = viewModel,
             app = menuApp,
             iconPicker = iconPicker,

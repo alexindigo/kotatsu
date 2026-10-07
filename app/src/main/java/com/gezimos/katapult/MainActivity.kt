@@ -20,6 +20,26 @@ class MainActivity : ComponentActivity() {
     val viewModel: MainViewModel by viewModels()
 
     private var einkHelper: EinkHelper? = null
+    private var acknowledgmentRequestId: Long? = null
+    private val callAcknowledgmentPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        val id = acknowledgmentRequestId
+        acknowledgmentRequestId = null
+        viewModel.callAcknowledgmentResult(id, granted)
+    }
+
+    private fun clearBadge(packageName: String) {
+        // Keep one actual platform request bound to its original ID. The launcher
+        // lives with the Activity, so dismissing a context menu cannot unregister it.
+        if (acknowledgmentRequestId != null) return
+        viewModel.requestBadgeClear(packageName)?.let { id ->
+            acknowledgmentRequestId = id
+            try { callAcknowledgmentPermission.launch(android.Manifest.permission.WRITE_CALL_LOG) }
+            catch (_: IllegalStateException) {
+                acknowledgmentRequestId = null
+                viewModel.callAcknowledgmentResult(id, false)
+            }
+        }
+    }
 
     val imagePicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { viewModel.setWallpaper(this, it) }
@@ -44,6 +64,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        acknowledgmentRequestId = savedInstanceState?.takeIf { it.containsKey("call_acknowledgment_request") }
+            ?.getLong("call_acknowledgment_request")
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.setWindowAnimations(0)
         overridePendingTransition(0, 0)
@@ -59,12 +81,17 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker)
+            App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker, onClearBadge = ::clearBadge)
         }
     }
 
     fun setMeinkMode(mode: Int) {
         einkHelper?.setMeinkMode(mode)
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        acknowledgmentRequestId?.let { outState.putLong("call_acknowledgment_request", it) }
+        super.onSaveInstanceState(outState)
     }
 
     override fun onStart() {
@@ -75,13 +102,13 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         overridePendingTransition(0, 0)
+        viewModel.startNotificationListener() // Reconcile current choices/grants before cache refresh.
         viewModel.applyStatusBar(this)
         viewModel.checkLockscreenService(this)
         viewModel.refreshWeather()
         viewModel.startClock()
         viewModel.loadApps()
         viewModel.refreshNotifications()
-        viewModel.startNotificationListener()
         AudioWidgetHelper.getInstance(this).resetDismissalState()
         LockscreenWidgetService.onLauncherForeground(true)
 

@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Forked from Katapult</string>
     <string name="upstream_source_desc">Original launcher by gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Sensitive access</string>
+    <string name="sensitive_access_desc">Independent app choices and Android access status</string>
+    <string name="policy_sms_badges">Collect SMS badges</string>
+    <string name="policy_call_badges">Collect call badges</string>
+    <string name="policy_notification_badges">Collect notification badges</string>
+    <string name="policy_media_info">Collect media information</string>
+    <string name="policy_usage_stats">Collect usage statistics</string>
+    <string name="policy_notification_dismissal">Allow notification dismissal</string>
+    <string name="policy_call_acknowledgment">Allow call acknowledgment</string>
+    <string name="policy_media_controls">Allow media controls</string>
+    <string name="policy_accessibility_features">Allow accessibility features</string>
+    <string name="policy_boundary">These are app choices, not Android grants. Enabling a choice requests no access and selects no optional feature. Android can still deliver notifications under its existing access grant when badges are off and media is on.</string>
+    <string name="policy_action_boundary">Call acknowledgment changes new/read flags; it does not delete calls. Notification dismissal can affect the source app. To revoke Android access, open Permissions deliberately.</string>
+    <string name="policy_grants_separate">Review or revoke actual Android grants separately</string>
+    <string name="policy_unsupported">Direct source unsupported on this device</string>
+    <string name="policy_granted">Android access granted; a selected active consumer is also required</string>
+    <string name="policy_granted_disconnected">Android access granted; service not connected</string>
+    <string name="policy_not_granted">Android access not granted</string>
+    <string name="policy_import_confirmation">Confirm sensitive access changes</string>
+    <string name="policy_enabled">Enabled</string>
+    <string name="policy_disabled">Disabled</string>
+    <string name="acknowledge_calls">Acknowledge calls (mark seen)</string>
 </resources>

@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Odvozeno z Katapultu</string>
     <string name="upstream_source_desc">Původní launcher od gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Přístup k citlivým údajům</string>
+    <string name="sensitive_access_desc">Nezávislé volby aplikace a stav přístupu v Androidu</string>
+    <string name="policy_sms_badges">Získávat počty SMS</string>
+    <string name="policy_call_badges">Získávat počty hovorů</string>
+    <string name="policy_notification_badges">Získávat počty oznámení</string>
+    <string name="policy_media_info">Získávat informace o médiích</string>
+    <string name="policy_usage_stats">Získávat statistiky používání</string>
+    <string name="policy_notification_dismissal">Povolit odstranění oznámení</string>
+    <string name="policy_call_acknowledgment">Povolit potvrzení hovorů</string>
+    <string name="policy_media_controls">Povolit ovládání médií</string>
+    <string name="policy_accessibility_features">Povolit funkce usnadnění</string>
+    <string name="policy_boundary">Jde o volby aplikace, nikoli oprávnění Androidu. Jejich zapnutí nepožaduje přístup a nevybírá žádnou volitelnou funkci. Android může s existujícím oprávněním nadále doručovat oznámení, když jsou počty vypnuté a informace o médiích zapnuté.</string>
+    <string name="policy_action_boundary">Potvrzení hovorů mění příznaky nové/přečtené; hovory nemaže. Odstranění oznámení může ovlivnit zdrojovou aplikaci. Chcete-li odebrat přístup Androidu, vědomě otevřete Oprávnění.</string>
+    <string name="policy_grants_separate">Samostatně zkontrolovat nebo odebrat oprávnění Androidu</string>
+    <string name="policy_unsupported">Přímý zdroj není na tomto zařízení podporován</string>
+    <string name="policy_granted">Přístup v Androidu udělen; je nutná i vybraná aktivní funkce</string>
+    <string name="policy_granted_disconnected">Přístup v Androidu udělen; služba není připojena</string>
+    <string name="policy_not_granted">Přístup v Androidu není udělen</string>
+    <string name="policy_import_confirmation">Potvrdit změny přístupu k citlivým údajům</string>
+    <string name="policy_enabled">Zapnuto</string>
+    <string name="policy_disabled">Vypnuto</string>
+    <string name="acknowledge_calls">Potvrdit hovory (označit jako zobrazené)</string>
 </resources>

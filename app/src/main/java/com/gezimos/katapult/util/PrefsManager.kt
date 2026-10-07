@@ -15,7 +15,47 @@ class PrefsManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
 
+    private val changeListeners = java.util.concurrent.CopyOnWriteArrayList<(String?) -> Unit>()
+    private val platformListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        changeListeners.forEach { it(key) }
+    }
+
     init { seedDefaultsOnce() }
+
+    fun sensitiveChoice(choice: SensitiveChoice): Boolean = boolPref(choice.key, true)
+
+    fun setSensitiveChoice(choice: SensitiveChoice, enabled: Boolean) {
+        synchronized(prefs) { prefs.edit().putBoolean(choice.key, enabled).apply() }
+    }
+
+    fun sensitiveChoices(): Map<String, Boolean> =
+        SensitiveChoice.entries.associate { it.key to sensitiveChoice(it) }
+
+    /** Retain the platform listener strongly for the subscription's full lifetime. */
+    fun subscribeChanges(changed: (String?) -> Unit): AutoCloseable {
+        synchronized(changeListeners) {
+            if (changeListeners.isEmpty()) prefs.registerOnSharedPreferenceChangeListener(platformListener)
+            changeListeners.add(changed)
+        }
+        val closed = java.util.concurrent.atomic.AtomicBoolean(false)
+        return AutoCloseable {
+            if (closed.compareAndSet(false, true)) synchronized(changeListeners) {
+                changeListeners.remove(changed)
+                if (changeListeners.isEmpty()) prefs.unregisterOnSharedPreferenceChangeListener(platformListener)
+            }
+        }
+    }
+
+    data class PolicyImportPreview(val localChoices: Map<String, Boolean>, val incomingChoices: Map<String, Boolean>) {
+        val changes: Map<String, Boolean> get() = incomingChoices.filter { (key, value) -> localChoices[key] != value }
+    }
+
+    fun previewPolicyImport(text: String): PolicyImportPreview? = try {
+        val json = JSONObject(text)
+        if (json.optString(CONFIG_TYPE_KEY) != CONFIG_TYPE) null
+        else PolicyImportPreview(sensitiveChoices(), SensitivePolicy.importedChoices(
+            json.keys().asSequence().associateWith { json.get(it) }))
+    } catch (_: Exception) { null }
 
     /**
      * Defaults that ship on from 1.5, applied to fresh installs only. Existing users keep
@@ -503,17 +543,25 @@ class PrefsManager(context: Context) {
         return !java.io.File(path).exists()
     }
 
-    fun importFromJson(text: String): Boolean {
+    fun importFromJson(text: String, confirmedLocalChoices: Map<String, Boolean>? = null): Boolean = synchronized(prefs) {
         val json = try {
             JSONObject(text)
         } catch (_: Exception) {
-            return false
+            return@synchronized false
         }
-        if (json.optString(CONFIG_TYPE_KEY) != CONFIG_TYPE) return false
+        if (json.optString(CONFIG_TYPE_KEY) != CONFIG_TYPE) return@synchronized false
+        val localChoices = sensitiveChoices()
+        val preservedChoices = try {
+            val incoming = SensitivePolicy.importedChoices(json.keys().asSequence().associateWith { json.get(it) })
+            SensitivePolicy.importChoices(localChoices, incoming, confirmedLocalChoices)
+        } catch (_: IllegalArgumentException) {
+            return@synchronized false
+        }
         val existing = prefs.all
         val editor = prefs.edit().clear()
         for (key in json.keys()) {
             if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY) continue
+            if (key in preservedChoices) continue
             val value = json.opt(key)
             if (!matchesStoredType(existing[key], value)) continue
             when (value) {
@@ -528,7 +576,9 @@ class PrefsManager(context: Context) {
                 )
             }
         }
-        return editor.commit()
+        // Preserve omissions and missing-key true defaults in the SAME import editor.
+        preservedChoices.forEach { (key, value) -> editor.putBoolean(key, value) }
+        editor.commit()
     }
 
     private fun matchesStoredType(stored: Any?, incoming: Any?): Boolean = when (stored) {

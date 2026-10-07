@@ -112,15 +112,13 @@ fun HomeScreen(
     viewModel: MainViewModel,
     imagePicker: ActivityResultLauncher<String>,
     iconPicker: ActivityResultLauncher<Array<String>>,
+    onClearBadge: (String) -> Unit,
 ) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var pickerSlot by remember { mutableStateOf<String?>(null) }
     var showHiddenApps by remember { mutableStateOf(false) }
-
-    val callLogPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted -> if (granted) viewModel.clearMissedCalls() }
+    val policyRefresh = viewModel.policyRefresh
 
     val slotAsApp: (String) -> AppModel? = { slot ->
         val pkg = viewModel.getShortcutPackage(slot)
@@ -132,19 +130,6 @@ fun HomeScreen(
         )
     }
 
-    val clearNotificationsFor: (String) -> Unit = { pkg ->
-        val isMuditaDial = DeviceHelper.isMuditaKompakt() &&
-            pkg == DirectBadgeHelper.MUDITA_DIAL
-        if (isMuditaDial) {
-            if (viewModel.canWriteCallLog()) {
-                viewModel.clearMissedCalls()
-            } else {
-                callLogPermissionLauncher.launch(android.Manifest.permission.WRITE_CALL_LOG)
-            }
-        } else {
-            viewModel.clearNotificationsFor(pkg)
-        }
-    }
 
     val handleSlotLongPress: (String) -> Unit = { slot ->
         val pkg = viewModel.getShortcutPackage(slot)
@@ -160,7 +145,7 @@ fun HomeScreen(
             )
             PrefsManager.HOME_LONG_PRESS_MENU ->
                 viewModel.contextMenuApp = slotAsApp(slot)
-            PrefsManager.HOME_LONG_PRESS_CLEAR -> clearNotificationsFor(pkg)
+            PrefsManager.HOME_LONG_PRESS_CLEAR -> onClearBadge(pkg)
             else -> {}
         }
     }
@@ -524,6 +509,7 @@ fun HomeScreen(
 
     viewModel.contextMenuApp?.let { menuApp ->
         AppContextMenu(
+            onClearBadge = onClearBadge,
             viewModel = viewModel,
             app = menuApp,
             iconPicker = iconPicker,
@@ -670,13 +656,7 @@ internal fun MusicWidget(
 ) {
     val widgetShape = RoundedCornerShape(cornerRadius)
 
-    val albumArt = remember(info.controller.metadata) {
-        try {
-            info.controller.metadata?.getBitmap(android.media.MediaMetadata.METADATA_KEY_ALBUM_ART)
-                ?: info.controller.metadata?.getBitmap(android.media.MediaMetadata.METADATA_KEY_ART)
-                ?: info.controller.metadata?.getBitmap(android.media.MediaMetadata.METADATA_KEY_DISPLAY_ICON)
-        } catch (_: Exception) { null }
-    }
+    val albumArt = info.albumArt
 
     val noMediaLabel = stringResource(R.string.no_media)
     val songLabel = listOfNotNull(
@@ -774,7 +754,7 @@ internal fun MusicWidget(
                     tint = LocalInk.current,
                     modifier = Modifier
                         .size(32.dp)
-                        .clickable { onPrevious() },
+                        .clickable(enabled = info.controlsAllowed) { onPrevious() },
                 )
 
                 Icon(
@@ -783,7 +763,7 @@ internal fun MusicWidget(
                     tint = LocalInk.current,
                     modifier = Modifier
                         .size(42.dp)
-                        .clickable { onPlayPause() },
+                        .clickable(enabled = info.controlsAllowed) { onPlayPause() },
                 )
 
                 Icon(
@@ -792,7 +772,7 @@ internal fun MusicWidget(
                     tint = LocalInk.current,
                     modifier = Modifier
                         .size(32.dp)
-                        .clickable { onNext() },
+                        .clickable(enabled = info.controlsAllowed) { onNext() },
                 )
 
                 Icon(
@@ -801,7 +781,7 @@ internal fun MusicWidget(
                     tint = LocalInk.current,
                     modifier = Modifier
                         .size(32.dp)
-                        .clickable { onStop() },
+                        .clickable(enabled = info.controlsAllowed) { onStop() },
                 )
             }
         }

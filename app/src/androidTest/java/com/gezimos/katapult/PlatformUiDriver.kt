@@ -44,6 +44,34 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
 
     fun has(label: String): Boolean = matching(label) != null
 
+    fun checked(label: String): Boolean? {
+        var node = matching(label)
+        while (node != null) {
+            if (node.isCheckable) return node.isChecked
+            node = node.parent
+        }
+        return null
+    }
+
+    fun scrollTo(label: String) {
+        repeat(12) {
+            if (has(label)) return
+            val root = Rect()
+            automation.rootInActiveWindow!!.getBoundsInScreen(root)
+            val x = root.centerX().toFloat()
+            val start = root.top + root.height() * 3 / 4f
+            val end = root.top + root.height() / 3f
+            val down = SystemClock.uptimeMillis()
+            for (step in 0..15) {
+                val action = when (step) { 0 -> MotionEvent.ACTION_DOWN; 15 -> MotionEvent.ACTION_UP; else -> MotionEvent.ACTION_MOVE }
+                val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, start + (end - start) * step / 15f, 0)
+                event.source = InputDevice.SOURCE_TOUCHSCREEN
+                check(automation.injectInputEvent(event, true)); event.recycle(); SystemClock.sleep(20)
+            }
+        }
+        throw AssertionError("Public scroll did not reveal $label")
+    }
+
     fun click(label: String, longPress: Boolean = false) {
         await("Missing public control: $label") { has(label) }
         val rect = Rect()

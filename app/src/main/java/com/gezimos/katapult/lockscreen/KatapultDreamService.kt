@@ -40,18 +40,22 @@ class KatapultDreamService :
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val store = ViewModelStore()
     private val savedStateController = SavedStateRegistryController.create(this)
+    private var policySubscription: AutoCloseable? = null
     override val lifecycle: Lifecycle get() = lifecycleRegistry
     override val viewModelStore: ViewModelStore get() = store
     override val savedStateRegistry: SavedStateRegistry get() = savedStateController.savedStateRegistry
 
     override fun onCreate() {
         super.onCreate()
+        val prefs = com.gezimos.katapult.util.PrefsManager(this)
+        policySubscription = prefs.subscribeChanges { if (!prefs.screensaverEnabled) finish() }
         savedStateController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.CREATED
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        if (!com.gezimos.katapult.util.PrefsManager(this).screensaverEnabled) { finish(); return }
         // Interactive so a stray tap doesn't dismiss it; exit with the power button.
         isInteractive = true
         isFullscreen = true
@@ -67,6 +71,7 @@ class KatapultDreamService :
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
+        if (!com.gezimos.katapult.util.PrefsManager(this).screensaverEnabled) { finish(); return }
         isDreaming = true
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
     }
@@ -83,6 +88,7 @@ class KatapultDreamService :
     }
 
     override fun onDestroy() {
+        policySubscription?.close(); policySubscription = null
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         store.clear()
         super.onDestroy()

@@ -283,4 +283,26 @@
     <string name="upstream_source_label">Abgeleitet von Katapult</string>
     <string name="upstream_source_desc">Ursprünglicher Launcher von gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
+    <string name="sensitive_access">Zugriff auf sensible Daten</string>
+    <string name="sensitive_access_desc">Unabhängige App-Optionen und Android-Zugriffsstatus</string>
+    <string name="policy_sms_badges">SMS-Zähler erfassen</string>
+    <string name="policy_call_badges">Anrufzähler erfassen</string>
+    <string name="policy_notification_badges">Benachrichtigungszähler erfassen</string>
+    <string name="policy_media_info">Medieninformationen erfassen</string>
+    <string name="policy_usage_stats">Nutzungsstatistiken erfassen</string>
+    <string name="policy_notification_dismissal">Entfernen von Benachrichtigungen zulassen</string>
+    <string name="policy_call_acknowledgment">Bestätigen von Anrufen zulassen</string>
+    <string name="policy_media_controls">Mediensteuerung zulassen</string>
+    <string name="policy_accessibility_features">Bedienungshilfefunktionen zulassen</string>
+    <string name="policy_boundary">Dies sind App-Optionen, keine Android-Berechtigungen. Das Aktivieren fordert keinen Zugriff an und wählt keine optionale Funktion aus. Android kann mit der bestehenden Berechtigung weiterhin Benachrichtigungen liefern, wenn Zähler aus und Medieninformationen an sind.</string>
+    <string name="policy_action_boundary">Das Bestätigen von Anrufen ändert die Neu/Gelesen-Markierungen; es löscht keine Anrufe. Das Entfernen von Benachrichtigungen kann die Quell-App beeinflussen. Öffne Berechtigungen bewusst, um Android-Zugriff zu widerrufen.</string>
+    <string name="policy_grants_separate">Android-Berechtigungen gesondert prüfen oder widerrufen</string>
+    <string name="policy_unsupported">Direkte Quelle auf diesem Gerät nicht unterstützt</string>
+    <string name="policy_granted">Android-Zugriff gewährt; eine ausgewählte aktive Funktion ist ebenfalls erforderlich</string>
+    <string name="policy_granted_disconnected">Android-Zugriff gewährt; Dienst nicht verbunden</string>
+    <string name="policy_not_granted">Android-Zugriff nicht gewährt</string>
+    <string name="policy_import_confirmation">Änderungen am Zugriff auf sensible Daten bestätigen</string>
+    <string name="policy_enabled">Aktiviert</string>
+    <string name="policy_disabled">Deaktiviert</string>
+    <string name="acknowledge_calls">Anrufe bestätigen (als gesehen markieren)</string>
 </resources>
