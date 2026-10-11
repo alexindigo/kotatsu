@@ -52,6 +52,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,19 +75,6 @@ import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.ShortcutHelper
-import android.graphics.Bitmap
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Canvas
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.asAndroidBitmap
-import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.vector.VectorPainter
-import androidx.compose.ui.graphics.vector.rememberVectorPainter
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import kotlin.math.abs
 
 
@@ -316,32 +304,22 @@ private fun ChangeIconDialog(
 ) {
     val context = LocalContext.current
     val pickerShape = if (viewModel.roundedIcons) RoundedCornerShape(percent = 26) else CircleShape
-    val sizePx = remember { (36 * context.resources.displayMetrics.density).toInt() }
+    val sizePx = remember(context) { (48 * context.resources.displayMetrics.density).toInt() }
     val hasOverride = remember(viewModel.shortcutRefresh) {
         viewModel.prefs.getIconOverride(app.key) != null
     }
-
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
-            materialIcons.size
+    val catalogue by produceState<Result<com.gezimos.katapult.util.IconCatalogue>?>(null, context) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { com.gezimos.katapult.util.IconCatalogue.load(context) }
+        }
+    }
+    val render = remember(context, sizePx) {
+        { icon: com.gezimos.katapult.util.CatalogueIcon ->
+            com.gezimos.katapult.util.CatalogueIconRenderer.render(context, icon, sizePx)
         }
     }
 
-    val bundled = remember { IconUtility.bundledIcons }
-    val columns = 5
-    val rows = 4
-    val itemsPerPage = columns * rows
-    var tab by remember { mutableIntStateOf(0) }
-    var page by remember { mutableIntStateOf(0) }
-    val totalPages = (bundled.size + itemsPerPage - 1) / itemsPerPage
-    val pageIcons = remember(page) {
-        val start = page * itemsPerPage
-        val end = minOf(start + itemsPerPage, bundled.size)
-        bundled.subList(start, end)
-    }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
-
-    BottomSheet(onDismiss = onDismiss) {
+    BottomSheet(onDismiss = onDismiss, imePadding = true) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -371,176 +349,21 @@ private fun ChangeIconDialog(
             }
         }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            IconSourceTab(stringResource(R.string.katapult_icons), tab == 0) { tab = 0 }
-            IconSourceTab(stringResource(R.string.material_icons), tab == 1) { tab = 1 }
-        }
-
-        if (tab == 0) {
-            Text(
-                text = stringResource(R.string.import_icon),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 4.dp),
+        val loaded = catalogue?.getOrNull()
+        if (loaded != null) {
+            IconCollectionPicker(
+                catalogue = loaded,
+                shape = pickerShape,
+                render = render,
+                onChoose = { id -> viewModel.setCatalogueIcon(app.key, id) },
+                onChosen = onDismiss,
+                onImport = onImportClick,
             )
-            BottomSheetOption(stringResource(R.string.choose_png), icon = Icons.Rounded.Upload) {
-                onImportClick()
-            }
-
-            Spacer(Modifier.height(8.dp))
-            Text(
-                text = stringResource(R.string.katapult_icons),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 4.dp),
-            )
-
-            Column(
-                modifier = Modifier
-                    .pointerInput(page, totalPages) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { dragAccumulator = 0f },
-                            onDragEnd = {
-                                if (abs(dragAccumulator) > 80f) {
-                                    if (dragAccumulator < 0 && page < totalPages - 1) page++
-                                    else if (dragAccumulator > 0 && page > 0) page--
-                                }
-                            },
-                            onHorizontalDrag = { _, amount -> dragAccumulator += amount },
-                        )
-                    },
-            ) {
-                for (row in 0 until rows) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        for (col in 0 until columns) {
-                            val idx = row * columns + col
-                            if (idx < pageIcons.size) {
-                                val icon = pageIcons[idx]
-                                val bitmap = remember(icon.resId) {
-                                    IconUtility.renderDrawableResource(context, icon.resId, sizePx)
-                                }
-                                Box(
-                                    modifier = Modifier.clickable {
-                                        viewModel.setBundledIcon(app.key, icon.resName)
-                                        onDismiss()
-                                    },
-                                ) {
-                                    AppIconCircle(
-                                        bitmap = bitmap,
-                                        size = 48.dp,
-                                        borderWidth = 1.5.dp,
-                                        shape = pickerShape,
-                                    )
-                                }
-                            } else {
-                                Box(Modifier.size(48.dp))
-                            }
-                        }
-                    }
-                }
-                PickerPageBar(page, totalPages, onPrev = { page-- }, onNext = { page++ })
-            }
         } else {
-            val density = LocalDensity.current
-            var mPage by remember { mutableIntStateOf(0) }
-            val mTotalPages = (materialIcons.size + itemsPerPage - 1) / itemsPerPage
-            val mPageIcons = remember(mPage) {
-                val start = mPage * itemsPerPage
-                val end = minOf(start + itemsPerPage, materialIcons.size)
-                materialIcons.subList(start, end)
-            }
-            Column(
-                modifier = Modifier
-                    .pointerInput(mPage, mTotalPages) {
-                        detectHorizontalDragGestures(
-                            onDragStart = { dragAccumulator = 0f },
-                            onDragEnd = {
-                                if (abs(dragAccumulator) > 80f) {
-                                    if (dragAccumulator < 0 && mPage < mTotalPages - 1) mPage++
-                                    else if (dragAccumulator > 0 && mPage > 0) mPage--
-                                }
-                            },
-                            onHorizontalDrag = { _, amount -> dragAccumulator += amount },
-                        )
-                    },
-            ) {
-                for (row in 0 until rows) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 6.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                    ) {
-                        for (col in 0 until columns) {
-                            val idx = row * columns + col
-                            if (idx < mPageIcons.size) {
-                                val (name, vector) = mPageIcons[idx]
-                                val painter = rememberVectorPainter(vector)
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .border(1.5.dp, LocalInk.current, pickerShape)
-                                        .clickable {
-                                            viewModel.saveMaterialIcon(
-                                                app.key,
-                                                rasterizeVectorIcon(painter, density),
-                                            )
-                                            onDismiss()
-                                        },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Icon(
-                                        painter = painter,
-                                        contentDescription = name,
-                                        tint = LocalInk.current,
-                                        modifier = Modifier.size(28.dp),
-                                    )
-                                }
-                            } else {
-                                Box(Modifier.size(48.dp))
-                            }
-                        }
-                    }
-                }
-                PickerPageBar(mPage, mTotalPages, onPrev = { mPage-- }, onNext = { mPage++ })
-            }
+            Text(stringResource(if (catalogue == null) R.string.icons_loading else R.string.icon_catalogue_failed),
+                color = LocalInk.current, fontFamily = LatoFamily)
+            BottomSheetOption(stringResource(R.string.choose_png), icon = Icons.Rounded.Upload, onClick = onImportClick)
         }
-    }
-}
-
-@Composable
-private fun IconSourceTab(text: String, selected: Boolean, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(10.dp)
-    Box(
-        modifier = Modifier
-            .then(
-                if (selected) Modifier.background(LocalInk.current, shape)
-                else Modifier.border(1.5.dp, LocalInk.current, shape)
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
-    ) {
-        Text(
-            text = text,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = if (selected) LocalSurface.current else LocalInk.current,
-        )
     }
 }
 
@@ -579,26 +402,6 @@ private fun PickerPageBar(page: Int, totalPages: Int, onPrev: () -> Unit, onNext
             Spacer(Modifier.size(ArrowSize))
         }
     }
-}
-
-private fun rasterizeVectorIcon(painter: VectorPainter, density: Density): Bitmap {
-    val sizePx = 192
-    val image = ImageBitmap(sizePx, sizePx)
-    val inner = sizePx * 0.6f
-    val inset = (sizePx - inner) / 2f
-    CanvasDrawScope().draw(
-        density,
-        LayoutDirection.Ltr,
-        Canvas(image),
-        Size(sizePx.toFloat(), sizePx.toFloat()),
-    ) {
-        translate(inset, inset) {
-            with(painter) {
-                draw(Size(inner, inner), colorFilter = ColorFilter.tint(Color.Black))
-            }
-        }
-    }
-    return image.asAndroidBitmap()
 }
 
 @Composable

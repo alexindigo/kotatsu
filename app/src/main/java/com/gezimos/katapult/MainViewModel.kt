@@ -870,6 +870,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    suspend fun setCatalogueIcon(key: String, id: String): Boolean =
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            try {
+                val icon = com.gezimos.katapult.util.IconCatalogue.load(ctx).icon(id)
+                    ?: return@withContext false
+                com.gezimos.katapult.util.CatalogueIconRenderer.render(ctx, icon, 192)
+                    ?: return@withContext false
+                if (!prefs.commitIconOverride(key, com.gezimos.katapult.util.IconSelections.CATALOGUE_PREFIX + id)) {
+                    return@withContext false
+                }
+                // Old imported files remain intact; legacy references are never migrated.
+                IconUtility.clearCacheFor(key)
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    shortcutRefresh++
+                    loadApps()
+                }
+                true
+            } catch (error: Exception) {
+                android.util.Log.w("KotatsuIcons", "Could not select catalogue icon $id", error)
+                false
+            }
+        }
+
     fun beginIconImport(key: String) {
         iconOverrideTarget = key
         prefs.pendingIconTarget = key

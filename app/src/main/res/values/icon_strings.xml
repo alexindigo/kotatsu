@@ -1,0 +1,11 @@
+<resources>
+    <string name="simple_icons" translatable="false">Simple Icons</string>
+    <string name="tabler_icons" translatable="false">Tabler</string>
+    <string name="search_icons">Search icons</string>
+    <string name="no_matching_icons">No matching icons</string>
+    <string name="icon_selection_failed">Could not confirm that icon choice. Please try again.</string>
+    <string name="icon_catalogue_failed">Could not load the icon catalogue.</string>
+    <string name="icons_loading">Loading icons…</string>
+    <string name="icon_unavailable">Unavailable</string>
+    <string name="icon_page">%1$d / %2$d · %3$d icons</string>
+</resources>

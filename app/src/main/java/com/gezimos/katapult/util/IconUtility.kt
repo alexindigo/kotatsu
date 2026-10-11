@@ -34,51 +34,6 @@ object IconUtility {
         override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
     }
 
-    private val customIcons = mapOf(
-        "org.thoughtcrime.securesms" to R.drawable.signal,
-        "org.telegram.messenger" to R.drawable.telegram,
-        "com.viber.voip" to R.drawable.viber,
-        "com.whatsapp" to R.drawable.whatsapp,
-        "com.beeper.android" to R.drawable.beeper,
-        "com.aurora.store" to R.drawable.aurora,
-        "org.fdroid.fdroid" to R.drawable.f_droid,
-        "com.spotify.music" to R.drawable.spotify,
-        "com.android.gallery3d" to R.drawable.gallery,
-        "com.android.deskclock" to R.drawable.clock,
-        "com.android.fmradio" to R.drawable.radio,
-        "com.android.stk" to R.drawable.sim,
-        "org.mozilla.firefox" to R.drawable.firefox,
-        "org.mozilla.firefox_beta" to R.drawable.firefox,
-        "org.mozilla.focus" to R.drawable.firefox,
-        "com.fsck.k9" to R.drawable.mail,
-        "net.thunderbird.android" to R.drawable.mail,
-        "com.android.documentsui" to R.drawable.files,
-        "de.danoeh.antennapod" to R.drawable.ap,
-        "dev.octoshrimpy.quik" to R.drawable.sms,
-        "com.message.ink" to R.drawable.sms,
-        "com.discord" to R.drawable.discord,
-        "fm.libro.librofm" to R.drawable.librofm,
-        "org.schabi.newpipe" to R.drawable.newpipe,
-        "org.fossify.musicplayer" to R.drawable.music,
-        "org.oxycblt.auxio" to R.drawable.music,
-        "com.foobar2000.foobar2000" to R.drawable.music,
-        "org.videolan.vlc" to R.drawable.music,
-        "com.android.settings" to R.drawable.settings,
-        "com.android.quicksearchbox" to R.drawable.search,
-        "org.chromium.webview_shell" to R.drawable.chromium,
-        "com.android.webview" to R.drawable.chromium,
-        "com.android.chrome" to R.drawable.chromium,
-        "com.brave.browser" to R.drawable.brave,
-        "com.zsemberi.killapps" to R.drawable.killapps,
-        "org.koreader.launcher" to R.drawable.koreader,
-        "org.koreader.launcher.fdroid" to R.drawable.koreader,
-        "com.reddit.frontpage" to R.drawable.reddit,
-        "info.plateaukao.einkbro" to R.drawable.einkbro,
-        "ws.xsoh.etar" to R.drawable.calendar,
-        "com.android.calendar" to R.drawable.calendar,
-        "org.onekash.kashcal" to R.drawable.calendar,
-    )
-
     data class BundledIcon(val resId: Int, val resName: String, val label: String)
 
     val bundledIcons: List<BundledIcon> = listOf(
@@ -141,10 +96,7 @@ object IconUtility {
         var map = overrides
         if (map == null) {
             map = runCatching {
-                context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE).all
-                    .asSequence()
-                    .filter { it.key.startsWith("icon_override_") && it.value is String }
-                    .associate { it.key.removePrefix("icon_override_") to it.value as String }
+                PrefsManager.iconOverrides(context)
             }.getOrDefault(emptyMap())
             overrides = map
         }
@@ -195,13 +147,16 @@ object IconUtility {
         bitmapCache.get(cacheKey)?.let { return it }
 
         val bitmap = try {
-            val overrideBitmap = override?.let { loadOverrideBitmap(context, it, sizePx) }
-            val customRes = customIcons[packageName]
-            if (overrideBitmap != null) {
-                overrideBitmap
-            } else if (customRes != null) {
-                val drawable = ContextCompat.getDrawable(context, customRes)!!
-                renderBundledIcon(drawable, sizePx)
+            val automatic = if (override == null) IconCatalogue.load(context).automaticIcon(packageName, activityClass) else null
+            val choice = IconSelections.resolve(override, automatic)
+            val selected = when (choice) {
+                is IconSelection.Catalogue -> IconCatalogue.load(context).icon(choice.id)
+                    ?.let { CatalogueIconRenderer.render(context, it, sizePx) }
+                is IconSelection.Imported, is IconSelection.Bundled -> override?.let { loadOverrideBitmap(context, it, sizePx) }
+                IconSelection.Original -> null
+            }
+            if (selected != null) {
+                selected
             } else {
                 val appIcon = context.packageManager.getApplicationIcon(packageName)
                 val monoLayer = if (appIcon is AdaptiveIconDrawable) {
@@ -241,6 +196,11 @@ object IconUtility {
                 override.startsWith("res:") -> {
                     val resId = resolveBundled(override.removePrefix("res:")) ?: return null
                     renderBundledIcon(ContextCompat.getDrawable(context, resId)!!, sizePx)
+                }
+                override.startsWith(IconSelections.CATALOGUE_PREFIX) -> {
+                    val id = override.removePrefix(IconSelections.CATALOGUE_PREFIX)
+                    val icon = IconCatalogue.load(context).icon(id) ?: return null
+                    CatalogueIconRenderer.render(context, icon, sizePx)
                 }
                 else -> null
             }

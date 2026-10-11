@@ -279,9 +279,9 @@
     <string name="discard">Zahodit</string>
     <string name="reorder_unsaved">Uložit změny pořadí aplikací?</string>
     <string name="onboarding_optional_desc">Nastavení je volitelné. Kotatsu lze používat bez oprávnění a bez změny výchozího launcheru.</string>
-    <string name="inherited_logo_description">Dočasná převzatá grafika původního projektu</string>
-    <string name="upstream_source_label">Odvozeno z Katapultu</string>
-    <string name="upstream_source_desc">Původní launcher od gezimos</string>
+    <string name="inherited_logo_description">Logo Kotatsu</string>
+    <string name="upstream_source_label">Fork zaměřený na soukromí</string>
+    <string name="upstream_source_desc">launcheru Katapult od gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
     <string name="sensitive_access">Přístup k citlivým údajům</string>
     <string name="sensitive_access_desc">Nezávislé volby aplikace a stav přístupu v Androidu</string>

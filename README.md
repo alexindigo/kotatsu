@@ -1,11 +1,11 @@
 <div align="center">
-	<img src="docs/img/katapult_w.svg" alt="Temporary inherited upstream wordmark" height="48">
+	<img src="docs/img/katapult_w.svg" alt="Kotatsu wordmark" height="48">
 	&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 	<a href="https://buymeacoffee.com/gezimos"><img src="docs/img/bmc-button.png" alt="Buy me a coffee" height="48"></a>
 	<h2>Kotatsu — a comfortable launcher.</h2>
 </div>
 
-Kotatsu is a separately installable fork of [Katapult by gezimos](https://github.com/gezimos/Katapult). Its source is [alexindigo/kotatsu](https://github.com/alexindigo/kotatsu). Current graphical wordmarks/icons are intentionally inherited placeholders while final artwork is developed separately.
+Kotatsu is a separately installable fork of [Katapult by gezimos](https://github.com/gezimos/Katapult). Its source is [alexindigo/kotatsu](https://github.com/alexindigo/kotatsu). Its Kotatsu emblem and Lato wordmark identify the fork; wider release and device acceptance remain separate verification gates.
 
 > [!NOTE]
 > Build Kotatsu from this source tree. [Upstream Katapult releases](https://github.com/gezimos/Katapult/releases) are Katapult distributions, not Kotatsu updates. Kotatsu has no built-in updater or Internet permission. External browser/document-provider/Mudita weather handoffs and Android-managed backup/device transfer remain; their providers can network independently. Release and wider feature acceptance remain separate verification gates.
@@ -43,6 +43,7 @@ Finish onboarding without granting sensitive access or changing your default HOM
 - **Music widget** with playback controls and song info, works with other third-party apps like Auxio, Fossify Music, Spotify, Foobar, CalmCast, Antenna Pod etc.
 - **Icon tinting and shaping** for a uniform black & white look (works with ~95% of apps)
 - **Icon shape**: Circle or Rounded, affects all icons, buttons, and indicators
+- **Offline icon collections**: 2,174 curated Simple Icons, Tabler and Material choices. Long-press an app → Change Icon to search or page through the collections, import PNG/SVG artwork, or reset. Verified brand matches are automatic; unmatched apps keep their original icons. Existing manual choices take priority. [Catalogue provenance and maintenance](docs/ICON_CATALOGUE.md).
 - **Extra dock row**: 3 additional shortcuts above the Phone/SMS bar
 - **Notification indicators** on app icons (requires notification listener permission)
 - **Show battery %** with level-based icon above the clock.

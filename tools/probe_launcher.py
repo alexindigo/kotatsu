@@ -11,9 +11,11 @@ import subprocess
 import sys
 import time
 import xml.etree.ElementTree as ET
+import zipfile
 
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 import source_receipt
+import verify_fork
 
 EXPECTED_IDS={'debug':'io.github.alexindigo.kotatsu.debug','release':'io.github.alexindigo.kotatsu'}
 COMPONENT='com.gezimos.katapult.MainActivity'
@@ -56,7 +58,16 @@ def validate_report(path,variant,package,cert,apksigner,expected_provenance,expe
     debuggable=application.get('{http://schemas.android.com/apk/res/android}debuggable','false')
     require(debuggable in ('true','false') and (debuggable=='true')==(variant=='debug'),'Actual APK variant differs from independent approval')
     require(report.get('backupContractPreserved') is True and report.get('shortcutIntentVerified') is True,'Incomplete APK identity report')
-    require(report.get('artworkStatus')=='graphics deferred; original source assets preserved','Unapproved artwork/report status')
+    require(report.get('artworkStatus')==verify_fork.PACKAGED_ARTWORK_STATUS,'Unapproved artwork/report status')
+    checks=report.get('checks',{})
+    require(isinstance(checks,dict) and checks.get('status')==verify_fork.SOURCE_ARTWORK_STATUS,'Incomplete source artwork approval')
+    require(type(checks.get('assetCount')) is int and checks['assetCount']==27 and type(checks.get('replacementCount')) is int and checks['replacementCount']==18,'Wrong artwork coverage/count types')
+    require(checks.get('indexSha256')==verify_fork.ORIGINAL_INDEX_SHA256 and checks.get('approvedBundleIndexSha256')==verify_fork.APPROVED_BUNDLE_INDEX_SHA256 and checks.get('approvedSourceMasterSha256')==verify_fork.APPROVED_SOURCE_MASTER_SHA256,'Unapproved artwork provenance')
+    try:
+        with zipfile.ZipFile(apk) as archive:
+            names=archive.namelist();require(len(names)==len(set(names)),'Duplicate APK ZIP members')
+            verify_fork.validate_packaged_branding(checks.get('packagedBranding'),set(names))
+    except (verify_fork.VerificationError,zipfile.BadZipFile) as exc:raise ProbeError('Incomplete/unapproved packaged artwork: '+str(exc)) from exc
     return report,apk
 
 
@@ -250,7 +261,7 @@ def phase_a(args):
     require({package:ui.package_state(package) for package in LEGACY}==legacy,'Inherited Katapult/test APK/data changed')
     cases['packageCoexistence']={'status':'passed','legacy':legacy}
     cases['defaultHomeBranch']={'status':'blocked','reason':'Separate user HOME-choice approval required'}
-    result={'schemaVersion':2,'variant':args.variant,'applicationId':args.expected_application_id,'signerSha256':args.expected_cert_sha256,'apkSha256':report['sha256'],'sourceProvenance':provenance,'artworkStatus':report['artworkStatus'],'cases':cases,'status':'partial; required permission gates remain explicit'}
+    result={'schemaVersion':2,'variant':args.variant,'applicationId':args.expected_application_id,'signerSha256':args.expected_cert_sha256,'apkSha256':report['sha256'],'sourceProvenance':provenance,'artworkStatus':report['artworkStatus'],'approvedBundleIndexSha256':report['checks']['approvedBundleIndexSha256'],'packagedBranding':report['checks']['packagedBranding'],'cases':cases,'status':'partial; required permission gates remain explicit'}
     with output.open('x') as handle:json.dump(result,handle,indent=2,sort_keys=True);handle.write('\n')
     print('OBSERVED public preview/app launch/root exit/process restart/coexistence; default-HOME blocked')
     print(output)

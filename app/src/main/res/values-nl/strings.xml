@@ -279,9 +279,9 @@
     <string name="discard">Verwerpen</string>
     <string name="reorder_unsaved">Wijzigingen in de appvolgorde opslaan?</string>
     <string name="onboarding_optional_desc">Instellen is optioneel. Kotatsu werkt zonder toegangsrechten en zonder de standaardlauncher te veranderen.</string>
-    <string name="inherited_logo_description">Tijdelijke overgenomen upstream-afbeelding</string>
-    <string name="upstream_source_label">Afgeleid van Katapult</string>
-    <string name="upstream_source_desc">Oorspronkelijke launcher van gezimos</string>
+    <string name="inherited_logo_description">Kotatsu-logo</string>
+    <string name="upstream_source_label">Privacygerichte fork</string>
+    <string name="upstream_source_desc">van de Katapult-launcher van gezimos</string>
     <string name="kotatsu_tagline">Kotatsu — a comfortable launcher.</string>
     <string name="sensitive_access">Toegang tot gevoelige gegevens</string>
     <string name="sensitive_access_desc">Onafhankelijke appkeuzes en Android-toegangsstatus</string>

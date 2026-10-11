@@ -1,0 +1,9 @@
+<resources>
+    <string name="search_icons">Hledat ikony</string>
+    <string name="no_matching_icons">Žádné odpovídající ikony</string>
+    <string name="icon_selection_failed">Výběr ikony se nepodařilo potvrdit. Zkuste to znovu.</string>
+    <string name="icon_catalogue_failed">Katalog ikon se nepodařilo načíst.</string>
+    <string name="icons_loading">Načítání ikon…</string>
+    <string name="icon_unavailable">Nedostupné</string>
+    <string name="icon_page">%1$d / %2$d · %3$d ikon</string>
+</resources>

@@ -1,0 +1,9 @@
+<resources>
+    <string name="search_icons">Symbole suchen</string>
+    <string name="no_matching_icons">Keine passenden Symbole</string>
+    <string name="icon_selection_failed">Die Symbolauswahl konnte nicht bestätigt werden. Bitte erneut versuchen.</string>
+    <string name="icon_catalogue_failed">Der Symbolkatalog konnte nicht geladen werden.</string>
+    <string name="icons_loading">Symbole werden geladen…</string>
+    <string name="icon_unavailable">Nicht verfügbar</string>
+    <string name="icon_page">%1$d / %2$d · %3$d Symbole</string>
+</resources>

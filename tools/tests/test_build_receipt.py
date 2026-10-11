@@ -51,6 +51,11 @@ class BuildReceiptTest(unittest.TestCase):
     def test_current_tasks_inputs_and_artifacts(self):
         self.assertEqual(self.check()['mappingSha256'], self.files['app/build/outputs/mapping/release/mapping.txt'])
 
+    def test_wrong_original_provenance_index_even_with_repinned_receipt(self):
+        self.check()
+        self.value['deferredIndexSha256']=verify.APPROVED_BUNDLE_INDEX_SHA256;self.pin()
+        with self.assertRaisesRegex(verify.VerificationError,'asset index mismatch'):self.check()
+
     def test_no_action_prerequisites_may_be_up_to_date_but_required_work_may_not(self):
         log = Path(self.tasks[0]['log'])
         log.write_text('> Task :app:preBuild UP-TO-DATE\n' + log.read_text())

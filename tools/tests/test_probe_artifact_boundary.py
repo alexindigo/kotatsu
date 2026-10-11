@@ -9,6 +9,8 @@ from unittest import mock
 spec = importlib.util.spec_from_file_location('probe_launcher', Path(__file__).parents[1] / 'probe_launcher.py')
 probe = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(probe)
+fixture_spec=importlib.util.spec_from_file_location('probe_fixture_owner',Path(__file__).with_name('test_probe_launcher.py'))
+fixtures=importlib.util.module_from_spec(fixture_spec);fixture_spec.loader.exec_module(fixtures)
 
 
 class ActualProbeArtifactTest(unittest.TestCase):
@@ -16,20 +18,18 @@ class ActualProbeArtifactTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         root = Path(self.temp.name)
-        self.apk = root / 'substituted.apk'
-        self.apk.write_bytes(b'signed fixture bytes')
         self.cert = 'a' * 64
         self.package = probe.EXPECTED_IDS['debug']
         self.actual_package = self.package
         self.debuggable = 'true'
         self.report = root / 'report.json'
         self.provenance = {'head': 'a'*40, 'headTree': 'b'*40, 'sourceReceiptSha256': 'c'*64}
-        self.report.write_text(json.dumps({'variant': 'debug', 'applicationId': self.package, 'signerSha256': self.cert,
-            'path': str(self.apk), 'sha256': probe.hashlib.sha256(self.apk.read_bytes()).hexdigest(),
-            'sourceProvenance': self.provenance, 'backupContractPreserved': True, 'shortcutIntentVerified': True, 'artworkStatus': 'graphics deferred; original source assets preserved'}))
+        value,self.apk=fixtures.approved_report_fixture(root,self.cert,self.provenance)
+        self.expected_sha=value['sha256'];self.report.write_text(json.dumps(value))
         self.patch = mock.patch.object(probe, 'run', side_effect=self.tool)
         self.patch.start()
         self.addCleanup(self.patch.stop)
+        self.validate()
 
     def tool(self, *args, **kwargs):
         if 'verify' in args:
@@ -40,7 +40,7 @@ class ActualProbeArtifactTest(unittest.TestCase):
 
     def validate(self):
         return probe.validate_report(self.report, 'debug', self.package, self.cert, '/sdk/apksigner', self.provenance,
-            probe.hashlib.sha256(b'signed fixture bytes').hexdigest())
+            self.expected_sha)
 
     def test_valid_report_actual_apk_and_independent_approval(self):
         self.assertEqual(self.validate()[1], self.apk)

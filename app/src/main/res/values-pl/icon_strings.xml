@@ -1,0 +1,9 @@
+<resources>
+    <string name="search_icons">Szukaj ikon</string>
+    <string name="no_matching_icons">Brak pasujących ikon</string>
+    <string name="icon_selection_failed">Nie udało się potwierdzić wyboru ikony. Spróbuj ponownie.</string>
+    <string name="icon_catalogue_failed">Nie udało się wczytać katalogu ikon.</string>
+    <string name="icons_loading">Wczytywanie ikon…</string>
+    <string name="icon_unavailable">Niedostępne</string>
+    <string name="icon_page">%1$d / %2$d · %3$d ikon</string>
+</resources>

@@ -491,16 +491,30 @@ class PrefsManager(context: Context) {
         setHiddenApps(getHiddenApps() - key)
     }
 
-    fun getIconOverride(key: String): String? {
-        return strPref("${KEY_ICON_OVERRIDE_PREFIX}$key", null)
+    fun getIconOverride(key: String): String? = synchronized(prefs) {
+        strPref("${KEY_ICON_OVERRIDE_PREFIX}$key", null)
     }
 
     fun setIconOverride(key: String, value: String) {
-        prefs.edit().putString("${KEY_ICON_OVERRIDE_PREFIX}$key", value).apply()
+        synchronized(prefs) { prefs.edit().putString("${KEY_ICON_OVERRIDE_PREFIX}$key", value).apply() }
+    }
+
+    /** A failed acknowledgment must not expose the tentative choice in memory. */
+    fun commitIconOverride(key: String, value: String): Boolean = synchronized(prefs) {
+        val storageKey = "${KEY_ICON_OVERRIDE_PREFIX}$key"
+        val previous = prefs.getString(storageKey, null)
+        if (prefs.edit().putString(storageKey, value).commit()) return@synchronized true
+        // SharedPreferences changes memory before it acknowledges disk. Restore
+        // both the prior in-memory value and its durable write on failure; the
+        // caller keeps the picker open even if rollback also lacks confirmation.
+        val rollback = prefs.edit()
+        if (previous == null) rollback.remove(storageKey) else rollback.putString(storageKey, previous)
+        if (!rollback.commit()) android.util.Log.w("KotatsuIcons", "Icon choice rollback could not be confirmed")
+        false
     }
 
     fun clearIconOverride(key: String) {
-        prefs.edit().remove("${KEY_ICON_OVERRIDE_PREFIX}$key").apply()
+        synchronized(prefs) { prefs.edit().remove("${KEY_ICON_OVERRIDE_PREFIX}$key").apply() }
     }
 
     fun getAppRename(packageName: String): String? {
@@ -612,6 +626,16 @@ class PrefsManager(context: Context) {
     }
 
     companion object {
+        /** Consumer snapshots share the write lock and never cache a tentative save. */
+        internal fun iconOverrides(context: Context): Map<String, String> {
+            val store = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
+            return synchronized(store) {
+                store.all.asSequence()
+                    .filter { it.key.startsWith(KEY_ICON_OVERRIDE_PREFIX) && it.value is String }
+                    .associate { it.key.removePrefix(KEY_ICON_OVERRIDE_PREFIX) to it.value as String }
+            }
+        }
+
         private const val CONFIG_TYPE_KEY = "_type"
         private const val CONFIG_VERSION_KEY = "_version"
         private const val CONFIG_TYPE = "katapult_config"
