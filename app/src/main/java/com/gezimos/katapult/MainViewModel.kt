@@ -232,9 +232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             addAction(Intent.ACTION_POWER_DISCONNECTED)
         })
         viewModelScope.launch {
-            AudioWidgetHelper.getInstance(ctx).state.collect {
-                mediaInfo = if (foreground && screen == Screen.HOME && !prefs.disableMusicWidget && SensitiveAccess.mediaInfo()) it else null
-            }
+            AudioWidgetHelper.getInstance(ctx).state.collect { projectMedia() }
         }
         val sizePx = Math.round(iconSize * ctx.resources.displayMetrics.density)
         for (slot in PrefsManager.HOME_SLOTS) {
@@ -766,9 +764,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         else if (!badges) { badgeLease?.close(); badgeLease = null }
         val media = foreground && screen == Screen.HOME && !prefs.disableMusicWidget
         if (media && mediaLease == null) mediaLease = SensitiveAccess.acquireMedia(mediaOwner)
-        else if (!media) { mediaLease?.close(); mediaLease = null; mediaInfo = null }
+        else if (!media) { mediaLease?.close(); mediaLease = null }
         directBadgeHelper?.reconcile()
         audioHelper.reconcile()
+        projectMedia()
+    }
+
+    /** Media is shown only while its eligibility holds; recomputed on every state or screen change. */
+    private fun projectMedia() {
+        val eligible = foreground && screen == Screen.HOME && !prefs.disableMusicWidget && SensitiveAccess.mediaInfo()
+        mediaInfo = if (eligible) AudioWidgetHelper.getInstance(ctx).state.value else null
     }
 
     private val audioHelper get() = AudioWidgetHelper.getInstance(ctx)

@@ -21,6 +21,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -122,17 +123,19 @@ fun IconCollectionPicker(
                 for (column in 0 until 5) {
                     val entry = visible.getOrNull(row * 5 + column)
                     if (entry == null) Spacer(Modifier.weight(1f).height(72.dp))
-                    else IconCatalogueTile(entry, shape, render, !saving, Modifier.weight(1f)) {
-                        saving = true
-                        saveFailed = false
-                        scope.launch {
-                            try {
-                                if (onChoose(entry.id)) onChosen() else saveFailed = true
-                            } catch (error: Exception) {
-                                android.util.Log.w("KotatsuIcons", "Icon choice failed: ${entry.id}", error)
-                                saveFailed = true
-                            } finally {
-                                saving = false
+                    else key(entry.id) {
+                        IconCatalogueTile(entry, shape, render, !saving, Modifier.weight(1f)) {
+                            saving = true
+                            saveFailed = false
+                            scope.launch {
+                                try {
+                                    if (onChoose(entry.id)) onChosen() else saveFailed = true
+                                } catch (error: Exception) {
+                                    android.util.Log.w("KotatsuIcons", "Icon choice failed: ${entry.id}", error)
+                                    saveFailed = true
+                                } finally {
+                                    saving = false
+                                }
                             }
                         }
                     }

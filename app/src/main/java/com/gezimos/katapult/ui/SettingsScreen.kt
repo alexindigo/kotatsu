@@ -203,10 +203,11 @@ fun SettingsScreen(viewModel: MainViewModel) {
     ) { uri ->
         uri?.let {
             val ok = try {
-                context.contentResolver.openOutputStream(it)?.use { out ->
-                    out.write(prefs.exportToJson(context).toByteArray())
+                val out = context.contentResolver.openOutputStream(it)
+                if (out == null) false else out.use { stream ->
+                    stream.write(prefs.exportToJson(context).toByteArray())
+                    true
                 }
-                true
             } catch (_: Exception) {
                 false
             }
