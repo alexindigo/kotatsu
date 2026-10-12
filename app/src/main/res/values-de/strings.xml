@@ -261,6 +261,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Benachrichtigungs-Badges und Sperrbildschirm-Benachrichtigungen</string>
     <string name="perm_action_service_desc">Sperrbildschirm-Widgets, Uhrabdeckung, Bildschirmschoner und Sperren</string>
+    <string name="action_service_off">Der Aktionsdienst ist deaktiviert</string>
     <string name="perm_call_log_desc">Verpasste Anrufe im Telefon-Badge</string>
     <string name="perm_sms_desc">Ungelesene Nachrichten im Nachrichten-Badge</string>
     <string name="perm_write_settings_desc">Helligkeitssteuerung</string>

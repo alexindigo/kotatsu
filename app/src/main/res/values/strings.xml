@@ -165,6 +165,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Notification badges and lockscreen notifications</string>
     <string name="perm_action_service_desc">Lockscreen widgets, clock cover, screensaver and locking</string>
+    <string name="action_service_off">Action Service is off</string>
     <string name="perm_call_log_desc">Missed calls in the Phone badge</string>
     <string name="perm_sms_desc">Unread messages in the Messages badge</string>
     <string name="perm_write_settings_desc">Brightness control</string>

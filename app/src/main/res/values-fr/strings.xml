@@ -261,6 +261,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Badges de notifications et notifications sur l\'écran de verrouillage</string>
     <string name="perm_action_service_desc">Widgets d\'écran de verrouillage, cache de l\'horloge, écran de veille et verrouillage</string>
+    <string name="action_service_off">Le service d\'actions est désactivé</string>
     <string name="perm_call_log_desc">Appels manqués dans le badge Téléphone</string>
     <string name="perm_sms_desc">Messages non lus dans le badge Messages</string>
     <string name="perm_write_settings_desc">Contrôle de la luminosité</string>

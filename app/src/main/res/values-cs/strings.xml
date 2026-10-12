@@ -261,6 +261,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Odznaky oznámení a oznámení na zamykací obrazovce</string>
     <string name="perm_action_service_desc">Widgety na zamykací obrazovce, krytí hodin, spořič a zamykání</string>
+    <string name="action_service_off">Služba akcí je vypnutá</string>
     <string name="perm_call_log_desc">Zmeškané hovory v odznaku Telefonu</string>
     <string name="perm_sms_desc">Nepřečtené zprávy v odznaku Zpráv</string>
     <string name="perm_write_settings_desc">Ovládání jasu</string>

@@ -261,6 +261,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Meldingsbadges en meldingen op het vergrendelscherm</string>
     <string name="perm_action_service_desc">Vergrendelscherm-widgets, klokafdekking, schermbeveiliging en vergrendelen</string>
+    <string name="action_service_off">De actieservice is uitgeschakeld</string>
     <string name="perm_call_log_desc">Gemiste oproepen in de Telefoon-badge</string>
     <string name="perm_sms_desc">Ongelezen berichten in de Berichten-badge</string>
     <string name="perm_write_settings_desc">Helderheidsregeling</string>

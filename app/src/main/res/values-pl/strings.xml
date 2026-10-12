@@ -261,6 +261,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Odznaki powiadomień i powiadomienia na ekranie blokady</string>
     <string name="perm_action_service_desc">Widżety ekranu blokady, zakrycie zegara, wygaszacz i blokowanie</string>
+    <string name="action_service_off">Usługa akcji jest wyłączona</string>
     <string name="perm_call_log_desc">Nieodebrane połączenia w odznace Telefonu</string>
     <string name="perm_sms_desc">Nieprzeczytane wiadomości w odznace Wiadomości</string>
     <string name="perm_write_settings_desc">Sterowanie jasnością</string>

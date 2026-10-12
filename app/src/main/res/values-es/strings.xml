@@ -261,6 +261,7 @@
     <string name="perm_action_service">Kotatsu Action Service</string>
     <string name="perm_notification_access_desc">Insignias de notificaciones y notificaciones en la pantalla de bloqueo</string>
     <string name="perm_action_service_desc">Widgets de pantalla de bloqueo, cubierta del reloj, salvapantallas y bloqueo</string>
+    <string name="action_service_off">El servicio de acciones está desactivado</string>
     <string name="perm_call_log_desc">Llamadas perdidas en la insignia de Teléfono</string>
     <string name="perm_sms_desc">Mensajes sin leer en la insignia de Mensajes</string>
     <string name="perm_write_settings_desc">Control de brillo</string>

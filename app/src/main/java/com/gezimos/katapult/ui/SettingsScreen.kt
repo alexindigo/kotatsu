@@ -387,14 +387,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 add {
                     SettingsToggleRow(
                         title = stringResource(R.string.hide_status_bar_clock),
-                        description = stringResource(R.string.hide_status_bar_clock_desc),
-                        checked = hideStatusBarClock && actionServiceEnabled,
+                        description = stringResource(R.string.hide_status_bar_clock_desc) +
+                            if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
+                        checked = hideStatusBarClock,
                         onCheckedChange = { requested ->
                             val serviceOn = LockscreenWidgetService.isEnabled(context)
                             actionServiceEnabled = serviceOn
-                            val value = requested && serviceOn
-                            hideStatusBarClock = value
-                            prefs.hideStatusBarClock = value
+                            if (!requested || serviceOn) {
+                                hideStatusBarClock = requested
+                                prefs.hideStatusBarClock = requested
+                            }
                             if (requested && !serviceOn) {
                                 showClockCoverSheet = true
                             }
@@ -871,14 +873,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
             add {
                 SettingsToggleRow(
                     title = stringResource(R.string.lockscreen_widget),
-                    description = stringResource(R.string.lockscreen_widget_desc),
-                    checked = lockscreenWidget && actionServiceEnabled,
+                    description = stringResource(R.string.lockscreen_widget_desc) +
+                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
+                    checked = lockscreenWidget,
                     onCheckedChange = { requested ->
                         val serviceOn = LockscreenWidgetService.isEnabled(context)
                         actionServiceEnabled = serviceOn
-                        val value = requested && serviceOn
-                        lockscreenWidget = value
-                        prefs.lockscreenWidget = value
+                        if (!requested || serviceOn) {
+                            lockscreenWidget = requested
+                            prefs.lockscreenWidget = requested
+                        }
                         if (requested && !serviceOn) {
                             try {
                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -890,14 +894,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
             add {
                 SettingsToggleRow(
                     title = stringResource(R.string.lockscreen_music_widget),
-                    description = stringResource(R.string.lockscreen_music_widget_desc),
-                    checked = lockscreenMusicWidget && actionServiceEnabled,
+                    description = stringResource(R.string.lockscreen_music_widget_desc) +
+                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
+                    checked = lockscreenMusicWidget,
                     onCheckedChange = { requested ->
                         val serviceOn = LockscreenWidgetService.isEnabled(context)
                         actionServiceEnabled = serviceOn
-                        val value = requested && serviceOn
-                        lockscreenMusicWidget = value
-                        prefs.lockscreenMusicWidget = value
+                        if (!requested || serviceOn) {
+                            lockscreenMusicWidget = requested
+                            prefs.lockscreenMusicWidget = requested
+                        }
                         if (requested && !serviceOn) {
                             try {
                                 context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -1039,14 +1045,16 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 add {
                     SettingsToggleRow(
                         title = stringResource(R.string.screensaver_on_power),
-                        description = stringResource(R.string.screensaver_on_power_desc),
-                        checked = screensaverOnPower && actionServiceEnabled,
+                        description = stringResource(R.string.screensaver_on_power_desc) +
+                            if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
+                        checked = screensaverOnPower,
                         onCheckedChange = { requested ->
                             val serviceOn = LockscreenWidgetService.isEnabled(context)
                             actionServiceEnabled = serviceOn
-                            val value = requested && serviceOn
-                            screensaverOnPower = value
-                            prefs.screensaverOnPower = value
+                            if (!requested || serviceOn) {
+                                screensaverOnPower = requested
+                                prefs.screensaverOnPower = requested
+                            }
                             if (requested && !serviceOn) {
                                 try {
                                     context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))

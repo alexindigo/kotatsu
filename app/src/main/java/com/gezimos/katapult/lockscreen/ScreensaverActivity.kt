@@ -12,6 +12,7 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.gezimos.katapult.util.EinkRefreshHelper
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SensitiveAccess
+import com.gezimos.katapult.util.SystemChrome
 
 class ScreensaverActivity : ComponentActivity() {
     private var policySubscription: AutoCloseable? = null
@@ -46,14 +47,10 @@ class ScreensaverActivity : ComponentActivity() {
         setTurnScreenOn(true)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        SystemChrome.apply(window, SystemChrome.isDark(this, prefs.themeMode), prefs.hideStatusBar)
         WindowInsetsControllerCompat(window, window.decorView).apply {
-            val light = !prefs.darkMode
-            isAppearanceLightStatusBars = light
-            isAppearanceLightNavigationBars = light
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.navigationBars())
-            if (prefs.hideStatusBar) hide(WindowInsetsCompat.Type.statusBars())
-            else show(WindowInsetsCompat.Type.statusBars())
         }
 
         setContent { ScreensaverView() }

@@ -24,7 +24,6 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.provider.Telephony
 import android.text.format.DateFormat
-import android.view.WindowInsetsController
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.gezimos.katapult.util.AudioWidgetHelper
@@ -52,6 +51,7 @@ import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.SystemChrome
 import com.gezimos.katapult.util.ReorderBaseline
 import com.gezimos.katapult.util.ReorderChoice
 import com.gezimos.katapult.util.ShortcutHelper
@@ -577,21 +577,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun applyStatusBar(context: Context) {
         val activity = context as? Activity ?: return
-        activity.window.setBackgroundDrawable(
-            android.graphics.drawable.ColorDrawable(
-                if (prefs.darkMode) android.graphics.Color.BLACK else android.graphics.Color.WHITE
-            )
-        )
-        val controller = activity.window.insetsController ?: return
-        val lightBarsMask = WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS or
-            WindowInsetsController.APPEARANCE_LIGHT_NAVIGATION_BARS
-        controller.setSystemBarsAppearance(if (prefs.darkMode) 0 else lightBarsMask, lightBarsMask)
-        if (prefs.hideStatusBar) {
-            controller.hide(android.view.WindowInsets.Type.statusBars())
-            controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-        } else {
-            controller.show(android.view.WindowInsets.Type.statusBars())
-        }
+        SystemChrome.apply(activity.window, SystemChrome.isDark(activity, prefs.themeMode), prefs.hideStatusBar)
     }
 
     fun launchIntent(context: Context, intent: Intent) {

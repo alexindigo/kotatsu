@@ -61,6 +61,8 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.findViewTreeSavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.SystemChrome
 import java.util.UUID
 
 @Composable
@@ -197,7 +199,6 @@ private class BottomSheetDialog(
     init {
         val window = window ?: error("Dialog has no window")
         window.requestFeature(Window.FEATURE_NO_TITLE)
-        window.setBackgroundDrawableResource(android.R.color.transparent)
         window.setWindowAnimations(0)
         WindowCompat.setDecorFitsSystemWindows(window, false)
 
@@ -223,11 +224,9 @@ private class BottomSheetDialog(
         )
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
-        val darkMode = com.gezimos.katapult.util.PrefsManager(context).darkMode
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = !darkMode
-            isAppearanceLightNavigationBars = !darkMode
-        }
+        val prefs = PrefsManager(context)
+        SystemChrome.apply(window, SystemChrome.isDark(context, prefs.themeMode), hideStatusBar)
+        window.setBackgroundDrawableResource(android.R.color.transparent)
 
         if (hideStatusBar) {
             // Hide on dialog window
