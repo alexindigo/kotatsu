@@ -22,6 +22,7 @@ import kotlinx.coroutines.coroutineScope
 import com.gezimos.katapult.R
 import org.xmlpull.v1.XmlPullParser
 import java.io.File
+import java.util.concurrent.atomic.AtomicLong
 
 object IconUtility {
 
@@ -87,18 +88,23 @@ object IconUtility {
 
     @Volatile
     private var overrides: Map<String, String>? = null
+    private val overridesVersion = AtomicLong()
 
-    fun invalidateOverrides() {
+    fun invalidateOverrides() = synchronized(overridesVersion) {
+        overridesVersion.incrementAndGet()
         overrides = null
     }
 
     private fun overrideFor(context: Context, key: String): String? {
+        val version = overridesVersion.get()
         var map = overrides
         if (map == null) {
             map = runCatching {
                 PrefsManager.iconOverrides(context)
             }.getOrDefault(emptyMap())
-            overrides = map
+            synchronized(overridesVersion) {
+                if (overridesVersion.get() == version) overrides = map
+            }
         }
         return map[key]
     }

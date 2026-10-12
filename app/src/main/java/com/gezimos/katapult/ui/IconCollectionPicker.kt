@@ -46,6 +46,7 @@ import com.gezimos.katapult.R
 import com.gezimos.katapult.util.CatalogueIcon
 import com.gezimos.katapult.util.IconCatalogue
 import com.gezimos.katapult.util.IconCollection
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -130,6 +131,8 @@ fun IconCollectionPicker(
                             scope.launch {
                                 try {
                                     if (onChoose(entry.id)) onChosen() else saveFailed = true
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
                                 } catch (error: Exception) {
                                     android.util.Log.w("KotatsuIcons", "Icon choice failed: ${entry.id}", error)
                                     saveFailed = true

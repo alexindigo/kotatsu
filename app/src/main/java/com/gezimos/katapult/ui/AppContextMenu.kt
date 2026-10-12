@@ -355,7 +355,7 @@ private fun ChangeIconDialog(
                 catalogue = loaded,
                 shape = pickerShape,
                 render = render,
-                onChoose = { id -> viewModel.setCatalogueIcon(app.key, id) },
+                onChoose = { id -> viewModel.setCatalogueIcon(app.key, id).await() },
                 onChosen = onDismiss,
                 onImport = onImportClick,
             )

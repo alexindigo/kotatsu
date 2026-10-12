@@ -31,6 +31,8 @@ import com.gezimos.katapult.util.WeatherHelper
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -844,32 +846,47 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         return File(dir, "$name.png")
     }
 
+    private fun saveIconBitmap(key: String, bitmap: Bitmap): File {
+        val file = iconFile(key)
+        val temp = File(file.path + ".tmp")
+        try {
+            temp.outputStream().use { out ->
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) { "Icon compression failed" }
+            }
+            check(temp.renameTo(file)) { "Icon replacement failed" }
+            return file
+        } finally {
+            temp.delete()
+        }
+    }
+
     fun saveMaterialIcon(key: String, bitmap: Bitmap) {
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                val file = iconFile(key)
-                file.outputStream().use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                }
+                val file = saveIconBitmap(key, bitmap)
                 prefs.setIconOverride(key, "file:${file.absolutePath}")
                 IconUtility.clearCacheFor(key)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                     shortcutRefresh++
                     loadApps()
                 }
-            } catch (_: Exception) {}
+            } catch (_: Exception) {
+                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                    iconImportError = true
+                }
+            }
         }
     }
 
-    suspend fun setCatalogueIcon(key: String, id: String): Boolean =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+    fun setCatalogueIcon(key: String, id: String): Deferred<Boolean> =
+        viewModelScope.async(kotlinx.coroutines.Dispatchers.IO) {
             try {
                 val icon = com.gezimos.katapult.util.IconCatalogue.load(ctx).icon(id)
-                    ?: return@withContext false
+                    ?: return@async false
                 com.gezimos.katapult.util.CatalogueIconRenderer.render(ctx, icon, 192)
-                    ?: return@withContext false
+                    ?: return@async false
                 if (!prefs.commitIconOverride(key, com.gezimos.katapult.util.IconSelections.CATALOGUE_PREFIX + id)) {
-                    return@withContext false
+                    return@async false
                 }
                 // Old imported files remain intact; legacy references are never migrated.
                 IconUtility.clearCacheFor(key)
@@ -919,10 +936,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     return@launch
                 }
 
-                val file = iconFile(key)
-                file.outputStream().use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                }
+                val file = saveIconBitmap(key, bitmap)
                 prefs.setIconOverride(key, "file:${file.absolutePath}")
                 IconUtility.clearCacheFor(key)
                 kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
