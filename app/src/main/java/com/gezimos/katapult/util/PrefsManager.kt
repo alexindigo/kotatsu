@@ -8,6 +8,11 @@ import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.io.File
+import java.io.InputStream
+import java.io.ByteArrayInputStream
+import java.io.SequenceInputStream
+import java.nio.ByteBuffer
+import java.nio.CharBuffer
 
 class PrefsManager(context: Context) {
 
@@ -698,6 +703,28 @@ class PrefsManager(context: Context) {
     }
 
     companion object {
+        /** Check only a bounded prefix before consuming or parsing the rest of a document. */
+        fun readImportText(stream: InputStream): String? {
+            val prefix = ByteArray(4096)
+            var size = 0
+            while (size < prefix.size) {
+                val read = stream.read(prefix, size, prefix.size - size)
+                if (read < 0) break
+                if (read == 0) return null
+                size += read
+            }
+            val decoder = Charsets.UTF_8.newDecoder()
+            val chars = CharBuffer.allocate(prefix.size)
+            // A complete prefix may end partway through an otherwise valid UTF-8 character.
+            val result = decoder.decode(ByteBuffer.wrap(prefix, 0, size), chars, size < prefix.size)
+            if (result.isError) return null
+            chars.flip()
+            if (!chars.toString().removePrefix("\uFEFF").trimStart().startsWith("{")) return null
+            return java.io.InputStreamReader(
+                SequenceInputStream(ByteArrayInputStream(prefix, 0, size), stream), Charsets.UTF_8.newDecoder(),
+            ).readText().removePrefix("\uFEFF")
+        }
+
         fun isOwnedFile(context: Context, path: String): Boolean = runCatching {
             val root = context.filesDir.canonicalFile.toPath()
             val file = File(path).canonicalFile

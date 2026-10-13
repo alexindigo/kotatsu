@@ -306,4 +306,5 @@
     <string name="policy_enabled">Enabled</string>
     <string name="policy_disabled">Disabled</string>
     <string name="acknowledge_calls">Acknowledge calls (mark seen)</string>
+    <string name="config_import_replaces_settings">This replaces all your current settings.</string>
 </resources>

@@ -46,6 +46,15 @@ fun LockscreenReEnableSheet(viewModel: MainViewModel) {
             color = LocalInk.current,
             modifier = Modifier.padding(bottom = 12.dp),
         )
+        for (title in viewModel.lockscreenServiceFeatureTitles()) {
+            Text(
+                text = stringResource(title),
+                fontSize = 14.sp,
+                fontFamily = LatoFamily,
+                color = LocalInk.current,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+        }
         BottomSheetOption(
             text = stringResource(R.string.lockscreen_reenable_enable),
             icon = Icons.Rounded.SettingsIcon,

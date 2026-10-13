@@ -168,8 +168,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         screensaver = prefs.screensaverEnabled, powerScreensaver = prefs.screensaverOnPower,
     ))
 
+    // Include stored-but-inactive switches that the off action also clears.
+    private fun lockscreenFeaturesToDisable() = (lockscreenServiceFeatures() + listOfNotNull(
+        AccessibilityFeature.CLOCK_COVER.takeIf { prefs.hideStatusBarClock },
+        AccessibilityFeature.POWER_SCREENSAVER.takeIf { prefs.screensaverOnPower },
+    )).distinct().sortedBy { it.ordinal }
+
+    fun lockscreenServiceFeatureTitles() = lockscreenFeaturesToDisable().map { feature ->
+        when (feature) {
+            AccessibilityFeature.WIDGET -> R.string.lockscreen_widget
+            AccessibilityFeature.MEDIA -> R.string.lockscreen_music_widget
+            AccessibilityFeature.MESSAGE -> R.string.lockscreen_message
+            AccessibilityFeature.CLOCK_COVER -> R.string.hide_status_bar_clock
+            AccessibilityFeature.DOUBLE_TAP_LOCK -> R.string.double_tap_action
+            AccessibilityFeature.POWER_SCREENSAVER -> R.string.screensaver_on_power
+        }
+    }
+
     fun disableLockscreenServiceFeatures() {
-        for (feature in lockscreenServiceFeatures()) when (feature) {
+        for (feature in lockscreenFeaturesToDisable()) when (feature) {
             AccessibilityFeature.WIDGET -> prefs.lockscreenWidget = false
             AccessibilityFeature.MEDIA -> prefs.lockscreenMusicWidget = false
             AccessibilityFeature.MESSAGE -> Unit // Message clearing is a separate user choice.
@@ -177,9 +194,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AccessibilityFeature.DOUBLE_TAP_LOCK -> prefs.doubleTapAction = PrefsManager.DOUBLE_TAP_OFF
             AccessibilityFeature.POWER_SCREENSAVER -> prefs.screensaverOnPower = false
         }
-        // Preserve the existing off action for stored-but-currently-inactive rows.
-        prefs.screensaverOnPower = false
-        prefs.hideStatusBarClock = false
         resolveLockscreenReEnable()
     }
 

@@ -116,6 +116,13 @@ class LockscreenRecoveryInstrumentedTest {
             val current = activity
             instrumentation.runOnMainSync { current.setContent { LockscreenReEnableSheet(model) } }
             val ui = PlatformUiDriver(instrumentation)
+            val titles = listOf(R.string.lockscreen_widget, R.string.lockscreen_music_widget,
+                R.string.lockscreen_message, R.string.hide_status_bar_clock,
+                R.string.double_tap_action, R.string.screensaver_on_power)
+            assertEquals(titles, model.lockscreenServiceFeatureTitles())
+            for (title in titles) ui.await("Recovery sheet did not name ${context.getString(title)}") {
+                ui.has(context.getString(title))
+            }
             ui.click(context.getString(R.string.lockscreen_reenable_disable))
             ui.await("Recovery off action did not reach stored features") {
                 !model.showLockscreenReEnable && !model.prefs.lockscreenMusicWidget && !model.prefs.lockscreenWidget

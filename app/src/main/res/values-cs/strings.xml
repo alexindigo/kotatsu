@@ -306,4 +306,5 @@
     <string name="policy_enabled">Zapnuto</string>
     <string name="policy_disabled">Vypnuto</string>
     <string name="acknowledge_calls">Potvrdit hovory (označit jako zobrazené)</string>
+    <string name="config_import_replaces_settings">Tím se nahradí všechna vaše aktuální nastavení.</string>
 </resources>

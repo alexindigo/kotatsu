@@ -68,13 +68,13 @@ class MainActivity : ComponentActivity() {
     val configImporter = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
             val text = try {
-                contentResolver.openInputStream(it)?.bufferedReader()?.use { reader -> reader.readText() }
+                contentResolver.openInputStream(it)?.use { stream -> com.gezimos.katapult.util.PrefsManager.readImportText(stream) }
             } catch (_: Exception) { null }
             val preview = text?.let { data -> viewModel.prefs.previewPolicyImport(data) }
-            if (text != null && preview != null && preview.changes.isNotEmpty()) {
+            if (text != null && preview != null) {
                 viewModel.pendingImportText = text
                 viewModel.pendingImportPreview = preview
-            } else if (text == null || preview == null || !viewModel.applyConfigImport(this, text, null)) {
+            } else {
                 android.widget.Toast.makeText(this, R.string.config_import_failed, android.widget.Toast.LENGTH_SHORT).show()
             }
         }

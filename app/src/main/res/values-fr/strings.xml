@@ -306,4 +306,5 @@
     <string name="policy_enabled">Activé</string>
     <string name="policy_disabled">Désactivé</string>
     <string name="acknowledge_calls">Confirmer les appels (marquer comme vus)</string>
+    <string name="config_import_replaces_settings">Cela remplace tous vos paramètres actuels.</string>
 </resources>

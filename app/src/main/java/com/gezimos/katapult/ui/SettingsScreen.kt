@@ -1352,6 +1352,8 @@ fun SettingsScreen(
         BottomSheet(onDismiss = dismissImport) {
             Text(stringResource(R.string.policy_import_confirmation), fontSize = 18.sp, fontWeight = FontWeight.Bold,
                 fontFamily = LatoFamily, color = LocalInk.current)
+            Text(stringResource(R.string.config_import_replaces_settings),
+                fontFamily = LatoFamily, color = LocalInk.current)
             for ((choice, title) in sensitiveRows) {
                 preview.changes[choice.key]?.let { incoming ->
                     Text(stringResource(title) + ": " + stringResource(if (incoming) R.string.policy_enabled else R.string.policy_disabled),

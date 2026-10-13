@@ -169,6 +169,7 @@ class DraftsAndPickersInstrumentedTest {
                     it.viewModel.navigateTo(Screen.SETTINGS)
                 }
                 ui.await("Import preview not rendered") { ui.has(context.getString(R.string.policy_import_confirmation)) }
+                assertTrue(ui.has(context.getString(R.string.config_import_replaces_settings)))
                 scenario.onActivity { it.viewModel.onHomeIntent() }
                 ui.await("HOME did not remove preview") { !ui.has(context.getString(R.string.policy_import_confirmation)) }
                 scenario.recreate()
@@ -184,6 +185,27 @@ class DraftsAndPickersInstrumentedTest {
                     assertNull(it.viewModel.pendingImportPreview)
                     assertEquals(local, it.viewModel.prefs.sensitiveChoice(SensitiveChoice.MEDIA_INFO))
                 }
+            }
+        } finally { file.delete() }
+    }
+
+    @Test fun importWithoutPrivacyChangesStillShowsReplacementConfirmation() {
+        val file = File(context.filesDir, "g3-import-${UUID.randomUUID()}.json")
+        try {
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+                scenario.onActivity { file.writeText(it.viewModel.prefs.exportToJson(context)) }
+                val request = pending(scenario, 4, Intent.ACTION_OPEN_DOCUMENT) { it.configImporter.launch(arrayOf("application/json")) }
+                deliver(scenario, request, Uri.fromFile(file))
+                scenario.onActivity {
+                    assertNotNull(it.viewModel.pendingImportPreview)
+                    assertTrue(it.viewModel.pendingImportPreview!!.changes.isEmpty())
+                    it.viewModel.navigateTo(Screen.SETTINGS)
+                }
+                ui.await("Replacement warning missing for unchanged privacy choices") {
+                    ui.has(context.getString(R.string.config_import_replaces_settings))
+                }
+                ui.click(context.getString(R.string.cancel))
+                scenario.onActivity { assertNull(it.viewModel.pendingImportText) }
             }
         } finally { file.delete() }
     }
