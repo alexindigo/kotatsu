@@ -7,6 +7,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.io.File
 
 class PrefsManager(context: Context) {
 
@@ -429,7 +430,7 @@ class PrefsManager(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_SCREENSAVER_WALLPAPER, value).apply()
 
     var screensaverWallpaperPath: String?
-        get() = strPref(KEY_SCREENSAVER_WALLPAPER_PATH, null)
+        get() = strPref(KEY_SCREENSAVER_WALLPAPER_PATH, null)?.takeIf(::isOwnedFile)
         set(value) = prefs.edit().putString(KEY_SCREENSAVER_WALLPAPER_PATH, value).apply()
 
     var screensaverShowClock: Boolean
@@ -472,7 +473,7 @@ class PrefsManager(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, value).apply()
 
     var wallpaperPath: String?
-        get() = strPref(KEY_WALLPAPER_PATH, null)
+        get() = strPref(KEY_WALLPAPER_PATH, null)?.takeIf(::isOwnedFile)
         set(value) = prefs.edit().putString(KEY_WALLPAPER_PATH, value).apply()
 
     fun getHiddenApps(): Set<String> {
@@ -492,7 +493,26 @@ class PrefsManager(context: Context) {
     }
 
     fun getIconOverride(key: String): String? = synchronized(prefs) {
-        strPref("${KEY_ICON_OVERRIDE_PREFIX}$key", null)
+        val storageKey = "${KEY_ICON_OVERRIDE_PREFIX}$key"
+        strPref(storageKey, null)?.takeUnless { isDeadFileRef(storageKey, it) }
+    }
+
+    fun isOwnedFile(path: String): Boolean = isOwnedFile(appContext, path)
+
+    /** Call after removing the preference, so all remaining references protect their file. */
+    fun deleteOwnedFileIfUnreferenced(path: String) = synchronized(prefs) {
+        if (!isOwnedFile(path)) return@synchronized
+        val file = File(path).canonicalFile
+        val referenced = prefs.all.any { (key, value) ->
+            val reference = when {
+                key == KEY_WALLPAPER_PATH || key == KEY_SCREENSAVER_WALLPAPER_PATH -> value as? String
+                key.startsWith(KEY_ICON_OVERRIDE_PREFIX) && value is String && value.startsWith("file:") ->
+                    value.removePrefix("file:")
+                else -> null
+            }
+            reference != null && runCatching { File(reference).canonicalFile == file }.getOrDefault(false)
+        }
+        if (!referenced) file.delete()
     }
 
     fun setIconOverride(key: String, value: String) {
@@ -554,7 +574,7 @@ class PrefsManager(context: Context) {
                 value.removePrefix("file:")
             else -> return false
         }
-        return !java.io.File(path).exists()
+        return !isOwnedFile(path)
     }
 
     fun importFromJson(text: String, confirmedLocalChoices: Map<String, Boolean>? = null): Boolean = synchronized(prefs) {
@@ -620,12 +640,23 @@ class PrefsManager(context: Context) {
 
     fun clearAll(context: Context) {
         prefs.edit().clear().commit()
-        context.filesDir.listFiles()?.forEach { file ->
-            if (file.isDirectory) file.deleteRecursively() else file.delete()
+        val root = appContext.filesDir.canonicalFile.toPath()
+        // Files.walk never follows directory symlinks outside the app's storage.
+        java.nio.file.Files.walk(root).use { paths ->
+            paths.sorted(Comparator.reverseOrder()).filter { it != root }.forEach { path ->
+                if (java.nio.file.Files.isDirectory(path, java.nio.file.LinkOption.NOFOLLOW_LINKS) ||
+                    isOwnedFile(path.toString())) path.toFile().delete()
+            }
         }
     }
 
     companion object {
+        fun isOwnedFile(context: Context, path: String): Boolean = runCatching {
+            val root = context.filesDir.canonicalFile.toPath()
+            val file = File(path).canonicalFile
+            file.toPath().startsWith(root) && file.isFile
+        }.getOrDefault(false)
+
         /** Consumer snapshots share the write lock and never cache a tentative save. */
         internal fun iconOverrides(context: Context): Map<String, String> {
             val store = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)

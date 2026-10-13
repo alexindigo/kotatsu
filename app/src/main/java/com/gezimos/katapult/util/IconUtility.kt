@@ -21,7 +21,6 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import com.gezimos.katapult.R
 import org.xmlpull.v1.XmlPullParser
-import java.io.File
 import java.util.concurrent.atomic.AtomicLong
 
 object IconUtility {
@@ -194,8 +193,7 @@ object IconUtility {
             when {
                 override.startsWith("file:") -> {
                     val path = override.removePrefix("file:")
-                    val file = File(path)
-                    if (!file.exists()) return null
+                    if (!PrefsManager.isOwnedFile(context, path)) return null
                     val bmp = BitmapHelper.decodeFile(path, sizePx * 2) ?: return null
                     drawableToBitmap(BitmapDrawable(context.resources, bmp), sizePx)
                 }

@@ -84,7 +84,7 @@ class IconRenderingInstrumentedTest {
         val prefs = PrefsManager(context)
         val key = "__curated_icon_test_fixture__"
         assertNull("Preserve an unexpected existing fixture", prefs.getIconOverride(key))
-        val file = File.createTempFile("curated-icon-", ".png", context.cacheDir)
+        val file = File.createTempFile("curated-icon-", ".png", context.filesDir)
         try {
             for (collection in IconCollection.entries) {
                 val icon = catalogue.search(collection, "").first()

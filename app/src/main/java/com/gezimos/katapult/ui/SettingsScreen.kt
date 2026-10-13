@@ -239,13 +239,12 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var lockscreenLatestFirst by remember { mutableStateOf(prefs.lockscreenWidgetLatestFirst) }
     var screensaverIslands by remember { mutableStateOf(prefs.screensaverIslands) }
     var screensaverWallpaper by remember { mutableStateOf(prefs.screensaverWallpaper) }
-    var screensaverWallpaperPath by remember { mutableStateOf(prefs.screensaverWallpaperPath) }
+    val screensaverWallpaperPath = viewModel.screensaverWallpaperPath
     val screensaverWallpaperPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let {
             viewModel.setScreensaverWallpaper(context, it)
-            screensaverWallpaperPath = prefs.screensaverWallpaperPath
         }
     }
     var screensaverEnabled by remember { mutableStateOf(prefs.screensaverEnabled) }
@@ -1011,7 +1010,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
                             onClick = {
                                 if (hasImage) {
                                     viewModel.clearScreensaverWallpaper()
-                                    screensaverWallpaperPath = null
                                 } else {
                                     screensaverWallpaperPicker.launch("image/*")
                                 }

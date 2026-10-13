@@ -8,6 +8,7 @@ import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class IconPersistenceInstrumentedTest {
@@ -17,8 +18,9 @@ class IconPersistenceInstrumentedTest {
         val backing = context.getSharedPreferences(name, 0)
         assertTrue("Preserve an unexpected existing fixture", backing.all.isEmpty())
         val key = "icon_override_fixture"
+        val file = File.createTempFile("retained-manual-icon-", ".png", context.filesDir)
         try {
-            for (previous in listOf(null, "file:/retained-manual-icon.png", "res:clock")) {
+            for (previous in listOf(null, "file:${file.absolutePath}", "res:clock")) {
                 assertTrue(backing.edit().clear().putString(key, previous).commit())
                 var attempts = 0
                 val uncertain = object : SharedPreferences by backing {
@@ -56,6 +58,7 @@ class IconPersistenceInstrumentedTest {
         } finally {
             assertTrue(backing.edit().clear().commit())
             assertTrue(context.deleteSharedPreferences(name))
+            assertTrue(file.delete())
         }
     }
 }

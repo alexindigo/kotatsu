@@ -108,6 +108,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var wallpaperBitmap by mutableStateOf<Bitmap?>(null)
         private set
+    var screensaverWallpaperPath by mutableStateOf(prefs.screensaverWallpaperPath)
+        private set
+    private var wallpaperRequest = 0L
+    private var screensaverWallpaperRequest = 0L
     var batteryPercent by mutableIntStateOf(-1)
         private set
     var isCharging by mutableStateOf(false)
@@ -571,8 +575,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.setAppRename(key, null)
         prefs.removeFromAppOrder(key)
         prefs.unhideApp(key)
-        deleteOverrideFile(key)
+        val existing = prefs.getIconOverride(key)
         prefs.clearIconOverride(key)
+        deleteOverrideFile(existing)
         IconUtility.clearCacheFor(key)
         ShortcutHelper.syncPins(ctx, prefs, packageName)
     }
@@ -789,53 +794,71 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setWallpaper(context: Context, uri: Uri) {
+        val request = ++wallpaperRequest
         val maxSide = BitmapHelper.screenMaxSide(ctx)
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val bitmap = BitmapHelper.decodeUri(context, uri, maxSide) ?: return@launch
             val file = File(ctx.filesDir, "wallpaper.png")
-            val saved = try {
-                file.outputStream().use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            saveWallpaperBitmap(file, request, bitmap) { temp ->
+                if (request == wallpaperRequest && temp.renameTo(file)) {
+                    prefs.wallpaperPath = file.absolutePath
+                    wallpaperBitmap = bitmap
                 }
-                true
-            } catch (_: Exception) {
-                false
-            }
-            if (!saved) return@launch
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                prefs.wallpaperPath = file.absolutePath
-                wallpaperBitmap = bitmap
             }
         }
     }
 
     fun clearWallpaper() {
-        prefs.wallpaperPath?.let { File(it).delete() }
+        ++wallpaperRequest
+        val previous = prefs.wallpaperPath
         prefs.wallpaperPath = null
         wallpaperBitmap = null
+        previous?.let(prefs::deleteOwnedFileIfUnreferenced)
     }
 
     fun setScreensaverWallpaper(context: Context, uri: Uri) {
+        val request = ++screensaverWallpaperRequest
         val maxSide = BitmapHelper.screenMaxSide(ctx)
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val bitmap = BitmapHelper.decodeUri(context, uri, maxSide) ?: return@launch
             val file = File(ctx.filesDir, "screensaver_wallpaper.png")
-            try {
-                file.outputStream().use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            saveWallpaperBitmap(file, request, bitmap) { temp ->
+                if (request == screensaverWallpaperRequest && temp.renameTo(file)) {
+                    prefs.screensaverWallpaperPath = file.absolutePath
+                    screensaverWallpaperPath = file.absolutePath
                 }
-            } catch (_: Exception) {
-                return@launch
-            }
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                prefs.screensaverWallpaperPath = file.absolutePath
             }
         }
     }
 
     fun clearScreensaverWallpaper() {
-        prefs.screensaverWallpaperPath?.let { File(it).delete() }
+        ++screensaverWallpaperRequest
+        val previous = prefs.screensaverWallpaperPath
         prefs.screensaverWallpaperPath = null
+        screensaverWallpaperPath = null
+        previous?.let(prefs::deleteOwnedFileIfUnreferenced)
+    }
+
+    private suspend fun saveWallpaperBitmap(file: File, request: Long, bitmap: Bitmap, publish: (File) -> Unit) {
+        val temp = File(file.path + ".$request.tmp")
+        try {
+            temp.outputStream().use { out ->
+                check(bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)) { "Wallpaper compression failed" }
+            }
+            // Check freshness, replace bytes and publish together on Main; Clear/new picks cannot interleave.
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) { publish(temp) }
+        } catch (_: Exception) {
+            // Keep the prior file, preference and displayed image on failure.
+        } finally {
+            deleteTemporaryFile(temp)
+        }
+    }
+
+    private fun deleteTemporaryFile(temp: File) {
+        // Failed open() probes can leave an empty, locally generated directory.
+        val ownedDirectory = java.nio.file.Files.isDirectory(temp.toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS) &&
+            temp.canonicalFile.toPath().startsWith(ctx.filesDir.canonicalFile.toPath())
+        if (prefs.isOwnedFile(temp.path) || ownedDirectory) temp.delete()
     }
 
     private fun iconFile(key: String): File {
@@ -856,7 +879,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             check(temp.renameTo(file)) { "Icon replacement failed" }
             return file
         } finally {
-            temp.delete()
+            deleteTemporaryFile(temp)
         }
     }
 
@@ -957,23 +980,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setBundledIcon(key: String, resName: String) {
-        deleteOverrideFile(key)
+        val existing = prefs.getIconOverride(key)
         prefs.setIconOverride(key, "res:$resName")
+        deleteOverrideFile(existing)
         IconUtility.clearCacheFor(key)
         shortcutRefresh++
     }
 
     fun clearIconOverride(key: String) {
-        deleteOverrideFile(key)
+        val existing = prefs.getIconOverride(key)
         prefs.clearIconOverride(key)
+        deleteOverrideFile(existing)
         IconUtility.clearCacheFor(key)
         shortcutRefresh++
     }
 
-    private fun deleteOverrideFile(key: String) {
-        val existing = prefs.getIconOverride(key) ?: return
-        if (existing.startsWith("file:")) {
-            File(existing.removePrefix("file:")).delete()
+    private fun deleteOverrideFile(existing: String?) {
+        if (existing != null && existing.startsWith("file:")) {
+            prefs.deleteOwnedFileIfUnreferenced(existing.removePrefix("file:"))
         }
     }
 
@@ -994,6 +1018,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun loadWallpaper() {
         val path = prefs.wallpaperPath ?: return
+        if (!prefs.isOwnedFile(path)) return
         wallpaperBitmap = BitmapHelper.decodeFile(path, BitmapHelper.screenMaxSide(ctx))
     }
 
