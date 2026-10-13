@@ -17,7 +17,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 import source_receipt
 import verify_fork
 
-EXPECTED_IDS={'debug':'io.github.alexindigo.kotatsu.debug','release':'io.github.alexindigo.kotatsu'}
+EXPECTED_IDS={'debug':'com.alexindigo.kotatsu.debug','release':'com.alexindigo.kotatsu'}
 COMPONENT='com.gezimos.katapult.MainActivity'
 LEGACY=('com.gezimos.katapult.debug','com.gezimos.katapult.debug.test')
 

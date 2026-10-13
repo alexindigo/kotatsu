@@ -16,7 +16,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.alexindigo.kotatsu"
+        applicationId = "com.alexindigo.kotatsu"
         minSdk = 30
         targetSdk = 36
         versionCode = 7

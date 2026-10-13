@@ -69,7 +69,7 @@ class ArtifactSelectionTest(unittest.TestCase):
 
 class ToolParsingTest(unittest.TestCase):
     def test_actual_badging_shape_with_locale_labels(self):
-        text="package: name='io.github.alexindigo.kotatsu.debug' versionCode='7' versionName='1.0-debug'\napplication-label:'Kotatsu Debug'\napplication-label-de:'Kotatsu Debug'\napplication-debuggable\n"
+        text="package: name='com.alexindigo.kotatsu.debug' versionCode='7' versionName='1.0-debug'\napplication-label:'Kotatsu Debug'\napplication-label-de:'Kotatsu Debug'\napplication-debuggable\n"
         result=verify.parse_badging(text);self.assertTrue(result['debuggable']);self.assertEqual(result['labels']['de'],'Kotatsu Debug')
     def test_malformed_badging_fails_closed(self):
         for text in ('','package: malformed','application-label:\'Kotatsu\''):

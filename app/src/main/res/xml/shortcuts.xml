@@ -8,7 +8,7 @@
         android:shortcutLongLabel="@string/screensaver">
         <intent
             android:action="android.intent.action.VIEW"
-            android:targetPackage="io.github.alexindigo.kotatsu"
+            android:targetPackage="com.alexindigo.kotatsu"
             android:targetClass="com.gezimos.katapult.lockscreen.ScreensaverActivity" />
     </shortcut>
 </shortcuts>

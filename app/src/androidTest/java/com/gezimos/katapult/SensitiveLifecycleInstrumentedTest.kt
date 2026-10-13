@@ -244,7 +244,7 @@ class SensitiveLifecycleInstrumentedTest {
     @Test fun deniedAdaptersAndDisabledEntryPreserveConsumerAndPreferences() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        assertEquals("io.github.alexindigo.kotatsu.debug", context.packageName)
+        assertEquals("com.alexindigo.kotatsu.debug", context.packageName)
         for (permission in listOf(Manifest.permission.READ_SMS, Manifest.permission.READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG)) {
             assertEquals(PackageManager.PERMISSION_DENIED, context.checkSelfPermission(permission))
         }

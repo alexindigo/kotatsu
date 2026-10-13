@@ -100,7 +100,7 @@ class IconPickerInstrumentedTest {
     @Test fun publicPickerAndColdSavedChoice() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
-        assertEquals("io.github.alexindigo.kotatsu.debug", context.packageName)
+        assertEquals("com.alexindigo.kotatsu.debug", context.packageName)
         val phase = InstrumentationRegistry.getArguments().getString("iconPhase") ?: "choose"
         assertTrue(phase in listOf("choose", "verify"))
         val run = InstrumentationRegistry.getArguments().getString("iconProofRun") ?: "native-r1"

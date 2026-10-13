@@ -49,7 +49,7 @@ class ReportValidationTest(unittest.TestCase):
     def tearDown(self):self.patch.stop();self.temp.cleanup()
     def tool(self,*args):
         if 'verify' in args:return 'Signer #1 certificate SHA-256 digest: '+self.cert+'\n'
-        if args[1:3]==('manifest','print'):return '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="io.github.alexindigo.kotatsu.debug"><application android:debuggable="true" /></manifest>'
+        if args[1:3]==('manifest','print'):return '<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.alexindigo.kotatsu.debug"><application android:debuggable="true" /></manifest>'
         raise AssertionError(args)
     def validate(self):return probe.validate_report(self.report,'debug',probe.EXPECTED_IDS['debug'],self.cert,'/sdk/apksigner',self.provenance,self.expected_sha)
     def test_valid_report_and_actual_signer(self):self.assertEqual(self.validate()[1],self.apk)
@@ -102,8 +102,8 @@ class PublicHierarchyTest(unittest.TestCase):
         ET.SubElement(root,'node',{'text':'Finish'})
         self.assertFalse(ui.is_home(root))
     def test_observed_api31_messaging_label_is_home_but_a_grid_of_apps_is_not(self):
-        ui=probe.PublicUi(Path('/owned/adb'),'emulator-5554','io.github.alexindigo.kotatsu',Path('/tmp/report.json'))
-        root=ET.fromstring('<hierarchy><node text="5:09" package="io.github.alexindigo.kotatsu"/><node text="Phone" package="io.github.alexindigo.kotatsu"/><node text="Messaging" package="io.github.alexindigo.kotatsu"/><node content-desc="Apps" package="io.github.alexindigo.kotatsu"/></hierarchy>')
+        ui=probe.PublicUi(Path('/owned/adb'),'emulator-5554','com.alexindigo.kotatsu',Path('/tmp/report.json'))
+        root=ET.fromstring('<hierarchy><node text="5:09" package="com.alexindigo.kotatsu"/><node text="Phone" package="com.alexindigo.kotatsu"/><node text="Messaging" package="com.alexindigo.kotatsu"/><node content-desc="Apps" package="com.alexindigo.kotatsu"/></hierarchy>')
         self.assertTrue(ui.is_home(root))
         root.remove(root.findall('node')[0])
         self.assertFalse(ui.is_home(root))

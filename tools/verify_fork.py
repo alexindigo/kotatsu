@@ -19,7 +19,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parent))
 import source_receipt
 
 BASELINE='c6601b8128089db8ad28cdcc1f57361575066d5f'
-RELEASE_ID='io.github.alexindigo.kotatsu'
+RELEASE_ID='com.alexindigo.kotatsu'
 NAMESPACE='com.gezimos.katapult'
 ANDROID='{http://schemas.android.com/apk/res/android}'
 LOCALES=('', '-cs','-de','-es','-fr','-it','-nl','-pl','-pt')

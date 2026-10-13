@@ -11,7 +11,7 @@ spec.loader.exec_module(verify)
 
 class OfflineCapabilityTest(unittest.TestCase):
     def setUp(self):
-        self.manifest = ET.fromstring('<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application><provider android:name="androidx.startup.InitializationProvider" android:authorities="io.github.alexindigo.kotatsu.androidx-startup" /></application></manifest>')
+        self.manifest = ET.fromstring('<manifest xmlns:android="http://schemas.android.com/apk/res/android"><application><provider android:name="androidx.startup.InitializationProvider" android:authorities="com.alexindigo.kotatsu.androidx-startup" /></application></manifest>')
         self.resources = '    resource 0x7f000001 string/screensaver_update_static\n'
         self.dex = 'P d 1\t1\t100\t<TOTAL>\nC d 1\t1\t100\tcom.gezimos.katapult.MainActivity\nM d 1\t1\t36\tcom.gezimos.katapult.MainActivity void onCreate(android.os.Bundle)\n'
 
@@ -32,7 +32,7 @@ class OfflineCapabilityTest(unittest.TestCase):
 
     def test_updater_authority_and_paths_metadata_rejected(self):
         provider = self.manifest.find('application/provider')
-        provider.set(verify.ANDROID + 'authorities', 'io.github.alexindigo.kotatsu.fileprovider')
+        provider.set(verify.ANDROID + 'authorities', 'com.alexindigo.kotatsu.fileprovider')
         with self.assertRaises(verify.VerificationError):
             self.check()
         provider.set(verify.ANDROID + 'authorities', 'unrelated')

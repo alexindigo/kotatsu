@@ -21,7 +21,7 @@ class LauncherPreviewInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val expected = InstrumentationRegistry.getArguments().getString("expectedApplicationId")
-        assertEquals("io.github.alexindigo.kotatsu.debug", expected)
+        assertEquals("com.alexindigo.kotatsu.debug", expected)
         assertEquals(expected, context.packageName)
         assertFalse(DeviceHelper.isDefaultLauncher(context))
         assertFalse(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName))
