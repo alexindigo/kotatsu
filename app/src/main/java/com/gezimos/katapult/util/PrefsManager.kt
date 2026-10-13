@@ -591,13 +591,38 @@ class PrefsManager(context: Context) {
         } catch (_: IllegalArgumentException) {
             return@synchronized false
         }
+        // The declared preference type is authoritative, even when a key has
+        // never been stored (or an older import stored it with the wrong type).
+        for (key in json.keys()) {
+            if (key in LOCAL_IMPORT_KEYS) continue
+            val value = json.opt(key)
+            val valid = when (declaredImportDefault(key)) {
+                is Boolean -> value is Boolean
+                is Int -> value is Number && runCatching {
+                    java.math.BigDecimal(value.toString()).intValueExact()
+                }.isSuccess
+                is String -> value is String && isUsableString(key, value)
+                is Set<*> -> value is JSONArray && (0 until value.length()).all { value.opt(it) is String }
+                else -> true // Unknown fields retain the existing import behavior.
+            }
+            if (!valid) return@synchronized false
+        }
         val existing = prefs.all
         val editor = prefs.edit().clear()
+        // Local state is neither replaced nor removed, including absent keys.
+        for (key in LOCAL_IMPORT_KEYS) when (val value = existing[key]) {
+            is Boolean -> editor.putBoolean(key, value)
+            is Int -> editor.putInt(key, value)
+            is Long -> editor.putLong(key, value)
+            is Float -> editor.putFloat(key, value)
+            is String -> editor.putString(key, value)
+            is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
+        }
         for (key in json.keys()) {
-            if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY) continue
+            if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY || key in LOCAL_IMPORT_KEYS) continue
             if (key in preservedChoices) continue
             val value = json.opt(key)
-            if (!matchesStoredType(existing[key], value)) continue
+            if (declaredImportDefault(key) == null && !matchesStoredType(existing[key], value)) continue
             when (value) {
                 is Boolean -> editor.putBoolean(key, value)
                 is Number -> editor.putInt(key, value.toInt())
@@ -615,6 +640,28 @@ class PrefsManager(context: Context) {
         editor.commit()
     }
 
+    /** Types follow the defaults declared by the getters, not a device's stored values. */
+    private fun declaredImportDefault(key: String): Any? = when (key) {
+        KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER,
+        KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
+        KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
+        KEY_DISABLE_MUSIC_WIDGET, KEY_SHOW_KATAPULT_ICON, KEY_HIDE_APP_NAMES, KEY_HIDE_ARROW_BUTTONS,
+        KEY_DISABLE_HOME_EDITING, KEY_HIDE_ALL_APPS_BUTTON, KEY_SWIPE_UP_ALL_APPS, KEY_HOME_ISLANDS,
+        KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET,
+        KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED, KEY_SCREENSAVER_ISLANDS,
+        KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
+        KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
+        KEY_ICON_SIZE, KEY_THEME_MODE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
+        KEY_LAST_BRIGHTNESS, KEY_HOME_LONG_PRESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
+        KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
+        KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH,
+        KEY_SCREENSAVER_WALLPAPER_PATH, KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> ""
+        KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED -> emptySet<String>()
+        else -> if (key.startsWith(KEY_RENAME_PREFIX) || key.startsWith(KEY_ICON_OVERRIDE_PREFIX) ||
+            HOME_SLOTS.any { slot -> key == "${slot}_package" || key == "${slot}_activity" || key == "${slot}_shortcut_id" }
+        ) "" else null
+    }
+
     private fun matchesStoredType(stored: Any?, incoming: Any?): Boolean = when (stored) {
         null -> true
         is Boolean -> incoming is Boolean
@@ -628,7 +675,7 @@ class PrefsManager(context: Context) {
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT -> value == "system" || runCatching {
             SimpleDateFormat(value, Locale.getDefault())
         }.isSuccess
-        KEY_APP_ORDER -> runCatching { JSONArray(value) }.isSuccess
+        KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> runCatching { JSONArray(value) }.isSuccess
         else -> true
     }
 
@@ -758,5 +805,7 @@ class PrefsManager(context: Context) {
         const val APP_SORT_RECENT = 1
         const val APP_SORT_USED = 2
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+
+        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET)
     }
 }
