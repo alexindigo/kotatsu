@@ -48,7 +48,7 @@ class IconCatalogue private constructor(
     }
 
     companion object {
-        private const val CATALOGUE_SHA256 = "b57f328dd4feb39d174b514c856aaf464615de51790a2004f61d1b61b4160e3d"
+        private const val CATALOGUE_SHA256 = "87ec3a37ef6675302a9d096f42d103182e81c6baa2eb8c5bd74e9dc58b22bf60"
         @Volatile private var instance: IconCatalogue? = null
 
         fun load(context: Context): IconCatalogue = instance ?: synchronized(this) {

@@ -1,9 +1,9 @@
 {
   "androidsvgAarSha256": "02a5b08a2b35d2d58eb2eaca9d84ac00fb341da725fdbd653ea3ed130437e95a",
   "androidsvgVersion": "1.4",
-  "catalogueSha256": "b57f328dd4feb39d174b514c856aaf464615de51790a2004f61d1b61b4160e3d",
-  "mappingSourceRef": "90a4343510f35e33421f0a41df5debc29c3604d1",
-  "mappingSourceSha256": "d8f10408f887ce5e157e0f9e7765da13f31dc13503f9a76260dfc72827a7d54d",
+  "catalogueSha256": "87ec3a37ef6675302a9d096f42d103182e81c6baa2eb8c5bd74e9dc58b22bf60",
+  "mappingSourcePath": "tools/icon-mappings/simple-icons-app-mapping.json",
+  "mappingSourceSha256": "f76f2ed025cdf39e0f028ef0a8aae200088de7cc0aaf8f61eb974f7a78dfbaf9",
   "schema": 1,
   "selectionRevision": 3730,
   "selectionSha256": "45e75d97c1bb200a57a25b0ce0e279c526771b007f540b4a48e3c6a07d021d5a",

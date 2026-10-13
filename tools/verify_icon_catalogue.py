@@ -8,9 +8,9 @@ from pathlib import Path
 import re
 import zipfile
 
-from compile_icon_catalogue import EXPECTED_COUNTS, SELECTION_SHA256, ANDROIDSVG_AAR_SHA256, ANDROIDSVG_LICENSE_SHA256
+from compile_icon_catalogue import EXPECTED_COUNTS, SELECTION_SHA256, ANDROIDSVG_AAR_SHA256, ANDROIDSVG_LICENSE_SHA256, MAPPING_PATH
 
-COMPILED_CATALOGUE_SHA256 = "b57f328dd4feb39d174b514c856aaf464615de51790a2004f61d1b61b4160e3d"
+COMPILED_CATALOGUE_SHA256 = "87ec3a37ef6675302a9d096f42d103182e81c6baa2eb8c5bd74e9dc58b22bf60"
 
 
 def digest(data):
@@ -49,19 +49,25 @@ def verify(root, apk=None):
     assert {"svg/" + p.name for p in (assets / "svg").iterdir()} == set(payloads)
     for identifier in [*document["packages"].values(), *document["components"].values()]:
         assert by_id[identifier]["collection"] == "simple-icons"
-    for package in proof["conflicts"]["packages"]:
-        assert package not in document["packages"]
-        assert not any(component.startswith(package + "/") for component in document["components"])
-    for component, identifier in document["components"].items():
-        assert any(row["id"] == identifier for row in proof["componentEvidence"][component])
-    for package, identifier in document["packages"].items():
-        identities = {row["id"] for component, rows in proof["componentEvidence"].items()
-                      if component.startswith(package + "/") for row in rows}
-        assert identities == {identifier}
+    mapping_bytes = (root / MAPPING_PATH).read_bytes()
+    mapping = json.loads(mapping_bytes)
+    assert manifest["catalogueSha256"] == digest(catalogue_bytes)
+    assert manifest["mappingSourcePath"] == MAPPING_PATH
+    assert manifest["mappingSourceSha256"] == digest(mapping_bytes)
+    assert document["packages"] == mapping["packages"]
+    assert document["components"] == {}
+    assert len(document["packages"]) == mapping["counts"]["appIds"] == 640
+    assert len(set(document["packages"].values())) == mapping["counts"]["mappedLogos"] == 566
+    assert proof == {key: value for key, value in mapping.items() if key != "packages"}
+    assert not proof["conflicts"]
+    assert {row["appId"]: identifier for identifier, rows in proof["mappings"].items()
+            for row in rows} == document["packages"]
     assert document["packages"]["org.thoughtcrime.securesms"] == "simple-icons:signal"
+    assert "com.tplink.tether" not in document["packages"]
+    assert "ca.bnc.android" not in document["packages"]
     assert "com.android.settings" not in document["packages"]
     assert all((assets / "notices" / name).is_file() for name in
-                ("simple-license.md", "simple-disclaimer.md", "tabler-license.txt", "material-license.txt", "arcticons-license.txt", "attribution.json"))
+                ("simple-license.md", "simple-disclaimer.md", "tabler-license.txt", "material-license.txt", "attribution.json"))
     assert digest((assets / "notices/androidsvg-LICENSE").read_bytes()) == ANDROIDSVG_LICENSE_SHA256
     packaged = 0
     if apk is not None:

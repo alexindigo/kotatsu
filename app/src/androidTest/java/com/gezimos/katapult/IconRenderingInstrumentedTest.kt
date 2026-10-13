@@ -10,6 +10,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.util.CatalogueIconRenderer
 import com.gezimos.katapult.util.IconCatalogue
 import com.gezimos.katapult.util.IconCollection
+import com.gezimos.katapult.util.IconSelection
+import com.gezimos.katapult.util.IconSelections
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SvgRasterizer
@@ -70,8 +72,13 @@ class IconRenderingInstrumentedTest {
     @Test fun exactMappingsAndManualLegacyFileChoicesReachBitmapConsumer() {
         val catalogue = IconCatalogue.load(context)
         assertEquals("simple-icons:signal", catalogue.automaticIcon("org.thoughtcrime.securesms", ""))
-        assertNull(catalogue.automaticIcon("com.apple.android.music", "anything"))
-        assertNull(catalogue.automaticIcon("com.google.android.googlequicksearchbox", "anything"))
+        assertEquals("simple-icons:applemusic", catalogue.automaticIcon("com.apple.android.music", "anything"))
+        assertEquals("simple-icons:google", catalogue.automaticIcon("com.google.android.googlequicksearchbox", "anything"))
+        for (packageName in listOf("com.tplink.tether", "ca.bnc.android")) {
+            val automaticChoice = catalogue.automaticIcon(packageName, "anything")
+            assertNull(automaticChoice)
+            assertEquals(IconSelection.Original, IconSelections.resolve(null, automaticChoice))
+        }
         assertNull(catalogue.automaticIcon("pretend.signal.brand", ""))
         assertNull(catalogue.automaticIcon("com.android.settings", ""))
         val signal = catalogue.icon("simple-icons:signal")!!
@@ -116,6 +123,6 @@ class IconRenderingInstrumentedTest {
             IconUtility.clearCacheFor(key)
             assertTrue(file.delete())
         }
-        Log.i("KotatsuIconProof", "PASS exact mapping / ambiguous original fallback / manual catalogue / legacy res / PNG / shortcut isolation")
+        Log.i("KotatsuIconProof", "PASS reviewed mapping / unmatched original fallback / manual catalogue / legacy res / PNG / shortcut isolation")
     }
 }

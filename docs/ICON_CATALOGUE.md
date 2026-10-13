@@ -43,24 +43,22 @@ its existing bitmap path.
 
 ## Mapping provenance
 
-The current catalogue has **905 package mappings and 2,528 component mappings**.
-They derive from Arcticons `newicons/appfilter.xml` at commit
-`90a4343510f35e33421f0a41df5debc29c3604d1`. The compiler requires an unambiguous
-product-comment identity and drawing identity to agree with an included Simple
-Icons name/title/alias. It uses no display-name substring guessing.
-
-When a package has conflicting included brands, all its components are also
-quarantined. In this input that includes Apple Music and the Google app; neither
-receives a contradictory alternate-activity match. The original app icon is
-the fallback. `provenance/mappings.json` records source identities and conflicts.
-These mappings describe offline reference coverage, not a claim that every
-installed app has a curated brand.
+The current catalogue has **640 package mappings to 566 logos and no component
+mappings**. `tools/icon-mappings/simple-icons-app-mapping.json` is the
+user-reviewed source of truth, accepted from review rounds 1 and 2 plus manual
+additions. The compiler copies its exact app IDs; it performs no name matching.
+`provenance/mappings.json` preserves the review metadata and per-app evidence,
+including the 27 app IDs marked unverified by the review. The manifest pins the
+mapping file's SHA-256. These mappings describe offline reference coverage, not
+a claim that every installed app has a curated brand. Signal remains mapped;
+TP-Link Tether (`com.tplink.tether`) and National Bank (`ca.bnc.android`) are not
+mapped and fall back to their original app icons.
 
 ## Reproduction and checks
 
 `tools/compile_icon_catalogue.py` consumes the frozen `selection.json`,
 `catalogue.json`, `draft.json`, `snapshot.json`, source notices, pinned reference
-files and selected SVG cache. It validates the complete included/excluded
+files, the reviewed app-ID mapping and selected SVG cache. It validates the complete included/excluded
 partition, exact input hashes, original Git blobs, sizes and final counts.
 It refuses differing existing generated output. A future selection is an
 explicit catalogue-version change; existing saved IDs must remain resolvable.
@@ -68,14 +66,14 @@ explicit catalogue-version change; existing saved IDs must remain resolvable.
 All builds, tests and asset processing run inside the project-owned Kotatsu VM,
 `arch-niri-kotatsu-android12-phase-a` on `ark.home`, using the `kotatsu-vm`
 access workflow. The current guest checkout is
-`/srv/kotatsu/source/kotatsu-icons-20261010-01`. Inside that guest:
+`/srv/kotatsu/source/kotatsu-release-20261013`. Inside that guest:
 
 ```bash
 python -B tools/verify_icon_catalogue.py --root "$PWD" --apk app/build/outputs/apk/release/kotatsu-v1.0-release.apk
 ```
 
 The verifier checks every named entry and actual packaged asset byte, included
-mapping targets, ambiguous-package exclusion, payload hashes and notices.
+mapping targets, exact reviewed mapping/provenance agreement, payload hashes and notices.
 `IconSelectionTest` checks resolution precedence. Native instrumentation
 checks the complete corpus at 96/192 pixels, synthetic stroke/primitive/hole
 geometry, legacy/file overrides and shortcut isolation. Picker instrumentation
@@ -89,6 +87,5 @@ Original source metadata, pins and hashes live in
 `app/src/main/assets/icons/provenance/`. Licence texts, disclaimers and attribution
 are packaged in `app/src/main/assets/icons/notices/`: Simple Icons and its per-logo
 disclaimer; Tabler's MIT licence; Material's Apache-2.0 licence; AndroidSVG's
-Apache-2.0 licence including Cave Rock Software's copyright; and Arcticons'
-GPL-3.0 licence for derived identity metadata. The compiler does not redraw or
+Apache-2.0 licence including Cave Rock Software's copyright. The compiler does not redraw or
 substitute the selected artwork.
