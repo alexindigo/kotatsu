@@ -4,6 +4,54 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class BadgeActionRequestsTest {
+    @Test fun firstPermissionGrantRevisionDoesNotCancelPendingDialogAndResultIsOneShot() {
+        val f = Fixture()
+        val id = f.actions.request("synthetic")!!
+        f.writeGrant = true
+        f.revision++ // WRITE_CALL_LOG callback arrives before the dialog result.
+        f.actions.reconcile()
+        assertTrue("Permission request lost its demand before result", f.leases.demanded)
+        f.actions.result(id, true)
+        f.actions.result(id, true)
+        assertEquals(1, f.queued.size)
+        f.drain()
+        assertEquals(1, f.writes)
+        assertFalse(f.leases.demanded)
+    }
+
+    @Test fun writeAccessLossAndRegainCancelQueuedAcknowledgmentBeforeDrain() {
+        val f = Fixture()
+        f.writeGrant = true
+        f.actions.request("synthetic")
+        f.writeGrant = false
+        f.revision++
+        f.actions.reconcile()
+        assertFalse(f.leases.demanded)
+        f.writeGrant = true
+        f.revision++
+        f.actions.reconcile()
+        f.drain()
+        assertEquals(0, f.writes)
+    }
+
+    @Test fun pendingDialogStillCancelsOnOptOutOrSourceChange() {
+        for (reason in listOf("choice", "source")) {
+            val f = Fixture()
+            val id = f.actions.request("synthetic")!!
+            if (reason == "choice") f.actionChoice = false
+            else f.source = BadgeRoute(BadgeSource.NOTIFICATIONS, 2)
+            f.revision++
+            f.actions.reconcile()
+            assertFalse(reason, f.leases.demanded)
+            f.writeGrant = true
+            f.actionChoice = true
+            f.source = BadgeRoute(BadgeSource.DIRECT_CALLS, 2)
+            f.actions.result(id, true)
+            f.drain()
+            assertEquals(reason, 0, f.writes)
+        }
+    }
+
     private class Fixture {
         var source = BadgeRoute(BadgeSource.DIRECT_CALLS, 2)
         var collectionChoice = true

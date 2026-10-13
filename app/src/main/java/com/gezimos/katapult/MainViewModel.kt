@@ -43,6 +43,9 @@ import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.service.NotificationListener
 import com.gezimos.katapult.service.BadgeSources
 import com.gezimos.katapult.util.ActionRequests
+import com.gezimos.katapult.util.AccessibilityFeature
+import com.gezimos.katapult.util.AccessibilityPolicy
+import com.gezimos.katapult.util.AccessibilitySelection
 import com.gezimos.katapult.util.BadgeActions
 import com.gezimos.katapult.util.BadgeSource
 import com.gezimos.katapult.util.SensitiveAccess
@@ -130,14 +133,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var lockscreenReEnableChecked = false
 
     fun checkLockscreenService(context: Context) {
+        checkLockscreenService(com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(context))
+    }
+
+    internal fun checkLockscreenService(serviceEnabled: Boolean) {
+        if (serviceEnabled) {
+            lockscreenReEnableChecked = false
+            showLockscreenReEnable = false
+            return
+        }
         if (!prefs.sensitiveChoice(SensitiveChoice.ACCESSIBILITY_FEATURES)) return
         if (lockscreenReEnableChecked || screen != Screen.HOME) return
-        if (com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(context)) return
-        val needsService = prefs.lockscreenWidget ||
-            (prefs.hideStatusBarClock && DeviceHelper.isMuditaKompakt()) ||
-            prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK ||
-            (prefs.screensaverEnabled && prefs.screensaverOnPower)
-        if (needsService) {
+        if (lockscreenServiceFeatures().isNotEmpty()) {
             lockscreenReEnableChecked = true
             showLockscreenReEnable = true
         }
@@ -145,6 +152,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun resolveLockscreenReEnable() {
         showLockscreenReEnable = false
+    }
+
+    private fun lockscreenServiceFeatures() = AccessibilityPolicy.serviceFeatures(AccessibilitySelection(
+        widget = prefs.lockscreenWidget, media = prefs.lockscreenMusicWidget,
+        message = !prefs.lockscreenMessage.isNullOrBlank(),
+        clockCover = prefs.hideStatusBarClock && DeviceHelper.isMuditaKompakt(),
+        doubleTapLock = prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK,
+        screensaver = prefs.screensaverEnabled, powerScreensaver = prefs.screensaverOnPower,
+    ))
+
+    fun disableLockscreenServiceFeatures() {
+        for (feature in lockscreenServiceFeatures()) when (feature) {
+            AccessibilityFeature.WIDGET -> prefs.lockscreenWidget = false
+            AccessibilityFeature.MEDIA -> prefs.lockscreenMusicWidget = false
+            AccessibilityFeature.MESSAGE -> Unit // Message clearing is a separate user choice.
+            AccessibilityFeature.CLOCK_COVER -> prefs.hideStatusBarClock = false
+            AccessibilityFeature.DOUBLE_TAP_LOCK -> prefs.doubleTapAction = PrefsManager.DOUBLE_TAP_OFF
+            AccessibilityFeature.POWER_SCREENSAVER -> prefs.screensaverOnPower = false
+        }
+        // Preserve the existing off action for stored-but-currently-inactive rows.
+        prefs.screensaverOnPower = false
+        prefs.hideStatusBarClock = false
+        resolveLockscreenReEnable()
     }
 
     fun startScreensaver(context: Context) {

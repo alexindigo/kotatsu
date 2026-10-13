@@ -20,12 +20,11 @@ import com.gezimos.katapult.ui.BottomSheet
 import com.gezimos.katapult.ui.BottomSheetOption
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
-import com.gezimos.katapult.util.PrefsManager
 
 /**
- * Shown when the lockscreen widget is enabled but its accessibility service is off —
+ * Shown when selected features need the accessibility service but it is off —
  * Android drops the grant when the app is updated. Offers to reopen accessibility
- * settings or turn the widget off.
+ * settings or turn off those features (retaining the lock-screen message).
  */
 @Composable
 fun LockscreenReEnableSheet(viewModel: MainViewModel) {
@@ -60,13 +59,7 @@ fun LockscreenReEnableSheet(viewModel: MainViewModel) {
             text = stringResource(R.string.lockscreen_reenable_disable),
             icon = Icons.Rounded.NotificationsOff,
         ) {
-            viewModel.prefs.lockscreenWidget = false
-            viewModel.prefs.screensaverOnPower = false
-            viewModel.prefs.hideStatusBarClock = false
-            if (viewModel.prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK) {
-                viewModel.prefs.doubleTapAction = PrefsManager.DOUBLE_TAP_OFF
-            }
-            viewModel.resolveLockscreenReEnable()
+            viewModel.disableLockscreenServiceFeatures()
         }
     }
 }

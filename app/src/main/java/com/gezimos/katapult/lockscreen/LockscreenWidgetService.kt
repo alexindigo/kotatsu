@@ -463,12 +463,11 @@ class LockscreenWidgetService :
     }
 
     /**
-     * lockscreen_widget_service.xml limits events to com.android.systemui, which is what keeps
-     * this service blind to other apps. The cost is that on unlock the last event we get is the
-     * keyguard dismissing, while isKeyguardLocked is still true mid-animation, so evaluate()
-     * keeps the overlays up. Home then draws under a different package and no further event
-     * arrives to re-run evaluate(), leaving them stranded on top of home. Re-check on a short
-     * tick, scheduled only while something is shown so it stops itself once they come down.
+     * Event delivery is limited to com.android.systemui, but findFocus can still return a
+     * node from another package; PIN inspection checks that node's package separately.
+     * Keyguard dismissal can arrive while isKeyguardLocked is still true mid-animation,
+     * with no later System UI event to remove overlays. Re-check while overlays or selected
+     * PIN inspection are active, so unlock and PIN occlusion are observed without new events.
      */
     private val keyguardRecheck = Runnable { evaluate() }
     private var burstUntil = 0L
@@ -602,7 +601,8 @@ class LockscreenWidgetService :
     }
 
     /**
-     * The PIN screen is in front when a visible input field holds focus. Polled instead of
+     * A visible System UI EditText with input focus indicates the PIN screen; inspection
+     * failure also hides overlays. Polled instead of
      * event-driven: re-showing the PIN doesn't re-fire focus events when its field kept focus.
      */
     private var lastPinShowing = false
@@ -610,15 +610,14 @@ class LockscreenWidgetService :
     private fun pinShowing(check: Boolean): Boolean {
         if (!SensitiveAccess.accessibility()) { lastPinShowing = false; return false }
         if (!check) return lastPinShowing
-        lastPinShowing = try {
+        lastPinShowing = AccessibilityPolicy.pinShowing {
             val focus = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            val showing = focus != null && focus.isVisibleToUser &&
-                focus.className?.contains("EditText") == true
-            @Suppress("DEPRECATION")
-            focus?.recycle()
-            showing
-        } catch (_: Exception) {
-            false
+            try {
+                focus != null && AccessibilityPolicy.isPinField(focus.packageName, focus.isVisibleToUser, focus.className)
+            } finally {
+                @Suppress("DEPRECATION")
+                focus?.recycle()
+            }
         }
         return lastPinShowing
     }

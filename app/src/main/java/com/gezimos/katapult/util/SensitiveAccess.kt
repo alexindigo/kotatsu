@@ -45,6 +45,7 @@ object SensitiveAccess {
         if (::context.isInitialized && packageName == context.packageName) {
             when (op) {
                 AppOpsManager.OPSTR_READ_CALL_LOG -> { callChanges.incrementAndGet(); callActionChanges.incrementAndGet() }
+                AppOpsManager.OPSTR_WRITE_CALL_LOG -> callActionChanges.incrementAndGet()
                 AppOpsManager.OPSTR_READ_SMS -> smsChanges.incrementAndGet()
                 AppOpsManager.OPSTR_GET_USAGE_STATS -> usageChanges.incrementAndGet()
             }

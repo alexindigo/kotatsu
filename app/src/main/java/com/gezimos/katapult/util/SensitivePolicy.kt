@@ -148,6 +148,7 @@ class ActionRequests {
 
     @Synchronized fun cancel() { epoch++; pending = null }
     @Synchronized fun current(id: Long): Boolean = id == epoch
+    @Synchronized fun awaitingResult(id: Long): Boolean = pending?.id == id && id == epoch
     @Synchronized fun complete(id: Long) { if (id == epoch) { epoch++; pending = null } }
 
     @Synchronized fun consume(id: Long): Request? {
@@ -185,19 +186,23 @@ class BadgeActions(
         // A different lease per deliberate action prevents an old completion
         // from releasing the demand owned by a newer request.
         lease = acquire()
-        if (callWriteGranted()) { execute(request); return null }
+        if (callWriteGranted()) { requests.consume(request.id); execute(request); return null }
         return request.id
     }
 
     fun result(id: Long?, granted: Boolean) {
         val request = id?.let { requests.consume(it) } ?: return
         if (!granted) { close(); return }
-        execute(request)
+        // The first grant itself changes AppOps. Bind queued work to access at
+        // the permission result, not the revision before that dialog opened.
+        val grantedRequest = request.copy(accessRevision = revision())
+        pending = grantedRequest
+        execute(grantedRequest)
     }
 
     fun reconcile() {
         val request = pending ?: return
-        if (!callChoiceAllowed() || request.accessRevision != revision() ||
+        if (!callChoiceAllowed() || (!requests.awaitingResult(request.id) && request.accessRevision != revision()) ||
             route(request.packageName).source != BadgeSource.DIRECT_CALLS) close()
     }
 
@@ -227,7 +232,24 @@ data class AccessibilitySelection(val widget: Boolean = false, val media: Boolea
 data class AccessibilityDemand(val badges: Boolean, val media: Boolean, val inspectPin: Boolean,
     val clockCover: Boolean, val lockAction: Boolean, val powerEntry: Boolean)
 
+enum class AccessibilityFeature { WIDGET, MEDIA, MESSAGE, CLOCK_COVER, DOUBLE_TAP_LOCK, POWER_SCREENSAVER }
+
 object AccessibilityPolicy {
+    fun serviceFeatures(selection: AccessibilitySelection): List<AccessibilityFeature> = buildList {
+        if (selection.widget) add(AccessibilityFeature.WIDGET)
+        if (selection.media) add(AccessibilityFeature.MEDIA)
+        if (selection.message) add(AccessibilityFeature.MESSAGE)
+        if (selection.clockCover) add(AccessibilityFeature.CLOCK_COVER)
+        if (selection.doubleTapLock) add(AccessibilityFeature.DOUBLE_TAP_LOCK)
+        if (selection.screensaver && selection.powerScreensaver) add(AccessibilityFeature.POWER_SCREENSAVER)
+    }
+
+    fun isPinField(packageName: CharSequence?, visible: Boolean, className: CharSequence?): Boolean =
+        packageName?.toString() == "com.android.systemui" && visible && className?.contains("EditText") == true
+
+    /** Failed inspection cannot establish that it is safe to show overlays. */
+    fun pinShowing(inspect: () -> Boolean): Boolean = try { inspect() } catch (_: Exception) { true }
+
     fun demand(eligible: Boolean, selection: AccessibilitySelection, lockscreenActive: Boolean,
                launcherActive: Boolean, screensaverActive: Boolean): AccessibilityDemand = AccessibilityDemand(
         badges = eligible && lockscreenActive && selection.widget,
