@@ -53,6 +53,8 @@ class LauncherPreviewInstrumentedTest {
         val saved = model.prefs.loadAppOrder()?.toList()
         val rawPrefs = context.getSharedPreferences("katapult_prefs", 0)
         val originalOrderJson = rawPrefs.all["app_order"]
+        val originalScreensaverValue = rawPrefs.all["screensaver_enabled"]
+        val originalThemeValue = rawPrefs.all["theme_mode"]
         assertTrue("Preserve unexpected stored order types", originalOrderJson == null || originalOrderJson is String)
         var generatedIcon: Pair<com.gezimos.katapult.model.AppModel, java.io.File>? = null
         try {
@@ -371,7 +373,13 @@ class LauncherPreviewInstrumentedTest {
                 val editor = rawPrefs.edit()
                 if (originalOrderJson is String) editor.putString("app_order", originalOrderJson)
                 else editor.remove("app_order")
-                editor.commit()
+                if (originalScreensaverValue is Boolean) editor.putBoolean("screensaver_enabled", originalScreensaverValue)
+                else editor.remove("screensaver_enabled")
+                if (originalThemeValue is Int) editor.putInt("theme_mode", originalThemeValue)
+                else editor.remove("theme_mode")
+                assertTrue(editor.commit())
+                assertEquals(originalScreensaverValue, rawPrefs.all["screensaver_enabled"])
+                assertEquals(originalThemeValue, rawPrefs.all["theme_mode"])
                 model.loadApps()
             }
         }

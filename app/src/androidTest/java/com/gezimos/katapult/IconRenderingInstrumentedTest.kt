@@ -115,11 +115,13 @@ class IconRenderingInstrumentedTest {
                 IconUtility.clearCacheFor(shortcutKey)
                 assertTrue(IconUtility.loadShortcutIcon(context, key, "owned-shortcut", 96)!!.sameAs(CatalogueIconRenderer.render(context, signal, 96)))
             } finally {
-                prefs.clearIconOverride(shortcutKey)
+                assertTrue(context.getSharedPreferences("katapult_prefs", 0).edit()
+                    .remove("icon_override_$shortcutKey").commit())
                 IconUtility.clearCacheFor(shortcutKey)
             }
         } finally {
-            prefs.clearIconOverride(key)
+            assertTrue(context.getSharedPreferences("katapult_prefs", 0).edit()
+                .remove("icon_override_$key").commit())
             IconUtility.clearCacheFor(key)
             assertTrue(file.delete())
         }

@@ -27,6 +27,7 @@ import com.gezimos.katapult.util.IconCollection
 import com.gezimos.katapult.util.IconUtility
 import org.json.JSONObject
 import org.junit.Assert.*
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -34,6 +35,15 @@ import java.io.File
 /** Two explicit invocations prove a saved choice survives an actual process stop. */
 @RunWith(AndroidJUnit4::class)
 class IconPickerInstrumentedTest {
+    private val proofFiles = mutableSetOf<File>()
+    private var retainColdProof = false
+
+    @After fun removeOwnedProofFiles() {
+        if (!retainColdProof) for (file in proofFiles) {
+            assertTrue("Could not remove test proof $file", !file.exists() || file.delete())
+        }
+    }
+
     @Test fun rejectedChoicesStayVisibleAndUnavailableTilesDoNotSave() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -70,6 +80,7 @@ class IconPickerInstrumentedTest {
             instrumentation.waitForIdleSync()
             val file = File(proof, "$name.png")
             assertFalse(file.exists())
+            proofFiles.add(file)
             val screen = automation.takeScreenshot()!!
             file.outputStream().use { assertTrue(screen.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         }
@@ -132,16 +143,22 @@ class IconPickerInstrumentedTest {
 
         fun reveal(label: String, forward: Boolean) {
             fun visibleBounds(): Rect? {
-                val node = findLabel(automation.rootInActiveWindow, label) ?: return null
+                var node = findLabel(automation.rootInActiveWindow, label) ?: return null
+                if (!node.refresh()) {
+                    node = findLabel(automation.rootInActiveWindow, label) ?: return null
+                    if (!node.refresh()) return null
+                }
                 val rect = Rect()
                 node.getBoundsInScreen(rect)
                 var parent = node.parent
                 while (parent != null && parent.className?.toString() != "android.widget.ScrollView") parent = parent.parent
                 val viewport = Rect()
+                if (parent?.refresh() != true) return null
                 parent?.getBoundsInScreen(viewport)
                 return rect.takeIf { !it.isEmpty && !viewport.isEmpty && it.top >= viewport.top && it.bottom <= viewport.bottom }
             }
-            repeat(8) {
+            // Observe after every swipe, including the last permitted one.
+            repeat(9) { attempt ->
                 val visible = visibleBounds()
                 if (visible != null) {
                     // A touch while the fling is moving stops that fling instead
@@ -156,6 +173,7 @@ class IconPickerInstrumentedTest {
                     }
                     return
                 }
+                if (attempt == 8) return@repeat
                 fun scroller(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
                     if (node == null) return null
                     if (node.className?.toString() == "android.widget.ScrollView" && node.packageName?.toString() == context.packageName) return node
@@ -163,6 +181,7 @@ class IconPickerInstrumentedTest {
                     return null
                 }
                 val owner = scroller(automation.rootInActiveWindow) ?: error("Picker scroll owner absent")
+                assertTrue("Picker scroll owner is stale", owner.refresh())
                 val bounds = Rect()
                 owner.getBoundsInScreen(bounds)
                 assertFalse("Picker scroll owner has no current bounds", bounds.isEmpty)
@@ -199,6 +218,7 @@ class IconPickerInstrumentedTest {
             instrumentation.waitForIdleSync()
             val file = File(proof, "$name.png")
             assertFalse("Preserve an earlier proof capture", file.exists())
+            proofFiles.add(file)
             var screen: Bitmap? = null
             var previous: Bitmap? = null
             var stable = 0
@@ -219,6 +239,7 @@ class IconPickerInstrumentedTest {
 
         if (phase == "choose") {
             assertFalse("Preserve an earlier active choice proof", stateFile.exists())
+            proofFiles.add(stateFile)
             val target = model.orderedApps.first()
             val previous = model.prefs.getIconOverride(target.key)
             val originalOrder = model.orderedApps.map { it.key }
@@ -313,17 +334,26 @@ class IconPickerInstrumentedTest {
                     model.prefs.roundedIcons = originalShape
                     model.roundedIcons = originalShape
                 }
-                if (!reached) {
-                    if (previous == null) model.prefs.clearIconOverride(target.key)
-                    else assertTrue(model.prefs.commitIconOverride(target.key, previous))
+                // Only an explicit two-invocation cold proof retains its choice.
+                // The normal class gate owns and cleans all of its artifacts.
+                retainColdProof = reached && InstrumentationRegistry.getArguments().getString("iconPhase") == "choose"
+                if (!retainColdProof) {
+                    val editor = context.getSharedPreferences("katapult_prefs", 0).edit()
+                    if (previous == null) editor.remove("icon_override_${target.key}")
+                    else editor.putString("icon_override_${target.key}", previous)
+                    assertTrue(editor.commit())
                     IconUtility.clearCacheFor(target.key)
-                    state.put("failureChoiceRestored", true)
-                    stateFile.writeText(state.toString(2))
+                    assertEquals(previous, model.prefs.getIconOverride(target.key))
                 }
             }
         } else {
             assertTrue("Cold proof missing", stateFile.isFile)
             val state = JSONObject(stateFile.readText())
+            proofFiles.add(stateFile)
+            for (name in listOf("grid-selected-light", "picker-material-dark-rounded") +
+                IconCollection.entries.flatMap { listOf("picker-${it.id}-full-light", "picker-${it.id}-light") }) {
+                proofFiles.add(File(proof, "$name.png"))
+            }
             val key = state.getString("key")
             val chosen = state.getString("selectedId")
             try {
@@ -344,12 +374,12 @@ class IconPickerInstrumentedTest {
                 state.put("coldBitmapVerified", true).put("resetVerified", true)
             } finally {
                 val previous = if (state.isNull("previous")) null else state.getString("previous")
-                if (previous == null) model.prefs.clearIconOverride(key)
-                else assertTrue(model.prefs.commitIconOverride(key, previous))
+                val editor = context.getSharedPreferences("katapult_prefs", 0).edit()
+                if (previous == null) editor.remove("icon_override_$key")
+                else editor.putString("icon_override_$key", previous)
+                assertTrue(editor.commit())
                 IconUtility.clearCacheFor(key)
                 assertEquals(previous, model.prefs.getIconOverride(key))
-                state.put("previousChoiceRestored", true)
-                stateFile.writeText(state.toString(2))
             }
         }
         Log.i("KotatsuIconProof", "PASS public picker phase=$phase; paging/search/selection/cold consumer/reset/preservation")
