@@ -83,6 +83,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var shortcutRefresh by mutableIntStateOf(0)
     var contextMenuApp by mutableStateOf<AppModel?>(null)
     var showRenameDialog by mutableStateOf(false)
+    var renameDraft by mutableStateOf<androidx.compose.ui.text.input.TextFieldValue?>(null)
+    private var renameDraftKey: String? = null
+    var lockscreenMessageDraft by mutableStateOf<androidx.compose.ui.text.input.TextFieldValue?>(null)
+    var showLockscreenMessageSheet by mutableStateOf(false)
+    var pendingImportText by mutableStateOf<String?>(null)
+    var pendingImportPreview by mutableStateOf<PrefsManager.PolicyImportPreview?>(null)
     var reorderMode by mutableStateOf(false)
     var reorderHighlightIndex by mutableIntStateOf(-1)
     var showReorderExit by mutableStateOf(false)
@@ -448,6 +454,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onHomeIntent() {
         requestReorderExit {
+            // Close draft editors without treating HOME as an explicit cancellation.
+            showRenameDialog = false
+            contextMenuApp = null
+            showLockscreenMessageSheet = false
             dismissAllSheets()
             if (screen != Screen.ONBOARDING) screen = Screen.HOME
             reconcileSensitiveSources()
@@ -571,11 +581,43 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val name = newName.ifBlank { null }
         contextMenuApp = null
         showRenameDialog = false
+        renameDraft = null
+        renameDraftKey = null
         if (name == currentLabel) return
         if (name != prefs.getAppRename(key)) prefs.removeFromAppOrder(key)
         prefs.setAppRename(key, name)
         shortcutRefresh++
         loadApps()
+    }
+
+    fun beginRename(app: AppModel) {
+        if (renameDraftKey != app.key || renameDraft == null) {
+            renameDraftKey = app.key
+            renameDraft = androidx.compose.ui.text.input.TextFieldValue(
+                app.label, androidx.compose.ui.text.TextRange(app.label.length),
+            )
+        }
+        showRenameDialog = true
+    }
+
+    fun beginLockscreenMessage() {
+        if (lockscreenMessageDraft == null) {
+            val text = prefs.lockscreenMessage.orEmpty()
+            lockscreenMessageDraft = androidx.compose.ui.text.input.TextFieldValue(
+                text, androidx.compose.ui.text.TextRange(text.length),
+            )
+        }
+        showLockscreenMessageSheet = true
+    }
+
+    fun applyConfigImport(context: Context, text: String, confirmed: Map<String, Boolean>?): Boolean {
+        val ok = prefs.importFromJson(text, confirmed)
+        if (ok) {
+            ShortcutHelper.syncAllPins(context, prefs)
+            IconUtility.invalidateOverrides()
+            context.startActivity(Intent.makeRestartActivityTask(ComponentName(context, MainActivity::class.java)))
+        }
+        return ok
     }
 
     fun removeShortcut(app: AppModel) {

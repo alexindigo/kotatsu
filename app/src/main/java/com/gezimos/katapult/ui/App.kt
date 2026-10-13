@@ -18,6 +18,9 @@ fun App(
     viewModel: MainViewModel,
     imagePicker: ActivityResultLauncher<String>,
     iconPicker: ActivityResultLauncher<Array<String>>,
+    configExporter: ActivityResultLauncher<String>,
+    configImporter: ActivityResultLauncher<Array<String>>,
+    screensaverWallpaperPicker: ActivityResultLauncher<String>,
     onClearBadge: (String) -> Unit,
 ) {
     val iconShape = if (viewModel.roundedIcons) RoundedIconShape else CircleShape
@@ -43,7 +46,7 @@ fun App(
             Screen.ONBOARDING -> OnboardingScreen(viewModel)
             Screen.HOME -> HomeScreen(viewModel, imagePicker, iconPicker, onClearBadge)
             Screen.ALL_APPS -> AllAppsScreen(viewModel, iconPicker, onClearBadge)
-            Screen.SETTINGS -> SettingsScreen(viewModel)
+            Screen.SETTINGS -> SettingsScreen(viewModel, configExporter, configImporter, screensaverWallpaperPicker)
         }
         com.gezimos.katapult.lockscreen.LockscreenReEnableSheet(viewModel)
         if (viewModel.showReorderExit) {

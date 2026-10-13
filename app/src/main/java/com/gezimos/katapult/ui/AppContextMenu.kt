@@ -111,7 +111,7 @@ fun AppContextMenu(
                 }
             }
             BottomSheetOption(stringResource(R.string.rename), icon = Icons.Rounded.Edit) {
-                viewModel.showRenameDialog = true
+                viewModel.beginRename(app)
             }
             if (app.shortcutId.isNotEmpty()) {
                 BottomSheetOption(stringResource(R.string.change_icon), icon = Icons.Rounded.Image) {
@@ -195,8 +195,10 @@ fun AppContextMenu(
 
     if (viewModel.showRenameDialog) {
         RenameDialog(
-            currentName = app.label,
+            textFieldValue = viewModel.renameDraft ?: androidx.compose.ui.text.input.TextFieldValue(app.label),
+            onValueChange = { viewModel.renameDraft = it },
             onDismiss = {
+                if (viewModel.showRenameDialog) viewModel.renameDraft = null
                 viewModel.showRenameDialog = false
                 onDismiss()
             },
@@ -226,16 +228,11 @@ fun AppContextMenu(
 
 @Composable
 private fun RenameDialog(
-    currentName: String,
+    textFieldValue: androidx.compose.ui.text.input.TextFieldValue,
+    onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var textFieldValue by remember {
-        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(
-            text = currentName,
-            selection = androidx.compose.ui.text.TextRange(currentName.length),
-        ))
-    }
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
     BottomSheet(onDismiss = onDismiss, imePadding = true) {
@@ -249,7 +246,7 @@ private fun RenameDialog(
         )
         BasicTextField(
             value = textFieldValue,
-            onValueChange = { textFieldValue = it },
+            onValueChange = onValueChange,
             singleLine = true,
             textStyle = TextStyle(
                 fontSize = 18.sp,
@@ -286,10 +283,9 @@ private fun RenameDialog(
                     .padding(12.dp),
             )
         }
-    }
-
-    androidx.compose.runtime.LaunchedEffect(Unit) {
-        focusRequester.requestFocus()
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
+        }
     }
 }
 

@@ -115,7 +115,9 @@ class WallpaperFilesInstrumentedTest {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }) as MainActivity
             val current = activity
-            instrumentation.runOnMainSync { current.setContent { SettingsScreen(model) } }
+            instrumentation.runOnMainSync { current.setContent {
+                SettingsScreen(model, current.configExporter, current.configImporter, current.screensaverWallpaperPicker)
+            } }
             instrumentation.waitForIdleSync()
             val ui = PlatformUiDriver(instrumentation)
             ui.await("Fixture Settings grid is not ready") { ui.has(context.getString(R.string.cat_screensaver_sub)) }

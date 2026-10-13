@@ -50,6 +50,40 @@ class MainActivity : ComponentActivity() {
         else viewModel.cancelIconImport()
     }
 
+    val configExporter = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        uri?.let {
+            val ok = try {
+                val out = contentResolver.openOutputStream(it)
+                if (out == null) false else out.use { stream ->
+                    stream.write(viewModel.prefs.exportToJson(this).toByteArray())
+                    true
+                }
+            } catch (_: Exception) { false }
+            android.widget.Toast.makeText(this,
+                if (ok) R.string.config_exported else R.string.config_export_failed,
+                android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    val configImporter = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let {
+            val text = try {
+                contentResolver.openInputStream(it)?.bufferedReader()?.use { reader -> reader.readText() }
+            } catch (_: Exception) { null }
+            val preview = text?.let { data -> viewModel.prefs.previewPolicyImport(data) }
+            if (text != null && preview != null && preview.changes.isNotEmpty()) {
+                viewModel.pendingImportText = text
+                viewModel.pendingImportPreview = preview
+            } else if (text == null || preview == null || !viewModel.applyConfigImport(this, text, null)) {
+                android.widget.Toast.makeText(this, R.string.config_import_failed, android.widget.Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val screensaverWallpaperPicker = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { viewModel.setScreensaverWallpaper(this, it) }
+    }
+
     private val backCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
             if (viewModel.goBack() || DeviceHelper.isDefaultLauncher(this@MainActivity)) return
@@ -81,7 +115,9 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker, onClearBadge = ::clearBadge)
+            App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker,
+                configExporter = configExporter, configImporter = configImporter,
+                screensaverWallpaperPicker = screensaverWallpaperPicker, onClearBadge = ::clearBadge)
         }
     }
 

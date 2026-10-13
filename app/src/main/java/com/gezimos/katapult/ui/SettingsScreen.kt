@@ -29,8 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
@@ -124,22 +123,19 @@ private fun formatLabel(pattern: String): String =
     else java.text.SimpleDateFormat(pattern, java.util.Locale.getDefault()).format(java.util.Date())
 
 @Composable
-fun SettingsScreen(viewModel: MainViewModel) {
+fun SettingsScreen(
+    viewModel: MainViewModel,
+    configExporter: ActivityResultLauncher<String>,
+    configImporter: ActivityResultLauncher<Array<String>>,
+    screensaverWallpaperPicker: ActivityResultLauncher<String>,
+) {
     val context = LocalContext.current
     val prefs = viewModel.prefs
     val policyTick = viewModel.policyRefresh
     val policyChoices = remember(policyTick) { prefs.sensitiveChoices() }
     var showSensitiveAccess by remember { mutableStateOf(false) }
-    var pendingImportText by remember { mutableStateOf<String?>(null) }
-    var pendingImportPreview by remember { mutableStateOf<PrefsManager.PolicyImportPreview?>(null) }
     val applyImport: (String, Map<String, Boolean>?) -> Boolean = { text, confirmed ->
-        val ok = prefs.importFromJson(text, confirmed)
-        if (ok) {
-            ShortcutHelper.syncAllPins(context, prefs)
-            IconUtility.invalidateOverrides()
-            restartApp(context)
-        }
-        ok
+        viewModel.applyConfigImport(context, text, confirmed)
     }
     val isMudita = remember { DeviceHelper.isMuditaKompakt() }
     val versionName = remember {
@@ -175,7 +171,6 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
     var showSortSheet by remember { mutableStateOf(false) }
     var lockscreenMessage by remember { mutableStateOf(prefs.lockscreenMessage.orEmpty()) }
-    var showLockscreenMessageSheet by remember { mutableStateOf(false) }
     var showClockFormatSheet by remember { mutableStateOf(false) }
     var showDateFormatSheet by remember { mutableStateOf(false) }
     var showDoubleTapSheet by remember { mutableStateOf(false) }
@@ -198,55 +193,10 @@ fun SettingsScreen(viewModel: MainViewModel) {
     var showPermissionsSheet by remember { mutableStateOf(false) }
     var showConfigSheet by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
-    val configExporter = rememberLauncherForActivityResult(
-        ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        uri?.let {
-            val ok = try {
-                val out = context.contentResolver.openOutputStream(it)
-                if (out == null) false else out.use { stream ->
-                    stream.write(prefs.exportToJson(context).toByteArray())
-                    true
-                }
-            } catch (_: Exception) {
-                false
-            }
-            Toast.makeText(
-                context,
-                if (ok) R.string.config_exported else R.string.config_export_failed,
-                Toast.LENGTH_SHORT,
-            ).show()
-        }
-    }
-    val configImporter = rememberLauncherForActivityResult(
-        ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        uri?.let {
-            val text = try {
-                context.contentResolver.openInputStream(it)?.bufferedReader()?.use { r -> r.readText() }
-            } catch (_: Exception) {
-                null
-            }
-            val preview = text?.let { prefs.previewPolicyImport(it) }
-            if (text != null && preview != null && preview.changes.isNotEmpty()) {
-                pendingImportText = text
-                pendingImportPreview = preview
-            } else if (text == null || preview == null || !applyImport(text, null)) {
-                Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
     var lockscreenLatestFirst by remember { mutableStateOf(prefs.lockscreenWidgetLatestFirst) }
     var screensaverIslands by remember { mutableStateOf(prefs.screensaverIslands) }
     var screensaverWallpaper by remember { mutableStateOf(prefs.screensaverWallpaper) }
     val screensaverWallpaperPath = viewModel.screensaverWallpaperPath
-    val screensaverWallpaperPicker = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
-        uri?.let {
-            viewModel.setScreensaverWallpaper(context, it)
-        }
-    }
     var screensaverEnabled by remember { mutableStateOf(prefs.screensaverEnabled) }
     var screensaverShowClock by remember { mutableStateOf(prefs.screensaverShowClock) }
     var screensaverShowNotifications by remember { mutableStateOf(prefs.screensaverShowNotifications) }
@@ -917,7 +867,7 @@ fun SettingsScreen(viewModel: MainViewModel) {
                     description = lockscreenMessage.ifBlank {
                         stringResource(R.string.lockscreen_message_desc)
                     },
-                    onClick = { showLockscreenMessageSheet = true },
+                    onClick = viewModel::beginLockscreenMessage,
                 )
             }
             add {
@@ -1327,12 +1277,17 @@ fun SettingsScreen(viewModel: MainViewModel) {
         )
     }
 
-    if (showLockscreenMessageSheet) {
+    if (viewModel.showLockscreenMessageSheet) {
         LockscreenMessageSheet(
-            current = lockscreenMessage,
-            onDismiss = { showLockscreenMessageSheet = false },
+            textFieldValue = viewModel.lockscreenMessageDraft ?: androidx.compose.ui.text.input.TextFieldValue(lockscreenMessage),
+            onValueChange = { viewModel.lockscreenMessageDraft = it },
+            onDismiss = {
+                if (viewModel.showLockscreenMessageSheet) viewModel.lockscreenMessageDraft = null
+                viewModel.showLockscreenMessageSheet = false
+            },
             onConfirm = { text ->
-                showLockscreenMessageSheet = false
+                viewModel.showLockscreenMessageSheet = false
+                viewModel.lockscreenMessageDraft = null
                 val serviceOn = LockscreenWidgetService.isEnabled(context)
                 actionServiceEnabled = serviceOn
                 lockscreenMessage = text
@@ -1386,8 +1341,15 @@ fun SettingsScreen(viewModel: MainViewModel) {
         }
     }
 
-    pendingImportPreview?.let { preview ->
-        BottomSheet(onDismiss = { pendingImportPreview = null; pendingImportText = null }) {
+    viewModel.pendingImportPreview?.let { preview ->
+        val dismissImport = {
+            // HOME removes Settings; only an explicit dismissal in Settings cancels the preview.
+            if (viewModel.screen == com.gezimos.katapult.Screen.SETTINGS) {
+                viewModel.pendingImportPreview = null
+                viewModel.pendingImportText = null
+            }
+        }
+        BottomSheet(onDismiss = dismissImport) {
             Text(stringResource(R.string.policy_import_confirmation), fontSize = 18.sp, fontWeight = FontWeight.Bold,
                 fontFamily = LatoFamily, color = LocalInk.current)
             for ((choice, title) in sensitiveRows) {
@@ -1397,17 +1359,17 @@ fun SettingsScreen(viewModel: MainViewModel) {
                 }
             }
             BottomSheetOption(stringResource(R.string.config_import)) {
-                val text = pendingImportText
+                val text = viewModel.pendingImportText
                 val current = text?.let { prefs.previewPolicyImport(it) }
                 if (current != null && current.localChoices != preview.localChoices) {
-                    pendingImportPreview = current
+                    viewModel.pendingImportPreview = current
                 } else if (text != null && current != null && applyImport(text, preview.localChoices)) {
-                    pendingImportPreview = null; pendingImportText = null
+                    viewModel.pendingImportPreview = null; viewModel.pendingImportText = null
                 } else {
                     Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
                 }
             }
-            BottomSheetOption(stringResource(R.string.cancel)) { pendingImportPreview = null; pendingImportText = null }
+            BottomSheetOption(stringResource(R.string.cancel), onClick = dismissImport)
         }
     }
 
@@ -2412,18 +2374,11 @@ fun SettingsActionRow(
 
 @Composable
 private fun LockscreenMessageSheet(
-    current: String,
+    textFieldValue: androidx.compose.ui.text.input.TextFieldValue,
+    onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    var textFieldValue by remember {
-        mutableStateOf(
-            androidx.compose.ui.text.input.TextFieldValue(
-                text = current,
-                selection = androidx.compose.ui.text.TextRange(current.length),
-            ),
-        )
-    }
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
     BottomSheet(onDismiss = onDismiss, imePadding = true) {
@@ -2437,7 +2392,7 @@ private fun LockscreenMessageSheet(
         )
         BasicTextField(
             value = textFieldValue,
-            onValueChange = { textFieldValue = it },
+            onValueChange = onValueChange,
             singleLine = true,
             textStyle = TextStyle(fontSize = 18.sp, fontFamily = LatoFamily, color = LocalInk.current),
             cursorBrush = SolidColor(LocalInk.current),
@@ -2470,9 +2425,8 @@ private fun LockscreenMessageSheet(
                     .padding(12.dp),
             )
         }
+        LaunchedEffect(Unit) { focusRequester.requestFocus() }
     }
-
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 }
 
 @Composable

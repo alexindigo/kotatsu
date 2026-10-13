@@ -60,7 +60,9 @@ class StoredFeatureSwitchInstrumentedTest {
             val current = activity
             instrumentation.runOnMainSync {
                 val viewModel = ViewModelProvider(current)[MainViewModel::class.java]
-                current.setContent { SettingsScreen(viewModel) }
+                current.setContent {
+                    SettingsScreen(viewModel, current.configExporter, current.configImporter, current.screensaverWallpaperPicker)
+                }
             }
             val ui = PlatformUiDriver(instrumentation)
             ui.click(context.getString(category))
