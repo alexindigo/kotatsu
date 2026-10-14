@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Dostęp do użycia</string>
     <string name="perm_usage_access_desc">Sortowanie aplikacji według ostatnio lub najczęściej używanych</string>
     <string name="lockscreen_music_widget">Sterowanie muzyką na ekranie blokady</string>
+    <string name="lockscreen_weather">Pogoda na ekranie blokady</string>
+    <string name="lockscreen_weather_desc">Pokaż pogodę u góry ekranu blokady</string>
     <string name="lockscreen_music_widget_desc">Pokaż sterowanie multimediami na ekranie blokady dla odtwarzaczy innych niż Mudita</string>
     <string name="screensaver_readme_accessibility">Otwieranie przyciskiem zasilania wymaga włączonej usługi Kotatsu Action Service.</string>
     <string name="icon_size">Rozmiar ikon</string>

@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Nutzungszugriff</string>
     <string name="perm_usage_access_desc">Apps nach zuletzt verwendet oder meistgenutzt sortieren</string>
     <string name="lockscreen_music_widget">Musiksteuerung im Sperrbildschirm</string>
+    <string name="lockscreen_weather">Wetter auf dem Sperrbildschirm</string>
+    <string name="lockscreen_weather_desc">Wetter oben auf dem Sperrbildschirm anzeigen</string>
     <string name="lockscreen_music_widget_desc">Mediensteuerung im Sperrbildschirm für andere Player als den von Mudita anzeigen</string>
     <string name="screensaver_readme_accessibility">Mit Ein-/Aus-Taste öffnen erfordert den aktivierten Kotatsu Action Service.</string>
     <string name="icon_size">Symbolgröße</string>

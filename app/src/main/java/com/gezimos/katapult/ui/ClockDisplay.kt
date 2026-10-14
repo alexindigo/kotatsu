@@ -204,7 +204,7 @@ fun ColumnScope.ClockDisplay(
 }
 
 @Composable
-private fun weatherIcon(conditionId: Int, iconInfo: String?): ImageVector {
+internal fun weatherIcon(conditionId: Int, iconInfo: String?): ImageVector {
     val day = iconInfo == null || iconInfo.endsWith("d")
     val res = when (conditionId) {
         in 200..232 -> R.drawable.ic_weather_thunderstorm

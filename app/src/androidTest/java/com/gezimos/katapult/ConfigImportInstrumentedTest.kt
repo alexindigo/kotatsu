@@ -46,7 +46,7 @@ class ConfigImportInstrumentedTest {
             "double_tap_brightness", "infinite_scroll", "home_extra_row", "disable_music_widget",
             "show_katapult_icon", "hide_app_names", "hide_arrow_buttons", "disable_home_editing",
             "hide_all_apps_button", "swipe_up_all_apps", "home_islands", "vertical_app_gestures",
-            "lockscreen_widget", "lockscreen_music_widget", "lockscreen_widget_latest_first",
+            "lockscreen_widget", "lockscreen_music_widget", "lockscreen_weather", "lockscreen_widget_latest_first",
             "screensaver_enabled", "screensaver_islands", "screensaver_wallpaper", "screensaver_show_clock",
             "screensaver_show_notifications", "screensaver_double_tap_brightness", "screensaver_eink_refresh",
             "screensaver_on_power")

@@ -13,7 +13,21 @@ class LockscreenRecoveryPolicyTest {
         assertTrue(AccessibilityPolicy.serviceFeatures(AccessibilitySelection(screensaver = true)).isEmpty())
         assertTrue(AccessibilityPolicy.serviceFeatures(AccessibilitySelection(powerScreensaver = true)).isEmpty())
         assertEquals(AccessibilityFeature.entries.toList(), AccessibilityPolicy.serviceFeatures(
-            AccessibilitySelection(true, true, true, true, true, true, true)))
+            AccessibilitySelection(true, true, true, true, true, true, true, weather = true)))
+    }
+
+    @Test fun weatherAloneIsNamedForRecoveryAndInspectsPinWithoutBadgeOrMediaDemand() {
+        val selected = AccessibilitySelection(weather = true)
+        assertEquals(listOf(AccessibilityFeature.WEATHER), AccessibilityPolicy.serviceFeatures(selected))
+        val demand = AccessibilityPolicy.demand(true, selected, true, false, false)
+        assertTrue(demand.inspectPin)
+        assertFalse(demand.badges)
+        assertFalse(demand.media)
+        assertFalse(demand.clockCover)
+        assertFalse(demand.lockAction)
+        assertFalse(demand.powerEntry)
+        assertFalse(AccessibilityPolicy.demand(false, selected, true, false, false).inspectPin)
+        assertFalse(AccessibilityPolicy.demand(true, selected, false, false, false).inspectPin)
     }
 
     @Test fun onlyVisibleSystemUiEditTextFocusIsAPinField() {

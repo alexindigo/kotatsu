@@ -166,6 +166,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         clockCover = prefs.hideStatusBarClock && DeviceHelper.isMuditaKompakt(),
         doubleTapLock = prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK,
         screensaver = prefs.screensaverEnabled, powerScreensaver = prefs.screensaverOnPower,
+        weather = prefs.lockscreenWeather,
     ))
 
     // Include stored-but-inactive switches that the off action also clears.
@@ -182,6 +183,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AccessibilityFeature.CLOCK_COVER -> R.string.hide_status_bar_clock
             AccessibilityFeature.DOUBLE_TAP_LOCK -> R.string.double_tap_action
             AccessibilityFeature.POWER_SCREENSAVER -> R.string.screensaver_on_power
+            AccessibilityFeature.WEATHER -> R.string.lockscreen_weather
         }
     }
 
@@ -193,6 +195,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AccessibilityFeature.CLOCK_COVER -> prefs.hideStatusBarClock = false
             AccessibilityFeature.DOUBLE_TAP_LOCK -> prefs.doubleTapAction = PrefsManager.DOUBLE_TAP_OFF
             AccessibilityFeature.POWER_SCREENSAVER -> prefs.screensaverOnPower = false
+            AccessibilityFeature.WEATHER -> prefs.lockscreenWeather = false
         }
         resolveLockscreenReEnable()
     }

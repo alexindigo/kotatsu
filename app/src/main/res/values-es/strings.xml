@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Acceso al uso</string>
     <string name="perm_usage_access_desc">Ordenar apps por más recientes o más usadas</string>
     <string name="lockscreen_music_widget">Controles de música en la pantalla de bloqueo</string>
+    <string name="lockscreen_weather">Tiempo en la pantalla de bloqueo</string>
+    <string name="lockscreen_weather_desc">Mostrar el tiempo en la parte superior de la pantalla de bloqueo</string>
     <string name="lockscreen_music_widget_desc">Muestra los controles multimedia en la pantalla de bloqueo para reproductores distintos al de Mudita</string>
     <string name="screensaver_readme_accessibility">Abrir con el botón de encendido requiere el Kotatsu Action Service activado.</string>
     <string name="icon_size">Tamaño de iconos</string>

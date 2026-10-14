@@ -227,12 +227,12 @@ class BadgeActions(
 
 data class AccessibilitySelection(val widget: Boolean = false, val media: Boolean = false,
     val message: Boolean = false, val clockCover: Boolean = false, val doubleTapLock: Boolean = false,
-    val screensaver: Boolean = false, val powerScreensaver: Boolean = false)
+    val screensaver: Boolean = false, val powerScreensaver: Boolean = false, val weather: Boolean = false)
 
 data class AccessibilityDemand(val badges: Boolean, val media: Boolean, val inspectPin: Boolean,
     val clockCover: Boolean, val lockAction: Boolean, val powerEntry: Boolean)
 
-enum class AccessibilityFeature { WIDGET, MEDIA, MESSAGE, CLOCK_COVER, DOUBLE_TAP_LOCK, POWER_SCREENSAVER }
+enum class AccessibilityFeature { WIDGET, MEDIA, MESSAGE, CLOCK_COVER, DOUBLE_TAP_LOCK, POWER_SCREENSAVER, WEATHER }
 
 object AccessibilityPolicy {
     fun serviceFeatures(selection: AccessibilitySelection): List<AccessibilityFeature> = buildList {
@@ -242,6 +242,7 @@ object AccessibilityPolicy {
         if (selection.clockCover) add(AccessibilityFeature.CLOCK_COVER)
         if (selection.doubleTapLock) add(AccessibilityFeature.DOUBLE_TAP_LOCK)
         if (selection.screensaver && selection.powerScreensaver) add(AccessibilityFeature.POWER_SCREENSAVER)
+        if (selection.weather) add(AccessibilityFeature.WEATHER)
     }
 
     fun isPinField(packageName: CharSequence?, visible: Boolean, className: CharSequence?): Boolean =
@@ -254,7 +255,7 @@ object AccessibilityPolicy {
                launcherActive: Boolean, screensaverActive: Boolean): AccessibilityDemand = AccessibilityDemand(
         badges = eligible && lockscreenActive && selection.widget,
         media = eligible && lockscreenActive && selection.media,
-        inspectPin = eligible && lockscreenActive && (selection.widget || selection.media || selection.message),
+        inspectPin = eligible && lockscreenActive && (selection.widget || selection.media || selection.message || selection.weather),
         clockCover = eligible && selection.clockCover && (launcherActive || screensaverActive),
         lockAction = eligible && ((selection.doubleTapLock && launcherActive) || (selection.screensaver && screensaverActive)),
         powerEntry = eligible && selection.screensaver && selection.powerScreensaver,

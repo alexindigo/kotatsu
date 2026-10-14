@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Přístup k využití</string>
     <string name="perm_usage_access_desc">Řazení aplikací podle posledního použití nebo nejpoužívanějších</string>
     <string name="lockscreen_music_widget">Ovládání hudby na zamykací obrazovce</string>
+    <string name="lockscreen_weather">Počasí na zamykací obrazovce</string>
+    <string name="lockscreen_weather_desc">Zobrazit počasí v horní části zamykací obrazovky</string>
     <string name="lockscreen_music_widget_desc">Zobrazit ovládání přehrávání na zamykací obrazovce pro jiné přehrávače než Mudita</string>
     <string name="screensaver_readme_accessibility">Otevření tlačítkem napájení vyžaduje zapnutou službu Kotatsu Action Service.</string>
     <string name="icon_size">Velikost ikon</string>

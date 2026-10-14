@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Acesso à utilização</string>
     <string name="perm_usage_access_desc">Ordenar apps por mais recentes ou mais usadas</string>
     <string name="lockscreen_music_widget">Controlos de música no ecrã de bloqueio</string>
+    <string name="lockscreen_weather">Meteorologia no ecrã de bloqueio</string>
+    <string name="lockscreen_weather_desc">Mostrar a meteorologia na parte superior do ecrã de bloqueio</string>
     <string name="lockscreen_music_widget_desc">Mostrar controlos de multimédia no ecrã de bloqueio para leitores além do da Mudita</string>
     <string name="screensaver_readme_accessibility">Abrir com o botão de ligar requer o Kotatsu Action Service ativado.</string>
     <string name="icon_size">Tamanho dos ícones</string>

@@ -35,11 +35,23 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -56,6 +68,11 @@ import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.MusicWidget
 import com.gezimos.katapult.ui.NoIndication
+import com.gezimos.katapult.ui.LatoFamily
+import com.gezimos.katapult.ui.weatherIcon
+import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.api.Weather
+import com.gezimos.katapult.weather.api.WeatherSource
 import com.gezimos.katapult.util.AudioWidgetHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -187,6 +204,11 @@ class LockscreenWidgetService :
     private var overlayParams: WindowManager.LayoutParams? = null
     private var clockCover: View? = null
     private var messageOverlay: View? = null
+    private var weatherOverlay: ComposeView? = null
+    private var weatherSource: WeatherSource? = null
+    private var weatherSubscription: AutoCloseable? = null
+    private var weatherValue: Weather? = null
+    private var shownWeather: Pair<Weather, Boolean>? = null
     private var shownRows: List<Pair<String, Int>> = emptyList()
     private var directBadges: DirectBadgeHelper? = null
 
@@ -198,7 +220,7 @@ class LockscreenWidgetService :
         acquireBadges = { SensitiveAccess.acquireBadges(badgeOwner) },
         acquireMedia = { SensitiveAccess.acquireMedia(mediaOwner) },
         subscriptions = ::syncSourceSubscriptions,
-        clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); musicState.value = null },
+        clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); musicState.value = null },
         clearInspection = {
             mainHandler.removeCallbacks(keyguardRecheck)
             lastPinShowing = false
@@ -212,7 +234,8 @@ class LockscreenWidgetService :
         SensitiveAccess.accessibility(),
         AccessibilitySelection(prefs.lockscreenWidget, prefs.lockscreenMusicWidget, !prefs.lockscreenMessage.isNullOrBlank(),
             prefs.hideStatusBarClock && !prefs.hideStatusBar && DeviceHelper.isMuditaKompakt(),
-            prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK, prefs.screensaverEnabled, prefs.screensaverOnPower),
+            prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK, prefs.screensaverEnabled, prefs.screensaverOnPower,
+            weather = prefs.lockscreenWeather),
         lockscreenActive, launcherForeground, screensaverForeground || ScreensaverActivity.isShowing,
     )
 
@@ -259,7 +282,10 @@ class LockscreenWidgetService :
                     keyguardPossible = true
                     maybeStartScreensaver()
                 }
-                Intent.ACTION_SCREEN_ON -> keyguardPossible = true
+                Intent.ACTION_SCREEN_ON -> {
+                    keyguardPossible = true
+                    readWeather()
+                }
                 Intent.ACTION_USER_PRESENT -> keyguardPossible = false
             }
             evaluate()
@@ -306,7 +332,7 @@ class LockscreenWidgetService :
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (!SensitiveAccess.accessibility() ||
-            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && prefs.lockscreenMessage.isNullOrBlank())) return
+            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather && prefs.lockscreenMessage.isNullOrBlank())) return
         if (!keyguardPossible) return
         burstUntil = SystemClock.elapsedRealtime() + KEYGUARD_BURST_MS
         evaluate()
@@ -321,6 +347,7 @@ class LockscreenWidgetService :
 
     private fun releaseSensitiveConsumers() {
         consumers.close()
+        closeWeatherSource()
         musicState.value = null
     }
 
@@ -462,6 +489,91 @@ class LockscreenWidgetService :
         musicOverlay = null
     }
 
+    private fun closeWeatherSource() {
+        weatherSubscription?.close()
+        weatherSubscription = null
+        weatherSource = null
+        weatherValue = null
+        removeWeatherOverlay()
+    }
+
+    private fun syncWeatherSource() {
+        val source = if (SensitiveAccess.accessibility() && prefs.lockscreenWeather)
+            WeatherSources.active(this) else null
+        if (source === weatherSource) return
+        closeWeatherSource()
+        weatherSource = source ?: return
+        weatherSubscription = source.observe(this) {
+            mainHandler.post {
+                if (weatherSource === source && SensitiveAccess.accessibility() && prefs.lockscreenWeather) {
+                    readWeather()
+                    evaluate()
+                }
+            }
+        }
+        readWeather()
+    }
+
+    // Read only on activation, wake or provider changes, never in the keyguard poll.
+    private fun readWeather() {
+        weatherValue = if (::prefs.isInitialized && SensitiveAccess.accessibility() && prefs.lockscreenWeather)
+            weatherSource?.read(this) else null
+    }
+
+    private fun applyWeather(onLockscreen: Boolean) {
+        val weather = weatherValue
+        if (!onLockscreen || !prefs.lockscreenWeather || weatherSource == null || weather == null) {
+            removeWeatherOverlay()
+            return
+        }
+        val rendered = weather to prefs.darkMode
+        if (weatherOverlay != null && shownWeather == rendered) return
+        removeWeatherOverlay()
+        val dark = rendered.second
+        val ink = if (dark) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black
+        val surface = if (dark) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White
+        val view = ComposeView(this).apply {
+            setViewTreeLifecycleOwner(this@LockscreenWidgetService)
+            setViewTreeViewModelStoreOwner(this@LockscreenWidgetService)
+            setViewTreeSavedStateRegistryOwner(this@LockscreenWidgetService)
+            setContent {
+                Row(Modifier.fillMaxHeight().background(surface), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(weatherIcon(weather.conditionId, weather.iconInfo),
+                        stringResource(R.string.cd_weather), Modifier.size(18.dp), tint = ink)
+                    Spacer(Modifier.width(2.dp))
+                    Text(stringResource(R.string.weather_temp, weather.temperature, weather.unit),
+                        fontSize = 18.sp, fontFamily = LatoFamily, color = ink)
+                }
+            }
+        }
+        val params = WindowManager.LayoutParams().apply {
+            type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            format = PixelFormat.OPAQUE
+            flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            width = WindowManager.LayoutParams.WRAP_CONTENT
+            height = statusBarHeightPx()
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = 0
+            setTitle("Kotatsu lock-screen weather")
+        }
+        try {
+            getSystemService(WindowManager::class.java).addView(view, params)
+            weatherOverlay = view
+            shownWeather = rendered
+        } catch (_: Exception) {
+            view.disposeComposition()
+        }
+    }
+
+    private fun removeWeatherOverlay() {
+        weatherOverlay?.let {
+            try { getSystemService(WindowManager::class.java).removeView(it) } catch (_: Exception) {}
+            it.disposeComposition()
+        }
+        weatherOverlay = null
+        shownWeather = null
+    }
+
     /**
      * Event delivery is limited to com.android.systemui, but findFocus can still return a
      * node from another package; PIN inspection checks that node's package separately.
@@ -475,7 +587,7 @@ class LockscreenWidgetService :
     private fun scheduleKeyguardRecheck() {
         mainHandler.removeCallbacks(keyguardRecheck)
         if (!SensitiveAccess.accessibility()) return
-        if (overlay == null && musicOverlay == null && messageOverlay == null && !consumers.badgesActive &&
+        if (overlay == null && musicOverlay == null && messageOverlay == null && weatherOverlay == null && !consumers.badgesActive &&
             !consumers.mediaActive && !consumers.inspectionActive) return
         val bursting = SystemClock.elapsedRealtime() < burstUntil
         val delay = if (bursting) KEYGUARD_RECHECK_MS else KEYGUARD_IDLE_RECHECK_MS
@@ -548,8 +660,9 @@ class LockscreenWidgetService :
     private fun evaluate() {
         if (!::prefs.isInitialized) return
         applyClockCover(launcherForeground || screensaverForeground)
+        syncWeatherSource()
         if (!SensitiveAccess.accessibility() ||
-            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && prefs.lockscreenMessage.isNullOrBlank())) {
+            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather && prefs.lockscreenMessage.isNullOrBlank())) {
             releaseSensitiveConsumers()
             syncSourceSubscriptions(false, false)
             mainHandler.removeCallbacks(keyguardRecheck)
@@ -573,6 +686,7 @@ class LockscreenWidgetService :
         consumers.reconcile(demand.copy(inspectPin = inspection))
         applyMusicWidget(onLockscreen)
         applyLockscreenMessage(onLockscreen)
+        applyWeather(onLockscreen)
         if (!onLockscreen || !prefs.lockscreenWidget) {
             removeOverlay()
             scheduleKeyguardRecheck()

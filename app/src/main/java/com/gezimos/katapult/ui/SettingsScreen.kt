@@ -185,6 +185,7 @@ fun SettingsScreen(
     var verticalAppGestures by remember { mutableStateOf(prefs.verticalAppGestures) }
     var lockscreenWidget by remember { mutableStateOf(prefs.lockscreenWidget) }
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
+    var lockscreenWeather by remember { mutableStateOf(prefs.lockscreenWeather) }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var showLockscreenApps by remember { mutableStateOf(false) }
     var showLockscreenReadMe by remember { mutableStateOf(false) }
@@ -854,6 +855,27 @@ fun SettingsScreen(
                         if (!requested || serviceOn) {
                             lockscreenMusicWidget = requested
                             prefs.lockscreenMusicWidget = requested
+                        }
+                        if (requested && !serviceOn) {
+                            try {
+                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                            } catch (_: Exception) {}
+                        }
+                    },
+                )
+            }
+            if (weatherSource != null) add {
+                SettingsToggleRow(
+                    title = stringResource(R.string.lockscreen_weather),
+                    description = stringResource(R.string.lockscreen_weather_desc) +
+                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
+                    checked = lockscreenWeather,
+                    onCheckedChange = { requested ->
+                        val serviceOn = LockscreenWidgetService.isEnabled(context)
+                        actionServiceEnabled = serviceOn
+                        if (!requested || serviceOn) {
+                            lockscreenWeather = requested
+                            prefs.lockscreenWeather = requested
                         }
                         if (requested && !serviceOn) {
                             try {

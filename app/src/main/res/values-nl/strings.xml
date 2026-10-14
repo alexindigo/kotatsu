@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Gebruikstoegang</string>
     <string name="perm_usage_access_desc">Apps sorteren op meest recent of meest gebruikt</string>
     <string name="lockscreen_music_widget">Muziekbediening op het vergrendelscherm</string>
+    <string name="lockscreen_weather">Weer op het vergrendelscherm</string>
+    <string name="lockscreen_weather_desc">Toon het weer bovenaan het vergrendelscherm</string>
     <string name="lockscreen_music_widget_desc">Toon mediabediening op het vergrendelscherm voor andere spelers dan die van Mudita</string>
     <string name="screensaver_readme_accessibility">Openen met de aan-uitknop vereist dat de Kotatsu Action Service is ingeschakeld.</string>
     <string name="icon_size">Pictogramgrootte</string>

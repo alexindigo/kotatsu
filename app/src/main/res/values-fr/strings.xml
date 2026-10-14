@@ -273,6 +273,8 @@
     <string name="perm_usage_access">Accès à l\'utilisation</string>
     <string name="perm_usage_access_desc">Trier les applis par plus récentes ou plus utilisées</string>
     <string name="lockscreen_music_widget">Contrôles musicaux sur l\'écran de verrouillage</string>
+    <string name="lockscreen_weather">Météo sur l\'écran de verrouillage</string>
+    <string name="lockscreen_weather_desc">Afficher la météo en haut de l\'écran de verrouillage</string>
     <string name="lockscreen_music_widget_desc">Afficher les contrôles multimédias sur l\'écran de verrouillage pour les lecteurs autres que celui de Mudita</string>
     <string name="screensaver_readme_accessibility">L\'ouverture avec le bouton d\'alimentation nécessite le Kotatsu Action Service activé.</string>
     <string name="icon_size">Taille des icônes</string>

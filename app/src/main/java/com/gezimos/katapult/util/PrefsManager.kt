@@ -406,6 +406,10 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_LOCKSCREEN_MUSIC_WIDGET, false)
         set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_MUSIC_WIDGET, value).apply()
 
+    var lockscreenWeather: Boolean
+        get() = boolPref(KEY_LOCKSCREEN_WEATHER, false)
+        set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WEATHER, value).apply()
+
     var lockscreenWidgetY: Int
         get() = intPref(KEY_LOCKSCREEN_WIDGET_Y, -1)
         set(value) = prefs.edit().putInt(KEY_LOCKSCREEN_WIDGET_Y, value).apply()
@@ -652,7 +656,7 @@ class PrefsManager(context: Context) {
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
         KEY_DISABLE_MUSIC_WIDGET, KEY_SHOW_KATAPULT_ICON, KEY_HIDE_APP_NAMES, KEY_HIDE_ARROW_BUTTONS,
         KEY_DISABLE_HOME_EDITING, KEY_HIDE_ALL_APPS_BUTTON, KEY_SWIPE_UP_ALL_APPS, KEY_HOME_ISLANDS,
-        KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET,
+        KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET, KEY_LOCKSCREEN_WEATHER,
         KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED, KEY_SCREENSAVER_ISLANDS,
         KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
@@ -796,6 +800,7 @@ class PrefsManager(context: Context) {
         private const val KEY_VERTICAL_APP_GESTURES = "vertical_app_gestures"
         private const val KEY_LOCKSCREEN_WIDGET = "lockscreen_widget"
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
+        private const val KEY_LOCKSCREEN_WEATHER = "lockscreen_weather"
         private const val KEY_LOCKSCREEN_WIDGET_Y = "lockscreen_widget_y"
         private const val KEY_LOCKSCREEN_WIDGET_ROWS = "lockscreen_widget_rows"
         private const val KEY_LOCKSCREEN_WIDGET_EXCLUDED = "lockscreen_widget_excluded"
