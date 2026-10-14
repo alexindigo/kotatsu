@@ -90,6 +90,8 @@
     <string name="show_alarm_desc">Toon het eerstvolgende alarm boven de klok</string>
     <string name="show_weather">Weer tonen</string>
     <string name="show_weather_desc">Weerwidget boven de klok tonen</string>
+    <string name="weather_celsius">Temperatuur in Celsius</string>
+    <string name="weather_celsius_desc">Gebruik Celsius in plaats van Fahrenheit</string>
     <string name="show_katapult_icon">Kotatsu-pictogram tonen</string>
     <string name="show_katapult_icon_desc">Toon Kotatsu in de app-lijst</string>
     <string name="hide_app_names">App-namen verbergen</string>

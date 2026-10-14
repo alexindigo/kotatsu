@@ -71,6 +71,7 @@ import com.gezimos.katapult.ui.NoIndication
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.weatherIcon
 import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.formatWeatherTemperature
 import com.gezimos.katapult.weather.api.Weather
 import com.gezimos.katapult.weather.api.WeatherSource
 import com.gezimos.katapult.util.AudioWidgetHelper
@@ -208,7 +209,8 @@ class LockscreenWidgetService :
     private var weatherSource: WeatherSource? = null
     private var weatherSubscription: AutoCloseable? = null
     private var weatherValue: Weather? = null
-    private var shownWeather: Pair<Weather, Boolean>? = null
+    private data class WeatherDisplay(val conditionId: Int, val iconInfo: String?, val temperature: String, val dark: Boolean)
+    private var shownWeather: WeatherDisplay? = null
     private var shownRows: List<Pair<String, Int>> = emptyList()
     private var directBadges: DirectBadgeHelper? = null
 
@@ -526,10 +528,11 @@ class LockscreenWidgetService :
             removeWeatherOverlay()
             return
         }
-        val rendered = weather to prefs.darkMode
+        val rendered = WeatherDisplay(weather.conditionId, weather.iconInfo,
+            formatWeatherTemperature(weather, prefs.weatherCelsius), prefs.darkMode)
         if (weatherOverlay != null && shownWeather == rendered) return
         removeWeatherOverlay()
-        val dark = rendered.second
+        val dark = rendered.dark
         val ink = if (dark) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black
         val surface = if (dark) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White
         val view = ComposeView(this).apply {
@@ -541,7 +544,7 @@ class LockscreenWidgetService :
                     Icon(weatherIcon(weather.conditionId, weather.iconInfo),
                         stringResource(R.string.cd_weather), Modifier.size(18.dp), tint = ink)
                     Spacer(Modifier.width(2.dp))
-                    Text(stringResource(R.string.weather_temp, weather.temperature, weather.unit),
+                    Text(rendered.temperature,
                         fontSize = 18.sp, fontFamily = LatoFamily, color = ink)
                 }
             }

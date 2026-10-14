@@ -92,6 +92,8 @@
     <string name="show_alarm_desc">Zobrazit nejbližší budík nad hodinami</string>
     <string name="show_weather">Zobrazit počasí</string>
     <string name="show_weather_desc">Zobrazit widget počasí nad hodinami</string>
+    <string name="weather_celsius">Teplota ve stupních Celsia</string>
+    <string name="weather_celsius_desc">Používat stupně Celsia místo Fahrenheita</string>
     <string name="show_katapult_icon">Zobrazit ikonu Kotatsu</string>
     <string name="show_katapult_icon_desc">Zobrazit Kotatsu v seznamu aplikací</string>
     <string name="hide_app_names">Skrýt názvy aplikací</string>

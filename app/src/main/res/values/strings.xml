@@ -107,6 +107,8 @@
     <string name="show_alarm_desc">Display the next alarm above the clock</string>
     <string name="show_weather">Show Weather</string>
     <string name="show_weather_desc">Display weather widget above clock</string>
+    <string name="weather_celsius">Temperature in Celsius</string>
+    <string name="weather_celsius_desc">Use Celsius instead of Fahrenheit</string>
     <string name="show_katapult_icon">Show Kotatsu Icon</string>
     <string name="show_katapult_icon_desc">Show Kotatsu in the app list</string>
     <string name="hide_app_names">Hide App Names</string>

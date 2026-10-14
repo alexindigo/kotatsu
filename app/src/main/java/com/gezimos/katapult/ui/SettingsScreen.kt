@@ -152,6 +152,7 @@ fun SettingsScreen(
     var showBattery by remember { mutableStateOf(prefs.showBattery) }
     var showAlarm by remember { mutableStateOf(prefs.showAlarm) }
     var showWeather by remember { mutableStateOf(prefs.showWeather) }
+    var weatherCelsius by remember { mutableStateOf(prefs.weatherCelsius) }
     var roundedIcons by remember { mutableStateOf(prefs.roundedIcons) }
     var iconSize by remember { mutableIntStateOf(prefs.iconSize) }
     var themeMode by remember { mutableIntStateOf(prefs.themeMode) }
@@ -431,6 +432,17 @@ fun SettingsScreen(
                             showWeather = it
                             prefs.showWeather = it
                             viewModel.refreshWeather(force = true)
+                        },
+                    )
+                }
+                add {
+                    SettingsToggleRow(
+                        title = stringResource(R.string.weather_celsius),
+                        description = stringResource(R.string.weather_celsius_desc),
+                        checked = weatherCelsius,
+                        onCheckedChange = {
+                            weatherCelsius = it
+                            prefs.weatherCelsius = it
                         },
                     )
                 }

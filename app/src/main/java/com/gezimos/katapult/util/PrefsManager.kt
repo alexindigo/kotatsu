@@ -296,6 +296,10 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_SHOW_WEATHER, false)
         set(value) = prefs.edit().putBoolean(KEY_SHOW_WEATHER, value).apply()
 
+    var weatherCelsius: Boolean
+        get() = boolPref(KEY_WEATHER_CELSIUS, false)
+        set(value) = prefs.edit().putBoolean(KEY_WEATHER_CELSIUS, value).apply()
+
     var roundedIcons: Boolean
         get() = boolPref(KEY_ROUNDED_ICONS, false)
         set(value) = prefs.edit().putBoolean(KEY_ROUNDED_ICONS, value).apply()
@@ -651,7 +655,7 @@ class PrefsManager(context: Context) {
 
     /** Types follow the defaults declared by the getters, not a device's stored values. */
     private fun declaredImportDefault(key: String): Any? = when (key) {
-        KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER,
+        KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER, KEY_WEATHER_CELSIUS,
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
         KEY_DISABLE_MUSIC_WIDGET, KEY_SHOW_KATAPULT_ICON, KEY_HIDE_APP_NAMES, KEY_HIDE_ARROW_BUTTONS,
@@ -768,6 +772,7 @@ class PrefsManager(context: Context) {
         private const val KEY_SHOW_ALARM = "show_alarm"
         private const val KEY_PENDING_ICON_TARGET = "pending_icon_target"
         private const val KEY_SHOW_WEATHER = "show_weather"
+        private const val KEY_WEATHER_CELSIUS = "weather_celsius"
         private const val KEY_ROUNDED_ICONS = "rounded_icons"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_THEME_MODE = "theme_mode"

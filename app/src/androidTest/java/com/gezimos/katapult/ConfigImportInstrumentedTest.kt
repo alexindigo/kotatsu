@@ -41,7 +41,7 @@ class ConfigImportInstrumentedTest {
     }
 
     @Test fun allDeclaredBooleansRejectWrongTypesWhenNeverStored() = withPrefs { prefs, raw ->
-        val keys = listOf("notification_indicators", "show_battery", "show_alarm", "show_weather",
+        val keys = listOf("notification_indicators", "show_battery", "show_alarm", "show_weather", "weather_celsius",
             "rounded_icons", "dark_mode", "hide_status_bar", "hide_status_bar_clock", "eink_refresh_home",
             "double_tap_brightness", "infinite_scroll", "home_extra_row", "disable_music_widget",
             "show_katapult_icon", "hide_app_names", "hide_arrow_buttons", "disable_home_editing",

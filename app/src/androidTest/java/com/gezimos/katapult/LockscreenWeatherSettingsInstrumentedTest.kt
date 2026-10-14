@@ -40,6 +40,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
                 model = MainViewModel(TestApplication(context.applicationContext, raw))
                 owner.put("l3", model)
                 assertFalse(model.prefs.lockscreenWeather)
+                assertFalse(model.prefs.weatherCelsius)
                 model.prefs.lockscreenWeather = true
                 model.screen = Screen.HOME
                 model.checkLockscreenService(false)
@@ -61,6 +62,9 @@ class LockscreenWeatherSettingsInstrumentedTest {
             ui.click(context.getString(R.string.cat_home))
             ui.scrollTo(context.getString(R.string.show_alarm))
             assertFalse(ui.has(context.getString(R.string.show_weather)))
+            ui.scrollTo(context.getString(R.string.extra_dock_row))
+            assertFalse(ui.has(context.getString(R.string.show_weather)))
+            assertFalse("Unavailable Celsius row was rendered", ui.has(context.getString(R.string.weather_celsius)))
             instrumentation.runOnMainSync {
                 model.disableLockscreenServiceFeatures()
                 assertFalse(model.prefs.lockscreenWeather)

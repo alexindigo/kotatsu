@@ -90,6 +90,8 @@
     <string name="show_alarm_desc">Pokaż najbliższy alarm nad zegarem</string>
     <string name="show_weather">Pokaż pogodę</string>
     <string name="show_weather_desc">Pokaż widżet pogody nad zegarem</string>
+    <string name="weather_celsius">Temperatura w stopniach Celsjusza</string>
+    <string name="weather_celsius_desc">Używaj stopni Celsjusza zamiast Fahrenheita</string>
     <string name="show_katapult_icon">Pokaż ikonę Kotatsu</string>
     <string name="show_katapult_icon_desc">Pokaż Kotatsu na liście aplikacji</string>
     <string name="hide_app_names">Ukryj nazwy aplikacji</string>

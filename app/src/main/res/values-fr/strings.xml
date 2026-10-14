@@ -90,6 +90,8 @@
     <string name="show_alarm_desc">Afficher la prochaine alarme au-dessus de l\'horloge</string>
     <string name="show_weather">Afficher la météo</string>
     <string name="show_weather_desc">Afficher le widget météo au-dessus de l\'horloge</string>
+    <string name="weather_celsius">Température en Celsius</string>
+    <string name="weather_celsius_desc">Utiliser Celsius au lieu de Fahrenheit</string>
     <string name="show_katapult_icon">Afficher l\'icône Kotatsu</string>
     <string name="show_katapult_icon_desc">Afficher Kotatsu dans la liste des apps</string>
     <string name="hide_app_names">Masquer les noms des apps</string>

@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.gezimos.katapult.R
+import com.gezimos.katapult.weather.formatWeatherTemperature
 import com.gezimos.katapult.weather.api.Weather
 
 /**
@@ -55,6 +56,7 @@ fun ColumnScope.ClockDisplay(
     showBattery: Boolean,
     showAlarm: Boolean = true,
     weather: Weather? = null,
+    weatherCelsius: Boolean = false,
     islandsActive: Boolean,
     onClockClick: (() -> Unit)? = null,
     onClockLongClick: (() -> Unit)? = null,
@@ -89,7 +91,7 @@ fun ColumnScope.ClockDisplay(
                 )
                 Spacer(Modifier.width(2.dp))
                 Text(
-                    text = stringResource(R.string.weather_temp, weather.temperature, weather.unit),
+                    text = formatWeatherTemperature(weather, weatherCelsius),
                     fontSize = 18.sp,
                     fontFamily = LatoFamily,
                     color = LocalInk.current,

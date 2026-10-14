@@ -90,6 +90,8 @@
     <string name="show_alarm_desc">Nächsten Wecker über der Uhr anzeigen</string>
     <string name="show_weather">Wetter anzeigen</string>
     <string name="show_weather_desc">Wetter-Widget über der Uhr anzeigen</string>
+    <string name="weather_celsius">Temperatur in Celsius</string>
+    <string name="weather_celsius_desc">Celsius statt Fahrenheit verwenden</string>
     <string name="show_katapult_icon">Kotatsu-Symbol anzeigen</string>
     <string name="show_katapult_icon_desc">Kotatsu in der App-Liste anzeigen</string>
     <string name="hide_app_names">App-Namen ausblenden</string>

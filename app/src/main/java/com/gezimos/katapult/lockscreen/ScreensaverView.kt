@@ -257,6 +257,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
                         showBattery = prefs.showBattery,
                         showAlarm = prefs.showAlarm,
                         weather = clock.weather,
+                        weatherCelsius = prefs.weatherCelsius,
                         islandsActive = prefs.screensaverIslands,
                     )
                 }
