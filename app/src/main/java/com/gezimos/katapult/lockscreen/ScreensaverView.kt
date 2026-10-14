@@ -71,7 +71,8 @@ import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
-import com.gezimos.katapult.util.WeatherHelper
+import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.api.Weather
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -86,7 +87,7 @@ private data class SsClock(
     val alarm: String?,
     val battery: Int,
     val charging: Boolean,
-    val weather: WeatherHelper.Weather?,
+    val weather: Weather?,
 )
 
 private data class SsRow(val count: Int, val label: String, val bitmap: Bitmap?)
@@ -381,7 +382,7 @@ private fun computeClock(context: Context, prefs: PrefsManager): SsClock {
         charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
     }
-    val weather = if (prefs.showWeather) WeatherHelper.read(context) else null
+    val weather = if (prefs.showWeather) WeatherSources.active(context)?.read(context) else null
     return SsClock(time, amPm, date, alarm, battery, charging, weather)
 }
 

@@ -15,7 +15,6 @@ import androidx.core.graphics.createBitmap
 import android.app.Activity
 import android.content.BroadcastReceiver
 import android.content.IntentFilter
-import android.database.ContentObserver
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.SystemClock
@@ -27,7 +26,8 @@ import android.text.format.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.gezimos.katapult.util.AudioWidgetHelper
-import com.gezimos.katapult.util.WeatherHelper
+import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.api.Weather
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewModelScope
@@ -127,7 +127,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var mediaInfo by mutableStateOf<AudioWidgetHelper.MediaInfo?>(null)
         private set
-    var weather by mutableStateOf<WeatherHelper.Weather?>(null)
+    var weather by mutableStateOf<Weather?>(null)
         private set
     private val weatherRefreshMs = 10 * 60 * 1000L
     private var weatherCheckedAt = -weatherRefreshMs
@@ -226,6 +226,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val ctx get() = getApplication<Application>()
     private val isMudita = DeviceHelper.isMuditaKompakt()
+    private val weatherSource = WeatherSources.active(ctx)
     private val directBadgeHelper = if (isMudita) DirectBadgeHelper.getInstance(application) else null
     private val badgeOwner = Any()
     private val mediaOwner = Any()
@@ -343,39 +344,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private var weatherObserverOn = false
+    private var weatherObserverHandle: AutoCloseable? = null
 
-    private val weatherObserver = object : ContentObserver(clockHandler) {
-        override fun onChange(selfChange: Boolean) {
-            weatherCheckedAt = SystemClock.elapsedRealtime()
-            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                val result = WeatherHelper.read(ctx)
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                    if (result != null) weather = result
-                }
+    private fun onWeatherChanged() {
+        val source = weatherSource ?: return
+        weatherCheckedAt = SystemClock.elapsedRealtime()
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val result = source.read(ctx)
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (result != null) weather = result
             }
         }
     }
 
     private fun syncWeatherObserver() {
+        val source = weatherSource ?: return
         val want = prefs.showWeather
-        if (want == weatherObserverOn) return
+        if (want == (weatherObserverHandle != null)) return
         try {
             if (want) {
-                ctx.contentResolver.registerContentObserver(
-                    WeatherHelper.WidgetUri, false, weatherObserver,
-                )
+                weatherObserverHandle = source.observe(ctx) { onWeatherChanged() }
             } else {
-                ctx.contentResolver.unregisterContentObserver(weatherObserver)
+                weatherObserverHandle?.close()
+                weatherObserverHandle = null
             }
-            weatherObserverOn = want
         } catch (_: Exception) {
         }
     }
 
     fun refreshWeather(force: Boolean = false) {
         syncWeatherObserver()
-        if (!prefs.showWeather) {
+        val source = weatherSource
+        if (!prefs.showWeather || source == null) {
             weatherCheckedAt = SystemClock.elapsedRealtime()
             weather = null
             return
@@ -385,7 +385,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ) return
         weatherCheckedAt = SystemClock.elapsedRealtime()
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val result = WeatherHelper.read(ctx)
+            val result = source.read(ctx)
             kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
                 if (result != null) weather = result
             }
@@ -1116,6 +1116,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         stopClock()
         stopNotificationListener()
         try { ctx.unregisterReceiver(powerReceiver) } catch (_: Exception) {}
-        try { ctx.contentResolver.unregisterContentObserver(weatherObserver) } catch (_: Exception) {}
+        try { weatherObserverHandle?.close() } catch (_: Exception) {}
     }
 }

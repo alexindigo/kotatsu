@@ -104,7 +104,7 @@ import com.gezimos.katapult.util.AudioWidgetHelper
 import com.gezimos.katapult.util.BrightnessHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
-import com.gezimos.katapult.util.WeatherHelper
+import com.gezimos.katapult.weather.WeatherSources
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -264,7 +264,7 @@ fun HomeScreen(
                         }
                     },
                     onDateLongClick = { handleSlotLongPress("calendar") },
-                    onWeatherClick = { WeatherHelper.openApp(context) },
+                    onWeatherClick = { WeatherSources.active(context)?.openApp(context) },
                     onBatteryClick = {
                         val intent = Intent(Intent.ACTION_POWER_USAGE_SUMMARY)
                             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.gezimos.katapult.R
-import com.gezimos.katapult.util.WeatherHelper
+import com.gezimos.katapult.weather.api.Weather
 
 /**
  * The home clock block — alarm/battery status, the big clock with AM/PM, and the date,
@@ -54,7 +54,7 @@ fun ColumnScope.ClockDisplay(
     isCharging: Boolean,
     showBattery: Boolean,
     showAlarm: Boolean = true,
-    weather: WeatherHelper.Weather? = null,
+    weather: Weather? = null,
     islandsActive: Boolean,
     onClockClick: (() -> Unit)? = null,
     onClockLongClick: (() -> Unit)? = null,

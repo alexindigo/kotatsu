@@ -95,6 +95,7 @@ import com.gezimos.katapult.util.ShortcutHelper
 import com.gezimos.katapult.util.UsageHelper
 import com.gezimos.katapult.util.SensitiveChoice
 import com.gezimos.katapult.util.SensitiveAccess
+import com.gezimos.katapult.weather.WeatherSources
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.Role
@@ -138,6 +139,7 @@ fun SettingsScreen(
         viewModel.applyConfigImport(context, text, confirmed)
     }
     val isMudita = remember { DeviceHelper.isMuditaKompakt() }
+    val weatherSource = remember { WeatherSources.active(context) }
     val versionName = remember {
         try {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: ""
@@ -418,7 +420,7 @@ fun SettingsScreen(
                     },
                 )
             }
-            if (isMudita) {
+            if (weatherSource != null) {
                 add {
                     SettingsToggleRow(
                         title = stringResource(R.string.show_weather),
