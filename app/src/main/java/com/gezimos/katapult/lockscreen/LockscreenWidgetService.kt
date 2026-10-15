@@ -35,7 +35,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -209,7 +208,7 @@ class LockscreenWidgetService :
     private var weatherSource: WeatherSource? = null
     private var weatherSubscription: AutoCloseable? = null
     private var weatherValue: Weather? = null
-    private data class WeatherDisplay(val conditionId: Int, val iconInfo: String?, val temperature: String, val dark: Boolean)
+    private data class WeatherDisplay(val conditionId: Int, val iconInfo: String?, val temperature: String)
     private var shownWeather: WeatherDisplay? = null
     private var shownRows: List<Pair<String, Int>> = emptyList()
     private var directBadges: DirectBadgeHelper? = null
@@ -529,18 +528,18 @@ class LockscreenWidgetService :
             return
         }
         val rendered = WeatherDisplay(weather.conditionId, weather.iconInfo,
-            formatWeatherTemperature(weather, prefs.weatherCelsius), prefs.darkMode)
+            formatWeatherTemperature(weather, prefs.weatherCelsius))
         if (weatherOverlay != null && shownWeather == rendered) return
         removeWeatherOverlay()
-        val dark = rendered.dark
-        val ink = if (dark) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black
-        val surface = if (dark) androidx.compose.ui.graphics.Color.Black else androidx.compose.ui.graphics.Color.White
+        // Black on a transparent window, whatever the theme: the lock screen stays white in dark theme.
+        val ink = androidx.compose.ui.graphics.Color.Black
         val view = ComposeView(this).apply {
+            setBackgroundColor(Color.TRANSPARENT)
             setViewTreeLifecycleOwner(this@LockscreenWidgetService)
             setViewTreeViewModelStoreOwner(this@LockscreenWidgetService)
             setViewTreeSavedStateRegistryOwner(this@LockscreenWidgetService)
             setContent {
-                Row(Modifier.fillMaxHeight().background(surface), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
                     Icon(weatherIcon(weather.conditionId, weather.iconInfo),
                         stringResource(R.string.cd_weather), Modifier.size(18.dp), tint = ink)
                     Spacer(Modifier.width(2.dp))
@@ -551,7 +550,7 @@ class LockscreenWidgetService :
         }
         val params = WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-            format = PixelFormat.OPAQUE
+            format = PixelFormat.TRANSLUCENT
             flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
             width = WindowManager.LayoutParams.WRAP_CONTENT
             height = statusBarHeightPx()
