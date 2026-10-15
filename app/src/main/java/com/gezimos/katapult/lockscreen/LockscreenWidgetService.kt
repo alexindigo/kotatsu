@@ -51,6 +51,15 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
+import com.gezimos.katapult.ui.LocalIconSize
+import com.gezimos.katapult.ui.LocalIconShape
+import com.gezimos.katapult.ui.LocalIconFilter
+import com.gezimos.katapult.ui.EinkColorFilter
+import com.gezimos.katapult.ui.RoundedIconShape
+import com.gezimos.katapult.util.AppLoader
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.withContext
 import androidx.core.content.res.ResourcesCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -185,6 +194,11 @@ class LockscreenWidgetService :
         private const val KEYGUARD_BURST_MS = 2000L
         private const val KEYGUARD_IDLE_RECHECK_MS = 1000L
 
+        // P0: staging Mudita Kompakt MK20250400857, 480x800 pixels, 2026-10-14.
+        private const val PANEL_MEASURED_DATE_BOTTOM_PX = 268
+        private const val PANEL_MEASURED_PADLOCK_TOP_PX = 687
+        private const val PANEL_MEASURED_UNLOCK_TEXT_BOTTOM_PX = 766
+
         /** Whether the user has enabled this service in system accessibility settings. */
         fun isEnabled(context: Context): Boolean {
             val component = ComponentName(context, LockscreenWidgetService::class.java)
@@ -205,6 +219,17 @@ class LockscreenWidgetService :
     private var clockCover: View? = null
     private var messageOverlay: View? = null
     private var weatherOverlay: ComposeView? = null
+    private var panelOverlay: ComposeView? = null
+    private val panelScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private var panelJob: Job? = null
+    private var panelWanted = false
+    private data class PanelDisplay(
+        val apps: List<Pair<String, String>>, val overrides: List<String?>,
+        val sizePx: Int, val rounded: Boolean, val width: Int, val height: Int,
+    )
+    private var cachedPanel: PanelDisplay? = null
+    private var panelCells: List<PanelCell> = emptyList()
+    private var shownPanel: PanelDisplay? = null
     private var weatherSource: WeatherSource? = null
     private var weatherSubscription: AutoCloseable? = null
     private var weatherValue: Weather? = null
@@ -221,7 +246,7 @@ class LockscreenWidgetService :
         acquireBadges = { SensitiveAccess.acquireBadges(badgeOwner) },
         acquireMedia = { SensitiveAccess.acquireMedia(mediaOwner) },
         subscriptions = ::syncSourceSubscriptions,
-        clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); musicState.value = null },
+        clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); removePanelOverlay(); musicState.value = null },
         clearInspection = {
             mainHandler.removeCallbacks(keyguardRecheck)
             lastPinShowing = false
@@ -236,7 +261,7 @@ class LockscreenWidgetService :
         AccessibilitySelection(prefs.lockscreenWidget, prefs.lockscreenMusicWidget, !prefs.lockscreenMessage.isNullOrBlank(),
             prefs.hideStatusBarClock && !prefs.hideStatusBar && DeviceHelper.isMuditaKompakt(),
             prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK, prefs.screensaverEnabled, prefs.screensaverOnPower,
-            weather = prefs.lockscreenWeather),
+            weather = prefs.lockscreenWeather, panel = prefs.lockscreenPanelTest in setOf(4, 8)),
         lockscreenActive, launcherForeground, screensaverForeground || ScreensaverActivity.isShowing,
     )
 
@@ -333,7 +358,8 @@ class LockscreenWidgetService :
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (!SensitiveAccess.accessibility() ||
-            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather && prefs.lockscreenMessage.isNullOrBlank())) return
+            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&
+                prefs.lockscreenPanelTest !in setOf(4, 8) && prefs.lockscreenMessage.isNullOrBlank())) return
         if (!keyguardPossible) return
         burstUntil = SystemClock.elapsedRealtime() + KEYGUARD_BURST_MS
         evaluate()
@@ -343,6 +369,7 @@ class LockscreenWidgetService :
         syncSourceSubscriptions(false, false)
         releaseSensitiveConsumers()
         removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeClockCover()
+        removePanelOverlay()
         mainHandler.removeCallbacks(keyguardRecheck)
     }
 
@@ -363,6 +390,8 @@ class LockscreenWidgetService :
         mediaScope = null
         removeMusicOverlay()
         removeMessageOverlay()
+        removePanelOverlay()
+        panelScope.cancel()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
         viewModelStoreInstance.clear()
         NotificationListener.removeListener(badgeListener)
@@ -576,6 +605,91 @@ class LockscreenWidgetService :
         shownWeather = null
     }
 
+    private fun applyPanel(onLockscreen: Boolean) {
+        val count = prefs.lockscreenPanelTest
+        if (!onLockscreen || count !in setOf(4, 8)) {
+            removePanelOverlay()
+            return
+        }
+        panelWanted = true
+        if (panelJob != null) return
+        val bounds = getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
+        val density = resources.displayMetrics.density
+        // Reserve five 12dp gaps; never enlarge HOME's chosen icon size.
+        val sizePx = minOf(dp(prefs.iconSize.toFloat()), ((bounds.width() - dp(60f)) / 4).coerceAtLeast(1))
+        val rounded = prefs.roundedIcons
+        val order = prefs.loadAppOrder().orEmpty()
+        val hidden = prefs.getHiddenApps()
+        panelJob = panelScope.launch {
+            try {
+                val display = withContext(Dispatchers.IO) {
+                    val launchable = AppLoader.loadApps(this@LockscreenWidgetService)
+                        .associate { it.packageName to it.activityName }
+                    val apps = selectPanelApps(order, hidden, launchable, count)
+                    val rows = (apps.size + 3) / 4
+                    val contentHeight = rows * sizePx + dp((maxOf(0, rows - 1) * 12 + 16).toFloat())
+                    val coverHeight = bounds.height() - (PANEL_MEASURED_PADLOCK_TOP_PX - dp(8f))
+                    PanelDisplay(apps, apps.map { prefs.getIconOverride(it.first) }, sizePx, rounded,
+                        bounds.width(), maxOf(contentHeight, coverHeight))
+                }
+                val cells = if (cachedPanel == display) panelCells else withContext(Dispatchers.IO) {
+                    display.apps.map { (pkg, activity) ->
+                        PanelCell.AppIcon(IconUtility.loadIcon(this@LockscreenWidgetService, pkg, activity, sizePx))
+                    }
+                }
+                cachedPanel = display
+                panelCells = cells
+                if (!panelWanted || prefs.lockscreenPanelTest != count ||
+                    (panelOverlay != null && shownPanel == display)) return@launch
+                removePanelOverlay()
+                panelWanted = true
+                val view = ComposeView(this@LockscreenWidgetService).apply {
+                    setBackgroundColor(Color.WHITE)
+                    setViewTreeLifecycleOwner(this@LockscreenWidgetService)
+                    setViewTreeViewModelStoreOwner(this@LockscreenWidgetService)
+                    setViewTreeSavedStateRegistryOwner(this@LockscreenWidgetService)
+                    setContent {
+                        CompositionLocalProvider(
+                            LocalIconSize provides (sizePx / density).dp,
+                            LocalIconShape provides if (rounded) RoundedIconShape else CircleShape,
+                            LocalIconFilter provides EinkColorFilter,
+                            LocalInk provides androidx.compose.ui.graphics.Color.Black,
+                            LocalSurface provides androidx.compose.ui.graphics.Color.White,
+                        ) { LockscreenPanel(cells) }
+                    }
+                }
+                val params = WindowManager.LayoutParams().apply {
+                    type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+                    flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                    format = PixelFormat.OPAQUE
+                    width = WindowManager.LayoutParams.MATCH_PARENT
+                    height = display.height
+                    gravity = Gravity.BOTTOM
+                    setTitle("Kotatsu lock-screen panel")
+                }
+                try {
+                    getSystemService(WindowManager::class.java).addView(view, params)
+                    panelOverlay = view
+                    shownPanel = display
+                } catch (_: Exception) {
+                    view.disposeComposition()
+                }
+            } finally {
+                panelJob = null
+            }
+        }
+    }
+
+    private fun removePanelOverlay() {
+        panelWanted = false
+        panelOverlay?.let {
+            try { getSystemService(WindowManager::class.java).removeView(it) } catch (_: Exception) {}
+            it.disposeComposition()
+        }
+        panelOverlay = null
+        shownPanel = null
+    }
+
     /**
      * Event delivery is limited to com.android.systemui, but findFocus can still return a
      * node from another package; PIN inspection checks that node's package separately.
@@ -589,7 +703,7 @@ class LockscreenWidgetService :
     private fun scheduleKeyguardRecheck() {
         mainHandler.removeCallbacks(keyguardRecheck)
         if (!SensitiveAccess.accessibility()) return
-        if (overlay == null && musicOverlay == null && messageOverlay == null && weatherOverlay == null && !consumers.badgesActive &&
+        if (overlay == null && musicOverlay == null && messageOverlay == null && weatherOverlay == null && panelOverlay == null && !consumers.badgesActive &&
             !consumers.mediaActive && !consumers.inspectionActive) return
         val bursting = SystemClock.elapsedRealtime() < burstUntil
         val delay = if (bursting) KEYGUARD_RECHECK_MS else KEYGUARD_IDLE_RECHECK_MS
@@ -603,7 +717,7 @@ class LockscreenWidgetService :
      */
     private fun applyLockscreenMessage(onLockscreen: Boolean) {
         val message = prefs.lockscreenMessage
-        val want = onLockscreen && !message.isNullOrBlank()
+        val want = onLockscreen && prefs.lockscreenPanelTest !in setOf(4, 8) && !message.isNullOrBlank()
         if (!want) {
             removeMessageOverlay()
             return
@@ -664,11 +778,13 @@ class LockscreenWidgetService :
         applyClockCover(launcherForeground || screensaverForeground)
         syncWeatherSource()
         if (!SensitiveAccess.accessibility() ||
-            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather && prefs.lockscreenMessage.isNullOrBlank())) {
+            (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&
+                prefs.lockscreenPanelTest !in setOf(4, 8) && prefs.lockscreenMessage.isNullOrBlank())) {
             releaseSensitiveConsumers()
             syncSourceSubscriptions(false, false)
             mainHandler.removeCallbacks(keyguardRecheck)
             removeOverlay(); removeMusicOverlay(); removeMessageOverlay()
+            removePanelOverlay()
             lastPinShowing = false
             burstUntil = 0L
             return
@@ -689,6 +805,7 @@ class LockscreenWidgetService :
         applyMusicWidget(onLockscreen)
         applyLockscreenMessage(onLockscreen)
         applyWeather(onLockscreen)
+        applyPanel(onLockscreen)
         if (!onLockscreen || !prefs.lockscreenWidget) {
             removeOverlay()
             scheduleKeyguardRecheck()

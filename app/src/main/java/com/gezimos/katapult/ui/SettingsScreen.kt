@@ -187,6 +187,8 @@ fun SettingsScreen(
     var lockscreenWidget by remember { mutableStateOf(prefs.lockscreenWidget) }
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
     var lockscreenWeather by remember { mutableStateOf(prefs.lockscreenWeather) }
+    var lockscreenPanelTest by remember { mutableIntStateOf(prefs.lockscreenPanelTest) }
+    var showLockscreenPanelSheet by remember { mutableStateOf(false) }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var showLockscreenApps by remember { mutableStateOf(false) }
     var showLockscreenReadMe by remember { mutableStateOf(false) }
@@ -897,6 +899,17 @@ fun SettingsScreen(
                     },
                 )
             }
+            if (isMudita) add {
+                SettingsActionRow(
+                    title = stringResource(R.string.lockscreen_panel_test),
+                    description = stringResource(when (lockscreenPanelTest) {
+                        4 -> R.string.lockscreen_panel_four
+                        8 -> R.string.lockscreen_panel_eight
+                        else -> R.string.lockscreen_panel_off
+                    }),
+                    onClick = { showLockscreenPanelSheet = true },
+                )
+            }
             add {
                 SettingsActionRow(
                     title = stringResource(R.string.lockscreen_message),
@@ -1292,6 +1305,32 @@ fun SettingsScreen(
                 color = LocalInk.current,
             )
         }
+    }
+
+    if (showLockscreenPanelSheet) {
+        ChoiceSheet(
+            title = stringResource(R.string.lockscreen_panel_test),
+            options = listOf(
+                0 to stringResource(R.string.lockscreen_panel_off),
+                4 to stringResource(R.string.lockscreen_panel_four),
+                8 to stringResource(R.string.lockscreen_panel_eight),
+            ),
+            selected = lockscreenPanelTest,
+            onSelect = { requested ->
+                val serviceOn = LockscreenWidgetService.isEnabled(context)
+                actionServiceEnabled = serviceOn
+                if (requested == 0 || serviceOn) {
+                    lockscreenPanelTest = requested
+                    prefs.lockscreenPanelTest = requested
+                }
+                if (requested != 0 && !serviceOn) {
+                    try {
+                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    } catch (_: Exception) {}
+                }
+            },
+            onDismiss = { showLockscreenPanelSheet = false },
+        )
     }
 
     if (showThemeSheet) {

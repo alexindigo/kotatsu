@@ -195,6 +195,10 @@
     <string name="lockscreen_music_widget">Lockscreen Music Controls</string>
     <string name="lockscreen_weather">Lock-screen weather</string>
     <string name="lockscreen_weather_desc">Show the weather at the top of the lock screen</string>
+    <string name="lockscreen_panel_test" translatable="false">Lock-screen panel (test)</string>
+    <string name="lockscreen_panel_off" translatable="false">Off</string>
+    <string name="lockscreen_panel_four" translatable="false">4 icons</string>
+    <string name="lockscreen_panel_eight" translatable="false">8 icons</string>
     <string name="lockscreen_music_widget_desc">Show media controls on the lock screen for players other than the Mudita one</string>
     <string name="lockscreen_widget_desc">Show notification counts on the lock screen.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>

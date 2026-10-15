@@ -61,13 +61,25 @@ class ConfigImportInstrumentedTest {
     @Test fun allDeclaredIntegersRejectFractionalOverflowAndWrongTypes() = withPrefs { prefs, raw ->
         val keys = listOf("icon_size", "theme_mode", "eink_helper_mode", "double_tap_action",
             "last_brightness", "home_long_press", "app_sort_mode", "lockscreen_widget_y",
-            "lockscreen_widget_rows", "screensaver_update_mode", "screensaver_update_minutes")
+            "lockscreen_widget_rows", "screensaver_update_mode", "screensaver_update_minutes", "lockscreen_panel_test")
         for (key in keys) {
             assertFalse(raw.contains(key))
             for (invalid in listOf("1", false, 1.5, 2147483648L, -2147483649L,
                 JSONObject.NULL, JSONArray(), JSONObject())) {
                 rejectsUnchanged(prefs, raw, config().put(key, invalid))
             }
+        }
+    }
+
+    @Test fun panelChoiceIsAPortableIntegerWithOnlyOffFourAndEightAllowed() = withPrefs { prefs, raw ->
+        assertEquals(0, prefs.lockscreenPanelTest)
+        for (invalid in listOf(-1, 1, 2, 5, 16)) {
+            rejectsUnchanged(prefs, raw, config().put("lockscreen_panel_test", invalid))
+        }
+        for (choice in listOf(4, 8, 0)) {
+            assertTrue(prefs.importFromJson(config().put("lockscreen_panel_test", choice).toString()))
+            assertEquals(choice, prefs.lockscreenPanelTest)
+            assertEquals(choice, JSONObject(prefs.exportToJson(context)).getInt("lockscreen_panel_test"))
         }
     }
 
