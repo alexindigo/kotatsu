@@ -13,17 +13,17 @@ class LockscreenRecoveryPolicyTest {
         assertTrue(AccessibilityPolicy.serviceFeatures(AccessibilitySelection(screensaver = true)).isEmpty())
         assertTrue(AccessibilityPolicy.serviceFeatures(AccessibilitySelection(powerScreensaver = true)).isEmpty())
         assertEquals(AccessibilityFeature.entries.toList(), AccessibilityPolicy.serviceFeatures(
-            AccessibilitySelection(true, true, true, true, true, true, true, weather = true, panel = true)))
+            AccessibilitySelection(true, true, true, true, true, true, true, weather = true, widgets = true)))
     }
 
-    @Test fun panelAloneIsRecoverableAndInspectsPinWithoutCollectingBadgesOrMedia() {
-        val selected = AccessibilitySelection(panel = true)
-        assertEquals(listOf(AccessibilityFeature.PANEL), AccessibilityPolicy.serviceFeatures(selected))
+    @Test fun widgetsAloneAreRecoverableAndInspectPinWithoutCollectingBadgesOrMedia() {
+        val selected = AccessibilitySelection(widgets = true)
+        assertEquals(listOf(AccessibilityFeature.LOCKSCREEN_WIDGETS), AccessibilityPolicy.serviceFeatures(selected))
         assertEquals(AccessibilityDemand(false, false, true, false, false, false),
             AccessibilityPolicy.demand(true, selected, true, false, false))
         assertFalse(AccessibilityPolicy.demand(false, selected, true, false, false).inspectPin)
         assertFalse(AccessibilityPolicy.demand(true, selected, false, false, false).inspectPin)
-        assertTrue(AccessibilityPolicy.serviceFeatures(selected.copy(panel = false)).isEmpty())
+        assertTrue(AccessibilityPolicy.serviceFeatures(selected.copy(widgets = false)).isEmpty())
     }
 
     @Test fun weatherAloneIsNamedForRecoveryAndInspectsPinWithoutBadgeOrMediaDemand() {

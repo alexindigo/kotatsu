@@ -414,12 +414,13 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_LOCKSCREEN_WEATHER, false)
         set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WEATHER, value).apply()
 
-    var lockscreenPanelTest: Int
-        get() = intPref(KEY_LOCKSCREEN_PANEL_TEST, 0)
-        set(value) {
-            require(value in setOf(0, 4, 8))
-            prefs.edit().putInt(KEY_LOCKSCREEN_PANEL_TEST, value).apply()
-        }
+    var lockscreenWidgetsEnabled: Boolean
+        get() = boolPref(KEY_LOCKSCREEN_WIDGETS_ENABLED, false)
+        set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WIDGETS_ENABLED, value).apply()
+
+    var lockscreenWidgets: String
+        get() = strPref(KEY_LOCKSCREEN_WIDGETS, "[]") ?: "[]"
+        set(value) = prefs.edit().putString(KEY_LOCKSCREEN_WIDGETS, value).apply()
 
     var lockscreenWidgetY: Int
         get() = intPref(KEY_LOCKSCREEN_WIDGET_Y, -1)
@@ -620,7 +621,7 @@ class PrefsManager(context: Context) {
                 is Boolean -> value is Boolean
                 is Int -> value is Number && runCatching {
                     java.math.BigDecimal(value.toString()).intValueExact()
-                }.isSuccess && (key != KEY_LOCKSCREEN_PANEL_TEST || value.toInt() in setOf(0, 4, 8))
+                }.isSuccess
                 is String -> value is String && isUsableString(key, value)
                 is Set<*> -> value is JSONArray && (0 until value.length()).all { value.opt(it) is String }
                 else -> true // Unknown fields retain the existing import behavior.
@@ -667,14 +668,13 @@ class PrefsManager(context: Context) {
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
         KEY_DISABLE_MUSIC_WIDGET, KEY_SHOW_KATAPULT_ICON, KEY_HIDE_APP_NAMES, KEY_HIDE_ARROW_BUTTONS,
         KEY_DISABLE_HOME_EDITING, KEY_HIDE_ALL_APPS_BUTTON, KEY_SWIPE_UP_ALL_APPS, KEY_HOME_ISLANDS,
-        KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET, KEY_LOCKSCREEN_WEATHER,
+        KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET, KEY_LOCKSCREEN_WEATHER, KEY_LOCKSCREEN_WIDGETS_ENABLED,
         KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED, KEY_SCREENSAVER_ISLANDS,
         KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
         KEY_ICON_SIZE, KEY_THEME_MODE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
         KEY_LAST_BRIGHTNESS, KEY_HOME_LONG_PRESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
-        KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES,
-        KEY_LOCKSCREEN_PANEL_TEST -> 0
+        KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH,
         KEY_SCREENSAVER_WALLPAPER_PATH, KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> ""
         KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED -> emptySet<String>()
@@ -814,7 +814,8 @@ class PrefsManager(context: Context) {
         private const val KEY_LOCKSCREEN_WIDGET = "lockscreen_widget"
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
         private const val KEY_LOCKSCREEN_WEATHER = "lockscreen_weather"
-        private const val KEY_LOCKSCREEN_PANEL_TEST = "lockscreen_panel_test"
+        private const val KEY_LOCKSCREEN_WIDGETS_ENABLED = "lockscreen_widgets_enabled"
+        private const val KEY_LOCKSCREEN_WIDGETS = "lockscreen_widgets"
         private const val KEY_LOCKSCREEN_WIDGET_Y = "lockscreen_widget_y"
         private const val KEY_LOCKSCREEN_WIDGET_ROWS = "lockscreen_widget_rows"
         private const val KEY_LOCKSCREEN_WIDGET_EXCLUDED = "lockscreen_widget_excluded"
@@ -852,6 +853,6 @@ class PrefsManager(context: Context) {
         const val APP_SORT_USED = 2
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
 
-        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET)
+        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, KEY_LOCKSCREEN_WIDGETS)
     }
 }

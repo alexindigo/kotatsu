@@ -311,4 +311,19 @@
     <string name="policy_disabled">Deaktiviert</string>
     <string name="acknowledge_calls">Anrufe bestätigen (als gesehen markieren)</string>
     <string name="config_import_replaces_settings">Dadurch werden alle Ihre aktuellen Einstellungen ersetzt.</string>
+    <string name="lockscreen_widgets">Sperrbildschirm-Widgets</string>
+    <string name="lockscreen_widgets_off">Aus</string>
+    <string name="lockscreen_widgets_on">An · %1$d Widgets</string>
+    <string name="lockscreen_widgets_show">Auf dem Sperrbildschirm anzeigen</string>
+    <string name="lockscreen_widgets_add">Widget hinzufügen</string>
+    <string name="lockscreen_widgets_unavailable">Nicht verfügbar</string>
+    <string name="lockscreen_widgets_small">Klein</string>
+    <string name="lockscreen_widgets_medium">Mittel</string>
+    <string name="lockscreen_widgets_large">Groß</string>
+    <string name="lockscreen_widgets_up">Nach oben</string>
+    <string name="lockscreen_widgets_down">Nach unten</string>
+    <string name="lockscreen_widgets_edit">Bearbeiten</string>
+    <string name="lockscreen_widgets_remove">Entfernen</string>
+    <string name="lockscreen_widgets_no_room">Nicht genug Platz auf dem Sperrbildschirm</string>
+    <string name="lockscreen_widgets_failed">Widget konnte nicht aktualisiert werden</string>
 </resources>

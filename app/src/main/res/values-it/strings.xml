@@ -311,4 +311,19 @@
     <string name="policy_disabled">Disattivato</string>
     <string name="acknowledge_calls">Conferma chiamate (segna come viste)</string>
     <string name="config_import_replaces_settings">Questo sostituisce tutte le tue impostazioni attuali.</string>
+    <string name="lockscreen_widgets">Widget della schermata di blocco</string>
+    <string name="lockscreen_widgets_off">Disattivato</string>
+    <string name="lockscreen_widgets_on">Attivato · %1$d widget</string>
+    <string name="lockscreen_widgets_show">Mostra sulla schermata di blocco</string>
+    <string name="lockscreen_widgets_add">Aggiungi widget</string>
+    <string name="lockscreen_widgets_unavailable">Non disponibile</string>
+    <string name="lockscreen_widgets_small">Piccolo</string>
+    <string name="lockscreen_widgets_medium">Medio</string>
+    <string name="lockscreen_widgets_large">Grande</string>
+    <string name="lockscreen_widgets_up">Sposta su</string>
+    <string name="lockscreen_widgets_down">Sposta giù</string>
+    <string name="lockscreen_widgets_edit">Modifica</string>
+    <string name="lockscreen_widgets_remove">Rimuovi</string>
+    <string name="lockscreen_widgets_no_room">Spazio insufficiente sulla schermata di blocco</string>
+    <string name="lockscreen_widgets_failed">Impossibile aggiornare il widget</string>
 </resources>

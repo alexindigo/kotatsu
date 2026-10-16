@@ -19,6 +19,27 @@ class MainActivity : ComponentActivity() {
 
     val viewModel: MainViewModel by viewModels()
 
+    fun addLockscreenWidget(info: android.appwidget.AppWidgetProviderInfo) {
+        viewModel.lockscreenWidgets.add(info, widgetBind::launch, ::configureWidget)
+    }
+
+    fun editLockscreenWidget(id: Int) { viewModel.lockscreenWidgets.edit(id, ::configureWidget) }
+
+    private fun configureWidget(id: Int) {
+        try {
+            com.gezimos.katapult.lockscreen.LockscreenWidgetHost.get(this)
+                .startAppWidgetConfigureActivityForResult(this, id, 0, REQUEST_CONFIGURE_WIDGET, null)
+        } catch (_: Exception) { viewModel.lockscreenWidgets.launchFailed() }
+    }
+
+    @Deprecated("AppWidgetHost configuration uses the platform result callback")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQUEST_CONFIGURE_WIDGET) viewModel.lockscreenWidgets.configured(resultCode == RESULT_OK)
+    }
+
+    companion object { private const val REQUEST_CONFIGURE_WIDGET = 0x4B54 }
+
     private var einkHelper: EinkHelper? = null
     private var acknowledgmentRequestId: Long? = null
     private val callAcknowledgmentPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
@@ -84,6 +105,11 @@ class MainActivity : ComponentActivity() {
         uri?.let { viewModel.setScreensaverWallpaper(this, it) }
     }
 
+    // Append new launchers to preserve the existing activity-result registration keys.
+    private val widgetBind = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        viewModel.lockscreenWidgets.bound(result.resultCode == RESULT_OK, ::configureWidget)
+    }
+
     private val backCallback = object : OnBackPressedCallback(true) {
         override fun handleOnBackPressed() {
             if (viewModel.goBack() || DeviceHelper.isDefaultLauncher(this@MainActivity)) return
@@ -98,6 +124,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        viewModel.lockscreenWidgets.restoreState(savedInstanceState)
         acknowledgmentRequestId = savedInstanceState?.takeIf { it.containsKey("call_acknowledgment_request") }
             ?.getLong("call_acknowledgment_request")
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -126,6 +153,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
+        viewModel.lockscreenWidgets.saveState(outState)
         acknowledgmentRequestId?.let { outState.putLong("call_acknowledgment_request", it) }
         super.onSaveInstanceState(outState)
     }

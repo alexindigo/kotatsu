@@ -311,4 +311,19 @@
     <string name="policy_disabled">Vypnuto</string>
     <string name="acknowledge_calls">Potvrdit hovory (označit jako zobrazené)</string>
     <string name="config_import_replaces_settings">Tím se nahradí všechna vaše aktuální nastavení.</string>
+    <string name="lockscreen_widgets">Widgety na zamčené obrazovce</string>
+    <string name="lockscreen_widgets_off">Vypnuto</string>
+    <string name="lockscreen_widgets_on">Zapnuto · %1$d widgetů</string>
+    <string name="lockscreen_widgets_show">Zobrazit na zamčené obrazovce</string>
+    <string name="lockscreen_widgets_add">Přidat widget</string>
+    <string name="lockscreen_widgets_unavailable">Nedostupné</string>
+    <string name="lockscreen_widgets_small">Malý</string>
+    <string name="lockscreen_widgets_medium">Střední</string>
+    <string name="lockscreen_widgets_large">Velký</string>
+    <string name="lockscreen_widgets_up">Posunout nahoru</string>
+    <string name="lockscreen_widgets_down">Posunout dolů</string>
+    <string name="lockscreen_widgets_edit">Upravit</string>
+    <string name="lockscreen_widgets_remove">Odebrat</string>
+    <string name="lockscreen_widgets_no_room">Na zamčené obrazovce není dost místa</string>
+    <string name="lockscreen_widgets_failed">Widget se nepodařilo aktualizovat</string>
 </resources>

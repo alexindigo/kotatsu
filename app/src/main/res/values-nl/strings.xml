@@ -311,4 +311,19 @@
     <string name="policy_disabled">Uitgeschakeld</string>
     <string name="acknowledge_calls">Oproepen bevestigen (als gezien markeren)</string>
     <string name="config_import_replaces_settings">Dit vervangt al je huidige instellingen.</string>
+    <string name="lockscreen_widgets">Vergrendelschermwidgets</string>
+    <string name="lockscreen_widgets_off">Uit</string>
+    <string name="lockscreen_widgets_on">Aan · %1$d widgets</string>
+    <string name="lockscreen_widgets_show">Op vergrendelscherm tonen</string>
+    <string name="lockscreen_widgets_add">Widget toevoegen</string>
+    <string name="lockscreen_widgets_unavailable">Niet beschikbaar</string>
+    <string name="lockscreen_widgets_small">Klein</string>
+    <string name="lockscreen_widgets_medium">Middelgroot</string>
+    <string name="lockscreen_widgets_large">Groot</string>
+    <string name="lockscreen_widgets_up">Omhoog</string>
+    <string name="lockscreen_widgets_down">Omlaag</string>
+    <string name="lockscreen_widgets_edit">Bewerken</string>
+    <string name="lockscreen_widgets_remove">Verwijderen</string>
+    <string name="lockscreen_widgets_no_room">Onvoldoende ruimte op het vergrendelscherm</string>
+    <string name="lockscreen_widgets_failed">Widget kon niet worden bijgewerkt</string>
 </resources>

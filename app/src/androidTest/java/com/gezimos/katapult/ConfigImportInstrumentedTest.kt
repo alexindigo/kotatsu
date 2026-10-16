@@ -49,7 +49,7 @@ class ConfigImportInstrumentedTest {
             "lockscreen_widget", "lockscreen_music_widget", "lockscreen_weather", "lockscreen_widget_latest_first",
             "screensaver_enabled", "screensaver_islands", "screensaver_wallpaper", "screensaver_show_clock",
             "screensaver_show_notifications", "screensaver_double_tap_brightness", "screensaver_eink_refresh",
-            "screensaver_on_power")
+            "screensaver_on_power", "lockscreen_widgets_enabled")
         for (key in keys) {
             assertFalse(raw.contains(key))
             for (invalid in listOf("false", 0, JSONObject.NULL, JSONArray(), JSONObject())) {
@@ -61,7 +61,7 @@ class ConfigImportInstrumentedTest {
     @Test fun allDeclaredIntegersRejectFractionalOverflowAndWrongTypes() = withPrefs { prefs, raw ->
         val keys = listOf("icon_size", "theme_mode", "eink_helper_mode", "double_tap_action",
             "last_brightness", "home_long_press", "app_sort_mode", "lockscreen_widget_y",
-            "lockscreen_widget_rows", "screensaver_update_mode", "screensaver_update_minutes", "lockscreen_panel_test")
+            "lockscreen_widget_rows", "screensaver_update_mode", "screensaver_update_minutes")
         for (key in keys) {
             assertFalse(raw.contains(key))
             for (invalid in listOf("1", false, 1.5, 2147483648L, -2147483649L,
@@ -71,15 +71,30 @@ class ConfigImportInstrumentedTest {
         }
     }
 
-    @Test fun panelChoiceIsAPortableIntegerWithOnlyOffFourAndEightAllowed() = withPrefs { prefs, raw ->
-        assertEquals(0, prefs.lockscreenPanelTest)
-        for (invalid in listOf(-1, 1, 2, 5, 16)) {
-            rejectsUnchanged(prefs, raw, config().put("lockscreen_panel_test", invalid))
+    @Test fun widgetsEnabledIsAPortableBoolean() = withPrefs { prefs, raw ->
+        assertFalse(prefs.lockscreenWidgetsEnabled)
+        for (invalid in listOf("true", 1, 0, JSONObject.NULL, JSONArray())) {
+            rejectsUnchanged(prefs, raw, config().put("lockscreen_widgets_enabled", invalid))
         }
-        for (choice in listOf(4, 8, 0)) {
-            assertTrue(prefs.importFromJson(config().put("lockscreen_panel_test", choice).toString()))
-            assertEquals(choice, prefs.lockscreenPanelTest)
-            assertEquals(choice, JSONObject(prefs.exportToJson(context)).getInt("lockscreen_panel_test"))
+        for (choice in listOf(true, false)) {
+            assertTrue(prefs.importFromJson(config().put("lockscreen_widgets_enabled", choice).toString()))
+            assertEquals(choice, prefs.lockscreenWidgetsEnabled)
+            assertEquals(choice, JSONObject(prefs.exportToJson(context)).getBoolean("lockscreen_widgets_enabled"))
+        }
+    }
+
+    @Test fun widgetIdsStayLocalAcrossImportAndOmission() = withPrefs { prefs, raw ->
+        assertFalse(raw.contains("lockscreen_widgets"))
+        assertTrue(prefs.importFromJson(config().put("lockscreen_widgets", "[{\"id\":999,\"size\":\"L\"}]").toString()))
+        assertFalse(raw.contains("lockscreen_widgets"))
+        assertEquals("[]", prefs.lockscreenWidgets)
+        val local = """[{"id":27,"size":"M"},{"id":4,"size":"S"}]"""
+        prefs.lockscreenWidgets = local
+        for (incoming in listOf(config(), config().put("lockscreen_widgets", "[]"),
+            config().put("lockscreen_widgets", true), config().put("lockscreen_widgets", "foreign-phone-ids"))) {
+            assertTrue(prefs.importFromJson(incoming.put("lockscreen_widgets_enabled", true).toString()))
+            assertEquals(local, prefs.lockscreenWidgets)
+            assertTrue(prefs.lockscreenWidgetsEnabled)
         }
     }
 

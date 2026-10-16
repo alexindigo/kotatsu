@@ -311,4 +311,19 @@
     <string name="policy_disabled">Désactivé</string>
     <string name="acknowledge_calls">Confirmer les appels (marquer comme vus)</string>
     <string name="config_import_replaces_settings">Cela remplace tous vos paramètres actuels.</string>
+    <string name="lockscreen_widgets">Widgets de verrouillage</string>
+    <string name="lockscreen_widgets_off">Désactivé</string>
+    <string name="lockscreen_widgets_on">Activé · %1$d widgets</string>
+    <string name="lockscreen_widgets_show">Afficher sur l’écran de verrouillage</string>
+    <string name="lockscreen_widgets_add">Ajouter un widget</string>
+    <string name="lockscreen_widgets_unavailable">Indisponible</string>
+    <string name="lockscreen_widgets_small">Petit</string>
+    <string name="lockscreen_widgets_medium">Moyen</string>
+    <string name="lockscreen_widgets_large">Grand</string>
+    <string name="lockscreen_widgets_up">Monter</string>
+    <string name="lockscreen_widgets_down">Descendre</string>
+    <string name="lockscreen_widgets_edit">Modifier</string>
+    <string name="lockscreen_widgets_remove">Supprimer</string>
+    <string name="lockscreen_widgets_no_room">Pas assez de place sur l’écran de verrouillage</string>
+    <string name="lockscreen_widgets_failed">Impossible de mettre à jour le widget</string>
 </resources>

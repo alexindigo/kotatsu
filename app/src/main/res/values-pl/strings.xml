@@ -311,4 +311,19 @@
     <string name="policy_disabled">Wyłączone</string>
     <string name="acknowledge_calls">Potwierdź połączenia (oznacz jako widziane)</string>
     <string name="config_import_replaces_settings">Spowoduje to zastąpienie wszystkich bieżących ustawień.</string>
+    <string name="lockscreen_widgets">Widżety ekranu blokady</string>
+    <string name="lockscreen_widgets_off">Wyłączone</string>
+    <string name="lockscreen_widgets_on">Włączone · %1$d widżetów</string>
+    <string name="lockscreen_widgets_show">Pokaż na ekranie blokady</string>
+    <string name="lockscreen_widgets_add">Dodaj widżet</string>
+    <string name="lockscreen_widgets_unavailable">Niedostępny</string>
+    <string name="lockscreen_widgets_small">Mały</string>
+    <string name="lockscreen_widgets_medium">Średni</string>
+    <string name="lockscreen_widgets_large">Duży</string>
+    <string name="lockscreen_widgets_up">Przesuń w górę</string>
+    <string name="lockscreen_widgets_down">Przesuń w dół</string>
+    <string name="lockscreen_widgets_edit">Edytuj</string>
+    <string name="lockscreen_widgets_remove">Usuń</string>
+    <string name="lockscreen_widgets_no_room">Za mało miejsca na ekranie blokady</string>
+    <string name="lockscreen_widgets_failed">Nie udało się zaktualizować widżetu</string>
 </resources>
