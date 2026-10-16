@@ -1,0 +1,10 @@
+Weather vectors ic_weather_thunderstorm, ic_weather_snowy, ic_weather_rainy,
+ic_weather_foggy, ic_weather_cloudy, ic_weather_clear_day: copies of the
+repository's Material weather icons. ic_weather_wind: converted from the
+catalogue's material-icons:outlined:air SVG. Google Material Icons / Symbols,
+Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
+
+Lato Regular and Bold, Copyright (c) 2010-2014 Łukasz Dziedzic.
+SIL Open Font License 1.1; see LICENSE-Lato.txt in this module.
+
+Weather data: Open-Meteo.com, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).

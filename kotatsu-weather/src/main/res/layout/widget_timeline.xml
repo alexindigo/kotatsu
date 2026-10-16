@@ -1,0 +1,3 @@
+<ImageView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/timeline" android:layout_width="match_parent" android:layout_height="match_parent"
+    android:background="#FFFFFF" android:scaleType="fitXY" android:contentDescription="@string/widget_description" />

@@ -34,3 +34,4 @@ rootProject.name = "Kotatsu"
 include(":app")
 include(":weather-api")
 include(":weather-mudita")
+include(":kotatsu-weather")
