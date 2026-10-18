@@ -16,6 +16,7 @@
     <string name="settings">Nastavení</string>
     <string name="hidden_apps">Skryté aplikace</string>
     <string name="hidden_apps_count">Skryté aplikace (%1$d)</string>
+    <string name="hidden_apps_desc">Vyberte, které aplikace skrýt ze seznamu aplikací</string>
     <string name="clear_wallpaper">Odebrat tapetu</string>
     <string name="set_wallpaper">Nastavit tapetu</string>
     <string name="no_media">Žádné médium</string>

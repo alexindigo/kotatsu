@@ -16,6 +16,7 @@
     <string name="settings">Instellingen</string>
     <string name="hidden_apps">Verborgen apps</string>
     <string name="hidden_apps_count">Verborgen apps (%1$d)</string>
+    <string name="hidden_apps_desc">Kies welke apps je verbergt in de app-lijst</string>
     <string name="clear_wallpaper">Achtergrond verwijderen</string>
     <string name="set_wallpaper">Achtergrond instellen</string>
     <string name="no_media">Geen media</string>

@@ -124,7 +124,8 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         automation.rootInActiveWindow!!.getBoundsInScreen(root)
         // The empty side of the clock lane, using this frame's actual window bounds.
         tap(root.left + root.width() / 10f, root.top + root.height() / 3f, 750)
-        await("HOME long press did not open its public menu") { has("Hidden Apps") }
+        // The wallpaper option is the menu entry present in every configuration.
+        await("HOME long press did not open its public menu") { has("Set Wallpaper") || has("Clear Wallpaper") }
     }
 
     fun swipeToHome(vertical: Boolean) {

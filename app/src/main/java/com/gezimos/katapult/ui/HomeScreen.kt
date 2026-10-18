@@ -57,7 +57,6 @@ import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -117,7 +116,6 @@ fun HomeScreen(
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var pickerSlot by remember { mutableStateOf<String?>(null) }
-    var showHiddenApps by remember { mutableStateOf(false) }
     val policyRefresh = viewModel.policyRefresh
 
     val slotAsApp: (String) -> AppModel? = { slot ->
@@ -452,10 +450,6 @@ fun HomeScreen(
                     viewModel.navigateTo(Screen.ALL_APPS)
                 }
             }
-            BottomSheetOption(stringResource(R.string.hidden_apps), icon = Icons.Rounded.VisibilityOff) {
-                showMenu = false
-                showHiddenApps = true
-            }
             if (viewModel.wallpaperBitmap != null) {
                 BottomSheetOption(stringResource(R.string.clear_wallpaper), icon = Icons.Rounded.Wallpaper) {
                     showMenu = false
@@ -498,13 +492,6 @@ fun HomeScreen(
                 viewModel.shortcutRefresh++
                 pickerSlot = null
             },
-        )
-    }
-
-    if (showHiddenApps) {
-        HiddenAppsDialog(
-            viewModel = viewModel,
-            onDismiss = { showHiddenApps = false },
         )
     }
 

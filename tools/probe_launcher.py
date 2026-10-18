@@ -117,7 +117,8 @@ class PublicUi:
         # menu. Coordinates derive from current public bounds, not screenshots.
         x=x1+(x2-x1)//10;y=y1+(y2-y1)//3
         self.shell('input','swipe',str(x),str(y),str(x),str(y),'800')
-        self.wait('Public HOME menu did not appear',lambda:self.find('Hidden Apps'))
+        # The wallpaper option is the menu entry present in every configuration.
+        self.wait('Public HOME menu did not appear',lambda:self.find('Set Wallpaper') is not None or self.find('Clear Wallpaper') is not None)
     def open_grid(self):
         root=self.hierarchy()
         if self.find('All Apps',root) is not None:self.click('All Apps')

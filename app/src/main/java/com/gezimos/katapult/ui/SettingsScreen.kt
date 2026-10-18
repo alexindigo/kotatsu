@@ -201,6 +201,7 @@ fun SettingsScreen(
     var widgetProviders by remember { mutableStateOf<List<com.gezimos.katapult.lockscreen.WidgetProviderChoice>?>(null) }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var showLockscreenApps by remember { mutableStateOf(false) }
+    var showHiddenApps by remember { mutableStateOf(false) }
     var showLockscreenReadMe by remember { mutableStateOf(false) }
     var showNotificationsReadMe by remember { mutableStateOf(false) }
     var showScreensaverReadMe by remember { mutableStateOf(false) }
@@ -517,6 +518,13 @@ fun SettingsScreen(
                         prefs.showKatapultIcon = it
                         viewModel.loadApps()
                     },
+                )
+            }
+            add {
+                SettingsActionRow(
+                    title = stringResource(R.string.hidden_apps),
+                    description = stringResource(R.string.hidden_apps_desc),
+                    onClick = { showHiddenApps = true },
                 )
             }
             add {
@@ -1155,6 +1163,13 @@ fun SettingsScreen(
         LockscreenAppsDialog(
             viewModel = viewModel,
             onDismiss = { showLockscreenApps = false },
+        )
+    }
+
+    if (showHiddenApps) {
+        HiddenAppsDialog(
+            viewModel = viewModel,
+            onDismiss = { showHiddenApps = false },
         )
     }
 
@@ -2067,7 +2082,7 @@ private fun LockscreenAppsDialog(
 }
 
 @Composable
-fun HiddenAppsDialog(
+private fun HiddenAppsDialog(
     viewModel: MainViewModel,
     onDismiss: () -> Unit,
 ) {

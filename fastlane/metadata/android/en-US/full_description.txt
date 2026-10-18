@@ -32,7 +32,7 @@ Features
 • Double-tap brightness: toggle display brightness by double-tapping the home background (requires Write Settings)
 • Infinite scroll: wrap from the last page back to the first
 • Simple wallpaper support (not managed by Android)
-• Hide apps from the context menu or in bulk from the home menu
+• Hide apps from the context menu or in bulk in Settings > All Apps
 • Rename any app by long-pressing it in the grid
 • App context menu: Reorder, Rename, Change Icon, Hide, App Info, Notifications, Clear Notifications, Uninstall
 • Reorder apps with swap-based reordering; dirty exits offer Save/Discard/Cancel, and Reset edits the draft

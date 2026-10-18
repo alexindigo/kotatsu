@@ -16,6 +16,7 @@
     <string name="settings">Ajustes</string>
     <string name="hidden_apps">Apps ocultas</string>
     <string name="hidden_apps_count">Apps ocultas (%1$d)</string>
+    <string name="hidden_apps_desc">Elige qué apps ocultar de la lista de apps</string>
     <string name="clear_wallpaper">Quitar fondo</string>
     <string name="set_wallpaper">Establecer fondo</string>
     <string name="no_media">Sin multimedia</string>
