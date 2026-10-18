@@ -24,6 +24,18 @@ data class Location(
     val coordinateKey: String get() = String.format(Locale.ROOT, "%.4f,%.4f", latitude, longitude)
 }
 
+/**
+ * The phone's own position as a place. Coordinates are rounded to 3 decimals (about 100 m): finer than the
+ * forecast's 2.5–3 km grid, but they don't pinpoint a house. Android has no reverse geocoder without Google
+ * services, so the label is "Here" (editable) and the place line names the rounded coordinates.
+ */
+fun currentLocation(latitude: Double, longitude: Double): Location {
+    fun round3(value: Double) = Math.round(value * 1000) / 1000.0
+    val lat = round3(latitude)
+    val lon = round3(longitude)
+    return Location("Here", String.format(Locale.ROOT, "Current location, %.3f, %.3f", lat, lon), lat, lon)
+}
+
 fun shortLabel(text: String): String = text.substring(0, text.offsetByCodePoints(0, minOf(8, text.codePointCount(0, text.length))))
 
 /** Most places one widget shows; four only with condensed line spacing (see [rowGapDp]). */

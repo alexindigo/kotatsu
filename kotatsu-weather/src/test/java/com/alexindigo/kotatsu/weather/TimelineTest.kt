@@ -99,6 +99,14 @@ class TimelineTest {
         assertEquals(24f, rowGapDp(3), 0f)
         assertEquals(12f, rowGapDp(4), 0f)
     }
+    @Test fun currentLocationIsRoundedToAbout100Metres() {
+        val here = currentLocation(37.3841127, -122.2352488)
+        assertEquals("Here", here.label)
+        assertEquals(37.384, here.latitude, 0.0)
+        assertEquals(-122.235, here.longitude, 0.0)
+        assertEquals("Current location, 37.384, -122.235", here.place)
+        assertEquals(7, here.start); assertEquals(23, here.end)
+    }
     @Test fun largestFittingSizeIsSolvedNotGuessed() {
         assertEquals(20f, largestFitting(20f, 1f) { true }, 0f)
         assertEquals(13.5f, largestFitting(20f, 1f) { it <= 13.5f }, .01f)

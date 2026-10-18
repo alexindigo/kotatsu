@@ -1,13 +1,16 @@
 package com.alexindigo.kotatsu.weather
 
+import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Typeface
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
+import android.os.CancellationSignal
 import android.text.InputFilter
 import android.view.Gravity
 import android.view.View
@@ -31,6 +34,8 @@ class ConfigureActivity : Activity() {
     private lateinit var doneHint: TextView
     private val executor = Executors.newSingleThreadExecutor()
     private var searchGeneration = 0
+    private var locating: CancellationSignal? = null
+    private var afterLocationPermission: ((Boolean) -> Unit)? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -209,8 +214,49 @@ class ConfigureActivity : Activity() {
         val input = field("City or town")
         val body = column().apply { setPadding(dp(24), dp(8), dp(24), 0); addView(input) }
         style(body)
+        // The other way to add a place, sitting with the dialog's own buttons and drawn like them.
+        val current = dialogButton(ADD_CURRENT)
+        body.addView(current, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(16) })
+        val status = text("", 14f).apply { visibility = View.GONE; setPadding(0, dp(8), 0, 0) }
+        body.addView(status)
         val dialog = AlertDialog.Builder(this).setCustomTitle(dialogTitle("Add location")).setView(body)
             .setNegativeButton("Cancel", null).setPositiveButton("Search", null).create()
+        fun say(message: String) { status.text = message; status.visibility = View.VISIBLE }
+        fun locate() {
+            current.isEnabled = false; current.text = FINDING; status.visibility = View.GONE
+            locating = CurrentPosition.find(this) { result ->
+                locating = null
+                if (isFinishing || isDestroyed || !dialog.isShowing) return@find
+                current.isEnabled = true; current.text = ADD_CURRENT
+                when (result) {
+                    is CurrentPosition.Result.Found -> {
+                        if (config.locations.size < MAX_LOCATIONS) {
+                            config = config.copy(locations = config.locations + currentLocation(result.latitude, result.longitude))
+                            showRows()
+                        }
+                        dialog.dismiss()
+                    }
+                    CurrentPosition.Result.Denied ->
+                        say("Location access is off for Kotatsu Weather. Search by name, or allow it in the phone's settings.")
+                    CurrentPosition.Result.Off ->
+                        say("Location is off on this phone. Turn it on in the phone's settings, or search by name.")
+                    CurrentPosition.Result.NotFound ->
+                        say("Couldn't get a location. GPS needs a view of the sky, so try near a window or search by name.")
+                }
+            }
+        }
+        current.setOnClickListener {
+            if (CurrentPosition.granted(this)) locate()
+            else {
+                afterLocationPermission = { granted ->
+                    if (granted) locate()
+                    else say("Location access is off for Kotatsu Weather. Search by name, or allow it in the phone's settings.")
+                }
+                requestPermissions(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                    REQUEST_LOCATION)
+            }
+        }
+        dialog.setOnDismissListener { locating?.cancel(); locating = null }
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val query = input.text.toString().trim()
@@ -250,8 +296,15 @@ class ConfigureActivity : Activity() {
         outState.putString("draft", ConfigJson.encode(config))
         super.onSaveInstanceState(outState)
     }
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != REQUEST_LOCATION) return
+        val then = afterLocationPermission ?: return
+        afterLocationPermission = null
+        then(CurrentPosition.granted(this))
+    }
 
-    override fun onDestroy() { searchGeneration++; executor.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() { searchGeneration++; locating?.cancel(); executor.shutdownNow(); super.onDestroy() }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun hours(hour: Int) = "$hour:00"
     private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
@@ -264,6 +317,13 @@ class ConfigureActivity : Activity() {
         gravity = Gravity.CENTER
         minHeight = dp(56)
         setOnClickListener { onClick() }
+    }
+
+    /** Drawn like Mudita's own dialog buttons (outline, corners, bold system text), for a button in a dialog body. */
+    private fun dialogButton(label: String) = TextView(this).apply {
+        text = label; textSize = 24f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.BLACK)
+        gravity = Gravity.CENTER; minHeight = dp(56); isAllCaps = false
+        background = GradientDrawable().apply { cornerRadius = dp(8).toFloat(); setColor(Color.WHITE); setStroke(stroke(), Color.BLACK) }
     }
 
     /** Kotatsu's outline weight. */
@@ -342,6 +402,9 @@ class ConfigureActivity : Activity() {
     }
 
     private companion object {
+        const val REQUEST_LOCATION = 0x4B57
+        const val ADD_CURRENT = "Add current location"
+        const val FINDING = "Finding your location…"
         const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
         /** Disabled ink, the same grey the widget uses for an old forecast. */
