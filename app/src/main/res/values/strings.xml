@@ -17,6 +17,9 @@
     <string name="hidden_apps">Hidden Apps</string>
     <string name="hidden_apps_count">Hidden Apps (%1$d)</string>
     <string name="hidden_apps_desc">Choose which apps to hide from the app list</string>
+    <string name="system_apps">System Apps</string>
+    <string name="system_apps_count">System Apps (%1$d)</string>
+    <string name="system_apps_desc">Hide Android\'s built-in apps, like Mudita does</string>
     <string name="clear_wallpaper">Clear Wallpaper</string>
     <string name="set_wallpaper">Set Wallpaper</string>
     <string name="no_media">No media</string>

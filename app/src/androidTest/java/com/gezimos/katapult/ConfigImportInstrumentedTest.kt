@@ -111,7 +111,7 @@ class ConfigImportInstrumentedTest {
     }
 
     @Test fun stringSetsRequireArraysOfStrings() = withPrefs { prefs, raw ->
-        for (key in listOf("hidden_apps", "lockscreen_widget_excluded")) {
+        for (key in listOf("hidden_apps", "lockscreen_widget_excluded", "shown_default_hidden_apps")) {
             for (invalid in listOf("[]", true, 1, JSONObject.NULL, JSONObject(),
                 JSONArray().put(1), JSONArray().put(JSONObject.NULL), JSONArray().put(JSONObject()))) {
                 rejectsUnchanged(prefs, raw, config().put(key, invalid))

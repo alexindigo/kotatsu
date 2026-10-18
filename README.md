@@ -54,6 +54,7 @@ Finish onboarding without granting sensitive access or changing your default HOM
 - **Infinite scroll**: swipe around from the last page to the first (the page arrows stop at the first and last page)
 - **Simple wallpaper**: set a background image (not managed by Android)
 - **Hide apps**: from the app context menu or bulk-hide in Settings > All Apps
+- **System Apps** (Kompakt only): Android's built-in apps that Mudita's launcher leaves out (Settings, Clock, Files, FM Radio and others) start hidden too; show any of them in Settings > All Apps > System Apps. F-Droid, FUTO Keyboard and Mudita's Update also start hidden (uncheck them in Hidden Apps)
 - **Rename apps**: long-press any app in the grid
 - **App context menu**: Reorder, Rename, Hide, App Info, Uninstall
 - **Reorder apps**: swap-based reordering from the context menu. Dirty exits ask Save/Discard/Cancel; Reset changes the draft until you save.

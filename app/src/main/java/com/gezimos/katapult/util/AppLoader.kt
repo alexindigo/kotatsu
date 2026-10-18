@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import com.gezimos.katapult.R
 import com.gezimos.katapult.model.AppModel
@@ -72,12 +73,16 @@ object AppLoader {
             addCategory(Intent.CATEGORY_LAUNCHER)
         }
         val pm = context.packageManager
+        val onKompakt = DeviceHelper.isMuditaKompakt()
         val apps = pm.queryIntentActivities(intent, PackageManager.MATCH_ALL)
             .map { ri ->
+                val info = ri.activityInfo.applicationInfo
                 AppModel(
                     packageName = ri.activityInfo.packageName,
                     label = ri.loadLabel(pm).toString(),
-                    activityName = ri.activityInfo.name
+                    activityName = ri.activityInfo.name,
+                    stock = StockApps.isStock(onKompakt, info.flags and ApplicationInfo.FLAG_SYSTEM != 0,
+                        ri.activityInfo.packageName),
                 )
             }
             .sortedBy { it.label.lowercase() }

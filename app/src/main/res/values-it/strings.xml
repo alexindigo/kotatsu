@@ -17,6 +17,9 @@
     <string name="hidden_apps">App nascoste</string>
     <string name="hidden_apps_count">App nascoste (%1$d)</string>
     <string name="hidden_apps_desc">Scegli quali app nascondere dalla lista app</string>
+    <string name="system_apps">App di sistema</string>
+    <string name="system_apps_count">App di sistema (%1$d)</string>
+    <string name="system_apps_desc">Nascondi le app integrate di Android, come Mudita</string>
     <string name="clear_wallpaper">Rimuovi sfondo</string>
     <string name="set_wallpaper">Imposta sfondo</string>
     <string name="no_media">Nessun media</string>

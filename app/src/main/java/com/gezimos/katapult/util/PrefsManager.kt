@@ -514,6 +514,19 @@ class PrefsManager(context: Context) {
         setHiddenApps(getHiddenApps() - key)
     }
 
+    /** Hidden-by-default apps (AppVisibility) the user chose to show. */
+    fun getShownDefaultHiddenApps(): Set<String> = setPref(KEY_SHOWN_DEFAULT_HIDDEN, emptySet()) ?: emptySet()
+
+    /** Records a Hidden Apps / System Apps checkbox; [hiddenByDefault] decides which set holds the choice. */
+    fun setAppHidden(key: String, hidden: Boolean, hiddenByDefault: Boolean) {
+        if (hiddenByDefault) {
+            val shown = getShownDefaultHiddenApps()
+            prefs.edit().putStringSet(KEY_SHOWN_DEFAULT_HIDDEN, if (hidden) shown - key else shown + key).apply()
+            // One choice per app: an older explicit hide must not keep it hidden after unchecking.
+            if (!hidden && key in getHiddenApps()) unhideApp(key)
+        } else if (hidden) hideApp(key) else unhideApp(key)
+    }
+
     fun getIconOverride(key: String): String? = synchronized(prefs) {
         val storageKey = "${KEY_ICON_OVERRIDE_PREFIX}$key"
         strPref(storageKey, null)?.takeUnless { isDeadFileRef(storageKey, it) }
@@ -678,7 +691,7 @@ class PrefsManager(context: Context) {
         KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH,
         KEY_SCREENSAVER_WALLPAPER_PATH, KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> ""
-        KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED -> emptySet<String>()
+        KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED, KEY_SHOWN_DEFAULT_HIDDEN -> emptySet<String>()
         else -> if (key.startsWith(KEY_RENAME_PREFIX) || key.startsWith(KEY_ICON_OVERRIDE_PREFIX) ||
             HOME_SLOTS.any { slot -> key == "${slot}_package" || key == "${slot}_activity" || key == "${slot}_shortcut_id" }
         ) "" else null
@@ -801,6 +814,7 @@ class PrefsManager(context: Context) {
         private const val KEY_DISABLE_MUSIC_WIDGET = "disable_music_widget"
         private const val KEY_WALLPAPER_PATH = "wallpaper_path"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
+        private const val KEY_SHOWN_DEFAULT_HIDDEN = "shown_default_hidden_apps"
         private const val KEY_RENAME_PREFIX = "rename_"
         private const val KEY_ICON_OVERRIDE_PREFIX = "icon_override_"
         private const val KEY_SHOW_KATAPULT_ICON = "show_katapult_icon"

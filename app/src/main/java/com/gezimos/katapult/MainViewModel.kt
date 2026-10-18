@@ -55,6 +55,7 @@ import com.gezimos.katapult.util.AppLoader
 import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.SelfLaunch
+import com.gezimos.katapult.util.AppVisibility
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SystemChrome
@@ -418,7 +419,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         val currentApps = AppLoader.loadApps(ctx, showSelf = prefs.showKatapultIcon) +
             ShortcutHelper.installedShortcuts(ctx, prefs)
         val hidden = prefs.getHiddenApps()
-        val visible = currentApps.filter { it.key !in hidden }
+        val shown = prefs.getShownDefaultHiddenApps()
+        val visible = currentApps.filter { !AppVisibility.isHidden(it, hidden, shown) }
         val renamed = visible.map { app ->
             val customName = prefs.getAppRename(app.key)
             if (customName != null) app.copy(label = customName) else app
@@ -454,7 +456,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun getAllApps(): List<AppModel> {
-        val all = AppLoader.loadApps(ctx) + ShortcutHelper.installedShortcuts(ctx, prefs)
+        val shown = prefs.getShownDefaultHiddenApps()
+        val all = AppLoader.loadApps(ctx).filter { !it.stock || it.key in shown } +
+            ShortcutHelper.installedShortcuts(ctx, prefs)
         return all.map { app ->
             val customName = prefs.getAppRename(app.key)
             if (customName != null) app.copy(label = customName) else app

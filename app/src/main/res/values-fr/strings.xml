@@ -17,6 +17,9 @@
     <string name="hidden_apps">Apps masquées</string>
     <string name="hidden_apps_count">Apps masquées (%1$d)</string>
     <string name="hidden_apps_desc">Choisissez les apps à masquer dans la liste des apps</string>
+    <string name="system_apps">Apps système</string>
+    <string name="system_apps_count">Apps système (%1$d)</string>
+    <string name="system_apps_desc">Masquer les apps intégrées d\'Android, comme Mudita</string>
     <string name="clear_wallpaper">Supprimer le fond d\'écran</string>
     <string name="set_wallpaper">Définir le fond d\'écran</string>
     <string name="no_media">Aucun média</string>

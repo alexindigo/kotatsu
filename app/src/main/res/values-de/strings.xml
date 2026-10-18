@@ -17,6 +17,9 @@
     <string name="hidden_apps">Versteckte Apps</string>
     <string name="hidden_apps_count">Versteckte Apps (%1$d)</string>
     <string name="hidden_apps_desc">Wähle, welche Apps in der App-Liste ausgeblendet werden</string>
+    <string name="system_apps">System-Apps</string>
+    <string name="system_apps_count">System-Apps (%1$d)</string>
+    <string name="system_apps_desc">Androids vorinstallierte Apps ausblenden, wie Mudita</string>
     <string name="clear_wallpaper">Hintergrund entfernen</string>
     <string name="set_wallpaper">Hintergrund festlegen</string>
     <string name="no_media">Keine Medien</string>

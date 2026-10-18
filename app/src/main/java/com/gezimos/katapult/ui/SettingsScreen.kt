@@ -93,6 +93,7 @@ import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.MainViewModel
 import com.gezimos.katapult.R
 import com.gezimos.katapult.util.AppLoader
+import com.gezimos.katapult.util.AppVisibility
 import com.gezimos.katapult.MainActivity
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.EinkHelper
@@ -202,6 +203,7 @@ fun SettingsScreen(
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var showLockscreenApps by remember { mutableStateOf(false) }
     var showHiddenApps by remember { mutableStateOf(false) }
+    var showSystemApps by remember { mutableStateOf(false) }
     var showLockscreenReadMe by remember { mutableStateOf(false) }
     var showNotificationsReadMe by remember { mutableStateOf(false) }
     var showScreensaverReadMe by remember { mutableStateOf(false) }
@@ -525,6 +527,13 @@ fun SettingsScreen(
                     title = stringResource(R.string.hidden_apps),
                     description = stringResource(R.string.hidden_apps_desc),
                     onClick = { showHiddenApps = true },
+                )
+            }
+            if (isMudita) add {
+                SettingsActionRow(
+                    title = stringResource(R.string.system_apps),
+                    description = stringResource(R.string.system_apps_desc),
+                    onClick = { showSystemApps = true },
                 )
             }
             add {
@@ -1170,6 +1179,13 @@ fun SettingsScreen(
         HiddenAppsDialog(
             viewModel = viewModel,
             onDismiss = { showHiddenApps = false },
+        )
+    }
+
+    if (showSystemApps) {
+        SystemAppsDialog(
+            viewModel = viewModel,
+            onDismiss = { showSystemApps = false },
         )
     }
 
@@ -2081,17 +2097,70 @@ private fun LockscreenAppsDialog(
     }
 }
 
+/** Hidden Apps: apps the user installed (and pinned shortcuts); a checked box hides the app. */
 @Composable
 private fun HiddenAppsDialog(
     viewModel: MainViewModel,
     onDismiss: () -> Unit,
 ) {
     val context = LocalContext.current
-    val allApps = remember {
-        (AppLoader.loadApps(context) + ShortcutHelper.installedShortcuts(context, viewModel.prefs))
+    val apps = remember {
+        (AppLoader.loadApps(context).filter { !it.stock } + ShortcutHelper.installedShortcuts(context, viewModel.prefs))
             .sortedBy { it.label.lowercase() }
     }
-    var hiddenSet by remember { mutableStateOf(viewModel.prefs.getHiddenApps()) }
+    AppVisibilitySheet(viewModel, apps, R.string.hidden_apps, R.string.hidden_apps_count, onDismiss)
+}
+
+/** System Apps: the stock apps (see StockApps), hidden until unchecked here. */
+@Composable
+private fun SystemAppsDialog(
+    viewModel: MainViewModel,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val apps = remember { AppLoader.loadApps(context).filter { it.stock }.sortedBy { it.label.lowercase() } }
+    AppVisibilitySheet(viewModel, apps, R.string.system_apps, R.string.system_apps_count, onDismiss)
+}
+
+/** Checked = hidden from the grid, by the user or by default (AppVisibility). */
+@Composable
+private fun AppVisibilitySheet(
+    viewModel: MainViewModel,
+    apps: List<com.gezimos.katapult.model.AppModel>,
+    titleRes: Int,
+    countRes: Int,
+    onDismiss: () -> Unit,
+) {
+    var hidden by remember { mutableStateOf(viewModel.prefs.getHiddenApps()) }
+    var shown by remember { mutableStateOf(viewModel.prefs.getShownDefaultHiddenApps()) }
+    val checked = apps.filter { AppVisibility.isHidden(it, hidden, shown) }.map { it.key }.toSet()
+    AppChecklistSheet(
+        title = if (checked.isNotEmpty()) stringResource(countRes, checked.size) else stringResource(titleRes),
+        apps = apps,
+        checked = checked,
+        iconShape = appIconShape(viewModel.roundedIcons),
+        onDismiss = onDismiss,
+        onToggle = { app ->
+            viewModel.prefs.setAppHidden(app.key, hidden = app.key !in checked, AppVisibility.hiddenByDefault(app))
+            hidden = viewModel.prefs.getHiddenApps()
+            shown = viewModel.prefs.getShownDefaultHiddenApps()
+            viewModel.loadApps()
+        },
+    )
+}
+
+/** Paged list of apps with a checkbox each; the caller owns what "checked" means and stores it. */
+@Composable
+private fun AppChecklistSheet(
+    title: String,
+    apps: List<com.gezimos.katapult.model.AppModel>,
+    checked: Set<String>,
+    iconShape: androidx.compose.ui.graphics.Shape,
+    onDismiss: () -> Unit,
+    onToggle: (com.gezimos.katapult.model.AppModel) -> Unit,
+) {
+    val context = LocalContext.current
+    val allApps = apps
     val itemsPerPage = 6
     var page by remember { mutableIntStateOf(0) }
     val totalPages = (allApps.size + itemsPerPage - 1) / itemsPerPage
@@ -2101,12 +2170,10 @@ private fun HiddenAppsDialog(
         allApps.subList(start, end)
     }
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
-    val hiddenCount = hiddenSet.size
-    val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
         Text(
-            text = if (hiddenCount > 0) stringResource(R.string.hidden_apps_count, hiddenCount) else stringResource(R.string.hidden_apps),
+            text = title,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             fontFamily = LatoFamily,
@@ -2131,7 +2198,7 @@ private fun HiddenAppsDialog(
             for (i in 0 until itemsPerPage) {
                 if (i < pageApps.size) {
                     val app = pageApps[i]
-                    val isHidden = app.key in hiddenSet
+                    val isHidden = app.key in checked
                     val sizePx = remember { (36 * context.resources.displayMetrics.density).toInt() }
                     val bitmap = remember(app.key) {
                         if (app.shortcutId.isNotEmpty()) {
@@ -2143,15 +2210,7 @@ private fun HiddenAppsDialog(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable {
-                                if (isHidden) {
-                                    viewModel.prefs.unhideApp(app.key)
-                                } else {
-                                    viewModel.prefs.hideApp(app.key)
-                                }
-                                hiddenSet = viewModel.prefs.getHiddenApps()
-                                viewModel.loadApps()
-                            }
+                            .clickable { onToggle(app) }
                             .padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
