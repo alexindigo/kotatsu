@@ -615,7 +615,7 @@ class LockscreenWidgetService :
                     available.forEachIndexed { index, (widget, info) ->
                         val child = widgetViews.getOrPut(widget) {
                             LockscreenWidgetHost.updateSize(this@LockscreenWidgetService, widget)
-                            widgetHost.createView(themed, widget.id, info).apply { setPadding(0, 0, 0, 0) }
+                            widgetHost.createView(themed, widget.id, info)
                         }
                         addView(child, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                             dp(widget.size.heightDp.toFloat())).apply { if (index > 0) topMargin = dp(8f) })
