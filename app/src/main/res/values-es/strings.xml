@@ -175,7 +175,7 @@
     <string name="lockscreen_widget_desc">Mostrar el número de notificaciones en la pantalla de bloqueo.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">En los ajustes de accesibilidad, activa solo el Kotatsu Action Service, no su atajo. El atajo añade un botón flotante de accesibilidad a la pantalla.</string>
-    <string name="lockscreen_widget_a11y_desc">Se usa para el widget de notificaciones de la pantalla de bloqueo, cubrir el reloj de la barra de estado, bloquear el teléfono y el salvapantallas. Solo dibuja sobre la pantalla de bloqueo y la barra de estado; no lee nada de tus apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Se usa para el recuadro y los widgets de la pantalla de bloqueo, las notificaciones, la música y el tiempo de la pantalla de bloqueo, cubrir el reloj de la barra de estado, bloquear el teléfono y el salvapantallas. Solo dibuja sobre la pantalla de bloqueo y la barra de estado; no lee nada de tus apps.</string>
     <string name="lockscreen_widget_apps">Apps de notificaciones en pantalla de bloqueo</string>
     <string name="lockscreen_widget_apps_desc">Elige qué apps aparecen en el widget de la pantalla de bloqueo</string>
     <string name="lockscreen_message">Mensaje en pantalla de bloqueo</string>
@@ -184,7 +184,12 @@
     <string name="sort_latest_top">Más recientes arriba</string>
     <string name="sort_oldest_top">Más antiguas arriba</string>
     <string name="lockscreen_reenable_message">El acceso de accesibilidad se desactiva al actualizar la app. Actívalo de nuevo para seguir usando las funciones que lo necesitan.</string>
-    <string name="lockscreen_reenable_enable">Activar en ajustes</string>
+    <string name="a11y_setup_title">Activar Kotatsu Action Service</string>
+    <string name="a11y_setup_reason">Esta función funciona con Kotatsu Action Service. Android lo muestra en Accesibilidad.</string>
+    <string name="a11y_setup_step_open">1. Toca Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Activa el interruptor principal del servicio y permítelo.</string>
+    <string name="a11y_setup_step_shortcut">3. Deja desactivado el acceso directo del servicio. Añade un botón flotante a todas las pantallas.</string>
+    <string name="a11y_setup_open">Abrir ajustes de Accesibilidad</string>
     <string name="lockscreen_reenable_disable">Desactivar estas funciones</string>
     <string name="lockscreen_readme">Léeme</string>
     <string name="lockscreen_readme_desc">Sobre el permiso de accesibilidad y los controles del widget</string>

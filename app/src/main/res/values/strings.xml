@@ -223,7 +223,7 @@
     <string name="lockscreen_widget_desc">Show notification counts on the lock screen.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">In accessibility settings, turn on only the Kotatsu Action Service itself, not its shortcut. The shortcut adds a floating accessibility button to your screen.</string>
-    <string name="lockscreen_widget_a11y_desc">Used for the lockscreen notification widget, covering the status bar clock, locking the phone, and the screensaver. Draws only over the lock screen and status bar; reads nothing from your apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Used for the lock-screen box and its widgets, lock-screen notifications, music and weather, covering the status bar clock, locking the phone, and the screensaver. Draws only over the lock screen and status bar; reads nothing from your apps.</string>
     <string name="lockscreen_widget_apps">Lockscreen Notification Apps</string>
     <string name="lockscreen_widget_apps_desc">Choose which apps appear on the lockscreen widget</string>
     <string name="lockscreen_message">Lockscreen Message</string>
@@ -232,7 +232,12 @@
     <string name="sort_latest_top">Latest on top</string>
     <string name="sort_oldest_top">Oldest on top</string>
     <string name="lockscreen_reenable_message">Accessibility access gets turned off when the app is updated. Enable it again to keep using the features that need it.</string>
-    <string name="lockscreen_reenable_enable">Enable in settings</string>
+    <string name="a11y_setup_title">Turn on Kotatsu Action Service</string>
+    <string name="a11y_setup_reason">This feature runs through the Kotatsu Action Service. Android lists it under Accessibility.</string>
+    <string name="a11y_setup_step_open">1. Tap Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Turn on Use Kotatsu Action Service and allow it.</string>
+    <string name="a11y_setup_step_shortcut">3. Leave Kotatsu Action Service shortcut off. It adds a floating button to every screen.</string>
+    <string name="a11y_setup_open">Open Accessibility settings</string>
     <string name="lockscreen_reenable_disable">Turn off these features</string>
     <string name="lockscreen_readme">Read Me</string>
     <string name="lockscreen_readme_desc">About the accessibility permission and widget controls</string>

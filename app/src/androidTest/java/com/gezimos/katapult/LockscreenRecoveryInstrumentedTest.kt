@@ -9,7 +9,8 @@ import androidx.activity.compose.setContent
 import androidx.lifecycle.ViewModelStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.gezimos.katapult.lockscreen.LockscreenReEnableSheet
+import com.gezimos.katapult.lockscreen.ActionServiceSheet
+import com.gezimos.katapult.util.AccessibilityFeature
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SensitiveAccess
 import com.gezimos.katapult.util.SensitiveChoice
@@ -75,6 +76,29 @@ class LockscreenRecoveryInstrumentedTest {
         }
     }
 
+    @Test fun switchAskedForBeforeSetupTurnsOnOnlyOnceTheServiceRuns() = withModel { model ->
+        instrumentation.runOnMainSync {
+            assertFalse(model.prefs.lockscreenWidget)
+            model.requestActionService(AccessibilityFeature.WIDGET)
+            assertEquals(AccessibilityFeature.WIDGET, model.actionServiceSetup?.feature)
+            model.beginActionServiceSetup()
+            assertNull(model.actionServiceSetup)
+            model.checkLockscreenService(false)
+            assertFalse("Applied before the service runs", model.prefs.lockscreenWidget)
+            val applied = model.actionServiceApplied
+            model.checkLockscreenService(true)
+            assertTrue(model.prefs.lockscreenWidget)
+            assertEquals(applied + 1, model.actionServiceApplied)
+            model.checkLockscreenService(true)
+            assertEquals("Applied twice", applied + 1, model.actionServiceApplied)
+            // A sheet dismissed without opening settings asks for nothing.
+            model.requestActionService(AccessibilityFeature.MEDIA)
+            model.actionServiceSetup = null
+            model.checkLockscreenService(true)
+            assertFalse(model.prefs.lockscreenMusicWidget)
+        }
+    }
+
     @Test fun dismissedWarningRearmsOnlyAfterServiceWasObservedEnabledEvenOutsideHome() = withModel { model ->
         instrumentation.runOnMainSync {
             model.prefs.lockscreenMusicWidget = true
@@ -114,7 +138,7 @@ class LockscreenRecoveryInstrumentedTest {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }) as MainActivity
             val current = activity
-            instrumentation.runOnMainSync { current.setContent { LockscreenReEnableSheet(model) } }
+            instrumentation.runOnMainSync { current.setContent { ActionServiceSheet(model) } }
             val ui = PlatformUiDriver(instrumentation)
             val titles = listOf(R.string.lockscreen_widget, R.string.lockscreen_music_widget,
                 R.string.lockscreen_message, R.string.hide_status_bar_clock,

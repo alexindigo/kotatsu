@@ -5,7 +5,6 @@ import android.appwidget.AppWidgetProviderInfo
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -53,9 +52,10 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         .filter { it.provider.packageName != context.packageName }
         .map { WidgetProviderChoice(it, label(it)) }.sortedBy { it.label.lowercase() }
 
-    fun requestEnabled(value: Boolean) {
+    /** Turning on needs the Action Service; without it [needsService] runs instead (the caller asks for setup). */
+    fun requestEnabled(value: Boolean, needsService: () -> Unit) {
         if (value && !LockscreenWidgetService.isEnabled(context)) {
-            runCatching { context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+            needsService()
             return
         }
         prefs.lockscreenWidgetsEnabled = value

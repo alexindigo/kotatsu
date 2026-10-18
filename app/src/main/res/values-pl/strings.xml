@@ -175,7 +175,7 @@
     <string name="lockscreen_widget_desc">Pokazuj liczbę powiadomień na ekranie blokady.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">W ustawieniach ułatwień dostępu włącz tylko samą usługę Kotatsu Action Service, nie jej skrót. Skrót dodaje pływający przycisk ułatwień dostępu na ekranie.</string>
-    <string name="lockscreen_widget_a11y_desc">Używana do widżetu powiadomień na ekranie blokady, zakrywania zegara paska stanu, blokowania telefonu i wygaszacza. Rysuje tylko na ekranie blokady i pasku stanu; nie odczytuje niczego z Twoich aplikacji.</string>
+    <string name="lockscreen_widget_a11y_desc">Używana do ramki i widżetów na ekranie blokady, powiadomień, muzyki i pogody na ekranie blokady, zakrywania zegara paska stanu, blokowania telefonu i wygaszacza. Rysuje tylko na ekranie blokady i pasku stanu; nie odczytuje niczego z Twoich aplikacji.</string>
     <string name="lockscreen_widget_apps">Aplikacje powiadomień na ekranie blokady</string>
     <string name="lockscreen_widget_apps_desc">Wybierz, które aplikacje pojawiają się w widżecie ekranu blokady</string>
     <string name="lockscreen_message">Wiadomość na ekranie blokady</string>
@@ -184,7 +184,12 @@
     <string name="sort_latest_top">Najnowsze na górze</string>
     <string name="sort_oldest_top">Najstarsze na górze</string>
     <string name="lockscreen_reenable_message">Dostęp ułatwień dostępu jest wyłączany przy aktualizacji aplikacji. Włącz go ponownie, aby dalej korzystać z funkcji, które go wymagają.</string>
-    <string name="lockscreen_reenable_enable">Włącz w ustawieniach</string>
+    <string name="a11y_setup_title">Włącz Kotatsu Action Service</string>
+    <string name="a11y_setup_reason">Ta funkcja działa przez Kotatsu Action Service. Android pokazuje go w Ułatwieniach dostępu.</string>
+    <string name="a11y_setup_step_open">1. Dotknij Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Włącz główny przełącznik usługi i zezwól na nią.</string>
+    <string name="a11y_setup_step_shortcut">3. Zostaw skrót usługi wyłączony. Dodaje on pływający przycisk na każdym ekranie.</string>
+    <string name="a11y_setup_open">Otwórz ustawienia ułatwień dostępu</string>
     <string name="lockscreen_reenable_disable">Wyłącz te funkcje</string>
     <string name="lockscreen_readme">Przeczytaj</string>
     <string name="lockscreen_readme_desc">O uprawnieniu ułatwień dostępu i sterowaniu widżetem</string>

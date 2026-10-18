@@ -175,7 +175,7 @@
     <string name="lockscreen_widget_desc">Benachrichtigungszahlen auf dem Sperrbildschirm anzeigen.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Aktiviere in den Bedienungshilfen nur den Kotatsu Action Service selbst, nicht seine Verknüpfung. Die Verknüpfung legt eine schwebende Bedienungshilfen-Schaltfläche auf den Bildschirm.</string>
-    <string name="lockscreen_widget_a11y_desc">Wird für das Sperrbildschirm-Widget, das Abdecken der Statusleisten-Uhr, das Sperren des Telefons und den Bildschirmschoner verwendet. Zeichnet nur über Sperrbildschirm und Statusleiste; liest nichts aus deinen Apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Wird für den Sperrbildschirm-Kasten und seine Widgets, Benachrichtigungen, Musik und Wetter auf dem Sperrbildschirm, das Abdecken der Statusleisten-Uhr, das Sperren des Telefons und den Bildschirmschoner verwendet. Zeichnet nur über Sperrbildschirm und Statusleiste; liest nichts aus deinen Apps.</string>
     <string name="lockscreen_widget_apps">Apps für Sperrbildschirm-Benachrichtigungen</string>
     <string name="lockscreen_widget_apps_desc">Wähle, welche Apps im Sperrbildschirm-Widget erscheinen</string>
     <string name="lockscreen_message">Sperrbildschirm-Nachricht</string>
@@ -184,7 +184,12 @@
     <string name="sort_latest_top">Neueste oben</string>
     <string name="sort_oldest_top">Älteste oben</string>
     <string name="lockscreen_reenable_message">Der Bedienungshilfen-Zugriff wird beim Aktualisieren der App deaktiviert. Aktiviere ihn erneut, damit die Funktionen, die ihn benötigen, weiter funktionieren.</string>
-    <string name="lockscreen_reenable_enable">In Einstellungen aktivieren</string>
+    <string name="a11y_setup_title">Kotatsu Action Service einschalten</string>
+    <string name="a11y_setup_reason">Diese Funktion läuft über den Kotatsu Action Service. Android führt ihn unter Bedienungshilfen.</string>
+    <string name="a11y_setup_step_open">1. Tippe auf Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Schalte den Hauptschalter des Dienstes ein und erlaube ihn.</string>
+    <string name="a11y_setup_step_shortcut">3. Lass die Verknüpfung des Dienstes aus. Sie fügt jedem Bildschirm eine schwebende Schaltfläche hinzu.</string>
+    <string name="a11y_setup_open">Bedienungshilfen öffnen</string>
     <string name="lockscreen_reenable_disable">Diese Funktionen ausschalten</string>
     <string name="lockscreen_readme">Bitte lesen</string>
     <string name="lockscreen_readme_desc">Über die Bedienungshilfen-Berechtigung und die Widget-Steuerung</string>

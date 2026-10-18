@@ -94,6 +94,7 @@ import com.gezimos.katapult.MainViewModel
 import com.gezimos.katapult.R
 import com.gezimos.katapult.util.AppLoader
 import com.gezimos.katapult.util.AppVisibility
+import com.gezimos.katapult.util.AccessibilityFeature
 import com.gezimos.katapult.MainActivity
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.EinkHelper
@@ -168,7 +169,6 @@ fun SettingsScreen(
     var showThemeSheet by remember { mutableStateOf(false) }
     var hideStatusBar by remember { mutableStateOf(prefs.hideStatusBar) }
     var hideStatusBarClock by remember { mutableStateOf(prefs.hideStatusBarClock) }
-    var showClockCoverSheet by remember { mutableStateOf(false) }
     var einkRefreshOnHome by remember { mutableStateOf(prefs.einkRefreshOnHome) }
     var einkHelperMode by remember { mutableIntStateOf(prefs.einkHelperMode) }
     var doubleTapAction by remember { mutableIntStateOf(prefs.doubleTapAction) }
@@ -225,6 +225,16 @@ fun SettingsScreen(
     var screensaverEinkRefresh by remember { mutableStateOf(prefs.screensaverEinkRefresh) }
     var screensaverOnPower by remember { mutableStateOf(prefs.screensaverOnPower) }
     var screensaverAppIcon by remember { mutableStateOf(ScreensaverShortcut.isIconEnabled(context)) }
+
+    // A switch asked for before the Action Service was set up is applied on return (MainViewModel); re-read them.
+    LaunchedEffect(viewModel.actionServiceApplied) {
+        lockscreenWidget = prefs.lockscreenWidget
+        lockscreenMusicWidget = prefs.lockscreenMusicWidget
+        lockscreenWeather = prefs.lockscreenWeather
+        hideStatusBarClock = prefs.hideStatusBarClock
+        screensaverOnPower = prefs.screensaverOnPower
+        doubleTapAction = prefs.doubleTapAction
+    }
 
     // Settings returns refresh status only. No remembered activation/sort replay.
     LaunchedEffect(context) {
@@ -366,7 +376,7 @@ fun SettingsScreen(
                                 prefs.hideStatusBarClock = requested
                             }
                             if (requested && !serviceOn) {
-                                showClockCoverSheet = true
+                                viewModel.requestActionService(AccessibilityFeature.CLOCK_COVER)
                             }
                             LockscreenWidgetService.onLauncherForeground(true)
                         },
@@ -876,11 +886,7 @@ fun SettingsScreen(
                             lockscreenWidget = requested
                             prefs.lockscreenWidget = requested
                         }
-                        if (requested && !serviceOn) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            } catch (_: Exception) {}
-                        }
+                        if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WIDGET)
                     },
                 )
             }
@@ -897,11 +903,7 @@ fun SettingsScreen(
                             lockscreenMusicWidget = requested
                             prefs.lockscreenMusicWidget = requested
                         }
-                        if (requested && !serviceOn) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            } catch (_: Exception) {}
-                        }
+                        if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MEDIA)
                     },
                 )
             }
@@ -918,11 +920,7 @@ fun SettingsScreen(
                             lockscreenWeather = requested
                             prefs.lockscreenWeather = requested
                         }
-                        if (requested && !serviceOn) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                            } catch (_: Exception) {}
-                        }
+                        if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
                     },
                 )
             }
@@ -1078,11 +1076,7 @@ fun SettingsScreen(
                                 screensaverOnPower = requested
                                 prefs.screensaverOnPower = requested
                             }
-                            if (requested && !serviceOn) {
-                                try {
-                                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                                } catch (_: Exception) {}
-                            }
+                            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.POWER_SCREENSAVER)
                         },
                     )
                 }
@@ -1358,7 +1352,9 @@ fun SettingsScreen(
                     title = stringResource(R.string.lockscreen_widgets_show),
                     description = stringResource(if (actionServiceEnabled) R.string.lockscreen_widgets_show_desc else R.string.action_service_off),
                     checked = widgetSettings.enabled,
-                    onCheckedChange = widgetSettings::requestEnabled,
+                    onCheckedChange = { on ->
+                        widgetSettings.requestEnabled(on) { viewModel.requestActionService(AccessibilityFeature.LOCKSCREEN_WIDGETS) }
+                    },
                 )
                 widgetSettings.rows.forEach { row ->
                     SettingsActionRow(row.label, stringResource(widgetSizeTitle(row.widget.size)),
@@ -1424,11 +1420,7 @@ fun SettingsScreen(
                 actionServiceEnabled = serviceOn
                 lockscreenMessage = text
                 prefs.lockscreenMessage = text
-                if (text.isNotBlank() && !serviceOn) {
-                    try {
-                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                    } catch (_: Exception) {}
-                }
+                if (text.isNotBlank() && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MESSAGE)
             },
         )
     }
@@ -1559,7 +1551,9 @@ fun SettingsScreen(
                 description = stringResource(R.string.perm_action_service_desc),
                 checked = serviceOn,
             ) {
-                try {
+                // Off: the guided setup. On: straight to Android's list, to manage or turn it off.
+                if (!serviceOn) viewModel.requestActionService(null)
+                else try {
                     context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
                 } catch (_: Exception) {}
             }
@@ -1776,9 +1770,7 @@ fun SettingsScreen(
                 doubleTapAction = it
                 prefs.doubleTapAction = it
                 if (it == PrefsManager.DOUBLE_TAP_LOCK && !LockscreenWidgetService.isEnabled(context)) {
-                    try {
-                        context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                    } catch (_: Exception) {}
+                    viewModel.requestActionService(AccessibilityFeature.DOUBLE_TAP_LOCK)
                 }
             },
             onDismiss = { showDoubleTapSheet = false },
@@ -1811,42 +1803,6 @@ fun SettingsScreen(
             },
             onDismiss = { showDateFormatSheet = false },
         )
-    }
-
-    if (showClockCoverSheet) {
-        BottomSheet(onDismiss = { showClockCoverSheet = false }) {
-            Text(
-                text = stringResource(R.string.hide_status_bar_clock),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            Text(
-                text = stringResource(R.string.hide_status_bar_clock_a11y),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 8.dp),
-            )
-            Text(
-                text = stringResource(R.string.a11y_shortcut_warning),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            BottomSheetOption(
-                text = stringResource(R.string.lockscreen_reenable_enable),
-                icon = Icons.Rounded.Tune,
-            ) {
-                showClockCoverSheet = false
-                try {
-                    context.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                } catch (_: Exception) {}
-            }
-        }
     }
 
     if (showConfigSheet) {

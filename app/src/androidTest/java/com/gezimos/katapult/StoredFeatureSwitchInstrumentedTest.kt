@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.gezimos.katapult.lockscreen.ActionServiceSheet
 import com.gezimos.katapult.lockscreen.LockscreenWidgetService
 import com.gezimos.katapult.ui.SettingsScreen
 import com.gezimos.katapult.util.PrefsManager
@@ -62,7 +63,10 @@ class StoredFeatureSwitchInstrumentedTest {
                 val viewModel = ViewModelProvider(current)[MainViewModel::class.java]
                 current.setContent {
                     SettingsScreen(viewModel, current.configExporter, current.configImporter, current.screensaverWallpaperPicker)
+                    ActionServiceSheet(viewModel)
                 }
+                // The stored-on switch with the service off correctly offers recovery on start; dismiss it here.
+                viewModel.resolveLockscreenReEnable()
             }
             val ui = PlatformUiDriver(instrumentation)
             ui.click(context.getString(category))
@@ -75,7 +79,12 @@ class StoredFeatureSwitchInstrumentedTest {
             ui.await("Turning off did not persist false") { !prefs.read() && ui.checked(label) == false }
             shared.registerOnSharedPreferenceChangeListener(listener)
             ui.click(label)
-            ui.await("Turning on without service did not open Accessibility settings") {
+            // Turning on without the service first explains the setup (steps, shortcut warning), then opens Android's list.
+            ui.await("Turning on without service did not show the setup sheet") {
+                ui.has(context.getString(R.string.a11y_setup_step_shortcut))
+            }
+            ui.click(context.getString(R.string.a11y_setup_open))
+            ui.await("Setup sheet did not open Accessibility settings") {
                 ui.packageVisible("com.android.settings")
             }
             instrumentation.waitForIdleSync()

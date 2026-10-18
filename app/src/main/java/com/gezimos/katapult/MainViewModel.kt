@@ -141,6 +141,35 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var showLockscreenReEnable by mutableStateOf(false)
     private var lockscreenReEnableChecked = false
 
+    /** Asked from a feature switch while the Action Service is off; [feature] turns on once the service runs. */
+    data class ActionServiceSetup(val feature: AccessibilityFeature?) {
+        val reasonRes: Int get() = if (feature == AccessibilityFeature.CLOCK_COVER) R.string.hide_status_bar_clock_a11y
+            else R.string.a11y_setup_reason
+    }
+    var actionServiceSetup by mutableStateOf<ActionServiceSetup?>(null)
+    /** Bumped when a switch asked for before setup is applied, so Settings re-reads its switches. */
+    var actionServiceApplied by mutableIntStateOf(0)
+        private set
+    private var pendingActionServiceFeature: AccessibilityFeature? = null
+
+    fun requestActionService(feature: AccessibilityFeature?) {
+        actionServiceSetup = ActionServiceSetup(feature)
+    }
+
+    fun openActionServiceSettings(context: Context) {
+        beginActionServiceSetup()
+        try {
+            context.startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+        } catch (_: Exception) {}
+    }
+
+    /** Remembers the asked-for switch and closes the sheet; recovery after an update asks for nothing new. */
+    internal fun beginActionServiceSetup() {
+        pendingActionServiceFeature = actionServiceSetup?.feature
+        actionServiceSetup = null
+        resolveLockscreenReEnable()
+    }
+
     fun checkLockscreenService(context: Context) {
         checkLockscreenService(com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(context))
     }
@@ -149,6 +178,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (serviceEnabled) {
             lockscreenReEnableChecked = false
             showLockscreenReEnable = false
+            pendingActionServiceFeature?.let { setLockscreenFeature(it, true); actionServiceApplied++ }
+            pendingActionServiceFeature = null
             return
         }
         if (!prefs.sensitiveChoice(SensitiveChoice.ACCESSIBILITY_FEATURES)) return
@@ -193,17 +224,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun disableLockscreenServiceFeatures() {
-        for (feature in lockscreenFeaturesToDisable()) when (feature) {
-            AccessibilityFeature.WIDGET -> prefs.lockscreenWidget = false
-            AccessibilityFeature.MEDIA -> prefs.lockscreenMusicWidget = false
-            AccessibilityFeature.MESSAGE -> Unit // Message clearing is a separate user choice.
-            AccessibilityFeature.CLOCK_COVER -> prefs.hideStatusBarClock = false
-            AccessibilityFeature.DOUBLE_TAP_LOCK -> prefs.doubleTapAction = PrefsManager.DOUBLE_TAP_OFF
-            AccessibilityFeature.POWER_SCREENSAVER -> prefs.screensaverOnPower = false
-            AccessibilityFeature.WEATHER -> prefs.lockscreenWeather = false
-            AccessibilityFeature.LOCKSCREEN_WIDGETS -> prefs.lockscreenWidgetsEnabled = false
-        }
+        for (feature in lockscreenFeaturesToDisable()) setLockscreenFeature(feature, false)
         resolveLockscreenReEnable()
+    }
+
+    /** The one place a service feature's stored switch is set. */
+    private fun setLockscreenFeature(feature: AccessibilityFeature, on: Boolean) {
+        when (feature) {
+            AccessibilityFeature.WIDGET -> prefs.lockscreenWidget = on
+            AccessibilityFeature.MEDIA -> prefs.lockscreenMusicWidget = on
+            AccessibilityFeature.MESSAGE -> Unit // The message is saved before asking; clearing it is a separate choice.
+            AccessibilityFeature.CLOCK_COVER -> prefs.hideStatusBarClock = on
+            AccessibilityFeature.DOUBLE_TAP_LOCK -> prefs.doubleTapAction = if (on) PrefsManager.DOUBLE_TAP_LOCK else PrefsManager.DOUBLE_TAP_OFF
+            AccessibilityFeature.POWER_SCREENSAVER -> prefs.screensaverOnPower = on
+            AccessibilityFeature.WEATHER -> prefs.lockscreenWeather = on
+            AccessibilityFeature.LOCKSCREEN_WIDGETS -> prefs.lockscreenWidgetsEnabled = on
+        }
     }
 
     fun startScreensaver(context: Context) {

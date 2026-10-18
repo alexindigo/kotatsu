@@ -175,7 +175,7 @@
     <string name="lockscreen_widget_desc">Toon meldingsaantallen op het vergrendelscherm.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Schakel in de toegankelijkheidsinstellingen alleen de Kotatsu Action Service zelf in, niet de sneltoets. De sneltoets zet een zwevende toegankelijkheidsknop op je scherm.</string>
-    <string name="lockscreen_widget_a11y_desc">Gebruikt voor de meldingswidget op het vergrendelscherm, het bedekken van de statusbalkklok, het vergrendelen van de telefoon en de schermbeveiliging. Tekent alleen over het vergrendelscherm en de statusbalk; leest niets uit je apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Gebruikt voor het vak en de widgets op het vergrendelscherm, meldingen, muziek en weer op het vergrendelscherm, het bedekken van de statusbalkklok, het vergrendelen van de telefoon en de schermbeveiliging. Tekent alleen over het vergrendelscherm en de statusbalk; leest niets uit je apps.</string>
     <string name="lockscreen_widget_apps">Apps voor vergrendelscherm-meldingen</string>
     <string name="lockscreen_widget_apps_desc">Kies welke apps in de vergrendelscherm-widget verschijnen</string>
     <string name="lockscreen_message">Vergrendelschermbericht</string>
@@ -184,7 +184,12 @@
     <string name="sort_latest_top">Nieuwste bovenaan</string>
     <string name="sort_oldest_top">Oudste bovenaan</string>
     <string name="lockscreen_reenable_message">Toegankelijkheidstoegang wordt uitgeschakeld bij het bijwerken van de app. Schakel deze opnieuw in om de functies te blijven gebruiken die deze nodig hebben.</string>
-    <string name="lockscreen_reenable_enable">Inschakelen in instellingen</string>
+    <string name="a11y_setup_title">Kotatsu Action Service aanzetten</string>
+    <string name="a11y_setup_reason">Deze functie werkt via de Kotatsu Action Service. Android toont die onder Toegankelijkheid.</string>
+    <string name="a11y_setup_step_open">1. Tik op Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Zet de hoofdschakelaar van de service aan en sta hem toe.</string>
+    <string name="a11y_setup_step_shortcut">3. Laat de snelkoppeling van de service uit. Die voegt een zwevende knop toe aan elk scherm.</string>
+    <string name="a11y_setup_open">Toegankelijkheid openen</string>
     <string name="lockscreen_reenable_disable">Deze functies uitschakelen</string>
     <string name="lockscreen_readme">Lees mij</string>
     <string name="lockscreen_readme_desc">Over de toegankelijkheidsmachtiging en widgetbediening</string>

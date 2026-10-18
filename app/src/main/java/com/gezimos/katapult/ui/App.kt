@@ -46,7 +46,7 @@ fun App(
             Screen.ALL_APPS -> AllAppsScreen(viewModel, iconPicker, onClearBadge)
             Screen.SETTINGS -> SettingsScreen(viewModel, configExporter, configImporter, screensaverWallpaperPicker)
         }
-        com.gezimos.katapult.lockscreen.LockscreenReEnableSheet(viewModel)
+        com.gezimos.katapult.lockscreen.ActionServiceSheet(viewModel)
         if (viewModel.showReorderExit) {
             ReorderExitSheet(
                 onSave = viewModel::saveReorderExit,

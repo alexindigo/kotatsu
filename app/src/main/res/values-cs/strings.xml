@@ -175,7 +175,7 @@
     <string name="lockscreen_widget_desc">Zobrazit počty oznámení na zamykací obrazovce.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">V nastavení přístupnosti zapněte pouze samotnou službu Kotatsu Action Service, ne její zkratku. Zkratka přidá na obrazovku plovoucí tlačítko přístupnosti.</string>
-    <string name="lockscreen_widget_a11y_desc">Používá se pro widget oznámení na zamykací obrazovce, zakrytí hodin stavového řádku, zamknutí telefonu a spořič. Kreslí pouze přes zamykací obrazovku a stavový řádek; z vašich aplikací nic nečte.</string>
+    <string name="lockscreen_widget_a11y_desc">Používá se pro rámeček a widgety na zamykací obrazovce, oznámení, hudbu a počasí na zamykací obrazovce, zakrytí hodin stavového řádku, zamknutí telefonu a spořič. Kreslí pouze přes zamykací obrazovku a stavový řádek; z vašich aplikací nic nečte.</string>
     <string name="lockscreen_widget_apps">Aplikace oznámení na zamykací obrazovce</string>
     <string name="lockscreen_widget_apps_desc">Vyberte, které aplikace se zobrazí ve widgetu zamykací obrazovky</string>
     <string name="lockscreen_message">Zpráva na zamykací obrazovce</string>
@@ -184,7 +184,12 @@
     <string name="sort_latest_top">Nejnovější nahoře</string>
     <string name="sort_oldest_top">Nejstarší nahoře</string>
     <string name="lockscreen_reenable_message">Přístup k usnadnění přístupu se při aktualizaci aplikace vypne. Povolte jej znovu, aby funkce, které jej potřebují, dál fungovaly.</string>
-    <string name="lockscreen_reenable_enable">Povolit v nastavení</string>
+    <string name="a11y_setup_title">Zapnout Kotatsu Action Service</string>
+    <string name="a11y_setup_reason">Tato funkce běží přes Kotatsu Action Service. Android ji uvádí v Přístupnosti.</string>
+    <string name="a11y_setup_step_open">1. Klepněte na Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Zapněte hlavní přepínač služby a povolte ji.</string>
+    <string name="a11y_setup_step_shortcut">3. Zkratku služby nechte vypnutou. Přidává plovoucí tlačítko na každou obrazovku.</string>
+    <string name="a11y_setup_open">Otevřít nastavení Přístupnosti</string>
     <string name="lockscreen_reenable_disable">Vypnout tyto funkce</string>
     <string name="lockscreen_readme">Přečtěte si</string>
     <string name="lockscreen_readme_desc">O oprávnění usnadnění přístupu a ovládání widgetu</string>

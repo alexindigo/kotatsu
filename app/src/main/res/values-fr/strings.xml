@@ -175,7 +175,7 @@
     <string name="lockscreen_widget_desc">Afficher le nombre de notifications sur l\'écran de verrouillage.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Dans les paramètres d\'accessibilité, activez uniquement le Kotatsu Action Service, pas son raccourci. Le raccourci ajoute un bouton d\'accessibilité flottant à l\'écran.</string>
-    <string name="lockscreen_widget_a11y_desc">Utilisé pour le widget de notifications de l\'écran de verrouillage, le masquage de l\'horloge de la barre d\'état, le verrouillage du téléphone et l\'économiseur. Ne dessine que sur l\'écran de verrouillage et la barre d\'état ; ne lit rien de vos apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Utilisé pour le cadre et les widgets de l\'écran de verrouillage, les notifications, la musique et la météo de l\'écran de verrouillage, le masquage de l\'horloge de la barre d\'état, le verrouillage du téléphone et l\'économiseur. Ne dessine que sur l\'écran de verrouillage et la barre d\'état ; ne lit rien de vos apps.</string>
     <string name="lockscreen_widget_apps">Apps de notifications de l\'écran de verrouillage</string>
     <string name="lockscreen_widget_apps_desc">Choisissez les apps affichées dans le widget de l\'écran de verrouillage</string>
     <string name="lockscreen_message">Message sur l\'écran de verrouillage</string>
@@ -184,7 +184,12 @@
     <string name="sort_latest_top">Récentes en haut</string>
     <string name="sort_oldest_top">Anciennes en haut</string>
     <string name="lockscreen_reenable_message">L\'accès d\'accessibilité est désactivé lors de la mise à jour de l\'app. Réactivez-le pour continuer à utiliser les fonctions qui en ont besoin.</string>
-    <string name="lockscreen_reenable_enable">Activer dans les paramètres</string>
+    <string name="a11y_setup_title">Activer Kotatsu Action Service</string>
+    <string name="a11y_setup_reason">Cette fonction passe par Kotatsu Action Service. Android l\'affiche dans Accessibilité.</string>
+    <string name="a11y_setup_step_open">1. Touchez Kotatsu Action Service.</string>
+    <string name="a11y_setup_step_use">2. Activez l\'interrupteur principal du service et autorisez-le.</string>
+    <string name="a11y_setup_step_shortcut">3. Laissez le raccourci du service désactivé. Il ajoute un bouton flottant à chaque écran.</string>
+    <string name="a11y_setup_open">Ouvrir les paramètres d\'accessibilité</string>
     <string name="lockscreen_reenable_disable">Désactiver ces fonctions</string>
     <string name="lockscreen_readme">À lire</string>
     <string name="lockscreen_readme_desc">À propos de la permission d\'accessibilité et des contrôles du widget</string>
