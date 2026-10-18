@@ -7,35 +7,45 @@ import java.time.LocalDate
 class TimelineTest {
     private val today = LocalDate.of(2026, 10, 16)
     private val home = Location("Home", "Portola Valley", 37.38, -122.23)
+    // Base 60; mark blocks (h-1, h, h+1): 1 → 50, 9 → 55, 13 → 70, 23 → 57, every other mark 60.
     private val hours = (0..47).map { hour ->
         Hour(today.atStartOfDay().plusHours(hour.toLong()), when (hour) {
-            0 -> 1.0
-            9 -> 40.0
-            14 -> 80.0
-            24 -> 55.0
+            0 -> 30.0
+            9 -> 45.0
+            13 -> 90.0
+            24 -> 51.0
             else -> 60.0
         }, 0, 0.0)
     }
 
     @Test fun axisIsUnionOfSpans() {
-        assertEquals(Axis(2, 24), sharedAxis(listOf(home, home.copy(start = 2, end = 18))))
+        assertEquals(Axis(3, 23), sharedAxis(listOf(home, home.copy(start = 3, end = 17))))
     }
-    @Test fun numberHoursAndNextMidnight() {
+    @Test fun markValuesAverageTheHourBeforeTheMarkAndTheHourAfter() {
+        val byTime = hours.associateBy { it.time }
+        assertEquals(50.0, markTemperature(byTime, today, 1)!!, 1e-9)
+        assertEquals(55.0, markTemperature(byTime, today, 9)!!, 1e-9)
+        // Hour 24 is the next day's 00:00.
+        assertEquals(57.0, markTemperature(byTime, today, 23)!!, 1e-9)
+        assertNull(markTemperature(byTime - today.atTime(10, 0), today, 11))
+    }
+    @Test fun numbersComeFromMarkAverages() {
         val numbers = temperatureNumbers(home, Forecast(hours, 1), today)
-        assertEquals(55, numbers.single { it.kind == NumberKind.END }.value)
-        assertEquals(24, numbers.single { it.kind == NumberKind.END }.hour)
-        assertEquals(14, numbers.single { it.kind == NumberKind.HIGH }.hour)
-        // The day's low is at 00:00, outside this span, so it is not inserted.
+        assertEquals(TemperatureNumber(7, 60, NumberKind.START), numbers.single { it.kind == NumberKind.START })
+        assertEquals(TemperatureNumber(23, 57, NumberKind.END), numbers.single { it.kind == NumberKind.END })
+        assertEquals(TemperatureNumber(13, 70, NumberKind.HIGH), numbers.single { it.kind == NumberKind.HIGH })
+        // The day's lowest block is the 01:00 mark, outside this span, so it is not inserted.
         assertFalse(numbers.any { it.kind == NumberKind.LOW })
     }
     @Test fun lowStrictlyInsideSpan() {
         val forecast = Forecast(hours.map { if (it.time.hour == 0) it.copy(temperature = 60.0) else it }, 0)
-        assertEquals(9, temperatureNumbers(home, forecast, today).single { it.kind == NumberKind.LOW }.hour)
+        assertEquals(TemperatureNumber(9, 55, NumberKind.LOW), temperatureNumbers(home, forecast, today).single { it.kind == NumberKind.LOW })
         assertFalse(temperatureNumbers(home.copy(start = 9), forecast, today).any { it.kind == NumberKind.LOW })
     }
-    @Test fun missingEndOrInteriorMeansNoForecast() {
-        assertTrue(temperatureNumbers(home, Forecast(hours.filter { it.time != today.plusDays(1).atStartOfDay() }, 0), today).isEmpty())
-        assertTrue(temperatureNumbers(home, Forecast(hours.filter { it.time != today.atTime(10, 0) }, 0), today).isEmpty())
+    @Test fun missingHourOfAnySpanBlockMeansNoForecast() {
+        for (missing in listOf(today.plusDays(1).atStartOfDay(), today.atTime(10, 0), today.atTime(6, 0))) {
+            assertTrue(temperatureNumbers(home, Forecast(hours.filter { it.time != missing }, 0), today).isEmpty())
+        }
         assertTrue(temperatureNumbers(home, Forecast(hours, 0), today.plusDays(3)).isEmpty())
     }
     @Test fun priorityDropsOverlapsAndPreservesHourPlacement() {
@@ -59,10 +69,40 @@ class TimelineTest {
         assertEquals(NumberKind.START, placeNumbers(same.take(2), Axis(0, 24), 0f, 240f, 3f) { 10f }.single().number.kind)
     }
     @Test fun nowHasMinutePrecisionAndIsAbsentOutsideAxis() {
-        val axis = Axis(6, 24)
-        assertEquals(65f, axis.nowX(12.5, 0f, 180f)!!, .001f)
-        assertNull(axis.nowX(5.99, 0f, 180f))
-        assertNull(axis.nowX(24.01, 0f, 180f))
+        val axis = Axis(7, 23)
+        assertEquals(55f, axis.nowX(12.5, 0f, 160f)!!, .001f)
+        assertNull(axis.nowX(6.99, 0f, 160f))
+        assertNull(axis.nowX(23.01, 0f, 160f))
+    }
+    @Test fun everyMarkIsADotExceptShownNumbers() {
+        val axis = Axis(7, 23)
+        val placed = placeNumbers(listOf(TemperatureNumber(7, 60, NumberKind.START),
+            TemperatureNumber(13, 70, NumberKind.HIGH), TemperatureNumber(23, 57, NumberKind.END)), axis, 0f, 160f, 2f) { 12f }
+        assertEquals(listOf(9, 11, 15, 17, 19, 21), hourDots(axis, placed))
+        // A row with a shorter span still dots the whole shared axis.
+        assertEquals(listOf(3, 5, 7, 9, 11, 13, 15, 17, 19, 21, 23), hourDots(Axis(3, 23), emptyList()))
+    }
+    @Test fun numbersOnNeighbouringMarksKeepTheirGap() {
+        val step = 30f; val gap = 2f
+        assertEquals(step, maxNumberWidth(step, gap) + gap, .001f)
+        assertEquals(0f, maxNumberWidth(1f, 2f), 0f)
+    }
+    @Test fun rowsStackFromTheBottomWithEqualGaps() {
+        // Row height 10, gap 4: the last row's bottom is the bottom edge, each row above is 14 higher.
+        assertEquals(listOf(72f, 86f, 100f), stackedRowBottoms(3, 10f, 4f, 100f))
+        assertEquals(listOf(100f), stackedRowBottoms(1, 10f, 4f, 100f))
+        assertEquals(38f, stackHeight(3, 10f, 4f), 0f)
+        assertEquals(10f, stackHeight(1, 10f, 4f), 0f)
+    }
+    @Test fun fourLinesUseCondensedSpacing() {
+        assertEquals(24f, rowGapDp(1), 0f)
+        assertEquals(24f, rowGapDp(3), 0f)
+        assertEquals(12f, rowGapDp(4), 0f)
+    }
+    @Test fun largestFittingSizeIsSolvedNotGuessed() {
+        assertEquals(20f, largestFitting(20f, 1f) { true }, 0f)
+        assertEquals(13.5f, largestFitting(20f, 1f) { it <= 13.5f }, .01f)
+        assertEquals(1f, largestFitting(20f, 1f) { false }, 0f)
     }
     @Test fun severityIncludesAllCodeGroups() {
         for (code in 95..99) assertEquals(Condition.THUNDERSTORM, condition(code, 90.0, true))
@@ -91,7 +131,7 @@ class TimelineTest {
         assertFalse(isStale(100, 99))
     }
     @Test fun configRoundTripWithEscapesAndUnits() {
-        val config = WidgetConfig(listOf(home.copy(label = "A\"\\\n", place = "日本\t\u0001"), home.copy(label = "School", start = 0, end = 12)), false)
+        val config = WidgetConfig(listOf(home.copy(label = "A\"\\\n", place = "日本\t\u0001"), home.copy(label = "School", start = 1, end = 11)), false)
         assertEquals(config, ConfigJson.decode(ConfigJson.encode(config)))
         assertEquals(WidgetConfig(emptyList()), ConfigJson.decode(ConfigJson.encode(WidgetConfig(emptyList()))))
     }
@@ -102,10 +142,15 @@ class TimelineTest {
         assertThrows(IllegalArgumentException::class.java) { home.copy(label = "123456789") }
     }
     @Test fun validatesSpanLocationCountAndCoordinates() {
-        assertThrows(IllegalArgumentException::class.java) { home.copy(start = 12, end = 12) }
-        assertThrows(IllegalArgumentException::class.java) { home.copy(end = 25) }
+        assertEquals(7, home.start); assertEquals(23, home.end)
+        // Spans start and end on marks: odd hours from 1 to 23, start before end.
+        for ((start, end) in listOf(13 to 13, 15 to 13, 6 to 23, 7 to 24, 0 to 23, 7 to 25, -1 to 23)) {
+            assertThrows("$start–$end", IllegalArgumentException::class.java) { home.copy(start = start, end = end) }
+        }
+        home.copy(start = 1, end = 3); home.copy(start = 21, end = 23)
         assertThrows(IllegalArgumentException::class.java) { home.copy(latitude = Double.NaN) }
-        assertThrows(IllegalArgumentException::class.java) { WidgetConfig(List(4) { home }) }
+        WidgetConfig(List(4) { home })
+        assertThrows(IllegalArgumentException::class.java) { WidgetConfig(List(5) { home }) }
         assertEquals("37.3800,-122.2300", home.coordinateKey)
     }
 }

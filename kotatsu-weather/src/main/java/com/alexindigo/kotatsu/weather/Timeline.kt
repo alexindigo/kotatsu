@@ -10,12 +10,13 @@ data class Location(
     val place: String,
     val latitude: Double,
     val longitude: Double,
-    val start: Int = 6,
-    val end: Int = 24,
+    val start: Int = 7,
+    val end: Int = 23,
 ) {
     init {
         require(label.codePointCount(0, label.length) <= 8)
-        require(start in 0..23 && end in 1..24 && start < end)
+        // Spans start and end on marks, which are odd hours within the day (see MARK_HOURS).
+        require(start in MARK_HOURS && end in MARK_HOURS && start < end)
         require(latitude.isFinite() && latitude in -90.0..90.0)
         require(longitude.isFinite() && longitude in -180.0..180.0)
     }
@@ -25,8 +26,11 @@ data class Location(
 
 fun shortLabel(text: String): String = text.substring(0, text.offsetByCodePoints(0, minOf(8, text.codePointCount(0, text.length))))
 
+/** Most places one widget shows; four only with condensed line spacing (see [rowGapDp]). */
+const val MAX_LOCATIONS = 4
+
 data class WidgetConfig(val locations: List<Location>, val fahrenheit: Boolean = true) {
-    init { require(locations.size <= 3) }
+    init { require(locations.size <= MAX_LOCATIONS) }
 }
 
 data class Hour(val time: LocalDateTime, val temperature: Double, val code: Int, val gust: Double)
@@ -64,24 +68,32 @@ data class PlacedNumber(val number: TemperatureNumber, val x: Float, val width: 
 fun spanHours(location: Location, forecast: Forecast, today: LocalDate): List<Hour> =
     forecast.hours.filter { it.time.toLocalDate() == today && it.time.hour in location.start until location.end }
 
+/**
+ * A mark's temperature: the mean of the hour before, the mark's own hour and the hour after, so neighbouring
+ * marks share their boundary hour. Null unless all three hours exist (hour 24 is the next day's 00:00).
+ */
+fun markTemperature(byTime: Map<LocalDateTime, Hour>, today: LocalDate, mark: Int): Double? {
+    val midnight = today.atStartOfDay()
+    return (mark - 1..mark + 1).map { byTime[midnight.plusHours(it.toLong())]?.temperature ?: return null }.average()
+}
+
 fun temperatureNumbers(location: Location, forecast: Forecast, today: LocalDate): List<TemperatureNumber> {
     val byTime = forecast.hours.associateBy { it.time }
-    val midnight = today.atStartOfDay()
-    // 24 is deliberately a timestamp on the next day, never today's 00:00.
-    val start = byTime[midnight.plusHours(location.start.toLong())] ?: return emptyList()
-    val end = byTime[midnight.plusHours(location.end.toLong())] ?: return emptyList()
-    if ((location.start..location.end).any { byTime[midnight.plusHours(it.toLong())] == null }) return emptyList()
-    val day = forecast.hours.filter { it.time.toLocalDate() == today }
-    val high = day.maxByOrNull { it.temperature }
-    val low = day.minByOrNull { it.temperature }
+    val span = (location.start..location.end step MARK_EVERY_HOURS).map { mark ->
+        mark to (markTemperature(byTime, today, mark) ?: return emptyList())
+    }
+    // The day's high and low come from the same block averages, over every mark of the day.
+    val day = MARK_HOURS.mapNotNull { mark -> markTemperature(byTime, today, mark)?.let { mark to it } }
+    val high = day.maxByOrNull { it.second }
+    val low = day.minByOrNull { it.second }
     return buildList {
-        add(TemperatureNumber(location.start, start.temperature.roundToInt(), NumberKind.START))
-        add(TemperatureNumber(location.end, end.temperature.roundToInt(), NumberKind.END))
-        if (high != null && high.time.hour in location.start..location.end) {
-            add(TemperatureNumber(high.time.hour, high.temperature.roundToInt(), NumberKind.HIGH))
+        add(TemperatureNumber(location.start, span.first().second.roundToInt(), NumberKind.START))
+        add(TemperatureNumber(location.end, span.last().second.roundToInt(), NumberKind.END))
+        if (high != null && high.first in location.start..location.end) {
+            add(TemperatureNumber(high.first, high.second.roundToInt(), NumberKind.HIGH))
         }
-        if (low != null && low.time.hour > location.start && low.time.hour < location.end) {
-            add(TemperatureNumber(low.time.hour, low.temperature.roundToInt(), NumberKind.LOW))
+        if (low != null && low.first > location.start && low.first < location.end) {
+            add(TemperatureNumber(low.first, low.second.roundToInt(), NumberKind.LOW))
         }
     }
 }
@@ -96,4 +108,45 @@ fun placeNumbers(
         if (kept.none { kotlin.math.abs(it.x - candidate.x) < (it.width + candidate.width) / 2 + gap }) kept += candidate
     }
     return kept.sortedBy { it.x }
+}
+
+/** Hours between marks. */
+const val MARK_EVERY_HOURS = 2
+
+/** The marks of a day: odd hours, so the first and last blocks (0–2, 22–24) still have all three hours. */
+val MARK_HOURS = 1..23 step MARK_EVERY_HOURS
+
+/** Every mark of the shared axis is a dot in every row, except marks a shown number sits on. */
+fun hourDots(axis: Axis, placed: List<PlacedNumber>): List<Int> {
+    val taken = placed.mapTo(HashSet()) { it.number.hour }
+    return (axis.start..axis.end step MARK_EVERY_HOURS).filterNot { it in taken }
+}
+
+/** Widest number such that numbers on neighbouring marks, [markStep] apart, still keep [gap] between them. */
+fun maxNumberWidth(markStep: Float, gap: Float): Float = (markStep - gap).coerceAtLeast(0f)
+
+/**
+ * Rows sit at the bottom: the last row's bottom is the bottom edge ([height]) and each row above it is one
+ * [rowHeight] plus [gap] higher, so every row has the same gap below it. Returns row bottoms, top row first.
+ */
+fun stackedRowBottoms(count: Int, rowHeight: Float, gap: Float, height: Float): List<Float> =
+    (0 until count).map { height - (count - 1 - it) * (rowHeight + gap) }
+
+/** White between lines: normal for up to three lines, condensed for four so they fit a Medium widget. */
+fun rowGapDp(count: Int): Float = if (count >= 4) 12f else 24f
+
+/** Height the stack needs: the rows and the gaps between them. */
+fun stackHeight(count: Int, rowHeight: Float, gap: Float): Float =
+    count * rowHeight + (count - 1).coerceAtLeast(0) * gap
+
+/** Largest size in [min, max] for which [fits] holds; [fits] must only turn false as the size grows. */
+fun largestFitting(max: Float, min: Float, fits: (Float) -> Boolean): Float {
+    if (fits(max)) return max
+    var lo = min
+    var hi = max
+    repeat(24) {
+        val mid = (lo + hi) / 2
+        if (fits(mid)) lo = mid else hi = mid
+    }
+    return lo
 }

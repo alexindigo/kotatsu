@@ -18,7 +18,7 @@ class WeatherInstrumentedTest {
     private val now = ZonedDateTime.of(2026, 10, 16, 12, 30, 0, 0, ZoneId.of("America/Los_Angeles"))
     private val timestamp = now.toInstant().toEpochMilli()
     private val home = Location("Home", "Portola Valley", 37.3841, -122.2352)
-    private val school = Location("School", "Campbell", 37.2872, -121.9499, 8, 20)
+    private val school = Location("School", "Campbell", 37.2872, -121.9499, 9, 19)
     private val config = WidgetConfig(listOf(home, school))
     private fun fixture(name: String) = instrumentation.context.assets.open(name).bufferedReader().use { it.readText() }
     private fun forecast() = WeatherJson.forecast(fixture("forecast.json"), timestamp)
@@ -27,7 +27,8 @@ class WeatherInstrumentedTest {
         val result = forecast()
         assertEquals(25, result.hours.size)
         assertEquals(54.0, result.hours.last().temperature, 0.0)
-        assertEquals(54, temperatureNumbers(home, result, now.toLocalDate()).single { it.kind == NumberKind.END }.value)
+        // 23:00 mark = mean of 22:00, 23:00 and the next day's 00:00 (56, 55, 54).
+        assertEquals(55, temperatureNumbers(home, result, now.toLocalDate()).single { it.kind == NumberKind.END }.value)
         assertEquals(Condition.CLOUDS, spanHours(home, result, now.toLocalDate()).maxOf { condition(it.code, it.gust, true) })
     }
     @Test fun parseGeocodingFixture() {
@@ -50,6 +51,13 @@ class WeatherInstrumentedTest {
         val bitmap = render("stale-two-rows", listOf(old, old))
         assertFalse(hasColor(bitmap, Color.BLACK))
         assertTrue(hasColor(bitmap, Color.rgb(160, 160, 160)))
+        assertNeedleBetweenRows(bitmap)
+    }
+    @Test fun renderFourRowsCondensed() {
+        val forecast = forecast()
+        val four = WidgetConfig(listOf(home, school, home.copy(label = "Gym"), school.copy(label = "Park")))
+        val bitmap = render("four-rows", listOf(forecast, forecast, forecast, forecast), four)
+        assertTrue(hasColor(bitmap, Color.BLACK))
         assertNeedleBetweenRows(bitmap)
     }
     @Test fun renderNoData() {
@@ -81,9 +89,9 @@ class WeatherInstrumentedTest {
         assertTrue(context.getSystemService(android.app.job.JobScheduler::class.java).allPendingJobs.isEmpty())
     }
 
-    private fun render(name: String, forecasts: List<Forecast?>): Bitmap {
+    private fun render(name: String, forecasts: List<Forecast?>, widget: WidgetConfig = config): Bitmap {
         val density = context.resources.displayMetrics.density
-        val bitmap = TimelineRenderer.render(context, config, forecasts, (464 * density).toInt(), (112 * density).toInt(), now)
+        val bitmap = TimelineRenderer.render(context, widget, forecasts, (464 * density).toInt(), (112 * density).toInt(), now)
         // Instrumentation executes as the tested debug app, which owns this external directory.
         val directory = File(checkNotNull(context.getExternalFilesDir(null)), "renders")
         check(directory.isDirectory || directory.mkdirs()) { "Cannot create render evidence directory" }
@@ -96,8 +104,14 @@ class WeatherInstrumentedTest {
         return pixels.any { it == color }
     }
     private fun assertNeedleBetweenRows(bitmap: Bitmap) {
-        // With no text at the inter-row boundary, the continuous needle must cross it.
-        val y = bitmap.height / 2
-        assertTrue((0 until bitmap.width).any { bitmap.getPixel(it, y) == Color.rgb(128, 128, 128) })
+        // One unbroken grey column crosses both bottom-aligned rows and the gap between them.
+        val needle = Color.rgb(128, 128, 128)
+        val longest = (0 until bitmap.width).maxOf { x ->
+            var run = 0; var best = 0
+            for (y in 0 until bitmap.height) { run = if (bitmap.getPixel(x, y) == needle) run + 1 else 0; best = maxOf(best, run) }
+            best
+        }
+        val density = context.resources.displayMetrics.density
+        assertTrue("needle run $longest px", longest > 20 * density)
     }
 }
