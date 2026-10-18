@@ -29,10 +29,16 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         throw AssertionError(message)
     }
 
-    private fun matching(label: String): AccessibilityNodeInfo? {
+    fun find(label: String): AccessibilityNodeInfo? = find {
+        it.text?.toString() == label || it.contentDescription?.toString() == label
+    }
+
+    /** Accessibility events can leave cached children at an older layout/text revision. */
+    fun find(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
         val root = automation.rootInActiveWindow ?: return null
         fun walk(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-            if (node.text?.toString() == label || node.contentDescription?.toString() == label) return node
+            if (!node.refresh()) return null
+            if (predicate(node)) return node
             for (i in 0 until node.childCount) {
                 val child = node.getChild(i) ?: continue
                 walk(child)?.let { return it }
@@ -42,16 +48,24 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         return walk(root)
     }
 
-    fun has(label: String): Boolean = matching(label) != null
+    fun has(label: String): Boolean = find(label) != null
 
-    fun checked(label: String): Boolean? {
-        var node = matching(label)
+    /**
+     * Returns the matching node or its closest matching ancestor, freshly queried.
+     * refresh() bypasses Android's cache without updating it, so parent lookups
+     * must refresh their own result even after a fresh downward traversal.
+     */
+    fun findAncestor(label: String, predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
+        var node = find(label)
         while (node != null) {
-            if (node.isCheckable) return node.isChecked
+            if (!node.refresh()) return null
+            if (predicate(node)) return node
             node = node.parent
         }
         return null
     }
+
+    fun checked(label: String): Boolean? = findAncestor(label) { it.isCheckable }?.isChecked
 
     fun scrollTo(label: String) {
         repeat(12) {
@@ -73,10 +87,21 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
     }
 
     fun click(label: String, longPress: Boolean = false) {
-        await("Missing public control: $label") { has(label) }
-        val rect = Rect()
-        matching(label)!!.getBoundsInScreen(rect)
-        check(!rect.isEmpty) { "Control has no current bounds: $label" }
+        var rect = Rect()
+        var window = -1
+        var stable = 0
+        // Presence is not touch readiness: scrolling and IME insets move controls
+        // after their semantics appear. Observe fresh geometry; inject only once.
+        await("Public control did not settle: $label") {
+            val node = find(label)
+            val current = Rect()
+            node?.getBoundsInScreen(current)
+            stable = if (node?.isVisibleToUser == true && !current.isEmpty &&
+                current == rect && node.windowId == window) stable + 1 else 0
+            rect = current
+            window = node?.windowId ?: -1
+            stable >= 3
+        }
         tap(rect.centerX().toFloat(), rect.centerY().toFloat(), if (longPress) 750 else 60)
     }
 
@@ -96,7 +121,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
     fun outside(label: String) {
         await("Missing decision sheet") { has(label) }
         val sheet = Rect()
-        matching(label)!!.getBoundsInScreen(sheet)
+        find(label)!!.getBoundsInScreen(sheet)
         val root = Rect()
         automation.rootInActiveWindow!!.getBoundsInScreen(root)
         check(sheet.top > root.top) { "No public outside region" }
@@ -113,7 +138,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
 
     fun gridLabels(labels: List<String>): List<String> = labels.map { label ->
         val rect = Rect()
-        val node = matching(label) ?: return emptyList()
+        val node = find(label) ?: return emptyList()
         node.getBoundsInScreen(rect)
         label to rect
     }.sortedWith(compareBy({ it.second.top }, { it.second.left })).map { it.first }

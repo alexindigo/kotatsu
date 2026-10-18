@@ -134,27 +134,15 @@ class IconPickerInstrumentedTest {
         }
         val catalogue = IconCatalogue.load(context)
 
-        fun findLabel(node: AccessibilityNodeInfo?, label: String): AccessibilityNodeInfo? {
-            if (node == null) return null
-            if (node.text?.toString() == label || node.contentDescription?.toString() == label) return node
-            for (index in 0 until node.childCount) findLabel(node.getChild(index), label)?.let { return it }
-            return null
-        }
-
         fun reveal(label: String, forward: Boolean) {
             fun visibleBounds(): Rect? {
-                var node = findLabel(automation.rootInActiveWindow, label) ?: return null
-                if (!node.refresh()) {
-                    node = findLabel(automation.rootInActiveWindow, label) ?: return null
-                    if (!node.refresh()) return null
-                }
+                val node = ui.find(label) ?: return null
                 val rect = Rect()
                 node.getBoundsInScreen(rect)
-                var parent = node.parent
-                while (parent != null && parent.className?.toString() != "android.widget.ScrollView") parent = parent.parent
+                val parent = ui.findAncestor(label) { it.className?.toString() == "android.widget.ScrollView" }
+                    ?: return null
                 val viewport = Rect()
-                if (parent?.refresh() != true) return null
-                parent?.getBoundsInScreen(viewport)
+                parent.getBoundsInScreen(viewport)
                 return rect.takeIf { !it.isEmpty && !viewport.isEmpty && it.top >= viewport.top && it.bottom <= viewport.bottom }
             }
             // Observe after every swipe, including the last permitted one.
@@ -174,13 +162,9 @@ class IconPickerInstrumentedTest {
                     return
                 }
                 if (attempt == 8) return@repeat
-                fun scroller(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
-                    if (node == null) return null
-                    if (node.className?.toString() == "android.widget.ScrollView" && node.packageName?.toString() == context.packageName) return node
-                    for (index in 0 until node.childCount) scroller(node.getChild(index))?.let { return it }
-                    return null
-                }
-                val owner = scroller(automation.rootInActiveWindow) ?: error("Picker scroll owner absent")
+                val owner = ui.find {
+                    it.className?.toString() == "android.widget.ScrollView" && it.packageName?.toString() == context.packageName
+                } ?: error("Picker scroll owner absent")
                 assertTrue("Picker scroll owner is stale", owner.refresh())
                 val bounds = Rect()
                 owner.getBoundsInScreen(bounds)
@@ -206,10 +190,9 @@ class IconPickerInstrumentedTest {
 
         fun setSearch(value: String) {
             reveal("Search icons", forward = false)
-            var node = findLabel(automation.rootInActiveWindow, "Search icons")!!
+            val node = ui.findAncestor("Search icons") { it.isEditable } ?: error("Search editing owner absent")
             // Compose exposes the label as a child; Android editing actions
             // belong to the editable ancestor, not to that descriptive node.
-            while (!node.isEditable) node = node.parent ?: error("Search editing owner absent")
             assertTrue("Search public action unavailable: class=${node.className}, text=${node.text}, actions=${node.actionList}", node.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT,
                 Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, value) }))
         }
@@ -286,9 +269,7 @@ class IconPickerInstrumentedTest {
                     val description = "${entry.label}, $title, ${entry.name}"
                     ui.await("Full catalogue search did not reach rendered ${entry.id}") { ui.has(description) }
                     ui.await("Native tile is not ready") {
-                        var node = findLabel(automation.rootInActiveWindow, description)
-                        while (node != null && !node.isClickable) node = node.parent
-                        node?.isEnabled == true
+                        ui.findAncestor(description) { it.isClickable }?.isEnabled == true
                     }
                     capture("picker-${collection.id}-light")
                     ui.click(description)
@@ -320,9 +301,7 @@ class IconPickerInstrumentedTest {
                 val darkEntry = catalogue.icon(state.getString("selectedId"))!!
                 val darkDescription = "${darkEntry.label}, Material Icons, ${darkEntry.name}"
                 ui.await("Dark search did not reach its actual glyph") {
-                    var node = findLabel(automation.rootInActiveWindow, darkDescription)
-                    while (node != null && !node.isClickable) node = node.parent
-                    node?.isEnabled == true
+                    ui.findAncestor(darkDescription) { it.isClickable }?.isEnabled == true
                 }
                 capture("picker-material-dark-rounded")
                 ui.back()

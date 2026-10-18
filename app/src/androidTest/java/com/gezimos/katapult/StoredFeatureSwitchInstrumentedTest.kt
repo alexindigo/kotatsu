@@ -12,6 +12,7 @@ import com.gezimos.katapult.ui.SettingsScreen
 import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.concurrent.atomic.AtomicInteger
@@ -41,9 +42,10 @@ class StoredFeatureSwitchInstrumentedTest {
         val context = instrumentation.targetContext
         assertFalse("Test requires the existing disabled Action Service", LockscreenWidgetService.isEnabled(context))
         val prefs = PrefsManager(context)
-        val saved = prefs.read()
-        val savedScreensaver = prefs.screensaverEnabled
         val shared = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
+        val before = shared.all
+        val saved = listOf(key, "screensaver_enabled").associateWith { before[it] }
+        assertTrue("Preserve unexpected stored preference types", saved.values.all { it == null || it is Boolean })
         val writes = AtomicInteger()
         val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, changed ->
             if (changed == key) writes.incrementAndGet()
@@ -94,8 +96,13 @@ class StoredFeatureSwitchInstrumentedTest {
             shared.unregisterOnSharedPreferenceChangeListener(listener)
             instrumentation.runOnMainSync {
                 activity?.finish()
-                prefs.write(saved)
-                prefs.screensaverEnabled = savedScreensaver
+                // The runner can end this process next: restoration must reach disk,
+                // and absent preferences must remain absent rather than acquire defaults.
+                val editor = shared.edit()
+                saved.forEach { (name, value) ->
+                    if (value is Boolean) editor.putBoolean(name, value) else editor.remove(name)
+                }
+                assertTrue("Could not restore stored feature preferences", editor.commit())
             }
         }
     }

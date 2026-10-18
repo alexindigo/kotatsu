@@ -29,14 +29,8 @@ class DraftsAndPickersInstrumentedTest {
     private val fixture = AppModel("__f7_rename__", "Original name", "")
 
     private fun edit(text: String) {
-        fun find(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
-            if (node.isEditable) return node
-            for (i in 0 until node.childCount) node.getChild(i)?.let { find(it)?.let { found -> return found } }
-            return null
-        }
-        val automation = instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-        ui.await("No editable draft") { automation.rootInActiveWindow?.let(::find) != null }
-        assertTrue(find(automation.rootInActiveWindow!!)!!.performAction(
+        ui.await("No editable draft") { ui.find { it.isEditable } != null }
+        assertTrue(ui.find { it.isEditable }!!.performAction(
             AccessibilityNodeInfo.ACTION_SET_TEXT,
             Bundle().apply { putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, text) },
         ))
