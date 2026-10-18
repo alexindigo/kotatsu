@@ -78,7 +78,8 @@ class PrefsManager(context: Context) {
         if (prefs.all.isEmpty()) {
             editor.putBoolean(KEY_HOME_EXTRA_ROW, true)
             editor.putBoolean(KEY_VERTICAL_APP_GESTURES, true)
-            editor.putBoolean(KEY_HIDE_ARROW_BUTTONS, true)
+            editor.putBoolean(KEY_HIDE_ARROW_BUTTONS, false)
+            editor.putBoolean(KEY_ROUNDED_ICONS, true)
             editor.putBoolean(KEY_INFINITE_SCROLL, false)
             editor.putInt(KEY_ICON_SIZE, ICON_SIZE_LARGE)
         }
