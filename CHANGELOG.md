@@ -1,6 +1,33 @@
 # Changelog
 
-Kotatsu changelog. The entries below are inherited Katapult history through v1.6.
+Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
+
+## [0.1] — 2026-10-18
+
+First Kotatsu release, based on Katapult 1.6.
+
+### Added
+- **Kotatsu identity**: its own emblem, wordmark and app package, so it can be installed alongside Katapult.
+- **Sensitive access**: separate choices for collecting badges, media information and usage statistics, and for notification dismissal, call acknowledgment, media controls and accessibility features. These choices are separate from Android's access grants.
+- **Offline icon collections**: 2,174 curated Simple Icons, Tabler and Material choices, with search and paging. Reviewed app matches and hand-picked stock line icons apply automatically; manual choices take priority.
+- **Lock-screen widgets** (Kompakt only): host installed Android app widgets in a configurable box over the padlock and unlock hint, with size and order controls. Needs the Kotatsu Action Service.
+- **Kotatsu Weather**: a separate app with an Open-Meteo weather widget for up to four places, each with its own label and hours. Add places by search or a one-off current-location request, choose Fahrenheit or Celsius, and open settings from the app icon. Weather uses the network; the launcher has no Internet permission.
+
+### Changed
+- **Launcher network access**: removed the Internet permission and built-in updater. External apps and providers opened from Kotatsu can still use the network independently.
+- **Optional setup**: finish onboarding without granting sensitive access or making Kotatsu the default launcher. Back exits the preview once internal navigation and dialogs are resolved.
+- **App appearance and navigation**: rounded-square shaping applies only to app icons; buttons and page arrows stay round. New installs start with rounded icons and visible page arrows. Arrows stop at the first and last page, even when swipe wrapping is on; existing appearance settings are kept.
+- **Hidden Apps and System Apps**: manage both under Settings > All Apps. Kompakt stock apps omitted by Mudita's launcher, app stores, FUTO Keyboard and Mudita's Update start hidden and can be shown individually.
+- **Hidden-app notifications**: hidden apps stay off the lock screen unless their separate Notify box is ticked. Lock-screen notification exclusions still take precedence.
+- **Action Service setup**: one guide explains how to enable Kotatsu Action Service and leave its floating shortcut off. If access is lost, recovery names the affected features and offers to turn them off.
+- **App reordering**: leaving an unsaved order asks Save, Discard or Cancel; Reset changes the draft until it is saved.
+
+### Fixed
+- **Lock-screen overlays** step aside for the PIN screen, alarms, calls, the power menu and other screens covering the lock screen. Hosted widgets keep their full width after updates.
+- **Drafts and file pickers** keep rename text, lock-screen message text and pending import choices across Home navigation. Late keyboard updates no longer change another editor's draft.
+- **Configuration import and export** report failed exports and reject invalid imports before replacing settings. Imports show a confirmation before changing sensitive-access choices.
+- **Custom icons and wallpapers** keep the previous saved choice when a replacement fails; icon changes refresh consistently across the launcher.
+- **Home music information** refreshes after playback changes, and stored feature switches remain visible when their required access is unavailable.
 
 ## [1.6]
 
