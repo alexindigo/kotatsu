@@ -8,6 +8,7 @@ import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.util.CatalogueIconRenderer
+import com.gezimos.katapult.util.DefaultIcons
 import com.gezimos.katapult.util.IconCatalogue
 import com.gezimos.katapult.util.IconCollection
 import com.gezimos.katapult.util.IconSelection
@@ -84,9 +85,16 @@ class IconRenderingInstrumentedTest {
         val signal = catalogue.icon("simple-icons:signal")!!
         val automatic = IconUtility.loadIcon(context, "org.thoughtcrime.securesms", "", 96)!!
         assertTrue(automatic.sameAs(CatalogueIconRenderer.render(context, signal, 96)))
-        val native = IconUtility.loadIcon(context, "com.android.settings", "", 96)!!
-        val oldSubstitution = IconUtility.renderDrawableResource(context, R.drawable.settings, 96)!!
-        assertFalse("Unmatched app still receives inherited automatic substitution", native.sameAs(oldSubstitution))
+        // Kotatsu's own default for an app with no catalogue brand reaches the bitmap consumer.
+        val settings = IconUtility.loadIcon(context, "com.android.settings", "", 96)!!
+        assertTrue(settings.sameAs(IconUtility.renderDrawableResource(context, R.drawable.settings, 96)))
+        for ((pkg, reference) in DefaultIcons.references) {
+            val drawn = IconUtility.renderSelection(context, IconSelections.parse(reference), 96)
+            assertNotNull("Default icon for $pkg does not draw: $reference", drawn)
+            val pixels = IntArray(96 * 96)
+            drawn!!.getPixels(pixels, 0, 96, 0, 0, 96, 96)
+            assertTrue("Blank default icon for $pkg", pixels.any { Color.alpha(it) > 32 })
+        }
 
         val prefs = PrefsManager(context)
         val key = "__curated_icon_test_fixture__"

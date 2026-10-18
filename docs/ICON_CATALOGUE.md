@@ -18,9 +18,28 @@ labels, aliases, tags, categories and stable IDs before pagination. **Choose
 PNG / SVG** retains the existing image-import flow. **Reset to Default** removes
 only the selected app/shortcut's manual override.
 
-Resolution is manual choice first, then an exact included Simple Icons brand
-match, then the installed app's original icon. Automatic choices are not saved
-as overrides. Published shortcuts keep their own artwork unless manually
+Resolution is manual choice first, then Kotatsu's own default for the app
+(`DefaultIcons`), then an exact included Simple Icons brand match, then the
+installed app's original icon. Automatic choices are not saved as overrides.
+
+`DefaultIcons` covers apps whose installed icon does not suit the e-ink grid,
+each chosen by hand:
+
+| # | App | Package | Default |
+|---|---|---|---|
+| 1 | Calendar (stock) | `com.android.calendar` | Katapult `calendar` |
+| 2 | Clock | `com.android.deskclock` | `mudita_clock` (Mudita Phone's clock glyph) |
+| 3 | Delta Chat | `com.b44t.messenger` | `delta_chat` (Mudita Messages' bubble with Delta Chat's delta) |
+| 4 | Files | `com.android.documentsui` | `mudita_folder` (Mudita Music's folder glyph) |
+| 5 | FM Radio | `com.android.fmradio` | Katapult `radio` |
+| 6 | Gallery (stock) | `com.android.gallery3d` | Katapult `gallery` |
+| 7 | Search | `com.android.quicksearchbox` | Katapult `search` |
+| 8 | Settings | `com.android.settings` | Katapult `settings` |
+| 9 | SIM Toolkit | `com.android.stk` | Katapult `sim` |
+| 10 | WebView Browser Tester | `org.chromium.webview_shell` | Katapult `chromium` |
+| 11 | WebView DevTools | `com.android.webview` | Simple Icons `googlechrome` |
+
+Published shortcuts keep their own artwork unless manually
 overridden; package fallback applies only when no shortcut drawable exists.
 
 New overrides use `catalogue:<stable-id>`. Existing `file:` imports and `res:`
@@ -37,6 +56,7 @@ its existing bitmap path.
 | 1 | `IconCatalogue` | Immutable IDs, metadata, normalized search and exact mappings |
 | 2 | `CatalogueIconRenderer` / `SvgRasterizer` | Verified payloads, bounded size-aware rendering cache and shared SVG import |
 | 3 | `IconUtility` | Manual-first app/shortcut resolution and consumer cache invalidation |
+| 3a | `DefaultIcons` | Kotatsu's hand-chosen default per package (saved-choice reference syntax) |
 | 4 | `PrefsManager` / `MainViewModel` | Validate rendering, confirm storage and refresh consumers |
 | 5 | `IconCollectionPicker` | Shared tabs/search/pages/tiles; injected rendering and selection/import callbacks |
 | 6 | `AppContextMenu` | Parent wiring, reset and existing import ownership |

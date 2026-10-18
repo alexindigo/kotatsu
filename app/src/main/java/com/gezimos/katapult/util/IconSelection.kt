@@ -10,16 +10,23 @@ sealed interface IconSelection {
 
 object IconSelections {
     const val CATALOGUE_PREFIX = "catalogue:"
+    const val BUNDLED_PREFIX = "res:"
+    const val IMPORTED_PREFIX = "file:"
 
-    fun resolve(override: String?, automaticId: String?): IconSelection {
+    /**
+     * [override] is the user's saved choice; [automatic] is the app's default reference
+     * (Kotatsu's own default, else an exact catalogue brand match). Both use the saved-choice syntax.
+     */
+    fun resolve(override: String?, automatic: String?): IconSelection {
         // An unknown retained override must not silently become a brand guess.
-        if (override != null) return when {
-            override.startsWith(CATALOGUE_PREFIX) ->
-                IconSelection.Catalogue(override.removePrefix(CATALOGUE_PREFIX))
-            override.startsWith("file:") -> IconSelection.Imported(override.removePrefix("file:"))
-            override.startsWith("res:") -> IconSelection.Bundled(override.removePrefix("res:"))
-            else -> IconSelection.Original
-        }
-        return automaticId?.let(IconSelection::Catalogue) ?: IconSelection.Original
+        if (override != null) return parse(override)
+        return automatic?.let(::parse) ?: IconSelection.Original
+    }
+
+    fun parse(reference: String): IconSelection = when {
+        reference.startsWith(CATALOGUE_PREFIX) -> IconSelection.Catalogue(reference.removePrefix(CATALOGUE_PREFIX))
+        reference.startsWith(IMPORTED_PREFIX) -> IconSelection.Imported(reference.removePrefix(IMPORTED_PREFIX))
+        reference.startsWith(BUNDLED_PREFIX) -> IconSelection.Bundled(reference.removePrefix(BUNDLED_PREFIX))
+        else -> IconSelection.Original
     }
 }

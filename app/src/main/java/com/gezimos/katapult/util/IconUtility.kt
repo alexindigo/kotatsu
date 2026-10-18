@@ -80,6 +80,9 @@ object IconUtility {
         BundledIcon(R.drawable.einkbro, "einkbro", "Einkbro"),
         BundledIcon(R.drawable.discord, "discord", "Discord"),
         BundledIcon(R.drawable.librofm, "librofm", "Libro.fm"),
+        BundledIcon(R.drawable.mudita_clock, "mudita_clock", "Clock (Mudita)"),
+        BundledIcon(R.drawable.mudita_folder, "mudita_folder", "Folder (Mudita)"),
+        BundledIcon(R.drawable.delta_chat, "delta_chat", "Delta Chat"),
     )
 
     private fun resolveBundled(resName: String): Int? =
@@ -152,14 +155,12 @@ object IconUtility {
         bitmapCache.get(cacheKey)?.let { return it }
 
         val bitmap = try {
-            val automatic = if (override == null) IconCatalogue.load(context).automaticIcon(packageName, activityClass) else null
-            val choice = IconSelections.resolve(override, automatic)
-            val selected = when (choice) {
-                is IconSelection.Catalogue -> IconCatalogue.load(context).icon(choice.id)
-                    ?.let { CatalogueIconRenderer.render(context, it, sizePx) }
-                is IconSelection.Imported, is IconSelection.Bundled -> override?.let { loadOverrideBitmap(context, it, sizePx) }
-                IconSelection.Original -> null
-            }
+            val automatic = if (override == null) {
+                DefaultIcons.reference(packageName)
+                    ?: IconCatalogue.load(context).automaticIcon(packageName, activityClass)
+                        ?.let { IconSelections.CATALOGUE_PREFIX + it }
+            } else null
+            val selected = renderSelection(context, IconSelections.resolve(override, automatic), sizePx)
             if (selected != null) {
                 selected
             } else {
@@ -188,25 +189,25 @@ object IconUtility {
         return bitmap
     }
 
-    private fun loadOverrideBitmap(context: Context, override: String, sizePx: Int): Bitmap? {
+    private fun loadOverrideBitmap(context: Context, override: String, sizePx: Int): Bitmap? =
+        renderSelection(context, IconSelections.parse(override), sizePx)
+
+    /** Draws a saved choice or a default reference; null means "use the installed icon". */
+    fun renderSelection(context: Context, selection: IconSelection, sizePx: Int): Bitmap? {
         return try {
-            when {
-                override.startsWith("file:") -> {
-                    val path = override.removePrefix("file:")
-                    if (!PrefsManager.isOwnedFile(context, path)) return null
-                    val bmp = BitmapHelper.decodeFile(path, sizePx * 2) ?: return null
+            when (selection) {
+                is IconSelection.Imported -> {
+                    if (!PrefsManager.isOwnedFile(context, selection.path)) return null
+                    val bmp = BitmapHelper.decodeFile(selection.path, sizePx * 2) ?: return null
                     drawableToBitmap(BitmapDrawable(context.resources, bmp), sizePx)
                 }
-                override.startsWith("res:") -> {
-                    val resId = resolveBundled(override.removePrefix("res:")) ?: return null
+                is IconSelection.Bundled -> {
+                    val resId = resolveBundled(selection.name) ?: return null
                     renderBundledIcon(ContextCompat.getDrawable(context, resId)!!, sizePx)
                 }
-                override.startsWith(IconSelections.CATALOGUE_PREFIX) -> {
-                    val id = override.removePrefix(IconSelections.CATALOGUE_PREFIX)
-                    val icon = IconCatalogue.load(context).icon(id) ?: return null
-                    CatalogueIconRenderer.render(context, icon, sizePx)
-                }
-                else -> null
+                is IconSelection.Catalogue -> IconCatalogue.load(context).icon(selection.id)
+                    ?.let { CatalogueIconRenderer.render(context, it, sizePx) }
+                IconSelection.Original -> null
             }
         } catch (_: Exception) {
             null

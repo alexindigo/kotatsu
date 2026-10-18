@@ -1,0 +1,12 @@
+Default app icons (app/src/main/res/drawable):
+
+mudita_clock: the clock glyph (ic_clock_time) of Mudita's Kompakt Phone app (Mudita), unchanged.
+
+mudita_folder: the folder glyph (ic_folder) of Mudita's Kompakt Music player app (Mudita), unchanged.
+
+delta_chat: the speech bubble from the icon of Mudita's Kompakt Messages app (Mudita), with the
+delta letter from Delta Chat's logo (https://github.com/deltachat/deltachat-pages,
+assets/logos/delta-chat.svg, GNU General Public License v3.0) in place of the dots.
+
+The other default icons (calendar, radio, gallery, search, settings, sim, chromium) are Katapult's
+bundled drawables; googlechrome is from the Simple Icons catalogue (see docs/ICON_CATALOGUE.md).

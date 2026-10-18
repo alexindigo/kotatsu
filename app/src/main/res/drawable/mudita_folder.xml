@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mudita Kompakt Music player's folder glyph (ic_folder), unchanged; see NOTICE. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="19dp"
+    android:height="18dp"
+    android:viewportWidth="19"
+    android:viewportHeight="18">
+  <group>
+    <clip-path android:pathData="M0.664,0h18v18h-18z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M1.309,15.108V2.893C1.309,2.552 1.444,2.225 1.685,1.984C1.926,1.743 2.253,1.608 2.594,1.608H7.339C7.632,1.599 7.92,1.691 8.154,1.869C8.388,2.047 8.554,2.3 8.624,2.585L9.023,4.179H16.737C17.078,4.179 17.405,4.315 17.646,4.556C17.887,4.797 18.023,5.124 18.023,5.465V15.108C18.023,15.449 17.887,15.776 17.646,16.017C17.405,16.258 17.078,16.393 16.737,16.393H2.594C2.253,16.393 1.926,16.258 1.685,16.017C1.444,15.776 1.309,15.449 1.309,15.108Z"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+  </group>
+</vector>

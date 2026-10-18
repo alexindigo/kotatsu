@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mudita Kompakt Phone's clock glyph (ic_clock_time), unchanged; see NOTICE. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="19dp"
+    android:height="19dp"
+    android:viewportWidth="19"
+    android:viewportHeight="19">
+  <group>
+    <clip-path android:pathData="M0.5,0.475h18v18h-18z" />
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M9.5,6.562V9.475L13.141,13.117M1.344,9.475C1.344,11.638 2.203,13.713 3.733,15.243C5.262,16.772 7.337,17.631 9.5,17.631C11.663,17.631 13.738,16.772 15.267,15.243C16.797,13.713 17.656,11.638 17.656,9.475C17.656,7.312 16.797,5.237 15.267,3.708C13.738,2.178 11.663,1.319 9.5,1.319C7.337,1.319 5.262,2.178 3.733,3.708C2.203,5.237 1.344,7.312 1.344,9.475Z"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+  </group>
+</vector>
