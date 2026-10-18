@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -64,6 +63,7 @@ import com.gezimos.katapult.ui.EinkColorFilterDark
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalIconFilter
 import com.gezimos.katapult.ui.LocalIconShape
+import com.gezimos.katapult.ui.appIconShape
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.PagePadding
@@ -212,7 +212,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         }
     }
 
-    val iconShape = if (prefs.roundedIcons) RoundedCornerShape(8.dp) else CircleShape
+    val iconShape = appIconShape(prefs.roundedIcons)
     CompositionLocalProvider(
         LocalIconShape provides iconShape,
         LocalInk provides if (dark) Color.White else Color.Black,

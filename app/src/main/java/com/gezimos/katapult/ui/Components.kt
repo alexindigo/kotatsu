@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.material3.Text
@@ -94,11 +95,22 @@ val NoIndication = object : androidx.compose.foundation.IndicationNodeFactory {
     override fun equals(other: Any?) = other === this
 }
 
-val RoundedIconShape = RoundedCornerShape(19.dp)
-val RoundedSmallShape = RoundedCornerShape(10.dp)
+/**
+ * Corner of a Rounded app-icon tile as a fraction of its side: Mudita's own app-icon frame
+ * (19.25 of 81 units). The one corner for every app-icon tile at any size.
+ */
+const val ICON_CORNER_FRACTION = 19.25f / 81f
+val RoundedIconShape = RoundedCornerShape(CornerSize(ICON_CORNER_FRACTION * 100f))
 val RoundedBadgeShape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, bottomEnd = 0.dp, bottomStart = 8.dp)
 
-fun Modifier.dashedDotBorder(strokeWidth: Dp = 2.dp, isRounded: Boolean, outset: Dp = 0.dp, cornerRadius: Dp = 19.dp, color: Color = Color.Black): Modifier = this.drawBehind {
+/**
+ * The Icon Shape setting shapes app icons (and tiles standing in for one) only. Controls such as
+ * page arrows and buttons stay circles in both modes, as on Mudita's launcher.
+ */
+fun appIconShape(rounded: Boolean): Shape = if (rounded) RoundedIconShape else CircleShape
+
+/** Dotted outline around an app-icon tile; rounded corners follow [ICON_CORNER_FRACTION]. */
+fun Modifier.dashedDotBorder(strokeWidth: Dp = 2.dp, isRounded: Boolean, outset: Dp = 0.dp, color: Color = Color.Black): Modifier = this.drawBehind {
     val sw = strokeWidth.toPx()
     val out = outset.toPx()
     val dotRadius = sw * 0.7f
@@ -107,7 +119,7 @@ fun Modifier.dashedDotBorder(strokeWidth: Dp = 2.dp, isRounded: Boolean, outset:
     val drawHeight = size.height + 2 * out
 
     if (isRounded) {
-        val r = cornerRadius.toPx() + out
+        val r = minOf(size.width, size.height) * ICON_CORNER_FRACTION + out
         val w = drawWidth - sw
         val h = drawHeight - sw
         val cr = r.coerceAtMost(w / 2).coerceAtMost(h / 2)
@@ -170,7 +182,6 @@ fun Modifier.dashedDotBorder(strokeWidth: Dp = 2.dp, isRounded: Boolean, outset:
     }
 }
 val LocalIconShape = compositionLocalOf<Shape> { CircleShape }
-val LocalSmallIconShape = compositionLocalOf<Shape> { CircleShape }
 val LocalSheetDismissSignal = compositionLocalOf { 0 }
 
 @Composable
@@ -228,7 +239,7 @@ private val arrowImages = HashMap<Int, ImageBitmap>()
 
 @Composable
 fun ArrowButton(iconRes: Int, onClick: () -> Unit) {
-    val shape = LocalSmallIconShape.current
+    val shape = CircleShape
     val ink = LocalInk.current
     val context = LocalContext.current
     val image = remember(iconRes) {
@@ -259,7 +270,7 @@ fun ArrowButton(iconRes: Int, onClick: () -> Unit) {
 
 @Composable
 fun CircleDot(size: Dp, borderWidth: Dp = 1.5.dp) {
-    val shape = LocalIconShape.current
+    val shape = CircleShape
     Box(
         Modifier
             .size(size)

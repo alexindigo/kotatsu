@@ -42,7 +42,7 @@ Finish onboarding without granting sensitive access or changing your default HOM
 - **3x4 app grid** tap on chevrons or use horizontal swipes
 - **Music widget** with playback controls and song info, works with other third-party apps like Auxio, Fossify Music, Spotify, Foobar, CalmCast, Antenna Pod etc.
 - **Icon tinting and shaping** for a uniform black & white look (works with ~95% of apps)
-- **Icon shape**: Circle or Rounded, affects all icons, buttons, and indicators
+- **Icon shape**: Circle or Rounded (Mudita's rounded square) for app icons; buttons and page arrows stay round, as on Mudita's launcher
 - **Offline icon collections**: 2,174 curated Simple Icons, Tabler and Material choices. Long-press an app → Change Icon to search or page through the collections, import PNG/SVG artwork, or reset. Verified brand matches are automatic, and a few stock apps with photographic icons (Settings, Clock, Files, FM Radio and others) get a matching line icon; other apps keep their original icons. Existing manual choices take priority. [Catalogue provenance and maintenance](docs/ICON_CATALOGUE.md).
 - **Extra dock row**: 3 additional shortcuts above the Phone/SMS bar
 - **Notification indicators** on app icons (requires notification listener permission)

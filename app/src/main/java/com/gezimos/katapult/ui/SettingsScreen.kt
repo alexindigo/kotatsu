@@ -1931,7 +1931,7 @@ private fun LockscreenAppsDialog(
         allApps.subList(start, end)
     }
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
-    val iconShape = if (viewModel.roundedIcons) RoundedCornerShape(percent = 26) else CircleShape
+    val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
         Row(
@@ -2102,7 +2102,7 @@ private fun HiddenAppsDialog(
     }
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
     val hiddenCount = hiddenSet.size
-    val iconShape = if (viewModel.roundedIcons) RoundedCornerShape(percent = 26) else CircleShape
+    val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
         Text(

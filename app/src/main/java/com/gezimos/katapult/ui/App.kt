@@ -23,8 +23,7 @@ fun App(
     screensaverWallpaperPicker: ActivityResultLauncher<String>,
     onClearBadge: (String) -> Unit,
 ) {
-    val iconShape = if (viewModel.roundedIcons) RoundedIconShape else CircleShape
-    val smallShape = if (viewModel.roundedIcons) RoundedSmallShape else CircleShape
+    val iconShape = appIconShape(viewModel.roundedIcons)
     val badgeShape = if (viewModel.roundedIcons) RoundedBadgeShape else CircleShape
     val dark = when (viewModel.themeMode) {
         com.gezimos.katapult.util.PrefsManager.THEME_DARK -> true
@@ -35,7 +34,6 @@ fun App(
         androidx.compose.foundation.LocalIndication provides NoIndication,
         LocalIconSize provides viewModel.iconSize.dp,
         LocalIconShape provides iconShape,
-        LocalSmallIconShape provides smallShape,
         LocalBadgeShape provides badgeShape,
         LocalSheetDismissSignal provides viewModel.sheetDismissSignal,
         LocalInk provides if (dark) androidx.compose.ui.graphics.Color.White else androidx.compose.ui.graphics.Color.Black,

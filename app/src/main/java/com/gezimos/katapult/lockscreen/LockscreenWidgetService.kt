@@ -92,6 +92,7 @@ import com.gezimos.katapult.util.AccessibilitySelection
 import com.gezimos.katapult.util.AccessibilityConsumers
 import com.gezimos.katapult.ui.EinkTintMatrix
 import com.gezimos.katapult.ui.EinkTintMatrixDark
+import com.gezimos.katapult.ui.ICON_CORNER_FRACTION
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
@@ -1172,7 +1173,7 @@ class LockscreenWidgetService :
         val out = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
         val size = sizePx.toFloat()
-        val radius = if (prefs.roundedIcons) size * 0.26f else size / 2f
+        val radius = if (prefs.roundedIcons) size * ICON_CORNER_FRACTION else size / 2f
         val shape = Path().apply { addRoundRect(RectF(0f, 0f, size, size), radius, radius, Path.Direction.CW) }
         canvas.drawPath(shape, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = surface })
         canvas.save()

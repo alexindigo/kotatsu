@@ -299,7 +299,7 @@ private fun ChangeIconDialog(
     onImportClick: () -> Unit,
 ) {
     val context = LocalContext.current
-    val pickerShape = if (viewModel.roundedIcons) RoundedCornerShape(percent = 26) else CircleShape
+    val pickerShape = appIconShape(viewModel.roundedIcons)
     val sizePx = remember(context) { (48 * context.resources.displayMetrics.density).toInt() }
     val hasOverride = remember(viewModel.shortcutRefresh) {
         viewModel.prefs.getIconOverride(app.key) != null
@@ -436,7 +436,7 @@ private fun AppShortcutsDialog(
         if (start < shortcuts.size) shortcuts.subList(start, end) else emptyList()
     }
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
-    val iconShape = if (viewModel.roundedIcons) RoundedCornerShape(percent = 26) else CircleShape
+    val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
         Text(

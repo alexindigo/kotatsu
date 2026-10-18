@@ -321,7 +321,7 @@ private fun PageNavRow(viewModel: MainViewModel, wrap: Boolean, onResetOrder: ()
 
         Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
             if (viewModel.reorderMode) {
-                val buttonShape = LocalSmallIconShape.current
+                val buttonShape = CircleShape
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,

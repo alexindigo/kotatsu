@@ -20,7 +20,7 @@ Features
 • Icon tinting and shaping for a uniform black-and-white look (works with ~95% of apps)
 • Monochrome icons automatically used when the app provides one
 • Custom icon import — pick an inherited bundled icon or import your own PNG/SVG
-• Icon shape: Circle or Rounded — affects all icons, buttons, and indicators
+• Icon shape: Circle or Rounded (Mudita's rounded square) for app icons; buttons and page arrows stay round
 • Extra dock row with 3 additional shortcuts
 • Notification indicators on app icons (requires notification listener permission)
 • Clear notifications for a specific app from the app context menu

@@ -383,7 +383,7 @@ fun HomeScreen(
                         ) {
                             val strokeWidth = 2.5.dp
                             val isRounded = viewModel.roundedIcons
-                            val tileShape = if (isRounded) RoundedIconShape else CircleShape
+                            val tileShape = appIconShape(isRounded)
                             Box(
                                 modifier = Modifier
                                     .size(LocalIconSize.current)
@@ -528,7 +528,7 @@ private fun AppPickerDialog(
         apps.subList(start, end)
     }
     var dragAccumulator by remember { mutableFloatStateOf(0f) }
-    val iconShape = if (viewModel.roundedIcons) RoundedCornerShape(percent = 26) else CircleShape
+    val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
         Text(
