@@ -313,9 +313,16 @@
     <string name="config_import_replaces_settings">Spowoduje to zastąpienie wszystkich bieżących ustawień.</string>
     <string name="lockscreen_widgets">Widżety ekranu blokady</string>
     <string name="lockscreen_widgets_off">Wyłączone</string>
-    <string name="lockscreen_widgets_on">Włączone · %1$d widżetów</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">Włączone, %d widżet</item>
+        <item quantity="few">Włączone, %d widżety</item>
+        <item quantity="many">Włączone, %d widżetów</item>
+        <item quantity="other">Włączone, %d widżetu</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Pokaż na ekranie blokady</string>
+    <string name="lockscreen_widgets_show_desc">Zakrywa kłódkę i wskazówkę odblokowania</string>
     <string name="lockscreen_widgets_add">Dodaj widżet</string>
+    <string name="lockscreen_widgets_add_desc">Dowolny zainstalowany widżet aplikacji</string>
     <string name="lockscreen_widgets_unavailable">Niedostępny</string>
     <string name="lockscreen_widgets_small">Mały</string>
     <string name="lockscreen_widgets_medium">Średni</string>

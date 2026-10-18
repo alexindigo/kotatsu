@@ -16,6 +16,10 @@ fun lockscreenBoxLayout(sizesDp: List<Int>, availableDp: Int): List<Int>? {
 fun defaultLockscreenWidgetSize(minHeightDp: Float): LockscreenWidgetSize =
     LockscreenWidgetSize.entries.firstOrNull { it.heightDp >= minHeightDp } ?: LockscreenWidgetSize.L
 
+/** A widget's name in the add list; the app is appended only when the widget's name doesn't already contain it. */
+fun providerLabel(widget: String, app: String): String =
+    if (app.isBlank() || widget.contains(app, ignoreCase = true)) widget else "$widget ($app)"
+
 /** Device-local list codec; malformed entries never become host IDs. No Android dependency. */
 object LockscreenWidgetList {
     fun encode(widgets: List<LockscreenWidget>): String = widgets.joinToString(",", "[", "]") {

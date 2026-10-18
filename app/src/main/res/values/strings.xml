@@ -197,9 +197,14 @@
     <string name="lockscreen_weather_desc">Show the weather at the top of the lock screen</string>
     <string name="lockscreen_widgets">Lock-screen widgets</string>
     <string name="lockscreen_widgets_off">Off</string>
-    <string name="lockscreen_widgets_on">On · %1$d widgets</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">On, %d widget</item>
+        <item quantity="other">On, %d widgets</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Show on lock screen</string>
+    <string name="lockscreen_widgets_show_desc">Covers the padlock and unlock hint</string>
     <string name="lockscreen_widgets_add">Add widget</string>
+    <string name="lockscreen_widgets_add_desc">Any installed app widget</string>
     <string name="lockscreen_widgets_unavailable">Unavailable</string>
     <string name="lockscreen_widgets_small">Small</string>
     <string name="lockscreen_widgets_medium">Medium</string>

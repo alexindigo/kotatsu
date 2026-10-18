@@ -313,9 +313,15 @@
     <string name="config_import_replaces_settings">Cela remplace tous vos paramètres actuels.</string>
     <string name="lockscreen_widgets">Widgets de verrouillage</string>
     <string name="lockscreen_widgets_off">Désactivé</string>
-    <string name="lockscreen_widgets_on">Activé · %1$d widgets</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">Activé, %d widget</item>
+        <item quantity="many">Activé, %d widgets</item>
+        <item quantity="other">Activé, %d widgets</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Afficher sur l’écran de verrouillage</string>
+    <string name="lockscreen_widgets_show_desc">Masque le cadenas et l’indication de déverrouillage</string>
     <string name="lockscreen_widgets_add">Ajouter un widget</string>
+    <string name="lockscreen_widgets_add_desc">N’importe quel widget d’application installé</string>
     <string name="lockscreen_widgets_unavailable">Indisponible</string>
     <string name="lockscreen_widgets_small">Petit</string>
     <string name="lockscreen_widgets_medium">Moyen</string>

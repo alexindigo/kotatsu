@@ -66,4 +66,12 @@ class LockscreenWidgetsTest {
         assertEquals(listOf(LockscreenWidget(42, LockscreenWidgetSize.L)), LockscreenWidgetList.decode(
             """[ { "size" : "L", "ignored": {"nested":[true,false,null,"a\\b"]}, "id" : 42 } ]"""))
     }
+
+    @Test fun providerLabelNamesTheAppOnlyWhenItAddsInformation() {
+        assertEquals("Kotatsu Weather", providerLabel("Kotatsu Weather", "Kotatsu Weather"))
+        assertEquals("Messaging (SMS)", providerLabel("Messaging", "SMS"))
+        assertEquals("Digital clock", providerLabel("Digital clock", "Clock"))
+        assertEquals("Clock widget", providerLabel("Clock widget", "clock"))
+        assertEquals("Folder", providerLabel("Folder", ""))
+    }
 }

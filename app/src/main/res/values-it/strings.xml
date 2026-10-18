@@ -313,9 +313,15 @@
     <string name="config_import_replaces_settings">Questo sostituisce tutte le tue impostazioni attuali.</string>
     <string name="lockscreen_widgets">Widget della schermata di blocco</string>
     <string name="lockscreen_widgets_off">Disattivato</string>
-    <string name="lockscreen_widgets_on">Attivato · %1$d widget</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">Attivato, %d widget</item>
+        <item quantity="many">Attivato, %d widget</item>
+        <item quantity="other">Attivato, %d widget</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Mostra sulla schermata di blocco</string>
+    <string name="lockscreen_widgets_show_desc">Copre il lucchetto e l’indicazione di sblocco</string>
     <string name="lockscreen_widgets_add">Aggiungi widget</string>
+    <string name="lockscreen_widgets_add_desc">Qualsiasi widget di app installato</string>
     <string name="lockscreen_widgets_unavailable">Non disponibile</string>
     <string name="lockscreen_widgets_small">Piccolo</string>
     <string name="lockscreen_widgets_medium">Medio</string>

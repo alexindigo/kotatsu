@@ -313,9 +313,16 @@
     <string name="config_import_replaces_settings">Tím se nahradí všechna vaše aktuální nastavení.</string>
     <string name="lockscreen_widgets">Widgety na zamčené obrazovce</string>
     <string name="lockscreen_widgets_off">Vypnuto</string>
-    <string name="lockscreen_widgets_on">Zapnuto · %1$d widgetů</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">Zapnuto, %d widget</item>
+        <item quantity="few">Zapnuto, %d widgety</item>
+        <item quantity="many">Zapnuto, %d widgetu</item>
+        <item quantity="other">Zapnuto, %d widgetů</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Zobrazit na zamčené obrazovce</string>
+    <string name="lockscreen_widgets_show_desc">Zakryje zámek a nápovědu k odemčení</string>
     <string name="lockscreen_widgets_add">Přidat widget</string>
+    <string name="lockscreen_widgets_add_desc">Libovolný nainstalovaný widget aplikace</string>
     <string name="lockscreen_widgets_unavailable">Nedostupné</string>
     <string name="lockscreen_widgets_small">Malý</string>
     <string name="lockscreen_widgets_medium">Střední</string>

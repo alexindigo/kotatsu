@@ -34,18 +34,19 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         enabled = prefs.lockscreenWidgetsEnabled
         rows = widgets().map { widget ->
             val info = manager.getAppWidgetInfo(widget.id)
-            WidgetSettingsRow(widget, info?.let(::label) ?: context.getString(R.string.lockscreen_widgets_unavailable),
+            WidgetSettingsRow(widget, info?.loadLabel(context.packageManager) ?: context.getString(R.string.lockscreen_widgets_unavailable),
                 info?.configure != null && info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0)
         }
     }
 
     private fun widgets() = LockscreenWidgetList.decode(prefs.lockscreenWidgets)
     private fun save(widgets: List<LockscreenWidget>) { prefs.lockscreenWidgets = LockscreenWidgetList.encode(widgets); refresh() }
+    /** "Messaging (SMS)" — the app is named only when the widget's own name doesn't already say it. */
     private fun label(info: AppWidgetProviderInfo): String {
         val pm = context.packageManager
         val app = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(info.provider.packageName, 0)).toString() }
             .getOrDefault(info.provider.packageName)
-        return "${info.loadLabel(pm)} · $app"
+        return providerLabel(info.loadLabel(pm), app)
     }
 
     fun providers(): List<WidgetProviderChoice> = manager.installedProviders

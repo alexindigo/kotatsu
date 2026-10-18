@@ -313,9 +313,14 @@
     <string name="config_import_replaces_settings">Dit vervangt al je huidige instellingen.</string>
     <string name="lockscreen_widgets">Vergrendelschermwidgets</string>
     <string name="lockscreen_widgets_off">Uit</string>
-    <string name="lockscreen_widgets_on">Aan · %1$d widgets</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">Aan, %d widget</item>
+        <item quantity="other">Aan, %d widgets</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Op vergrendelscherm tonen</string>
+    <string name="lockscreen_widgets_show_desc">Bedekt het slotje en de ontgrendelhint</string>
     <string name="lockscreen_widgets_add">Widget toevoegen</string>
+    <string name="lockscreen_widgets_add_desc">Elke geïnstalleerde app-widget</string>
     <string name="lockscreen_widgets_unavailable">Niet beschikbaar</string>
     <string name="lockscreen_widgets_small">Klein</string>
     <string name="lockscreen_widgets_medium">Middelgroot</string>

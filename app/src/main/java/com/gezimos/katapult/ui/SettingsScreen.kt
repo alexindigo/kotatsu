@@ -31,6 +31,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.material.icons.Icons
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.material.icons.rounded.ArrowDownward
+import androidx.compose.material.icons.rounded.ArrowUpward
+import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Apps
@@ -38,6 +45,7 @@ import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.Contrast
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Download
@@ -905,7 +913,7 @@ fun SettingsScreen(
                 SettingsActionRow(
                     title = stringResource(R.string.lockscreen_widgets),
                     description = (if (widgetSettings.enabled)
-                        stringResource(R.string.lockscreen_widgets_on, widgetSettings.rows.size)
+                        pluralStringResource(R.plurals.lockscreen_widgets_on, widgetSettings.rows.size, widgetSettings.rows.size)
                         else stringResource(R.string.lockscreen_widgets_off)) +
                         if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
                     onClick = { widgetSettings.refresh(); showLockscreenWidgetsSheet = true },
@@ -1310,12 +1318,14 @@ fun SettingsScreen(
 
     if (showLockscreenWidgetsSheet && widgetChoice == null && widgetProviders == null) {
         BottomSheet(onDismiss = { showLockscreenWidgetsSheet = false }) {
-            Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f).verticalScroll(rememberScrollState())) {
+            // Wraps its content like Kotatsu's other sheets; scrolls only once it would pass 80 % of the screen.
+            val maxHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.8f).toDp() }
+            Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.lockscreen_widgets), fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                    fontFamily = LatoFamily, color = LocalInk.current)
+                    fontFamily = LatoFamily, color = LocalInk.current, modifier = Modifier.padding(bottom = 12.dp))
                 SettingsToggleRow(
                     title = stringResource(R.string.lockscreen_widgets_show),
-                    description = if (actionServiceEnabled) "" else stringResource(R.string.action_service_off),
+                    description = stringResource(if (actionServiceEnabled) R.string.lockscreen_widgets_show_desc else R.string.action_service_off),
                     checked = widgetSettings.enabled,
                     onCheckedChange = widgetSettings::requestEnabled,
                 )
@@ -1323,44 +1333,29 @@ fun SettingsScreen(
                     SettingsActionRow(row.label, stringResource(widgetSizeTitle(row.widget.size)),
                         onClick = { widgetChoice = row })
                 }
-                SettingsActionRow(stringResource(R.string.lockscreen_widgets_add), "",
+                SettingsActionRow(stringResource(R.string.lockscreen_widgets_add), stringResource(R.string.lockscreen_widgets_add_desc),
                     onClick = { widgetProviders = widgetSettings.providers() })
             }
         }
     }
     widgetChoice?.let { row ->
-        ChoiceSheet(
-            title = row.label,
-            options = buildList {
-                com.gezimos.katapult.lockscreen.LockscreenWidgetSize.entries.forEach { size ->
-                    add(size.name to stringResource(widgetSizeTitle(size)))
-                }
-                add("up" to stringResource(R.string.lockscreen_widgets_up))
-                add("down" to stringResource(R.string.lockscreen_widgets_down))
-                if (row.canEdit) add("edit" to stringResource(R.string.lockscreen_widgets_edit))
-                add("remove" to stringResource(R.string.lockscreen_widgets_remove))
-            },
-            selected = row.widget.size.name,
-            onSelect = { action ->
-                when (action) {
-                    "up" -> widgetSettings.move(row.widget.id, -1)
-                    "down" -> widgetSettings.move(row.widget.id, 1)
-                    "edit" -> (context as? MainActivity)?.editLockscreenWidget(row.widget.id)
-                    "remove" -> widgetSettings.remove(row.widget.id)
-                    else -> widgetSettings.resize(row.widget.id, com.gezimos.katapult.lockscreen.LockscreenWidgetSize.valueOf(action))
-                }
-            },
+        val index = widgetSettings.rows.indexOfFirst { it.widget.id == row.widget.id }
+        LockscreenWidgetMenu(
+            row = row,
+            canMoveUp = index > 0,
+            canMoveDown = index in 0 until widgetSettings.rows.lastIndex,
+            onResize = { size -> widgetSettings.resize(row.widget.id, size) },
+            onMove = { delta -> widgetSettings.move(row.widget.id, delta) },
+            onEdit = { (context as? MainActivity)?.editLockscreenWidget(row.widget.id) },
+            onRemove = { widgetSettings.remove(row.widget.id) },
             onDismiss = { widgetChoice = null },
         )
     }
     widgetProviders?.let { providers ->
-        ChoiceSheet(
-            title = stringResource(R.string.lockscreen_widgets_add),
-            options = providers.mapIndexed { index, provider -> index to provider.label },
-            selected = -1,
-            onSelect = { index -> (context as? MainActivity)?.addLockscreenWidget(providers[index].info) },
+        WidgetProviderSheet(
+            providers = providers,
+            onPick = { provider -> (context as? MainActivity)?.addLockscreenWidget(provider.info) },
             onDismiss = { widgetProviders = null },
-            scrollOptions = true,
         )
     }
 
@@ -2610,7 +2605,6 @@ private fun <T> ChoiceSheet(
     selected: T,
     onSelect: (T) -> Unit,
     onDismiss: () -> Unit,
-    scrollOptions: Boolean = false,
 ) {
     BottomSheet(onDismiss = onDismiss) {
         Text(
@@ -2621,7 +2615,6 @@ private fun <T> ChoiceSheet(
             color = LocalInk.current,
             modifier = Modifier.padding(bottom = 12.dp),
         )
-        Column(if (scrollOptions) Modifier.fillMaxHeight(0.7f).verticalScroll(rememberScrollState()) else Modifier) {
         options.forEach { (value, label) ->
             BottomSheetOption(
                 text = label,
@@ -2632,6 +2625,58 @@ private fun <T> ChoiceSheet(
                 onDismiss()
             }
         }
+    }
+}
+
+/** Size is a choice (radio options); moving, editing and removing are actions (icon + verb, like the app menu). */
+@Composable
+private fun LockscreenWidgetMenu(
+    row: com.gezimos.katapult.lockscreen.WidgetSettingsRow,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onResize: (com.gezimos.katapult.lockscreen.LockscreenWidgetSize) -> Unit,
+    onMove: (Int) -> Unit,
+    onEdit: () -> Unit,
+    onRemove: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    BottomSheet(onDismiss = onDismiss) {
+        Text(row.label, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = LatoFamily,
+            color = LocalInk.current, modifier = Modifier.padding(bottom = 12.dp))
+        com.gezimos.katapult.lockscreen.LockscreenWidgetSize.entries.forEach { size ->
+            BottomSheetOption(stringResource(widgetSizeTitle(size)),
+                icon = if (size == row.widget.size) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked) {
+                onResize(size); onDismiss()
+            }
+        }
+        if (canMoveUp) BottomSheetOption(stringResource(R.string.lockscreen_widgets_up), icon = Icons.Rounded.ArrowUpward) {
+            onMove(-1); onDismiss()
+        }
+        if (canMoveDown) BottomSheetOption(stringResource(R.string.lockscreen_widgets_down), icon = Icons.Rounded.ArrowDownward) {
+            onMove(1); onDismiss()
+        }
+        if (row.canEdit) BottomSheetOption(stringResource(R.string.lockscreen_widgets_edit), icon = Icons.Rounded.Edit) {
+            onEdit(); onDismiss()
+        }
+        BottomSheetOption(stringResource(R.string.lockscreen_widgets_remove), icon = Icons.Rounded.Delete) {
+            onRemove(); onDismiss()
+        }
+    }
+}
+
+/** A plain pick list: nothing is selected yet, so no radio marks. */
+@Composable
+private fun WidgetProviderSheet(
+    providers: List<com.gezimos.katapult.lockscreen.WidgetProviderChoice>,
+    onPick: (com.gezimos.katapult.lockscreen.WidgetProviderChoice) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    BottomSheet(onDismiss = onDismiss) {
+        Text(stringResource(R.string.lockscreen_widgets_add), fontSize = 18.sp, fontWeight = FontWeight.Bold,
+            fontFamily = LatoFamily, color = LocalInk.current, modifier = Modifier.padding(bottom = 12.dp))
+        val maxHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.7f).toDp() }
+        Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
+            providers.forEach { provider -> BottomSheetOption(provider.label) { onPick(provider); onDismiss() } }
         }
     }
 }

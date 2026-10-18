@@ -313,9 +313,14 @@
     <string name="config_import_replaces_settings">Dadurch werden alle Ihre aktuellen Einstellungen ersetzt.</string>
     <string name="lockscreen_widgets">Sperrbildschirm-Widgets</string>
     <string name="lockscreen_widgets_off">Aus</string>
-    <string name="lockscreen_widgets_on">An · %1$d Widgets</string>
+    <plurals name="lockscreen_widgets_on">
+        <item quantity="one">An, %d Widget</item>
+        <item quantity="other">An, %d Widgets</item>
+    </plurals>
     <string name="lockscreen_widgets_show">Auf dem Sperrbildschirm anzeigen</string>
+    <string name="lockscreen_widgets_show_desc">Verdeckt das Schloss und den Entsperrhinweis</string>
     <string name="lockscreen_widgets_add">Widget hinzufügen</string>
+    <string name="lockscreen_widgets_add_desc">Jedes installierte App-Widget</string>
     <string name="lockscreen_widgets_unavailable">Nicht verfügbar</string>
     <string name="lockscreen_widgets_small">Klein</string>
     <string name="lockscreen_widgets_medium">Mittel</string>
