@@ -5,6 +5,9 @@ catalogue's material-icons:outlined:air SVG. ic_delete: Material Icons Round
 "delete", the icon Kotatsu's own widget menu uses. Google Material Icons / Symbols,
 Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
+App icon ic_kotatsu_weather: the rounded frame and cloud are from the icon of Mudita's KompaktWeather app
+(Mudita), with Kotatsu's own "K" in place of the sun.
+
 Lato Regular and Bold, Copyright (c) 2010-2014 Łukasz Dziedzic.
 SIL Open Font License 1.1; see LICENSE-Lato.txt in this module.
 

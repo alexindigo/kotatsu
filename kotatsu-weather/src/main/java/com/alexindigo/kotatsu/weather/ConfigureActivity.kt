@@ -45,7 +45,15 @@ class ConfigureActivity : Activity() {
         window.statusBarColor = Color.WHITE
         window.navigationBarColor = Color.WHITE
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
-        widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        val requested = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        widgetId = if (requested != AppWidgetManager.INVALID_APPWIDGET_ID) requested else {
+            // Opened from the app icon: settings belong to a widget.
+            when (val target = settingsTarget(WeatherRuntime.ids(this))) {
+                is SettingsTarget.One -> target.widgetId
+                is SettingsTarget.Choose -> { chooseWidget(target.widgetIds); return }
+                SettingsTarget.NoWidget -> { showNoWidget(); return }
+            }
+        }
         if (widgetId !in WeatherRuntime.ids(this)) { finish(); return }
         config = savedInstanceState?.getString("draft")?.let { ConfigJson.decode(it) } ?: WeatherStore(this).config(widgetId)
         // Settings scroll; the actions stay in a fixed footer, so Done is always on screen at the bottom.
@@ -94,6 +102,37 @@ class ConfigureActivity : Activity() {
         })
         showRows()
         showUnits()
+    }
+
+    /** Several widgets: ask which one's settings to open, naming each by its places. */
+    private fun chooseWidget(widgetIds: List<Int>) {
+        val store = WeatherStore(this)
+        val names = widgetIds.map { id ->
+            store.config(id).locations.joinToString(", ") { it.label }.ifEmpty { "No places yet" }
+        }
+        AlertDialog.Builder(this).setCustomTitle(dialogTitle("Which widget?"))
+            .setAdapter(listItems(names)) { _, which ->
+                startActivity(Intent(this, ConfigureActivity::class.java)
+                    .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetIds[which]))
+                finish()
+            }
+            .setNegativeButton("Cancel", null)
+            .setOnDismissListener { if (!isChangingConfigurations) finish() }
+            .show()
+    }
+
+    /** No widget yet: settings belong to a widget, so say where to add one. */
+    private fun showNoWidget() {
+        val body = column().apply { setPadding(dp(16), dp(16), dp(16), dp(20)) }
+        body.addView(text("Kotatsu Weather", 24f, bold = true).apply { setPadding(0, 0, 0, dp(16)) })
+        body.addView(text("The weather widget isn't on your lock screen yet.", 18f))
+        body.addView(text("In Kotatsu, open Settings, then Lockscreen, then Lock-screen widgets. Tap Add widget and " +
+            "choose Kotatsu Weather. Its settings open from here afterwards.", 14f).apply { setPadding(0, dp(12), 0, 0) })
+        body.addView(View(this), LinearLayout.LayoutParams(MATCH, 0, 1f))
+        body.addView(button("Close") { finish() }.apply {
+            setTextColor(Color.WHITE); background = shape(Color.BLACK, Color.BLACK)
+        })
+        setContentView(body)
     }
 
     private fun showRows() {

@@ -4,7 +4,7 @@
     <!-- "Add current location": a one-off fix while the setup screen is open, never in the background. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-    <application android:label="@string/app_name" android:icon="@drawable/ic_weather_cloudy"
+    <application android:label="@string/app_name" android:icon="@drawable/ic_kotatsu_weather"
         android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" android:allowBackup="false"
         android:supportsRtl="true">
         <receiver android:name=".WeatherWidgetProvider" android:exported="true">
@@ -14,8 +14,13 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/weather_widget" />
         </receiver>
+        <!-- The widget's setup screen, opened by the widget host or from the app icon (see SettingsTarget). -->
         <activity android:name=".ConfigureActivity" android:exported="true">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" /></intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
         </activity>
         <service android:name=".RefreshJobService" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
     </application>
