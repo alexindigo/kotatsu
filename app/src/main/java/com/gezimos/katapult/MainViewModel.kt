@@ -54,6 +54,7 @@ import com.gezimos.katapult.ui.IconSize
 import com.gezimos.katapult.util.AppLoader
 import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
+import com.gezimos.katapult.util.SelfLaunch
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SystemChrome
@@ -688,13 +689,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun launchApp(context: Context, app: AppModel) {
-        if (app.shortcutId.isEmpty() &&
-            app.packageName == ctx.packageName &&
-            DeviceHelper.isDefaultLauncher(ctx)
-        ) {
-            navigateTo(Screen.SETTINGS)
-            return
-        }
         if (app.shortcutId.isNotEmpty()) {
             if (ShortcutHelper.launch(ctx, app.packageName, app.shortcutId)) {
                 (context as? Activity)?.overridePendingTransition(0, 0)
@@ -707,6 +701,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun launchPackage(context: Context, packageName: String, activityName: String) {
+        if (SelfLaunch.opensSettings(ctx.packageName, MainActivity::class.java.name, packageName, activityName)) {
+            navigateTo(Screen.SETTINGS)
+            return
+        }
         val intent = Intent(Intent.ACTION_MAIN).apply {
             component = ComponentName(packageName, activityName)
             addCategory(Intent.CATEGORY_LAUNCHER)
