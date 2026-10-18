@@ -10,21 +10,21 @@ Kotatsu is a separately installable fork of [Katapult by gezimos](https://github
 > [!NOTE]
 > Build Kotatsu from this source tree. [Upstream Katapult releases](https://github.com/gezimos/Katapult/releases) are Katapult distributions, not Kotatsu updates. Kotatsu has no built-in updater or Internet permission. External browser/document-provider/Mudita weather handoffs and Android-managed backup/device transfer remain; their providers can network independently. Release and wider feature acceptance remain separate verification gates.
 
-The following images are **upstream Katapult reference screenshots**, not screenshots of final Kotatsu artwork.
+Kotatsu on a Mudita Kompakt:
 
 <div align="center">
     <table>
         <tr>
-            <td><img src='docs/img/screenshots/home_music_weather.png' height='300' alt=""></td>
-            <td><img src='docs/img/screenshots/home_clean.png' height='300' alt=""></td>
-            <td><img src='docs/img/screenshots/all_apps_80.png' height='300' alt=""></td>
-            <td><img src='docs/img/screenshots/lockscreen_widgets.png' height='300' alt=""></td>
+            <td><img src='docs/img/screenshots/kotatsu_home.png' height='300' alt="Home screen with rounded app icons"></td>
+            <td><img src='docs/img/screenshots/kotatsu_all_apps.png' height='300' alt="App grid with Kotatsu's line icons"></td>
+            <td><img src='docs/img/screenshots/kotatsu_lockscreen_weather.png' height='300' alt="Lock screen with the Kotatsu Weather widget"></td>
+            <td><img src='docs/img/screenshots/kotatsu_lockscreen_widgets.png' height='300' alt="Lock-screen widgets settings"></td>
         </tr>
         <tr>
-            <td><img src='docs/img/screenshots/with_wallpaper.png' height='300' alt=""></td>
-            <td><img src='docs/img/screenshots/dark_home.png' height='300' alt=""></td>
-            <td><img src='docs/img/screenshots/settings.png' height='300' alt=""></td>
-            <td><img src='docs/img/screenshots/order_apps.png' height='300' alt=""></td>
+            <td><img src='docs/img/screenshots/kotatsu_weather_setup.png' height='300' alt="Kotatsu Weather places"></td>
+            <td><img src='docs/img/screenshots/kotatsu_weather_edit_location.png' height='300' alt="Editing a place's label and hours"></td>
+            <td><img src='docs/img/screenshots/kotatsu_settings_all_apps.png' height='300' alt="All Apps settings with Hidden Apps and System Apps"></td>
+            <td><img src='docs/img/screenshots/kotatsu_system_apps.png' height='300' alt="System Apps list"></td>
         </tr>
     </table>
 </div>
@@ -59,6 +59,8 @@ Finish onboarding without granting sensitive access or changing your default HOM
 - **App context menu**: Reorder, Rename, Hide, App Info, Uninstall
 - **Reorder apps**: swap-based reordering from the context menu. Dirty exits ask Save/Discard/Cancel; Reset changes the draft until you save.
 - **Lockscreen Notifications (experimental)**: per-app notification counts on the lock screen, with an app allowlist and sort order. Long-press the widget to move/resize it, tap to save.
+- **Lock-screen widgets**: app widgets in a box on the lock screen, over the padlock and unlock hint (Settings > Lockscreen > Lock-screen widgets). Needs the Kotatsu Action Service.
+- **Kotatsu Weather** (separate app, `kotatsu-weather`): a lock-screen weather widget for up to four places, each a line of temperatures across its own hours. Add places by search or current location; the app icon opens the widget's settings. Weather data by Open-Meteo.
 - **Screensaver (experimental)**: a Kotatsu screen saver showing the home clock, date, alarm, battery, and up to 4 notification rows. Start it with a two-finger long-press on the home screen (or the home long-press menu); the power button exits. Select Kotatsu once in system Screen saver settings (Settings → Experimental → Screensaver opens it).
 
 ## Permissions
