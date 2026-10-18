@@ -50,10 +50,23 @@ class LockscreenRecoveryPolicyTest {
         assertFalse(AccessibilityPolicy.isPinField("com.android.systemui", true, null))
     }
 
+    @Test fun onlyTheBareLockscreenWindowLeavesTheLockscreenUncovered() {
+        val sysui = "com.android.systemui"
+        assertFalse(AccessibilityPolicy.lockscreenCovered(StringBuilder(sysui), activeHasLockscreenPanel = true, pinFieldFocused = false))
+        // The PIN pad lives inside the lock-screen window.
+        assertTrue(AccessibilityPolicy.lockscreenCovered(sysui, activeHasLockscreenPanel = true, pinFieldFocused = true))
+        // Staging phone 2026-10-16: the fingerprint lockout notice is its own System UI window without the panel.
+        assertTrue(AccessibilityPolicy.lockscreenCovered(sysui, activeHasLockscreenPanel = false, pinFieldFocused = false))
+        // An app shown over the lock screen (alarm, call) or no active window at all.
+        for (pkg in listOf("com.mudita.alarm", null)) {
+            assertTrue(AccessibilityPolicy.lockscreenCovered(pkg, activeHasLockscreenPanel = true, pinFieldFocused = false))
+        }
+    }
+
     @Test fun inspectionFailureHidesOverlaysButSuccessfulNegativeInspectionDoesNot() {
-        assertTrue(AccessibilityPolicy.pinShowing { throw SecurityException("focus unavailable") })
-        assertTrue(AccessibilityPolicy.pinShowing { throw IllegalStateException("node unavailable") })
-        assertFalse(AccessibilityPolicy.pinShowing { false })
-        assertTrue(AccessibilityPolicy.pinShowing { true })
+        assertTrue(AccessibilityPolicy.coveredOrUnknown { throw SecurityException("focus unavailable") })
+        assertTrue(AccessibilityPolicy.coveredOrUnknown { throw IllegalStateException("node unavailable") })
+        assertFalse(AccessibilityPolicy.coveredOrUnknown { false })
+        assertTrue(AccessibilityPolicy.coveredOrUnknown { true })
     }
 }

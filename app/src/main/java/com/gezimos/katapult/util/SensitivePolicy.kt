@@ -250,8 +250,19 @@ object AccessibilityPolicy {
     fun isPinField(packageName: CharSequence?, visible: Boolean, className: CharSequence?): Boolean =
         packageName?.toString() == "com.android.systemui" && visible && className?.contains("EditText") == true
 
+    /** System UI's lock-screen/shade container; only the window holding it is the lock screen itself. */
+    const val LOCKSCREEN_PANEL_ID = "com.android.systemui:id/notification_panel"
+
+    /**
+     * Lock-screen overlays belong to the bare lock screen only. Anything in front of it — a System UI dialog such as
+     * the fingerprint lockout notice, an alarm or call screen, the power menu — makes another window active, and
+     * the PIN pad lives inside the lock-screen window with a focused field. Either one covers the lock screen.
+     */
+    fun lockscreenCovered(activePackage: CharSequence?, activeHasLockscreenPanel: Boolean, pinFieldFocused: Boolean): Boolean =
+        pinFieldFocused || activePackage?.toString() != "com.android.systemui" || !activeHasLockscreenPanel
+
     /** Failed inspection cannot establish that it is safe to show overlays. */
-    fun pinShowing(inspect: () -> Boolean): Boolean = try { inspect() } catch (_: Exception) { true }
+    fun coveredOrUnknown(inspect: () -> Boolean): Boolean = try { inspect() } catch (_: Exception) { true }
 
     fun demand(eligible: Boolean, selection: AccessibilitySelection, lockscreenActive: Boolean,
                launcherActive: Boolean, screensaverActive: Boolean): AccessibilityDemand = AccessibilityDemand(

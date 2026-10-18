@@ -232,7 +232,7 @@ class LockscreenWidgetService :
         clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); stopWidgets(); musicState.value = null },
         clearInspection = {
             mainHandler.removeCallbacks(keyguardRecheck)
-            lastPinShowing = false
+            lastCovered = false
             burstUntil = 0L
         },
     )
@@ -753,7 +753,7 @@ class LockscreenWidgetService :
             mainHandler.removeCallbacks(keyguardRecheck)
             removeOverlay(); removeMusicOverlay(); removeMessageOverlay()
             stopWidgets()
-            lastPinShowing = false
+            lastCovered = false
             burstUntil = 0L
             return
         }
@@ -765,10 +765,10 @@ class LockscreenWidgetService :
             !ScreensaverActivity.isShowing &&
             !inCall()
         val inspection = currentDemand(selectedActive).inspectPin
-        val onLockscreen = selectedActive && (!inspection || !pinShowing(lastPinShowing || SystemClock.elapsedRealtime() < burstUntil))
+        val onLockscreen = selectedActive && (!inspection || !lockscreenCovered(lastCovered || SystemClock.elapsedRealtime() < burstUntil))
         val demand = currentDemand(onLockscreen)
-        // PIN visibility suppresses overlays/collectors, not the selected PIN
-        // recheck itself; otherwise teardown would forget that PIN is visible.
+        // A covered lock screen suppresses overlays/collectors, not the selected
+        // recheck itself; otherwise teardown would forget that it is covered.
         consumers.reconcile(demand.copy(inspectPin = inspection))
         applyMusicWidget(onLockscreen)
         applyWidgets(onLockscreen)
@@ -802,25 +802,35 @@ class LockscreenWidgetService :
     }
 
     /**
-     * A visible System UI EditText with input focus indicates the PIN screen; inspection
-     * failure also hides overlays. Polled instead of
-     * event-driven: re-showing the PIN doesn't re-fire focus events when its field kept focus.
+     * Whether something covers the bare lock screen: the PIN pad (a focused System UI EditText) or any window
+     * in front of the lock-screen window (see [AccessibilityPolicy.lockscreenCovered]); inspection failure also
+     * hides overlays. Polled instead of event-driven: re-showing the PIN doesn't re-fire focus events when its
+     * field kept focus.
      */
-    private var lastPinShowing = false
+    private var lastCovered = false
 
-    private fun pinShowing(check: Boolean): Boolean {
-        if (!SensitiveAccess.accessibility()) { lastPinShowing = false; return false }
-        if (!check) return lastPinShowing
-        lastPinShowing = AccessibilityPolicy.pinShowing {
+    private fun lockscreenCovered(check: Boolean): Boolean {
+        if (!SensitiveAccess.accessibility()) { lastCovered = false; return false }
+        if (!check) return lastCovered
+        lastCovered = AccessibilityPolicy.coveredOrUnknown {
             val focus = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-            try {
+            val pinFocused = try {
                 focus != null && AccessibilityPolicy.isPinField(focus.packageName, focus.isVisibleToUser, focus.className)
             } finally {
                 @Suppress("DEPRECATION")
                 focus?.recycle()
             }
+            val root = windows.firstOrNull { it.isActive }?.root
+            try {
+                val hasPanel = root?.findAccessibilityNodeInfosByViewId(AccessibilityPolicy.LOCKSCREEN_PANEL_ID)
+                    ?.any { it.isVisibleToUser } == true
+                AccessibilityPolicy.lockscreenCovered(root?.packageName, hasPanel, pinFocused)
+            } finally {
+                @Suppress("DEPRECATION")
+                root?.recycle()
+            }
         }
-        return lastPinShowing
+        return lastCovered
     }
 
     /** An incoming or active call shows its own UI over the lock screen — hide the widget then. */
