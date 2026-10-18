@@ -490,6 +490,13 @@ class PrefsManager(context: Context) {
         prefs.edit().putStringSet(KEY_LOCKSCREEN_WIDGET_EXCLUDED, packages).apply()
     }
 
+    fun getNotifyWhileHiddenApps(): Set<String> = setPref(KEY_NOTIFY_WHILE_HIDDEN, emptySet()) ?: emptySet()
+
+    fun setNotifyWhileHidden(pkg: String, allowed: Boolean) {
+        val set = getNotifyWhileHiddenApps()
+        prefs.edit().putStringSet(KEY_NOTIFY_WHILE_HIDDEN, if (allowed) set + pkg else set - pkg).apply()
+    }
+
     var onboardingComplete: Boolean
         get() = boolPref(KEY_ONBOARDING_COMPLETE, false)
         set(value) = prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, value).apply()
@@ -691,7 +698,7 @@ class PrefsManager(context: Context) {
         KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH,
         KEY_SCREENSAVER_WALLPAPER_PATH, KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> ""
-        KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED, KEY_SHOWN_DEFAULT_HIDDEN -> emptySet<String>()
+        KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED, KEY_SHOWN_DEFAULT_HIDDEN, KEY_NOTIFY_WHILE_HIDDEN -> emptySet<String>()
         else -> if (key.startsWith(KEY_RENAME_PREFIX) || key.startsWith(KEY_ICON_OVERRIDE_PREFIX) ||
             HOME_SLOTS.any { slot -> key == "${slot}_package" || key == "${slot}_activity" || key == "${slot}_shortcut_id" }
         ) "" else null
@@ -815,6 +822,7 @@ class PrefsManager(context: Context) {
         private const val KEY_WALLPAPER_PATH = "wallpaper_path"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
         private const val KEY_SHOWN_DEFAULT_HIDDEN = "shown_default_hidden_apps"
+        private const val KEY_NOTIFY_WHILE_HIDDEN = "notify_while_hidden_apps"
         private const val KEY_RENAME_PREFIX = "rename_"
         private const val KEY_ICON_OVERRIDE_PREFIX = "icon_override_"
         private const val KEY_SHOW_KATAPULT_ICON = "show_katapult_icon"

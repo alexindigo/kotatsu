@@ -16,6 +16,9 @@
     <string name="settings">Nastavení</string>
     <string name="hidden_apps">Skryté aplikace</string>
     <string name="hidden_apps_count">Skryté aplikace (%1$d)</string>
+    <string name="hidden_apps_hide_column">Skrýt</string>
+    <string name="hidden_apps_notify_column">Oznámit</string>
+    <string name="hidden_apps_notify_desc">Skryté aplikace se na zamykací obrazovce nezobrazí, pokud nezaškrtnete Oznámit.</string>
     <string name="hidden_apps_desc">Vyberte, které aplikace skrýt ze seznamu aplikací</string>
     <string name="system_apps">Systémové aplikace</string>
     <string name="system_apps_count">Systémové aplikace (%1$d)</string>

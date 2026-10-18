@@ -16,6 +16,9 @@
     <string name="settings">Ustawienia</string>
     <string name="hidden_apps">Ukryte aplikacje</string>
     <string name="hidden_apps_count">Ukryte aplikacje (%1$d)</string>
+    <string name="hidden_apps_hide_column">Ukryj</string>
+    <string name="hidden_apps_notify_column">Powiadom</string>
+    <string name="hidden_apps_notify_desc">Ukryte aplikacje nie pojawiają się na ekranie blokady, chyba że zaznaczysz Powiadom.</string>
     <string name="hidden_apps_desc">Wybierz, które aplikacje ukryć na liście aplikacji</string>
     <string name="system_apps">Aplikacje systemowe</string>
     <string name="system_apps_count">Aplikacje systemowe (%1$d)</string>

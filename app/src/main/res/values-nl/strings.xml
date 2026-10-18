@@ -16,6 +16,9 @@
     <string name="settings">Instellingen</string>
     <string name="hidden_apps">Verborgen apps</string>
     <string name="hidden_apps_count">Verborgen apps (%1$d)</string>
+    <string name="hidden_apps_hide_column">Verbergen</string>
+    <string name="hidden_apps_notify_column">Melden</string>
+    <string name="hidden_apps_notify_desc">Verborgen apps verschijnen niet op het vergrendelscherm, tenzij Melden is aangevinkt.</string>
     <string name="hidden_apps_desc">Kies welke apps je verbergt in de app-lijst</string>
     <string name="system_apps">Systeem-apps</string>
     <string name="system_apps_count">Systeem-apps (%1$d)</string>

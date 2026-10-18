@@ -16,6 +16,9 @@
     <string name="settings">Paramètres</string>
     <string name="hidden_apps">Apps masquées</string>
     <string name="hidden_apps_count">Apps masquées (%1$d)</string>
+    <string name="hidden_apps_hide_column">Masquer</string>
+    <string name="hidden_apps_notify_column">Notifier</string>
+    <string name="hidden_apps_notify_desc">Les apps masquées n\'apparaissent pas sur l\'écran de verrouillage sauf si Notifier est coché.</string>
     <string name="hidden_apps_desc">Choisissez les apps à masquer dans la liste des apps</string>
     <string name="system_apps">Apps système</string>
     <string name="system_apps_count">Apps système (%1$d)</string>

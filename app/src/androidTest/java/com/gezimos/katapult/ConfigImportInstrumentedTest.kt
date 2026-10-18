@@ -111,16 +111,21 @@ class ConfigImportInstrumentedTest {
     }
 
     @Test fun stringSetsRequireArraysOfStrings() = withPrefs { prefs, raw ->
-        for (key in listOf("hidden_apps", "lockscreen_widget_excluded", "shown_default_hidden_apps")) {
+        for (key in listOf("hidden_apps", "lockscreen_widget_excluded", "shown_default_hidden_apps", "notify_while_hidden_apps")) {
             for (invalid in listOf("[]", true, 1, JSONObject.NULL, JSONObject(),
                 JSONArray().put(1), JSONArray().put(JSONObject.NULL), JSONArray().put(JSONObject()))) {
                 rejectsUnchanged(prefs, raw, config().put(key, invalid))
             }
         }
         assertTrue(prefs.importFromJson(config().put("hidden_apps", JSONArray().put("com.example"))
-            .put("lockscreen_widget_excluded", JSONArray()).toString()))
+            .put("lockscreen_widget_excluded", JSONArray())
+            .put("notify_while_hidden_apps", JSONArray().put("com.example")).toString()))
         assertEquals(setOf("com.example"), prefs.getHiddenApps())
         assertTrue(prefs.getLockscreenExcludedApps().isEmpty())
+        assertEquals(setOf("com.example"), prefs.getNotifyWhileHiddenApps())
+        assertEquals("com.example", JSONObject(prefs.exportToJson(context)).getJSONArray("notify_while_hidden_apps").getString(0))
+        prefs.setNotifyWhileHidden("com.example", false)
+        assertTrue(prefs.getNotifyWhileHiddenApps().isEmpty())
     }
 
     @Test fun malformedDatePatternsAndSerializedArraysFailBeforeAnyChange() = withPrefs { prefs, raw ->

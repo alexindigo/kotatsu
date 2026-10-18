@@ -66,6 +66,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -87,6 +88,9 @@ import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -2094,6 +2098,17 @@ private fun AppVisibilitySheet(
 ) {
     var hidden by remember { mutableStateOf(viewModel.prefs.getHiddenApps()) }
     var shown by remember { mutableStateOf(viewModel.prefs.getShownDefaultHiddenApps()) }
+    var notifyWhileHidden by remember { mutableStateOf(viewModel.prefs.getNotifyWhileHiddenApps()) }
+    var excluded by remember { mutableStateOf(viewModel.prefs.getLockscreenExcludedApps()) }
+    DisposableEffect(viewModel.prefs) {
+        val subscription = viewModel.prefs.subscribeChanges {
+            hidden = viewModel.prefs.getHiddenApps()
+            shown = viewModel.prefs.getShownDefaultHiddenApps()
+            notifyWhileHidden = viewModel.prefs.getNotifyWhileHiddenApps()
+            excluded = viewModel.prefs.getLockscreenExcludedApps()
+        }
+        onDispose { subscription.close() }
+    }
     val checked = apps.filter { AppVisibility.isHidden(it, hidden, shown) }.map { it.key }.toSet()
     AppChecklistSheet(
         title = if (checked.isNotEmpty()) stringResource(countRes, checked.size) else stringResource(titleRes),
@@ -2101,6 +2116,18 @@ private fun AppVisibilitySheet(
         checked = checked,
         iconShape = appIconShape(viewModel.roundedIcons),
         onDismiss = onDismiss,
+        notifyCell = { app ->
+            when {
+                app.shortcutId.isNotEmpty() || app.key !in checked -> NotifyCell.NONE
+                app.packageName in excluded -> NotifyCell.DISABLED
+                app.packageName in notifyWhileHidden -> NotifyCell.ON
+                else -> NotifyCell.OFF
+            }
+        },
+        onToggleNotify = { app ->
+            viewModel.prefs.setNotifyWhileHidden(app.packageName, app.packageName !in notifyWhileHidden)
+            notifyWhileHidden = viewModel.prefs.getNotifyWhileHiddenApps()
+        },
         onToggle = { app ->
             viewModel.prefs.setAppHidden(app.key, hidden = app.key !in checked, AppVisibility.hiddenByDefault(app))
             hidden = viewModel.prefs.getHiddenApps()
@@ -2110,7 +2137,27 @@ private fun AppVisibilitySheet(
     )
 }
 
-/** Paged list of apps with a checkbox each; the caller owns what "checked" means and stores it. */
+private enum class NotifyCell { NONE, OFF, ON, DISABLED }
+private val HideColumnWidth = 32.dp
+private val NotifyColumnWidth = 64.dp
+
+@Composable
+private fun CheckMark(checked: Boolean, enabled: Boolean = true) {
+    val shape = RoundedCornerShape(4.dp)
+    Box(
+        modifier = Modifier.size(20.dp).then(
+            if (checked && enabled) Modifier.background(LocalInk.current, shape)
+            else Modifier.border(if (enabled) 2.5.dp else 1.dp, LocalInk.current, shape)
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (checked && enabled) {
+            Text("✓", color = LocalSurface.current, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+/** Paged visibility checklist; the caller owns the choices and their storage. */
 @Composable
 private fun AppChecklistSheet(
     title: String,
@@ -2118,6 +2165,8 @@ private fun AppChecklistSheet(
     checked: Set<String>,
     iconShape: androidx.compose.ui.graphics.Shape,
     onDismiss: () -> Unit,
+    notifyCell: (com.gezimos.katapult.model.AppModel) -> NotifyCell,
+    onToggleNotify: (com.gezimos.katapult.model.AppModel) -> Unit,
     onToggle: (com.gezimos.katapult.model.AppModel) -> Unit,
 ) {
     val context = LocalContext.current
@@ -2141,6 +2190,26 @@ private fun AppChecklistSheet(
             color = LocalInk.current,
             modifier = Modifier.padding(bottom = 12.dp),
         )
+        Text(
+            text = stringResource(R.string.hidden_apps_notify_desc),
+            fontSize = 14.sp,
+            fontFamily = LatoFamily,
+            color = LocalInk.current,
+            modifier = Modifier.padding(bottom = 12.dp),
+        )
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.hidden_apps_hide_column),
+                fontSize = 14.sp, fontFamily = LatoFamily, color = LocalInk.current,
+                maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.width(HideColumnWidth),
+            )
+            Spacer(Modifier.weight(1f))
+            Text(
+                stringResource(R.string.hidden_apps_notify_column),
+                fontSize = 14.sp, fontFamily = LatoFamily, color = LocalInk.current,
+                maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.width(NotifyColumnWidth),
+            )
+        }
         Column(
             modifier = Modifier
                 .pointerInput(page, totalPages) {
@@ -2171,11 +2240,16 @@ private fun AppChecklistSheet(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onToggle(app) }
-                            .padding(vertical = 10.dp),
+                            .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
+                            .clickable { onToggle(app) },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        AppIconCircle(bitmap = bitmap, size = 36.dp, borderWidth = 1.5.dp, shape = iconShape)
+                        Box(Modifier.width(HideColumnWidth), contentAlignment = Alignment.Center) {
+                            CheckMark(isHidden)
+                        }
+                        Box(Modifier.padding(vertical = 10.dp)) {
+                            AppIconCircle(bitmap = bitmap, size = 36.dp, borderWidth = 1.5.dp, shape = iconShape)
+                        }
                         Spacer(Modifier.width(12.dp))
                         Text(
                             app.label,
@@ -2184,31 +2258,34 @@ private fun AppChecklistSheet(
                             color = LocalInk.current,
                             modifier = Modifier.weight(1f),
                         )
-                        val checkShape = RoundedCornerShape(4.dp)
+                        val cell = notifyCell(app)
+                        val notifyLabel = stringResource(R.string.hidden_apps_notify_column)
                         Box(
                             modifier = Modifier
-                                .size(20.dp)
-                                .then(
-                                    if (isHidden) Modifier.background(LocalInk.current, checkShape)
-                                    else Modifier.border(2.5.dp, LocalInk.current, checkShape)
-                                ),
+                                .width(NotifyColumnWidth)
+                                .fillMaxHeight()
+                                // Even absent/disabled cells consume taps rather than toggling Hide.
+                                .clickable {
+                                    if (cell == NotifyCell.OFF || cell == NotifyCell.ON) onToggleNotify(app)
+                                }
+                                .then(if (cell != NotifyCell.NONE) Modifier.semantics {
+                                    contentDescription = "$notifyLabel: ${app.label}"
+                                    role = Role.Checkbox
+                                    toggleableState = if (cell == NotifyCell.ON) ToggleableState.On else ToggleableState.Off
+                                    if (cell == NotifyCell.DISABLED) disabled()
+                                } else Modifier),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (isHidden) {
-                                Text(
-                                    text = "\u2713",
-                                    color = LocalSurface.current,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
+                            if (cell != NotifyCell.NONE) CheckMark(cell == NotifyCell.ON, cell != NotifyCell.DISABLED)
                         }
                     }
                 } else {
                     Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
+                        Spacer(Modifier.width(HideColumnWidth))
                         Box(Modifier.size(36.dp))
                         Spacer(Modifier.width(12.dp))
-                        Text("", fontSize = 18.sp)
+                        Text("", fontSize = 18.sp, modifier = Modifier.weight(1f))
+                        Spacer(Modifier.width(NotifyColumnWidth))
                     }
                 }
             }

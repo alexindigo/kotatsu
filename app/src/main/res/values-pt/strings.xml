@@ -16,6 +16,9 @@
     <string name="settings">Definições</string>
     <string name="hidden_apps">Apps ocultas</string>
     <string name="hidden_apps_count">Apps ocultas (%1$d)</string>
+    <string name="hidden_apps_hide_column">Ocultar</string>
+    <string name="hidden_apps_notify_column">Notificar</string>
+    <string name="hidden_apps_notify_desc">As apps ocultas não aparecem no ecrã de bloqueio, a menos que Notificar esteja marcado.</string>
     <string name="hidden_apps_desc">Escolha que apps ocultar da lista de apps</string>
     <string name="system_apps">Apps do sistema</string>
     <string name="system_apps_count">Apps do sistema (%1$d)</string>

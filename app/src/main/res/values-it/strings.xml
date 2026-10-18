@@ -16,6 +16,9 @@
     <string name="settings">Impostazioni</string>
     <string name="hidden_apps">App nascoste</string>
     <string name="hidden_apps_count">App nascoste (%1$d)</string>
+    <string name="hidden_apps_hide_column">Nascondi</string>
+    <string name="hidden_apps_notify_column">Notifica</string>
+    <string name="hidden_apps_notify_desc">Le app nascoste non compaiono nella schermata di blocco se Notifica non è spuntato.</string>
     <string name="hidden_apps_desc">Scegli quali app nascondere dalla lista app</string>
     <string name="system_apps">App di sistema</string>
     <string name="system_apps_count">App di sistema (%1$d)</string>

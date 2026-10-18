@@ -394,9 +394,7 @@ private fun computeRows(
     feed: BadgeFeed,
 ): Pair<List<SsRow>, Int> {
     if (!active || !prefs.screensaverEnabled || !prefs.screensaverShowNotifications) return emptyList<SsRow>() to 0
-    val merged = feed.counts()
-    val excluded = prefs.getLockscreenExcludedApps()
-    val counts = merged.filter { (pkg, count) -> count > 0 && pkg !in excluded }
+    val counts = com.gezimos.katapult.util.LockscreenNotifications.forDisplay(context, prefs, feed.counts())
     val times = feed.times()
     val comparator = if (prefs.lockscreenWidgetLatestFirst) {
         compareByDescending<Map.Entry<String, Int>> { times[it.key] ?: 0L }

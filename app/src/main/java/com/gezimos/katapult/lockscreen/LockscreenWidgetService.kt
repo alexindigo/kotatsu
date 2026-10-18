@@ -847,9 +847,7 @@ class LockscreenWidgetService :
     }
 
     private fun currentCounts(): Map<String, Int> {
-        val merged = BadgeSources.counts(this)
-        val excluded = prefs.getLockscreenExcludedApps()
-        return merged.filter { (pkg, count) -> count > 0 && pkg !in excluded }
+        return com.gezimos.katapult.util.LockscreenNotifications.forDisplay(this, prefs, BadgeSources.counts(this))
     }
 
     /**
