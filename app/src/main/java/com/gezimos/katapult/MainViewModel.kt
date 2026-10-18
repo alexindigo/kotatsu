@@ -86,9 +86,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     var shortcutRefresh by mutableIntStateOf(0)
     var contextMenuApp by mutableStateOf<AppModel?>(null)
     var showRenameDialog by mutableStateOf(false)
-    var renameDraft by mutableStateOf<androidx.compose.ui.text.input.TextFieldValue?>(null)
+    /** Each editor/IME connection owns this instance, never a replaceable draft slot. */
+    class TextDraft(text: String) {
+        var value by mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(
+            text, androidx.compose.ui.text.TextRange(text.length),
+        ))
+        val text: String get() = value.text
+    }
+    var renameDraft by mutableStateOf<TextDraft?>(null)
     private var renameDraftKey: String? = null
-    var lockscreenMessageDraft by mutableStateOf<androidx.compose.ui.text.input.TextFieldValue?>(null)
+    var lockscreenMessageDraft by mutableStateOf<TextDraft?>(null)
     var showLockscreenMessageSheet by mutableStateOf(false)
     var pendingImportText by mutableStateOf<String?>(null)
     var pendingImportPreview by mutableStateOf<PrefsManager.PolicyImportPreview?>(null)
@@ -655,9 +662,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun beginRename(app: AppModel) {
         if (renameDraftKey != app.key || renameDraft == null) {
             renameDraftKey = app.key
-            renameDraft = androidx.compose.ui.text.input.TextFieldValue(
-                app.label, androidx.compose.ui.text.TextRange(app.label.length),
-            )
+            renameDraft = TextDraft(app.label)
         }
         showRenameDialog = true
     }
@@ -665,9 +670,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun beginLockscreenMessage() {
         if (lockscreenMessageDraft == null) {
             val text = prefs.lockscreenMessage.orEmpty()
-            lockscreenMessageDraft = androidx.compose.ui.text.input.TextFieldValue(
-                text, androidx.compose.ui.text.TextRange(text.length),
-            )
+            lockscreenMessageDraft = TextDraft(text)
         }
         showLockscreenMessageSheet = true
     }

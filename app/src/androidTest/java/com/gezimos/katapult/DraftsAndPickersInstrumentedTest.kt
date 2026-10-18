@@ -64,6 +64,10 @@ class DraftsAndPickersInstrumentedTest {
             }
             ui.await("Rename leaked to another target") { ui.has("Other app") && !ui.has("Different target draft") }
             ui.click(context.getString(R.string.cancel))
+            ui.await("Rename cancel did not close the editor and keyboard") {
+                !ui.has(context.getString(R.string.save)) && !ui.imeVisible()
+            }
+            scenario.onActivity { assertNull("A late IME update revived the cancelled rename", it.viewModel.renameDraft) }
         }
     }
 
@@ -88,9 +92,44 @@ class DraftsAndPickersInstrumentedTest {
             ui.await("Recreation lost message draft") { ui.has("Unsaved message F7") }
             scenario.onActivity { assertEquals(original, it.viewModel.prefs.lockscreenMessage) }
             ui.click(context.getString(R.string.cancel))
+            ui.await("Message cancel did not close the editor and keyboard") {
+                !ui.has(context.getString(R.string.save)) && !ui.imeVisible()
+            }
+            scenario.onActivity { assertNull("A late IME update revived the cancelled message", it.viewModel.lockscreenMessageDraft) }
             scenario.onActivity { it.viewModel.beginLockscreenMessage() }
             ui.await("Explicit cancel kept message draft") { ui.has(context.getString(R.string.save)) && !ui.has("Unsaved message F7") }
             scenario.onActivity { assertEquals(original.orEmpty(), it.viewModel.lockscreenMessageDraft!!.text) }
+            ui.click(context.getString(R.string.cancel))
+        }
+    }
+
+    @Test fun changingRenameTargetRetiresThePreviousImeConnection() {
+        ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
+            scenario.onActivity {
+                it.viewModel.screen = Screen.HOME
+                it.viewModel.contextMenuApp = fixture
+                it.viewModel.beginRename(fixture)
+            }
+            edit("Previous target draft")
+            var previousInput: android.view.inputmethod.InputConnection? = null
+            scenario.onActivity {
+                previousInput = android.view.inspector.WindowInspector.getGlobalWindowViews()
+                    .first { root -> root.hasWindowFocus() }.findFocus()
+                    ?.onCreateInputConnection(android.view.inputmethod.EditorInfo())
+            }
+            assertNotNull("The real rename editor has no IME connection", previousInput)
+            scenario.onActivity {
+                val other = fixture.copy(packageName = "__f7_other__", label = "Other app")
+                it.viewModel.beginRename(other)
+                it.viewModel.contextMenuApp = other
+            }
+            ui.await("New rename target did not render") { ui.has("Other app") }
+            // Android can deliver commands from the connection that was current
+            // before the target changed. It must no longer edit the new target.
+            instrumentation.runOnMainSync { previousInput!!.commitText("Late previous-target input", 1) }
+            instrumentation.waitForIdleSync()
+            scenario.onActivity { assertEquals("An old IME connection edited the new target", "Other app", it.viewModel.renameDraft!!.text) }
+            ui.await("Old IME input reached the new editor") { ui.has("Other app") && !ui.has("Late previous-target input") }
             ui.click(context.getString(R.string.cancel))
         }
     }

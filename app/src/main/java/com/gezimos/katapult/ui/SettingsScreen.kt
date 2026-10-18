@@ -1405,22 +1405,27 @@ fun SettingsScreen(
         )
     }
 
-    if (viewModel.showLockscreenMessageSheet) {
+    val messageDraft = viewModel.lockscreenMessageDraft
+    if (viewModel.showLockscreenMessageSheet && messageDraft != null) androidx.compose.runtime.key(messageDraft) {
         LockscreenMessageSheet(
-            textFieldValue = viewModel.lockscreenMessageDraft ?: androidx.compose.ui.text.input.TextFieldValue(lockscreenMessage),
-            onValueChange = { viewModel.lockscreenMessageDraft = it },
+            textFieldValue = messageDraft.value,
+            onValueChange = { messageDraft.value = it },
             onDismiss = {
-                if (viewModel.showLockscreenMessageSheet) viewModel.lockscreenMessageDraft = null
-                viewModel.showLockscreenMessageSheet = false
+                if (viewModel.lockscreenMessageDraft === messageDraft) {
+                    if (viewModel.showLockscreenMessageSheet) viewModel.lockscreenMessageDraft = null
+                    viewModel.showLockscreenMessageSheet = false
+                }
             },
             onConfirm = { text ->
-                viewModel.showLockscreenMessageSheet = false
-                viewModel.lockscreenMessageDraft = null
-                val serviceOn = LockscreenWidgetService.isEnabled(context)
-                actionServiceEnabled = serviceOn
-                lockscreenMessage = text
-                prefs.lockscreenMessage = text
-                if (text.isNotBlank() && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MESSAGE)
+                if (viewModel.lockscreenMessageDraft === messageDraft) {
+                    viewModel.showLockscreenMessageSheet = false
+                    viewModel.lockscreenMessageDraft = null
+                    val serviceOn = LockscreenWidgetService.isEnabled(context)
+                    actionServiceEnabled = serviceOn
+                    lockscreenMessage = text
+                    prefs.lockscreenMessage = text
+                    if (text.isNotBlank() && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MESSAGE)
+                }
             },
         )
     }

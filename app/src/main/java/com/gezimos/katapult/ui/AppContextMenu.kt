@@ -193,17 +193,20 @@ fun AppContextMenu(
         )
     }
 
-    if (viewModel.showRenameDialog) {
+    val renameDraft = viewModel.renameDraft
+    if (viewModel.showRenameDialog && renameDraft != null) androidx.compose.runtime.key(renameDraft) {
         RenameDialog(
-            textFieldValue = viewModel.renameDraft ?: androidx.compose.ui.text.input.TextFieldValue(app.label),
-            onValueChange = { viewModel.renameDraft = it },
+            textFieldValue = renameDraft.value,
+            onValueChange = { renameDraft.value = it },
             onDismiss = {
-                if (viewModel.showRenameDialog) viewModel.renameDraft = null
-                viewModel.showRenameDialog = false
-                onDismiss()
+                if (viewModel.renameDraft === renameDraft) {
+                    if (viewModel.showRenameDialog) viewModel.renameDraft = null
+                    viewModel.showRenameDialog = false
+                    onDismiss()
+                }
             },
             onConfirm = { newName ->
-                viewModel.renameApp(app.key, newName, app.label)
+                if (viewModel.renameDraft === renameDraft) viewModel.renameApp(app.key, newName, app.label)
             },
         )
     }
