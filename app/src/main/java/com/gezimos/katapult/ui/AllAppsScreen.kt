@@ -236,9 +236,8 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
             }
         }
 
-        val wrap = viewModel.prefs.infiniteScroll
         if (viewModel.reorderMode || (!viewModel.prefs.hideArrowButtons && viewModel.totalPages > 1)) {
-            PageNavRow(viewModel, wrap, onResetOrder = { showResetConfirm = true })
+            PageNavRow(viewModel, onResetOrder = { showResetConfirm = true })
         }
     }
 
@@ -294,7 +293,8 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
 }
 
 @Composable
-private fun PageNavRow(viewModel: MainViewModel, wrap: Boolean, onResetOrder: () -> Unit) {
+/** Arrows follow the page edges, as on Mudita's launcher; Infinite Scroll wraps swipes only. */
+private fun PageNavRow(viewModel: MainViewModel, onResetOrder: () -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -304,15 +304,10 @@ private fun PageNavRow(viewModel: MainViewModel, wrap: Boolean, onResetOrder: ()
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Box(Modifier.width(LocalIconSize.current), contentAlignment = Alignment.CenterStart) {
-                    val canGoPrev = viewModel.currentPage > 0 || wrap
-                    if (canGoPrev) {
+                    if (viewModel.currentPage > 0) {
                         ArrowButton(
                             iconRes = R.drawable.ic_arrow_left,
-                            onClick = {
-                                val prev = if (viewModel.currentPage > 0)
-                                    viewModel.currentPage - 1 else viewModel.totalPages - 1
-                                viewModel.showPage(prev)
-                            },
+                            onClick = { viewModel.showPage(viewModel.currentPage - 1) },
                         )
                     }
                 }
@@ -378,15 +373,10 @@ private fun PageNavRow(viewModel: MainViewModel, wrap: Boolean, onResetOrder: ()
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 Box(Modifier.width(LocalIconSize.current), contentAlignment = Alignment.CenterEnd) {
-                    val canGoNext = viewModel.currentPage < viewModel.totalPages - 1 || wrap
-                    if (canGoNext) {
+                    if (viewModel.currentPage < viewModel.totalPages - 1) {
                         ArrowButton(
                             iconRes = R.drawable.ic_arrow_right,
-                            onClick = {
-                                val next = if (viewModel.currentPage < viewModel.totalPages - 1)
-                                    viewModel.currentPage + 1 else 0
-                                viewModel.showPage(next)
-                            },
+                            onClick = { viewModel.showPage(viewModel.currentPage + 1) },
                         )
                     }
                 }

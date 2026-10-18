@@ -51,7 +51,7 @@ Finish onboarding without granting sensitive access or changing your default HOM
 - **Hide status bar** for a cleaner look
 - **E-Ink refresh on home**: flashes the screen when pressing the home button to clear ghosting
 - **Double-tap brightness**: toggle display brightness by double-tapping the home background (requires system settings permission)
-- **Infinite scroll**: wrap around from last page to first
+- **Infinite scroll**: swipe around from the last page to the first (the page arrows stop at the first and last page)
 - **Simple wallpaper**: set a background image (not managed by Android)
 - **Hide apps**: from the app context menu or bulk-hide in Settings > All Apps
 - **Rename apps**: long-press any app in the grid
