@@ -18,13 +18,13 @@ Kotatsu on a Mudita Kompakt:
             <td><img src='docs/img/screenshots/kotatsu_home.png' height='300' alt="Home screen with rounded app icons"></td>
             <td><img src='docs/img/screenshots/kotatsu_all_apps.png' height='300' alt="App grid with Kotatsu's line icons"></td>
             <td><img src='docs/img/screenshots/kotatsu_lockscreen_weather.png' height='300' alt="Lock screen with the Kotatsu Weather widget"></td>
-            <td><img src='docs/img/screenshots/kotatsu_lockscreen_widgets.png' height='300' alt="Lock-screen widgets settings"></td>
+            <td><img src='docs/img/screenshots/kotatsu_weather_setup.png' height='300' alt="Kotatsu Weather places"></td>
         </tr>
         <tr>
-            <td><img src='docs/img/screenshots/kotatsu_weather_setup.png' height='300' alt="Kotatsu Weather places"></td>
-            <td><img src='docs/img/screenshots/kotatsu_weather_edit_location.png' height='300' alt="Editing a place's label and hours"></td>
-            <td><img src='docs/img/screenshots/kotatsu_settings_all_apps.png' height='300' alt="All Apps settings with Hidden Apps and System Apps"></td>
-            <td><img src='docs/img/screenshots/kotatsu_system_apps.png' height='300' alt="System Apps list"></td>
+            <td><img src='docs/img/screenshots/kotatsu_hidden_apps.png' height='300' alt="Hidden Apps with Hide and Notify controls"></td>
+            <td><img src='docs/img/screenshots/kotatsu_home_wallpaper.png' height='300' alt="Home screen with a wallpaper and no text backgrounds"></td>
+            <td><img src='docs/img/screenshots/kotatsu_lockscreen_widgets.png' height='300' alt="Lock-screen widgets settings"></td>
+            <td><img src='docs/img/screenshots/kotatsu_home_dark.png' height='300' alt="Dark home screen with battery percentage and no wallpaper"></td>
         </tr>
     </table>
 </div>
