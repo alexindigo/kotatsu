@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://katapult.gez.im/sitemap.xml
+Sitemap: https://alexindigo.github.io/kotatsu/sitemap.xml

@@ -27,16 +27,16 @@ each chosen by hand:
 
 | # | App | Package | Default |
 |---|---|---|---|
-| 1 | Calendar (stock) | `com.android.calendar` | Katapult `calendar` |
+| 1 | Calendar (stock) | `com.android.calendar` | Bundled `calendar` |
 | 2 | Clock | `com.android.deskclock` | `mudita_clock` (Mudita Phone's clock glyph) |
 | 3 | Delta Chat | `com.b44t.messenger` | `delta_chat` (Mudita Messages' bubble with Delta Chat's delta) |
 | 4 | Files | `com.android.documentsui` | `mudita_folder` (Mudita Music's folder glyph) |
-| 5 | FM Radio | `com.android.fmradio` | Katapult `radio` |
-| 6 | Gallery (stock) | `com.android.gallery3d` | Katapult `gallery` |
-| 7 | Search | `com.android.quicksearchbox` | Katapult `search` |
-| 8 | Settings | `com.android.settings` | Katapult `settings` |
-| 9 | SIM Toolkit | `com.android.stk` | Katapult `sim` |
-| 10 | WebView Browser Tester | `org.chromium.webview_shell` | Katapult `chromium` |
+| 5 | FM Radio | `com.android.fmradio` | Bundled `radio` |
+| 6 | Gallery (stock) | `com.android.gallery3d` | Bundled `gallery` |
+| 7 | Search | `com.android.quicksearchbox` | Bundled `search` |
+| 8 | Settings | `com.android.settings` | Bundled `settings` |
+| 9 | SIM Toolkit | `com.android.stk` | Bundled `sim` |
+| 10 | WebView Browser Tester | `org.chromium.webview_shell` | Bundled `chromium` |
 | 11 | WebView DevTools | `com.android.webview` | Simple Icons `googlechrome` |
 
 Published shortcuts keep their own artwork unless manually

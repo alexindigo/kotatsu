@@ -4,282 +4,219 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kotatsu — a comfortable launcher.</title>
-    <meta name="description" content="Kotatsu is a separately installable Katapult fork with optional setup, reorderable apps and its own emblem and wordmark.">
-    <meta name="author" content="Kotatsu contributors; upstream Katapult by Gezim (gezimos)">
-    <meta name="keywords" content="Kotatsu, Katapult fork, Mudita Kompakt, launcher, E-Ink launcher, Android launcher">
-    <meta name="theme-color" content="#f0f0f0">
-    <link rel="canonical" href="https://github.com/alexindigo/kotatsu">
-
-    <!-- Open Graph -->
+    <meta name="description" content="A privacy-focused Android launcher for the Mudita Kompakt e-ink phone. Offline icon choices, optional access and useful lock-screen widgets.">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="canonical" href="https://alexindigo.github.io/kotatsu/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="Kotatsu">
     <meta property="og:title" content="Kotatsu — a comfortable launcher.">
-    <meta property="og:description" content="A separately installable Katapult fork with the Kotatsu emblem and wordmark.">
-    <meta property="og:image" content="https://katapult.gez.im/img/screenshots/home-rounded.png">
-    <meta property="og:image:type" content="image/png">
+    <meta property="og:description" content="A spacious home for your e-ink phone. No launcher Internet permission; optional Weather is a separate app.">
+    <meta property="og:url" content="https://alexindigo.github.io/kotatsu/">
+    <meta property="og:image" content="https://alexindigo.github.io/kotatsu/img/screenshots/kotatsu_home.png">
     <meta property="og:image:width" content="480">
     <meta property="og:image:height" content="800">
-    <meta property="og:image:alt" content="Upstream Katapult reference screenshot on the Mudita Kompakt">
-    <meta property="og:url" content="https://github.com/alexindigo/kotatsu">
-
-    <!-- Twitter -->
+    <meta property="og:image:alt" content="Kotatsu home on a Mudita Kompakt, with a large clock and rounded app icons">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Kotatsu — a comfortable launcher.">
-    <meta name="twitter:description" content="A separately installable Katapult fork with the Kotatsu emblem and wordmark.">
-    <meta name="twitter:image" content="https://katapult.gez.im/img/screenshots/home-rounded.png">
-    <meta name="twitter:image:alt" content="Upstream Katapult reference screenshot on the Mudita Kompakt">
-
+    <meta name="twitter:description" content="A privacy-focused launcher for the Mudita Kompakt e-ink phone.">
+    <meta name="twitter:image" content="https://alexindigo.github.io/kotatsu/img/screenshots/kotatsu_home.png">
+    <meta name="twitter:image:alt" content="Kotatsu home with a large clock and rounded app icons">
     <link rel="icon" href="img/K.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="img/katapult.png">
+    <link rel="apple-touch-icon" href="img/kotatsu.png">
     <link rel="stylesheet" href="style.css">
-
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "Kotatsu",
-        "description": "Kotatsu — a comfortable launcher. Separately installable fork with its own emblem and wordmark.",
-        "url": "https://github.com/alexindigo/kotatsu",
-        "isBasedOn": "https://github.com/gezimos/Katapult",
-        "creditText": "Original Katapult by Gezim (gezimos). Kotatsu wordmark lettering uses Lato Bold.",
+        "description": "A privacy-focused Android launcher for the Mudita Kompakt e-ink phone.",
+        "url": "https://alexindigo.github.io/kotatsu/",
         "applicationCategory": "UtilitiesApplication",
-        "operatingSystem": "Android",
+        "operatingSystem": "Android 11 or newer",
         "softwareVersion": "0.1",
-        "image": "https://katapult.gez.im/img/screenshots/home-rounded.png",
+        "image": "https://alexindigo.github.io/kotatsu/img/screenshots/kotatsu_home.png",
+        "downloadUrl": "https://github.com/alexindigo/kotatsu/releases/latest",
         "license": "https://github.com/alexindigo/kotatsu/blob/main/LICENSE",
-        "isAccessibleForFree": true,
-        "author": {
-            "@type": "Person",
-            "name": "alexindigo"
-        },
-        "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-        }
+        "isAccessibleForFree": true
     }
     </script>
 </head>
 <body>
-
-<header class="site-header">
-    <div class="container header-inner">
-        <a href="index.html" class="wordmark"><img src="img/katapult.svg" alt="Kotatsu wordmark"></a>
-        <nav class="site-nav">
-            <a href="#features">Features</a>
-            <a href="#gallery">Screenshots</a>
-            <a href="#faq">FAQ</a>
-            <a href="https://github.com/alexindigo/kotatsu" target="_blank" rel="noopener">Kotatsu source</a>
-        </nav>
-        <a href="https://www.buymeacoffee.com/gezimos" target="_blank" rel="noopener" class="bmc-btn"><img src="img/bmc.svg" alt="Buy me a coffee"></a>
-    </div>
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header wrap">
+    <a class="wordmark" href="index.html" aria-label="Kotatsu home"><img src="img/kotatsu.svg" alt="Kotatsu wordmark" width="170" height="48"></a>
+    <nav aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#weather">Weather</a>
+        <a href="#install">Install</a>
+        <a href="https://github.com/alexindigo/kotatsu">Source</a>
+    </nav>
 </header>
 
-<main class="container">
-
-    <section class="hero">
+<main id="main" class="wrap">
+    <section class="hero" aria-labelledby="intro-title">
         <div class="hero-copy">
-            <h1 class="hero-title">Kotatsu — a comfortable launcher.</h1>
-            <p class="hero-lead">A separately installable fork of Katapult by gezimos, with optional setup, a familiar app grid and customizable home shortcuts. Its Kotatsu emblem and Lato wordmark identify the fork.</p>
-            <p>Kotatsu has no built-in updater or Internet permission. External browser/document-provider/Mudita weather handoffs and Android-managed backup/device transfer remain and can network independently. The demo, device mockups and screenshots below are upstream Katapult references, not captures of the current Kotatsu artwork.</p>
+            <h1 id="intro-title">A comfortable launcher.</h1>
+            <p class="lead">A little more space for what you use. A little more say in what your phone can access.</p>
+            <p>Kotatsu is a privacy-focused Android launcher for the Mudita Kompakt e-ink phone. A large clock, a simple app grid and monochrome icons make a calm place to come home to.</p>
             <div class="actions">
-                <a href="https://github.com/alexindigo/kotatsu" class="btn btn-solid">Kotatsu Source</a>
-                <a href="https://github.com/gezimos/Katapult/releases" class="btn">Upstream Katapult releases</a>
+                <a class="button primary" href="https://github.com/alexindigo/kotatsu/releases/latest">Get Kotatsu</a>
+                <a class="button" href="#install">Installation guide</a>
             </div>
+            <p class="small">Android 11 or newer. Free and open source.</p>
         </div>
-        <div class="hero-art">
-            <div class="browser">
-                <div class="browser-bar">
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-                <div class="video">
-                    <iframe src="https://www.youtube.com/embed/m7vobm0FJdE" title="Upstream Katapult reference demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
-                </div>
-                <div class="browser-foot">
-                    <a href="https://youtube.com/@gezimos" target="_blank" rel="noopener">youtube.com/@gezimos</a>
-                </div>
+        <div class="screen-pair hero-screens">
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_home.png"><img src="img/screenshots/kotatsu_home.png" width="480" height="800" alt="Kotatsu Home: a large clock, three shortcuts and the Phone and Messages dock"></a>
+                <figcaption>Just the essentials on Home.</figcaption>
+            </figure>
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_all_apps.png"><img src="img/screenshots/kotatsu_all_apps.png" width="480" height="800" alt="All Apps with rounded line icons and a round next-page button"></a>
+                <figcaption>Your apps, with room to breathe.</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <section id="features" class="section choices" aria-labelledby="choices-title">
+        <div class="section-intro">
+            <h2 id="choices-title">Your phone.<br>Your choices.</h2>
+            <p>The launcher has <strong>no Internet permission and no built-in updater</strong>. You choose which extra features get access.</p>
+        </div>
+        <div class="feature-list">
+            <article>
+                <h3>Icons without a download</h3>
+                <p>2,174 offline choices from Simple Icons, Tabler and Material. Search the collections, import a PNG or SVG, or reset to default. Reviewed brand matches and hand-picked stock line icons apply automatically; other apps keep their original icons. Your manual choices come first.</p>
+                <a href="https://github.com/alexindigo/kotatsu/blob/main/docs/ICON_CATALOGUE.md">Explore the icon catalogue</a>
+            </article>
+            <article>
+                <h3>Set up at your own pace</h3>
+                <p>Try Kotatsu without making it your default launcher or granting sensitive access. Separate collection and action choices let you control badges, media, usage information, notification dismissal and more, alongside Android's grants.</p>
+            </article>
+            <article>
+                <h3>Keep the app list quiet</h3>
+                <p>Hide, rename and reorder apps. Hidden Apps and Kompakt System Apps have their own controls. Hidden apps stay off the lock screen unless you tick their separate Notify box; lock-screen exclusions still take precedence.</p>
+            </article>
+            <article>
+                <h3>Make it feel like home</h3>
+                <p>Rounded or circle app icons, round page controls, an optional extra dock row and music controls. Choose clock and date formats, light or dark appearance, wallpaper and text backgrounds. Home-button refresh helps clear e-ink ghosting.</p>
+            </article>
+        </div>
+    </section>
+
+    <section id="weather" class="section weather" aria-labelledby="weather-title">
+        <div class="section-intro">
+            <h2 id="weather-title">A useful lock screen.</h2>
+            <p class="lead">The weather where you need it, over the hours that matter.</p>
+            <p><strong>Kotatsu Weather is a separate, optional app. It uses the network.</strong> Add up to four places, each with its own label and hours. Search for a place or request your current location once; choose Celsius or Fahrenheit.</p>
+            <p>On Kompakt, Kotatsu can host installed Android app widgets in a configurable lock-screen box over the padlock and unlock hint. Add Weather or another installed widget, then choose size and order.</p>
+            <p>Lock-screen hosting needs the optional Kotatsu Action Service. The setup guide explains how to enable it and leave the floating accessibility shortcut off.</p>
+        </div>
+        <div class="screen-pair">
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_lockscreen_weather.png"><img loading="lazy" src="img/screenshots/kotatsu_lockscreen_weather.png" width="480" height="800" alt="Lock screen with two temperature timelines labelled Home and School"></a>
+                <figcaption>Two places, two spans of hours.</figcaption>
+            </figure>
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_weather_setup.png"><img loading="lazy" src="img/screenshots/kotatsu_weather_setup.png" width="480" height="800" alt="The separate Kotatsu Weather app with London and Paris, each with its own hours"></a>
+                <figcaption>Weather's own app opens its settings.</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <section class="section gallery" aria-labelledby="gallery-title">
+        <div class="gallery-heading">
+            <h2 id="gallery-title">A closer look.</h2>
+            <p>Real Kotatsu screens on the Mudita Kompakt. Select any image to see it full size.</p>
+        </div>
+        <div class="screen-grid">
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_hidden_apps.png"><img loading="lazy" src="img/screenshots/kotatsu_hidden_apps.png" width="480" height="800" alt="Hidden Apps settings with separate Hide and Notify columns"></a>
+                <figcaption>Hiding an app and allowing lock-screen notifications are separate choices.</figcaption>
+            </figure>
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_home_wallpaper.png"><img loading="lazy" src="img/screenshots/kotatsu_home_wallpaper.png" width="480" height="800" alt="Home screen with a wallpaper and no text backgrounds"></a>
+                <figcaption>A wallpaper, if you want one.</figcaption>
+            </figure>
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_lockscreen_widgets.png"><img loading="lazy" src="img/screenshots/kotatsu_lockscreen_widgets.png" width="480" height="800" alt="Lock-screen widget settings showing Kotatsu Weather and Add widget"></a>
+                <figcaption>Choose installed widgets, their size and their order.</figcaption>
+            </figure>
+            <figure>
+                <a class="screen" href="img/screenshots/kotatsu_home_dark.png"><img loading="lazy" src="img/screenshots/kotatsu_home_dark.png" width="480" height="800" alt="Dark Home screen with battery percentage and no wallpaper"></a>
+                <figcaption>The same spacious Home, in dark mode.</figcaption>
+            </figure>
+        </div>
+    </section>
+
+    <section id="install" class="section install" aria-labelledby="install-title">
+        <div class="section-intro">
+            <h2 id="install-title">Come on in.</h2>
+            <p>Requires Android 11 or newer. Kompakt-specific features are designed for the Mudita Kompakt.</p>
+            <p>Download an APK, open it on your phone and allow installation from that source when Android asks. Open Kotatsu to try it; choose it as your default Home app when you're ready.</p>
+            <p>Install updates manually from <a href="https://github.com/alexindigo/kotatsu/releases/latest">the latest release</a>.</p>
+        </div>
+        <div class="download-panel">
+            <h3>Version 0.1</h3>
+            <p>The launcher and Weather are installed separately. Weather is optional.</p>
+            <div class="download-row">
+                <a class="button primary" href="https://github.com/alexindigo/kotatsu/releases/download/v0.1/kotatsu-v0.1.apk">Download launcher</a>
+                <span>kotatsu-v0.1.apk</span>
             </div>
-        </div>
-    </section>
-
-    <section class="mockups">
-        <div class="device-row">
-            <div class="device"><img class="frame" src="img/mockup2.svg" alt=""><img class="shot" src="img/screenshots/home_music_weather.png" alt="Home screen with music widget and weather"></div>
-            <div class="device"><img class="frame" src="img/mockup2.svg" alt=""><img class="shot" src="img/screenshots/home_clean.png" alt="Clean home screen"></div>
-            <div class="device"><img class="frame" src="img/mockup2.svg" alt=""><img class="shot" src="img/screenshots/all_apps_80.png" alt="App grid"></div>
-            <div class="device"><img class="frame" src="img/mockup2.svg" alt=""><img class="shot" src="img/screenshots/lockscreen_widgets.png" alt="Lockscreen widgets"></div>
-        </div>
-    </section>
-
-    <section class="block" id="setup">
-        <div class="block-head">
-            <h2>Setup</h2>
-        </div>
-        <div class="block-body">
-            <div class="faq-list">
-                <details>
-                    <summary>How to install</summary>
-                    <p>Build Kotatsu from the source repository. Upstream Katapult releases are separate distributions, not Kotatsu updates. Final release/signing and device acceptance are separate verification gates.</p>
-                </details>
-                <details>
-                    <summary>How to access Settings</summary>
-                    <p>Long-press on any empty area of the home screen.</p>
-                </details>
-                <details>
-                    <summary>How to replace home apps</summary>
-                    <p>Long-press on the Phone, SMS, or extra row shortcuts, then pick the app you want to assign.</p>
-                </details>
-                <details>
-                    <summary>Clock / Date shortcut</summary>
-                    <p>Long-press on the clock or date to assign an app to it.</p>
-                </details>
+            <div class="download-row">
+                <a class="button" href="https://github.com/alexindigo/kotatsu/releases/download/v0.1/kotatsu-weather-v0.1.apk">Download Weather</a>
+                <span>kotatsu-weather-v0.1.apk</span>
             </div>
+            <p><a href="https://github.com/alexindigo/kotatsu/releases/tag/v0.1">Release notes and assets</a></p>
+            <details>
+                <summary>Signing certificate SHA-256</summary>
+                <p class="fingerprint">8fa0f259c8cf159d9fa4d995ab1b55fae7eb3c463a249b985b20107edfbbf607</p>
+                <p>This identifies the APK signing certificate, not the APK file checksum. Inspect a download with Android SDK Build Tools: <code>apksigner verify --print-certs kotatsu-v0.1.apk</code>.</p>
+            </details>
         </div>
     </section>
 
-    <section class="block" id="features">
-        <div class="block-head">
-            <h2>Features</h2>
+    <section class="section practical" aria-labelledby="practical-title">
+        <div class="section-intro">
+            <h2 id="practical-title">Good to know.</h2>
+            <p>Extra features are choices, not a condition of trying the launcher.</p>
         </div>
-        <div class="block-body">
-            <div class="feature-grid">
-                <div class="feat"><h3>App Shortcuts</h3><p>Shortcuts like New timer get their own tiles. Rename, re-icon, or assign to any home slot. Pinned websites too.</p></div>
-                <div class="feat"><h3>Dark Mode</h3><p>White-on-black across the whole launcher, monochrome icons included.</p></div>
-                <div class="feat"><h3>Text Backgrounds</h3><p>White islands behind clock, date, and app names keep text legible over any wallpaper.</p></div>
-                <div class="feat"><h3>Lockscreen Notifications</h3><p>Experimental: per-app notification counts on the lock screen. Movable and resizable.</p></div>
-                <div class="feat"><h3>Music Widget</h3><p>Playback controls with song info. Works with Auxio, Spotify, Fossify Music, Foobar, and more.</p></div>
-                <div class="feat"><h3>Icon Tinting &amp; Shaping</h3><p>Circle or rounded shapes. Uniform black &amp; white across ~95% of apps.</p></div>
-                <div class="feat"><h3>Custom &amp; Material Icons</h3><p>Use inherited bundled icons, a 133-strong outlined Material set, or your own PNG or SVG.</p></div>
-                <div class="feat"><h3>Notification Badges</h3><p>Badge counts on app icons. Works with any app that sends notifications. Long-press an app to clear its badge.</p></div>
-                <div class="feat"><h3>Call &amp; SMS Badges</h3><p>Kompakt only. Missed, declined, and voicemail counts on Phone, unread counts on Messages, matching the stock Mudita launcher.</p></div>
-                <div class="feat"><h3>E-Ink Optimized</h3><p>Zero animations, instant swaps, screen refresh on home press to clear ghosting.</p></div>
-                <div class="feat"><h3>Extra Dock Row</h3><p>Optional 3 additional shortcuts above the Phone/SMS bar.</p></div>
-                <div class="feat"><h3>Battery &amp; Clock</h3><p>Battery percentage with level icon, alarm indicator, selectable clock &amp; date formats.</p></div>
-                <div class="feat"><h3>Simple Wallpaper</h3><p>Set a background image directly. Not managed by Android.</p></div>
-                <div class="feat"><h3>Hide &amp; Rename Apps</h3><p>Hide from the context menu or bulk-hide. Rename any app.</p></div>
-                <div class="feat"><h3>Reorder Apps</h3><p>Swap-based reordering with reset to alphabetical.</p></div>
-                <div class="feat"><h3>Double-Tap Action</h3><p>Double-tap the background to toggle brightness or lock the phone. Or leave it off.</p></div>
-                <div class="feat"><h3>Hide Status Bar</h3><p>Remove the Android status bar for a cleaner look, or keep it and hide just its duplicate clock.</p></div>
-                <div class="feat"><h3>Config Backup</h3><p>Export every setting to a JSON file and restore it later. Foreign or corrupted files are rejected, not applied.</p></div>
-            </div>
-        </div>
-    </section>
-
-    <section class="block" id="permissions">
-        <div class="block-head">
-            <h2>Permissions</h2>
-        </div>
-        <div class="block-body">
-            <div class="faq-list">
-                <details>
-                    <summary>Notification Listener</summary>
-                    <p>Required to read incoming notifications from Android and display badge counts on app icons. Without this, notification indicators won't work. Grant it in Settings &gt; Notification Access.</p>
-                </details>
-                <details>
-                    <summary>System Settings</summary>
-                    <p>Optional for the double-tap brightness feature. Kotatsu needs write access to system settings only for that action. Grant it deliberately in Settings &gt; Apps &gt; Kotatsu &gt; Modify System Settings.</p>
-                </details>
-                <details>
-                    <summary>Package Access</summary>
-                    <p>Required to query all installed apps and display them in the grid. Also used to trigger the Android uninstall dialog from the app context menu.</p>
-                </details>
-                <details>
-                    <summary>Call Log &amp; SMS (Mudita Kompakt only)</summary>
-                    <p>Optional on supported Mudita Kompakt devices. Kotatsu requests SMS-read and call-log-read access separately for badge counts; neither is required to finish setup. Call-log write access is a separate deliberate acknowledgment action, not part of initial read setup.</p>
-                </details>
-                <details>
-                    <summary>Accessibility Service (optional features only)</summary>
-                    <p>Listed as <strong>Kotatsu Action Service</strong>. This optional inherited service supports lockscreen overlays, clock cover, locking and screensaver features. Enable it deliberately only for features you choose; it is not needed for ordinary launcher preview use.</p>
-                </details>
-            </div>
+        <div class="disclosures">
+            <details>
+                <summary>Where are Settings and shortcuts?</summary>
+                <p>Long-press an empty part of Home for Settings. Long-press Phone, SMS or an extra-row shortcut to replace it; long-press the clock or date to assign an app. In All Apps, long-press an app to rename, change its icon, hide or reorder it. Tap another app to swap, then Save. Unsaved exits offer Save, Discard or Cancel.</p>
+            </details>
+            <details>
+                <summary>What does the launcher access?</summary>
+                <p>Kotatsu lists installed packages and can ask Android to uninstall an app. Optional grants support notification badges and media information, system-settings access for brightness, usage access for recent/most-used sorting, and supported Kompakt call-log/SMS reads for Phone/Messages badges. Call-log write access is a separate acknowledgment action. Notification dismissal and media controls have separate in-app choices.</p>
+                <p>Kotatsu Action Service is an optional accessibility service for lock-screen overlays and widgets, the clock cover, locking and screensaver features. It is not needed for ordinary launcher preview use. Android access grants and Kotatsu's Sensitive access choices are separate.</p>
+            </details>
+            <details>
+                <summary>Does no Internet permission mean the phone is offline?</summary>
+                <p>No. The launcher has no Internet permission or built-in updater. External apps and providers opened from it, including browsers, document providers and Mudita weather handoffs, can network independently. Android-managed backup and device transfer remain enabled.</p>
+                <p>Kotatsu Weather declares Internet and network-state access. Its optional location request gets a one-off fix while setup is open, never in the background. Search for a place instead to avoid granting location access.</p>
+            </details>
+            <details>
+                <summary>How do hidden apps and lock-screen notifications work?</summary>
+                <p>Settings → All Apps separates Hidden Apps and Kompakt System Apps. Stock apps omitted by Mudita's launcher, app stores, FUTO Keyboard and Mudita's Update start hidden; show them individually. A hidden app needs its Notify box ticked to appear on the lock screen, and lock-screen exclusions still take precedence. Experimental lock-screen notifications also need Kotatsu Action Service.</p>
+            </details>
+            <details>
+                <summary>Why isn't a notification badge showing or clearing?</summary>
+                <p>Check Settings → Notification Log. Kotatsu reads notifications Android actually has; it cannot show one that never arrived or clear one Android keeps active. Some apps depend on Google Play Services for push delivery. For ordinary app dots, Android's per-app Allow notification dot setting controls whether a dot is allowed.</p>
+            </details>
+            <details>
+                <summary>Can I build it myself?</summary>
+                <p>Yes. Use JDK 21, Android SDK 36.1 and the repository's Gradle wrapper. Run <code>./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug</code>. See the <a href="https://github.com/alexindigo/kotatsu#build-from-source">README build instructions</a> for output paths and release signing.</p>
+            </details>
         </div>
     </section>
-
-    <section class="block" id="gallery">
-        <div class="block-head">
-            <h2>Upstream reference screenshots</h2>
-        </div>
-        <div class="block-body">
-            <div class="shot-grid">
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/home-minimal.png" alt="Minimal home screen"><figcaption>Minimal</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/home-circle.png" alt="Circle icons home"><figcaption>Circle Icons</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/home-rounded.png" alt="Rounded icons home"><figcaption>Rounded Icons</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/longpress_home.png" alt="Long-press menu on the home screen"><figcaption>Long-press Menu</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/notification_lockscreen_2.png" alt="Lockscreen notification widget repositioned"><figcaption>Move &amp; Resize</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/order_apps.png" alt="Order Apps choices"><figcaption>Order Apps</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/allapps_witharrows.png" alt="App grid with page arrows"><figcaption>App Grid</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/reorder.png" alt="Reorder mode"><figcaption>Reorder</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/settings.png" alt="Settings"><figcaption>Settings</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/no_names.png" alt="Icon-only app grid"><figcaption>Hide Names</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/with_wallpaper.png" alt="Home screen with wallpaper"><figcaption>Wallpaper</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/no_arrows.png" alt="App grid without arrows"><figcaption>No Arrows</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/dark_home.png" alt="Dark mode home screen"><figcaption>Dark Mode</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/dark_apps.png" alt="Dark mode app grid"><figcaption>Dark Apps</figcaption></figure>
-                <figure><img loading="lazy" decoding="async" src="img/screenshots/dark_wallpaper_islands.png" alt="Dark mode with wallpaper"><figcaption>Dark Wallpaper</figcaption></figure>
-            </div>
-        </div>
-    </section>
-
-    <section class="block" id="faq">
-        <div class="block-head">
-            <h2>FAQ</h2>
-        </div>
-        <div class="block-body">
-            <div class="faq-list">
-                <details>
-                    <summary>Will it have customizable fonts?</summary>
-                    <p>No.</p>
-                </details>
-                <details>
-                    <summary>Will it have a customizable grid?</summary>
-                    <p>No.</p>
-                </details>
-                <details>
-                    <summary>Will it have third-party icon packs?</summary>
-                    <p>No.</p>
-                </details>
-                <details>
-                    <summary>Can I change date/clock formats?</summary>
-                    <p>Yes. In Settings, cycle <strong>Clock Format</strong> (System, 24-hour, or 12-hour with/without AM/PM) and <strong>Date Format</strong> (System, weekday, long, numeric, or ISO). Leave them on System to follow Android.</p>
-                </details>
-                <details>
-                    <summary>Can I reorder apps?</summary>
-                    <p>Yes. Long-press an app, tap Reorder, then tap another app to swap. Tap Save when done.</p>
-                </details>
-                <details>
-                    <summary>Will this launcher have a notification tray?</summary>
-                    <p>No. No notification tray, no letters screen.</p>
-                </details>
-                <details>
-                    <summary>Can it show notifications on the lock screen?</summary>
-                    <p>Yes. Enable the experimental <strong>Lockscreen Notifications</strong> widget under Settings &gt; Lockscreen, then long-press it to move and resize. <a href="https://github.com/gezimos/Katapult/blob/main/docs/lockscreen-notifications.md" target="_blank" rel="noopener">Full details here</a>.</p>
-                </details>
-                <details>
-                    <summary>Notification indicators not showing?</summary>
-                    <p>Go to Settings &gt; Notifications &gt; Notification Log and check if the notification exists in Android. Many apps require Google Play Services for push notifications.</p>
-                </details>
-                <details>
-                    <summary>Found a bug, or have a question?</summary>
-                    <p>Source and project discussion: <a href="https://github.com/alexindigo/kotatsu" target="_blank" rel="noopener">Kotatsu repository</a>. </p>
-                </details>
-            </div>
-        </div>
-    </section>
-
-    <section class="block" id="disclaimer">
-        <div class="block-head">
-            <h2>Disclaimer</h2>
-        </div>
-        <div class="block-body disclaimer">
-            <p>Kotatsu is an independent fork of <a href="https://github.com/gezimos/Katapult">Katapult by gezimos</a>. It is not affiliated with or endorsed by Mudita. Mudita and Mudita Kompakt are trademarks of their respective owner.</p>
-            <p>The donation/media links and inherited website-domain configuration belong to upstream references, not a new Kotatsu hosting or support destination. The button below supports the upstream Katapult author.</p>
-            <a href="https://www.buymeacoffee.com/gezimos" target="_blank" rel="noopener" class="bmc-btn"><img src="img/bmc.svg" alt="Buy me a coffee"></a>
-        </div>
-    </section>
-
 </main>
 
+<footer class="site-footer wrap">
+    <h2>Credits and licences</h2>
+    <p>Kotatsu is based on <a href="https://github.com/gezimos/Katapult">Katapult by gezimos</a>, <a href="https://github.com/alexindigo/kotatsu/blob/main/LICENSE">GPL-3.0</a>.</p>
+    <p>Lato by Łukasz Dziedzic, <a href="fonts/OFL.txt">SIL Open Font License 1.1</a>. Simple Icons: CC0-1.0 with per-logo disclaimers and trademark restrictions. Tabler by Paweł Kuna: MIT. Material Icons by Google: Apache-2.0. AndroidSVG by Paul LeBeau / Cave Rock Software Ltd.: Apache-2.0. <a href="https://github.com/alexindigo/kotatsu/blob/main/docs/ICON_CATALOGUE.md#attribution">Icon provenance and full notices</a>.</p>
+    <p>Weather data by <a href="https://open-meteo.com/">Open-Meteo</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. <a href="https://github.com/alexindigo/kotatsu/blob/main/kotatsu-weather/NOTICE">Weather artwork notices</a>. The accessibility-overlay approach was inspired by <a href="https://github.com/zacharee/LockscreenWidgets">Lockscreen Widgets</a> by Zachary Wander; no code was copied.</p>
+    <a href="https://github.com/alexindigo/kotatsu">Kotatsu source on GitHub</a>
+</footer>
 </body>
 </html>

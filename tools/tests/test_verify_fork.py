@@ -27,9 +27,9 @@ EXPECTED_GRAPHICS={
     'app/src/main/res/drawable/ic_launcher_monochrome.xml':'b09507a9db85bc9ba428001efc4ba31187dbbfa9ce66dd246a57e53cd997e4ce',
     'app/src/main/res/drawable/katapult_logo.xml':'730e097ae997cc96ff8ba3c82518642af1ccbecb1654a49be94530a929193ae8',
     'docs/img/K.svg':'e8fc26b0776f4975c2a9bb3ac0370692d5d6e715db75bc8af03b5029e9ed8f96',
-    'docs/img/katapult.svg':'b4ec725d539e3d9acfb908b256d18552973c671778227a4d1e5c3dbb8c051bbd',
-    'docs/img/katapult_w.svg':'e693c74c70e0713a43a412404287da486a0636ebcae91cc2838b3fd56ec5224c',
-    'docs/img/katapult.png':'0d04dfc57af5a2a7fcf6637b76eb907a1ef01617035c35d6fd5107938f02eebb',
+    'docs/img/kotatsu.svg':'b4ec725d539e3d9acfb908b256d18552973c671778227a4d1e5c3dbb8c051bbd',
+    'docs/img/kotatsu_w.svg':'e693c74c70e0713a43a412404287da486a0636ebcae91cc2838b3fd56ec5224c',
+    'docs/img/kotatsu.png':'0d04dfc57af5a2a7fcf6637b76eb907a1ef01617035c35d6fd5107938f02eebb',
     'app/src/main/ic_launcher-playstore.png':'0d04dfc57af5a2a7fcf6637b76eb907a1ef01617035c35d6fd5107938f02eebb',
 }
 
@@ -105,10 +105,11 @@ class DeferredAssetsTest(unittest.TestCase):
         for number,(path,resource,role) in enumerate(verify.asset_mapping(),1):
             # Real baseline native contents, independently read before the fixture's
             # Git adapter is installed; tests never need the designer's Documents.
-            data=verify.baseline_bytes(Path(__file__).parents[2],verify.BASELINE,path)
+            original_path=verify.original_graphic_path(path)
+            data=verify.baseline_bytes(Path(__file__).parents[2],verify.BASELINE,original_path)
             p=self.root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_bytes(data)
-            self.originals[path]=data
-            self.records.append({'assetId':f'branding-{number:03d}','path':path,'examplePath':path,'originalPath':path,'resourceId':resource,'role':role,
+            self.originals[original_path]=data
+            self.records.append({'assetId':f'branding-{number:03d}','path':original_path,'examplePath':original_path,'originalPath':original_path,'resourceId':resource,'role':role,
                 'originalSha256':verify.sha(data),'byteSize':len(data),'fileMode':0o644,'gitMode':'100644','gitBlob':hashlib.sha1(data).hexdigest(),
                 'native':verify.original_native(data,Path(path).suffix)})
             if number in set(range(1,11)) | {13,14,16,23,24,25,26,27}:
@@ -129,6 +130,20 @@ class DeferredAssetsTest(unittest.TestCase):
     def write(self):self.index.write_text(json.dumps(self.value))
     def check(self):return verify.deferred_assets(self.root,verify.BASELINE,self.index)
     def test_valid_deferred_source_mapping(self):self.assertEqual(self.check()['assetCount'],27)
+    def test_renamed_site_assets_preserve_original_provenance(self):
+        self.check()
+        for path in verify.ORIGINAL_GRAPHIC_PATHS:
+            original=verify.original_graphic_path(path)
+            self.assertTrue((self.root/path).is_file())
+            self.assertFalse((self.root/original).exists())
+            (self.root/original).write_bytes((self.root/path).read_bytes())
+            with self.assertRaises(verify.VerificationError):self.check()
+            (self.root/original).unlink()
+            record=next(r for r in self.records if r['originalPath']==original)
+            record['path']=record['examplePath']=record['originalPath']=path;self.write()
+            with mock.patch.object(verify,'ORIGINAL_INDEX_SHA256',verify.sha(self.index.read_bytes())):
+                with self.assertRaises(verify.VerificationError):self.check()
+            record['path']=record['examplePath']=record['originalPath']=original;self.write()
     def test_changed_graphic_and_forged_matching_index_hash_rejected(self):
         self.check()
         path=self.records[0]['path'];(self.root/path).write_bytes(b'new logo');self.records[0]['originalSha256']=verify.sha(b'new logo');self.records[0]['byteSize']=8;self.write()
@@ -177,14 +192,14 @@ class ApprovedAssetsTest(DeferredAssetsTest):
         self.check()
         for path in self.approved:
             p=self.root/path;saved=p.read_bytes()
-            for data in (b'tampered',self.originals[path],('approved-'+next(q for q in self.approved if q!=path)).encode()):
+            for data in (b'tampered',self.originals[verify.original_graphic_path(path)],('approved-'+next(q for q in self.approved if q!=path)).encode()):
                 with self.subTest(path=path,data=data),self.assertRaises(verify.VerificationError):
                     p.write_bytes(data);self.check()
             p.write_bytes(saved)
 
     def test_every_unchanged_member_stays_protected(self):
         self.check()
-        for path in self.originals.keys()-self.approved.keys():
+        for path in {verify.current_graphic_path(p) for p in self.originals}-self.approved.keys():
             p=self.root/path;saved=p.read_bytes();p.write_bytes(b'tampered support')
             with self.subTest(path=path),self.assertRaises(verify.VerificationError):self.check()
             p.write_bytes(saved)
@@ -259,7 +274,13 @@ class CompactGeometryTest(unittest.TestCase):
         for name in ('README.md','docs/index.html','docs/404.html'):
             p=root/name;text=p.read_text();links=Links();links.feed(text)
             self.assertEqual(len(links.words),1)
-            for path in links.words+links.icons:self.assertTrue((p.parent/path).is_file(),path)
+            for path in links.words+links.icons:
+                if path.startswith('/kotatsu/'):
+                    target=root/'docs'/path.removeprefix('/kotatsu/')
+                else:
+                    self.assertFalse(path.startswith('/'),path)
+                    target=p.parent/path
+                self.assertTrue(target.is_file(),path)
             self.assertNotIn('Temporary inherited upstream wordmark',text)
         self.assertIn('"softwareVersion": "0.1"',(root/'docs/index.html').read_text())
 
@@ -278,6 +299,11 @@ class CompactGeometryTest(unittest.TestCase):
         self.assertEqual(verify.APPROVED_BUNDLE_INDEX_SHA256,EXPECTED_BUNDLE)
         self.assertEqual(verify.APPROVED_SOURCE_MASTER_SHA256,EXPECTED_MASTER)
         self.assertEqual(verify.ORIGINAL_INDEX_SHA256,'fab7b450c008fdd5f6bee3abde03d9cb06cfb9f29fb8fce44f9cc4b5e2062472')
+        self.assertEqual(verify.ORIGINAL_GRAPHIC_PATHS,{
+            'docs/img/kotatsu.svg':'docs/img/katapult.svg',
+            'docs/img/kotatsu_w.svg':'docs/img/katapult_w.svg',
+            'docs/img/kotatsu.png':'docs/img/katapult.png',
+        })
         root=Path(__file__).parents[2]
         for path,digest in EXPECTED_GRAPHICS.items():self.assertEqual(verify.sha((root/path).read_bytes()),digest,path)
         for name,count in (('ic_launcher_foreground',1),('ic_launcher_monochrome',1),('katapult_logo',9)):

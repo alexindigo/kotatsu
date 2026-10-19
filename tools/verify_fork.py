@@ -44,14 +44,26 @@ APPROVED_GRAPHICS_SHA256={
     'app/src/main/res/drawable/ic_launcher_monochrome.xml':'b09507a9db85bc9ba428001efc4ba31187dbbfa9ce66dd246a57e53cd997e4ce',
     'app/src/main/res/drawable/katapult_logo.xml':'730e097ae997cc96ff8ba3c82518642af1ccbecb1654a49be94530a929193ae8',
     'docs/img/K.svg':'e8fc26b0776f4975c2a9bb3ac0370692d5d6e715db75bc8af03b5029e9ed8f96',
-    'docs/img/katapult.svg':'b4ec725d539e3d9acfb908b256d18552973c671778227a4d1e5c3dbb8c051bbd',
-    'docs/img/katapult_w.svg':'e693c74c70e0713a43a412404287da486a0636ebcae91cc2838b3fd56ec5224c',
-    'docs/img/katapult.png':'0d04dfc57af5a2a7fcf6637b76eb907a1ef01617035c35d6fd5107938f02eebb',
+    'docs/img/kotatsu.svg':'b4ec725d539e3d9acfb908b256d18552973c671778227a4d1e5c3dbb8c051bbd',
+    'docs/img/kotatsu_w.svg':'e693c74c70e0713a43a412404287da486a0636ebcae91cc2838b3fd56ec5224c',
+    'docs/img/kotatsu.png':'0d04dfc57af5a2a7fcf6637b76eb907a1ef01617035c35d6fd5107938f02eebb',
     'app/src/main/ic_launcher-playstore.png':'0d04dfc57af5a2a7fcf6637b76eb907a1ef01617035c35d6fd5107938f02eebb',
 }
 DENSITIES=('mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi')
 ICON_NAMES=('mipmap/ic_launcher','mipmap/ic_launcher_round')
 VECTOR_COUNTS={'drawable/ic_launcher_foreground':1,'drawable/ic_launcher_monochrome':1,'drawable/katapult_logo':9}
+# Original provenance names belong to the immutable Git baseline, not the live site.
+ORIGINAL_GRAPHIC_PATHS={
+    'docs/img/kotatsu.svg':'docs/img/katapult.svg',
+    'docs/img/kotatsu_w.svg':'docs/img/katapult_w.svg',
+    'docs/img/kotatsu.png':'docs/img/katapult.png',
+}
+
+
+def original_graphic_path(path):return ORIGINAL_GRAPHIC_PATHS.get(path,path)
+
+
+def current_graphic_path(path):return {old:new for new,old in ORIGINAL_GRAPHIC_PATHS.items()}.get(path,path)
 
 
 class VerificationError(Exception):pass
@@ -111,8 +123,8 @@ def asset_mapping():
       ('app/src/main/res/drawable/ic_launcher_screensaver_foreground.xml','@drawable/ic_launcher_screensaver_foreground','active moon vector'),
       ('app/src/main/res/drawable/ic_screensaver.xml','@drawable/ic_screensaver','active static-shortcut moon vector'),
       ('app/src/main/res/drawable/ic_launcher_background.xml','@drawable/ic_launcher_background','unused Android-template reference'),
-      ('docs/img/K.svg',None,'active website favicon'),('docs/img/katapult.svg',None,'active black graphical wordmark'),
-      ('docs/img/katapult_w.svg',None,'active white graphical wordmark'),('docs/img/katapult.png',None,'active website touch icon'),
+      ('docs/img/K.svg',None,'active website favicon'),('docs/img/kotatsu.svg',None,'active black graphical wordmark'),
+      ('docs/img/kotatsu_w.svg',None,'active white graphical wordmark'),('docs/img/kotatsu.png',None,'active website touch icon'),
       ('app/src/main/ic_launcher-playstore.png',None,'store/export reference')])
     return rows
 
@@ -129,32 +141,33 @@ def deferred_assets(root,base,index_path):
     require(index.get('repository',{}).get('head')==base,'Deferred index baseline mismatch')
     records=index.get('assets');require(isinstance(records,list) and len(records)==27,'Invalid deferred records')
     for number,((path,resource,role),record) in enumerate(zip(asset_mapping(),records),1):
+        original_path=original_graphic_path(path)
         require(isinstance(record,dict) and record.get('assetId')==f'branding-{number:03d}','Wrong stable asset ID/order')
-        require(record.get('path')==record.get('examplePath')==record.get('originalPath')==path,'Unsafe/changed asset mapping')
+        require(record.get('path')==record.get('examplePath')==record.get('originalPath')==original_path,'Unsafe/changed asset mapping')
         require(record.get('resourceId')==resource and record.get('role')==role,'Wrong resource type/role')
         native=record.get('native')
         expected_format={'.webp':'WebP','.png':'PNG','.svg':'SVG','.xml':'Android XML'}[Path(path).suffix]
         require(isinstance(native,dict) and native.get('format')==expected_format,'Wrong original asset format/type')
-        source=confined(root,path).read_bytes();original=baseline_bytes(root,base,path)
+        source=confined(root,path).read_bytes();original=baseline_bytes(root,base,original_path)
         require(sha(original)==record.get('originalSha256'),'Forged original hash: '+path)
         require(type(record.get('byteSize')) is int and len(original)==record['byteSize'],'Wrong original asset byte count')
         require(native==original_native(original,Path(path).suffix),'Wrong original native provenance: '+path)
         require(sha(source)==APPROVED_GRAPHICS_SHA256.get(path,sha(original)),'Unapproved graphical source: '+path)
-        tree=git(root,'ls-tree',base,'--',path).strip()
+        tree=git(root,'ls-tree',base,'--',original_path).strip()
         mode,kind,blob,git_path=re.split(r'\s+',tree,maxsplit=3)
-        require(kind=='blob' and git_path==path and record.get('gitBlob')==blob and record.get('gitMode')==mode,'Git asset provenance mismatch')
+        require(kind=='blob' and git_path==original_path and record.get('gitBlob')==blob and record.get('gitMode')==mode,'Git asset provenance mismatch')
         require(type(record.get('fileMode')) is int and record['fileMode']==int(mode[-3:],8),'Wrong original file mode/type')
         require(stat.S_IMODE(confined(root,path).stat().st_mode)==record['fileMode'],'Original graphic mode changed: '+path)
     # Prevent alternate/new graphic resources from bypassing the fixed27 check.
     def production_graphic(path):
         return path.startswith('docs/img/') or re.match(r'app/src/main/res/(?:drawable[^/]*|mipmap[^/]*|font)/',path) or path=='app/src/main/ic_launcher-playstore.png'
-    baseline_modes={line.split('\t',1)[1]:int(line.split()[0][-3:],8) for line in git(root,'ls-tree','-r',base).splitlines() if production_graphic(line.split('\t',1)[1])}
+    baseline_modes={current_graphic_path(line.split('\t',1)[1]):int(line.split()[0][-3:],8) for line in git(root,'ls-tree','-r',base).splitlines() if production_graphic(line.split('\t',1)[1])}
     baseline_set=set(baseline_modes)
     current_set={str(p.relative_to(root)) for prefix in ('docs/img','app/src/main/res','app/src/main') for p in (root/prefix).rglob('*') if p.is_file() and production_graphic(str(p.relative_to(root)))}
     require(current_set==baseline_set,'Added/removed production graphic/font files')
     for path in baseline_set:
         file=confined(root,path)
-        require(sha(file.read_bytes())==APPROVED_GRAPHICS_SHA256.get(path,sha(baseline_bytes(root,base,path))),'Graphic/font outside approved bundle changed: '+path)
+        require(sha(file.read_bytes())==APPROVED_GRAPHICS_SHA256.get(path,sha(baseline_bytes(root,base,original_graphic_path(path)))),'Graphic/font outside approved bundle changed: '+path)
         require(stat.S_IMODE(file.stat().st_mode)==baseline_modes[path],'Graphic/font mode changed: '+path)
     onboarding=(root/'app/src/main/java/com/gezimos/katapult/ui/OnboardingScreen.kt').read_text()
     painters=re.findall(r'painterResource\(\s*R\.drawable\.([A-Za-z0-9_]+)\s*\)',onboarding)
