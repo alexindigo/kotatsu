@@ -52,7 +52,7 @@ object SvgRasterizer {
                 bitmap.recycle()
                 return null
             }
-            bitmap
+            IconGlyph.cap(bitmap)
         } catch (error: Exception) {
             Log.w("KotatsuIcons", "Could not render SVG", error)
             null

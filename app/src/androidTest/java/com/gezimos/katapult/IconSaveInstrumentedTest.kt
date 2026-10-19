@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.net.Uri
 import androidx.lifecycle.ViewModelStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -204,6 +206,30 @@ class IconSaveInstrumentedTest {
 
     @Test fun materialSuccessReplacesFileAndRefreshesRenderedConsumer() = successfulSave(false)
     @Test fun importSuccessReplacesFileAndRefreshesRenderedConsumer() = successfulSave(true)
+
+    @Test fun newPngImportCapsVisibleInkAtSavedConsumer() = withModel { model, root ->
+        val source = File(root, "oversized-source.png")
+        val bitmap = Bitmap.createBitmap(80, 80, Bitmap.Config.ARGB_8888)
+        Canvas(bitmap).drawRect(0f, 0f, 80f, 60f, Paint().apply { color = Color.BLACK })
+        source.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+        val refresh = model.shortcutRefresh
+        instrumentation.runOnMainSync {
+            model.beginIconImport(key)
+            model.saveImportedIcon(context, Uri.fromFile(source))
+        }
+        await("Import did not reach saved consumer") { model.shortcutRefresh > refresh }
+        val drawn = IconUtility.loadIcon(model.getApplication(), key, "", 192)!!
+        var left = 192; var top = 192; var right = -1; var bottom = -1
+        for (y in 0 until 192) for (x in 0 until 192) {
+            if (Color.alpha(drawn.getPixel(x, y)) >= 128) {
+                left = minOf(left, x); top = minOf(top, y)
+                right = maxOf(right, x); bottom = maxOf(bottom, y)
+            }
+        }
+        assertEquals(0.54f, maxOf(right - left + 1, bottom - top + 1) / 192f, 0.02f)
+        assertEquals(96f, (left + right + 1) / 2f, 0.5f)
+        assertEquals(96f, (top + bottom + 1) / 2f, 0.5f)
+    }
 
     private fun successfulSave(import: Boolean) = withModel { model, root ->
         val (file, _) = previousIcon(model, root)

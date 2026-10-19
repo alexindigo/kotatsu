@@ -11,6 +11,7 @@ import com.gezimos.katapult.util.CatalogueIconRenderer
 import com.gezimos.katapult.util.DefaultIcons
 import com.gezimos.katapult.util.IconCatalogue
 import com.gezimos.katapult.util.IconCollection
+import com.gezimos.katapult.util.IconGlyph
 import com.gezimos.katapult.util.IconSelection
 import com.gezimos.katapult.util.IconSelections
 import com.gezimos.katapult.util.IconUtility
@@ -24,6 +25,78 @@ import java.io.File
 @RunWith(AndroidJUnit4::class)
 class IconRenderingInstrumentedTest {
     private val context get() = InstrumentationRegistry.getInstrumentation().targetContext
+
+    private fun inkShare(bitmap: Bitmap): Float {
+        var left = bitmap.width
+        var top = bitmap.height
+        var right = -1
+        var bottom = -1
+        for (y in 0 until bitmap.height) for (x in 0 until bitmap.width) {
+            if (Color.alpha(bitmap.getPixel(x, y)) >= 128) {
+                left = minOf(left, x)
+                top = minOf(top, y)
+                right = maxOf(right, x)
+                bottom = maxOf(bottom, y)
+            }
+        }
+        return maxOf(right - left + 1, bottom - top + 1).toFloat() / bitmap.width
+    }
+
+    @Test fun oversizedBundledAndCatalogueGlyphsHave54PercentInk() {
+        for (size in listOf(96, 192)) {
+            val bundled = IconUtility.renderDrawableResource(context, R.drawable.delta_chat, size)!!
+            val localSend = IconCatalogue.load(context).icon("simple-icons:localsend")!!
+            val catalogue = CatalogueIconRenderer.render(context, localSend, size)!!
+            for ((name, bitmap) in listOf("delta_chat" to bundled, "localsend" to catalogue)) {
+                val share = inkShare(bitmap)
+                Log.i("KotatsuIconProof", "$name size=$size inkShare=$share")
+                assertEquals("$name/$size visible ink", 0.54f, share, 0.02f)
+            }
+        }
+    }
+
+    @Test fun muditaBundledGlyphsRetainLegacyPixels() {
+        for (resId in listOf(R.drawable.mudita_clock, R.drawable.mudita_folder)) {
+            for (size in listOf(96, 192)) {
+                val drawable = context.getDrawable(resId)!!
+                val maxInner = (size * 0.60f).toInt()
+                val scale = minOf(maxInner.toFloat() / drawable.intrinsicWidth,
+                    maxInner.toFloat() / drawable.intrinsicHeight)
+                val w = (drawable.intrinsicWidth * scale).toInt()
+                val h = (drawable.intrinsicHeight * scale).toInt()
+                val left = (size - w) / 2
+                val top = (size - h) / 2
+                val legacy = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                drawable.setBounds(left, top, left + w, top + h)
+                drawable.draw(Canvas(legacy))
+                Log.i("KotatsuIconProof", "${context.resources.getResourceEntryName(resId)} size=$size legacyInkShare=${inkShare(legacy)}")
+                assertTrue("Mudita artwork changed", legacy.sameAs(IconUtility.renderDrawableResource(context, resId, size)))
+            }
+        }
+    }
+
+    @Test fun paddedGlyphsRemainIdenticalAndOversizedInkIsCenteredWithoutStretching() {
+        val padded = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888)
+        Canvas(padded).drawRect(60f, 72f, 132f, 120f, Paint().apply { color = Color.BLACK })
+        val before = padded.copy(Bitmap.Config.ARGB_8888, false)
+        assertSame(padded, IconGlyph.cap(padded))
+        assertTrue(before.sameAs(padded))
+
+        val oversized = Bitmap.createBitmap(192, 192, Bitmap.Config.ARGB_8888)
+        Canvas(oversized).drawRect(8f, 20f, 168f, 100f, Paint().apply { color = Color.BLACK })
+        val capped = IconGlyph.cap(oversized)
+        assertEquals(0.54f, inkShare(capped), 0.02f)
+        var left = 192; var top = 192; var right = -1; var bottom = -1
+        for (y in 0 until 192) for (x in 0 until 192) {
+            if (Color.alpha(capped.getPixel(x, y)) >= 128) {
+                left = minOf(left, x); top = minOf(top, y)
+                right = maxOf(right, x); bottom = maxOf(bottom, y)
+            }
+        }
+        assertEquals(96f, (left + right + 1) / 2f, 0.5f)
+        assertEquals(96f, (top + bottom + 1) / 2f, 0.5f)
+        assertEquals(2f, (right - left + 1).toFloat() / (bottom - top + 1), 0.04f)
+    }
 
     @Test fun completeCuratedCorpusRendersAndSearchesAtActualConsumer() {
         val catalogue = IconCatalogue.load(context)

@@ -140,7 +140,9 @@ object IconUtility {
     fun renderDrawableResource(context: Context, resId: Int, sizePx: Int): Bitmap? {
         return try {
             val drawable = ContextCompat.getDrawable(context, resId) ?: return null
-            renderBundledIcon(drawable, sizePx)
+            val bitmap = renderBundledIcon(drawable, sizePx)
+            if (IconGlyph.isMuditaArtwork(context.resources.getResourceEntryName(resId))) bitmap
+            else IconGlyph.cap(bitmap)
         } catch (_: Exception) {
             null
         }
@@ -203,7 +205,7 @@ object IconUtility {
                 }
                 is IconSelection.Bundled -> {
                     val resId = resolveBundled(selection.name) ?: return null
-                    renderBundledIcon(ContextCompat.getDrawable(context, resId)!!, sizePx)
+                    renderDrawableResource(context, resId, sizePx)
                 }
                 is IconSelection.Catalogue -> IconCatalogue.load(context).icon(selection.id)
                     ?.let { CatalogueIconRenderer.render(context, it, sizePx) }

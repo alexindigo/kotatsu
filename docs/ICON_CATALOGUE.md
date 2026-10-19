@@ -44,10 +44,14 @@ overridden; package fallback applies only when no shortcut drawable exists.
 
 New overrides use `catalogue:<stable-id>`. Existing `file:` imports and `res:`
 bundled choices remain valid. App and shortcut keys retain their separate
-identities. The shared AndroidSVG 1.4 renderer fits the source viewBox into the
-same centred 60% transparent viewport used by bundled tiles, preserving strokes,
-fills, primitives, transformations and unpainted geometry. PNG import retains
-its existing bitmap path.
+identities. The shared AndroidSVG 1.4 renderer first fits the source viewBox into
+the same centred 60% transparent viewport used by bundled tiles, preserving strokes,
+fills, primitives, transformations and unpainted geometry. `IconGlyph` then caps
+visible ink (alpha ≥128) at 54% of the tile, centring oversized glyphs without
+enlarging or changing smaller ones. Bundled resources use the same cap except the
+`mudita_` category: Mudita artwork is drawn as Mudita drew it. New PNG and SVG
+imports follow the cap at import time; existing saved imports retain their stored
+artwork. Original app and shortcut icons retain their own geometry.
 
 ## Ownership
 

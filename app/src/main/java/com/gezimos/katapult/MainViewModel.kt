@@ -1147,7 +1147,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             postTranslate((targetPx - drawnW) / 2f, (targetPx - drawnH) / 2f)
         }
         canvas.drawBitmap(source, matrix, Paint(Paint.FILTER_BITMAP_FLAG))
-        return target
+        return com.gezimos.katapult.util.IconGlyph.cap(target)
     }
 
     private fun loadWallpaper() {
