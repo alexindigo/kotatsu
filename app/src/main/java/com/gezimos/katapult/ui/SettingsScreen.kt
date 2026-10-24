@@ -41,28 +41,20 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Apps
-import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
-import androidx.compose.material.icons.rounded.Contrast
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Gesture
 import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.RemoveDone
-import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -76,7 +68,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
@@ -101,7 +92,6 @@ import com.gezimos.katapult.util.AppVisibility
 import com.gezimos.katapult.util.AccessibilityFeature
 import com.gezimos.katapult.MainActivity
 import com.gezimos.katapult.util.DeviceHelper
-import com.gezimos.katapult.util.EinkHelper
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.ScreensaverShortcut
@@ -118,6 +108,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import kotlin.math.abs
+import com.gezimos.katapult.ui.settings.ContentsEntry
+import com.gezimos.katapult.ui.settings.NoticeContent
+import com.gezimos.katapult.ui.settings.PaperIndexRenderer
+import com.gezimos.katapult.ui.settings.SettingsSummaries
+import com.gezimos.katapult.ui.settings.TableOfContents
+import com.gezimos.katapult.ui.settings.appearanceCategory
 
 private val ClockFormats = listOf("system", "HH:mm", "hh:mm a", "h:mm a", "h:mm")
 private val DateFormats = listOf("system", "EEE, MMM d", "EEEE, MMMM d", "MMMM d, yyyy", "M/d/yyyy", "yyyy-MM-dd")
@@ -170,7 +166,6 @@ fun SettingsScreen(
     var roundedIcons by remember { mutableStateOf(prefs.roundedIcons) }
     var iconSize by remember { mutableIntStateOf(prefs.iconSize) }
     var themeMode by remember { mutableIntStateOf(prefs.themeMode) }
-    var showThemeSheet by remember { mutableStateOf(false) }
     var hideStatusBar by remember { mutableStateOf(prefs.hideStatusBar) }
     var hideStatusBarClock by remember { mutableStateOf(prefs.hideStatusBarClock) }
     var einkRefreshOnHome by remember { mutableStateOf(prefs.einkRefreshOnHome) }
@@ -190,7 +185,6 @@ fun SettingsScreen(
     var showClockFormatSheet by remember { mutableStateOf(false) }
     var showDateFormatSheet by remember { mutableStateOf(false) }
     var showDoubleTapSheet by remember { mutableStateOf(false) }
-    var showEinkModeSheet by remember { mutableStateOf(false) }
     var showScreensaverModeSheet by remember { mutableStateOf(false) }
     var showScreensaverCustomSheet by remember { mutableStateOf(false) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
@@ -211,7 +205,6 @@ fun SettingsScreen(
     var showLockscreenReadMe by remember { mutableStateOf(false) }
     var showNotificationsReadMe by remember { mutableStateOf(false) }
     var showScreensaverReadMe by remember { mutableStateOf(false) }
-    var showEinkReadMe by remember { mutableStateOf(false) }
     var showGesturesReadMe by remember { mutableStateOf(false) }
     var showPermissionsSheet by remember { mutableStateOf(false) }
     var showConfigSheet by remember { mutableStateOf(false) }
@@ -243,9 +236,10 @@ fun SettingsScreen(
     // Settings returns refresh status only. No remembered activation/sort replay.
     LaunchedEffect(context) {
         while (true) {
-            kotlinx.coroutines.delay(1000)
             val serviceOn = LockscreenWidgetService.isEnabled(context)
+            viewModel.observeActionService(serviceOn)
             if (actionServiceEnabled != serviceOn) actionServiceEnabled = serviceOn
+            kotlinx.coroutines.delay(1000)
         }
     }
 
@@ -261,6 +255,42 @@ fun SettingsScreen(
     }
     LaunchedEffect(selectedCategory) { currentPage = 0 }
 
+    val notice = if (viewModel.actionServiceNotice.visible) NoticeContent(
+        message = stringResource(R.string.paper_service_off),
+        regionLabel = stringResource(R.string.paper_notice_region),
+        dismissLabel = stringResource(R.string.paper_notice_dismiss),
+        onDismiss = viewModel::dismissActionServiceNotice,
+        actionLabel = stringResource(R.string.paper_turn_on),
+        onAction = { viewModel.requestActionService(null) },
+        announcementPending = viewModel.actionServiceNotice.announcementPending,
+        onAnnounced = viewModel::actionServiceNoticeAnnounced,
+    ) else null
+    val appearance = appearanceCategory(
+        isMudita = isMudita, rounded = roundedIcons, iconSize = iconSize, themeMode = themeMode,
+        hideAppNames = hideAppNames, hideStatusBar = hideStatusBar, hideStatusClock = hideStatusBarClock,
+        einkMode = einkHelperMode, refreshHome = einkRefreshOnHome,
+        onShape = { roundedIcons = it; prefs.roundedIcons = it; viewModel.roundedIcons = it },
+        onSize = { iconSize = it; prefs.iconSize = it; viewModel.iconSize = it },
+        onTheme = {
+            themeMode = it; prefs.themeMode = it; viewModel.themeMode = it; viewModel.applyStatusBar(context)
+        },
+        onHideNames = { hideAppNames = it; prefs.hideAppNames = it },
+        onHideStatus = {
+            hideStatusBar = it; prefs.hideStatusBar = it; viewModel.applyStatusBar(context)
+            LockscreenWidgetService.onLauncherForeground(true)
+        },
+        onHideClock = { requested ->
+            val serviceOn = LockscreenWidgetService.isEnabled(context)
+            actionServiceEnabled = serviceOn
+            viewModel.observeActionService(serviceOn)
+            if (!requested || serviceOn) { hideStatusBarClock = requested; prefs.hideStatusBarClock = requested }
+            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.CLOCK_COVER)
+            LockscreenWidgetService.onLauncherForeground(true)
+        },
+        onEink = { einkHelperMode = it; prefs.einkHelperMode = it; (context as? MainActivity)?.setMeinkMode(it) },
+        onRefreshHome = { einkRefreshOnHome = it; prefs.einkRefreshOnHome = it },
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -268,11 +298,11 @@ fun SettingsScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
             .then(
-                if (selectedCategory == null) Modifier.padding(6.dp)
+                if (selectedCategory == null || selectedCategory == R.string.section_appearance) Modifier
                 else Modifier.padding(16.dp)
             ),
     ) {
-        if (selectedCategory != null) {
+        if (selectedCategory != null && selectedCategory != R.string.section_appearance) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -327,92 +357,6 @@ fun SettingsScreen(
                 headerIndices += size
                 add { SettingsSectionHeader(stringResource(titleRes)) }
             }
-            // --- Appearance ---
-            addHeader(R.string.section_appearance)
-            add {
-                SettingsCycleRow(
-                    title = stringResource(R.string.icon_shape),
-                    description = if (roundedIcons) stringResource(R.string.icon_shape_rounded) else stringResource(R.string.icon_shape_circle),
-                    onClick = {
-                        roundedIcons = !roundedIcons
-                        prefs.roundedIcons = roundedIcons
-                        viewModel.roundedIcons = roundedIcons
-                    },
-                )
-            }
-            add {
-                SettingsCycleRow(
-                    title = stringResource(R.string.icon_size),
-                    description = stringResource(R.string.icon_size_value, iconSize, iconSize),
-                    onClick = {
-                        iconSize = if (iconSize == PrefsManager.ICON_SIZE_SMALL)
-                            PrefsManager.ICON_SIZE_LARGE else PrefsManager.ICON_SIZE_SMALL
-                        prefs.iconSize = iconSize
-                        viewModel.iconSize = iconSize
-                    },
-                )
-            }
-            add {
-                val themeLabel = when (themeMode) {
-                    PrefsManager.THEME_SYSTEM -> stringResource(R.string.theme_system)
-                    PrefsManager.THEME_DARK -> stringResource(R.string.theme_dark)
-                    else -> stringResource(R.string.theme_light)
-                }
-                SettingsCycleRow(
-                    title = stringResource(R.string.theme_mode),
-                    description = stringResource(R.string.theme_mode_desc),
-                    value = themeLabel,
-                    onClick = { showThemeSheet = true },
-                )
-            }
-            if (isMudita) {
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.hide_status_bar_clock),
-                        description = stringResource(R.string.hide_status_bar_clock_desc) +
-                            if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
-                        checked = hideStatusBarClock,
-                        onCheckedChange = { requested ->
-                            val serviceOn = LockscreenWidgetService.isEnabled(context)
-                            actionServiceEnabled = serviceOn
-                            if (!requested || serviceOn) {
-                                hideStatusBarClock = requested
-                                prefs.hideStatusBarClock = requested
-                            }
-                            if (requested && !serviceOn) {
-                                viewModel.requestActionService(AccessibilityFeature.CLOCK_COVER)
-                            }
-                            LockscreenWidgetService.onLauncherForeground(true)
-                        },
-                    )
-                }
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.hide_status_bar),
-                    description = stringResource(R.string.hide_status_bar_desc),
-                    checked = hideStatusBar,
-                    onCheckedChange = {
-                        hideStatusBar = it
-                        prefs.hideStatusBar = it
-                        viewModel.applyStatusBar(context)
-                        LockscreenWidgetService.onLauncherForeground(true)
-                    },
-                )
-            }
-
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.hide_app_names),
-                    description = stringResource(R.string.hide_app_names_desc),
-                    checked = hideAppNames,
-                    onCheckedChange = {
-                        hideAppNames = it
-                        prefs.hideAppNames = it
-                    },
-                )
-            }
-
             // --- Home Screen ---
             addHeader(R.string.section_home)
             add {
@@ -718,36 +662,6 @@ fun SettingsScreen(
                         try {
                             context.startActivity(Intent("android.settings.NOTIFICATION_HISTORY"))
                         } catch (_: Exception) {}
-                    },
-                )
-            }
-
-            // --- E-Ink (modes are Mudita only) ---
-            addHeader(R.string.section_eink)
-            if (isMudita) {
-                add {
-                    SettingsActionRow(
-                        title = stringResource(R.string.lockscreen_readme),
-                        description = stringResource(R.string.eink_readme_desc),
-                        onClick = { showEinkReadMe = true },
-                    )
-                }
-                add {
-                    SettingsCycleRow(
-                        title = stringResource(R.string.eink_auto_mode),
-                        description = EinkHelper.modeName(einkHelperMode),
-                        onClick = { showEinkModeSheet = true },
-                    )
-                }
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.eink_refresh),
-                    description = stringResource(R.string.eink_refresh_desc),
-                    checked = einkRefreshOnHome,
-                    onCheckedChange = {
-                        einkRefreshOnHome = it
-                        prefs.einkRefreshOnHome = it
                     },
                 )
             }
@@ -1099,12 +1013,28 @@ fun SettingsScreen(
         }
 
         if (selectedCategory == null) {
-            SettingsCategoryGrid(
-                onSelect = { titleRes -> selectedCategory = titleRes },
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            )
+            val notificationAccess = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+            val entries = listOf(
+                R.string.section_appearance to appearance.summary,
+                R.string.section_home to SettingsSummaries.home(stringResource(
+                    if (showAlarm) R.string.paper_summary_home_on else R.string.paper_summary_home_off),
+                    if (homeExtraRow) 3 else 0),
+                R.string.section_all_apps to stringResource(when (appSortMode) {
+                    PrefsManager.APP_SORT_RECENT -> R.string.app_sort_recent
+                    PrefsManager.APP_SORT_USED -> R.string.app_sort_used
+                    else -> R.string.app_sort_alphabetical
+                }),
+                R.string.section_gestures to stringResource(if (verticalAppGestures) R.string.gesture_vertical else R.string.gesture_horizontal),
+                R.string.section_notifications to stringResource(if (notificationAccess) R.string.paper_access_granted else R.string.paper_access_missing),
+                R.string.section_experimental to pluralStringResource(R.plurals.paper_widgets_configured, widgetSettings.rows.size, widgetSettings.rows.size),
+                R.string.section_screensaver to stringResource(if (screensaverEnabled) R.string.paper_on else R.string.paper_off),
+                R.string.section_system to stringResource(R.string.paper_summary_system),
+                R.string.section_about to stringResource(R.string.paper_summary_about, versionName),
+            ).map { (id, summary) -> ContentsEntry(id.toString(),
+                stringResource(if (id == R.string.section_experimental) R.string.cat_lockscreen else id), summary) { selectedCategory = id } }
+            TableOfContents(stringResource(R.string.settings), entries, notice, Modifier.weight(1f))
+        } else if (selectedCategory == R.string.section_appearance) {
+            PaperIndexRenderer(appearance, { selectedCategory = null }, Modifier.weight(1f), notice, "screen")
         } else {
             val sel = sectionTitles.indexOf(selectedCategory).coerceIn(0, (sectionStarts.size - 1).coerceAtLeast(0))
             val start = sectionStarts[sel] + 1
@@ -1293,32 +1223,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showEinkReadMe) {
-        BottomSheet(onDismiss = { showEinkReadMe = false }) {
-            Text(
-                text = stringResource(R.string.lockscreen_readme),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.eink_readme_intro),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.eink_readme_modes),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-    }
-
     if (showGesturesReadMe) {
         BottomSheet(onDismiss = { showGesturesReadMe = false }) {
             Text(
@@ -1387,25 +1291,6 @@ fun SettingsScreen(
             providers = providers,
             onPick = { provider -> (context as? MainActivity)?.addLockscreenWidget(provider.info) },
             onDismiss = { widgetProviders = null },
-        )
-    }
-
-    if (showThemeSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.theme_mode),
-            options = listOf(
-                PrefsManager.THEME_SYSTEM to stringResource(R.string.theme_system),
-                PrefsManager.THEME_LIGHT to stringResource(R.string.theme_light),
-                PrefsManager.THEME_DARK to stringResource(R.string.theme_dark),
-            ),
-            selected = themeMode,
-            onSelect = {
-                themeMode = it
-                prefs.themeMode = it
-                viewModel.themeMode = it
-                viewModel.applyStatusBar(context)
-            },
-            onDismiss = { showThemeSheet = false },
         )
     }
 
@@ -1636,25 +1521,6 @@ fun SettingsScreen(
                 prefs.homeLongPressAction = it
             },
             onDismiss = { showLongPressSheet = false },
-        )
-    }
-
-    if (showEinkModeSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.eink_auto_mode),
-            options = listOf(
-                EinkHelper.MEINK_MODE_DISABLED,
-                EinkHelper.MEINK_MODE_CLEAR,
-                EinkHelper.MEINK_MODE_CONTRAST,
-                EinkHelper.MEINK_MODE_READING,
-            ).map { it to EinkHelper.modeName(it) },
-            selected = einkHelperMode,
-            onSelect = {
-                einkHelperMode = it
-                prefs.einkHelperMode = it
-                (context as? MainActivity)?.setMeinkMode(it)
-            },
-            onDismiss = { showEinkModeSheet = false },
         )
     }
 
@@ -2332,95 +2198,6 @@ private fun AppChecklistSheet(
                 }
             }
         }
-    }
-}
-
-private data class SettingsCategoryInfo(
-    val sectionTitleRes: Int,
-    val cardTitleRes: Int,
-    val subtitleRes: Int,
-    val icon: ImageVector,
-)
-
-private val settingsCategories = listOf(
-    SettingsCategoryInfo(R.string.section_appearance, R.string.section_appearance, R.string.cat_appearance_sub, Icons.Rounded.Palette),
-    SettingsCategoryInfo(R.string.section_home, R.string.cat_home, R.string.cat_home_sub, Icons.Rounded.Home),
-    SettingsCategoryInfo(R.string.section_all_apps, R.string.section_all_apps, R.string.cat_all_apps_sub, Icons.Rounded.Apps),
-    SettingsCategoryInfo(R.string.section_gestures, R.string.section_gestures, R.string.cat_gestures_sub, Icons.Rounded.Gesture),
-    SettingsCategoryInfo(R.string.section_notifications, R.string.section_notifications, R.string.cat_notifications_sub, Icons.Rounded.Notifications),
-    SettingsCategoryInfo(R.string.section_eink, R.string.section_eink, R.string.cat_eink_sub, Icons.Rounded.Contrast),
-    SettingsCategoryInfo(R.string.section_experimental, R.string.cat_lockscreen, R.string.cat_lockscreen_sub, Icons.Rounded.Lock),
-    SettingsCategoryInfo(R.string.section_screensaver, R.string.screensaver, R.string.cat_screensaver_sub, Icons.Rounded.Bedtime),
-    SettingsCategoryInfo(R.string.section_system, R.string.section_system, R.string.cat_system_sub, Icons.Rounded.Tune),
-    SettingsCategoryInfo(R.string.section_about, R.string.section_about, R.string.cat_about_sub, Icons.Rounded.Info),
-)
-
-@Composable
-private fun SettingsCategoryGrid(
-    onSelect: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier) {
-        settingsCategories.chunked(2).forEach { pair ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-            ) {
-                pair.forEach { info ->
-                    SettingsCategoryCard(
-                        info = info,
-                        onClick = { onSelect(info.sectionTitleRes) },
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(4.dp),
-                    )
-                }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsCategoryCard(
-    info: SettingsCategoryInfo,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val ink = LocalInk.current
-    Column(
-        modifier = modifier
-            .border(2.dp, ink, RoundedCornerShape(14.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = info.icon,
-            contentDescription = null,
-            tint = ink,
-            modifier = Modifier
-                .align(Alignment.End)
-                .size(30.dp),
-        )
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = stringResource(info.cardTitleRes),
-            fontSize = 19.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = ink,
-            maxLines = 2,
-        )
-        Text(
-            text = stringResource(info.subtitleRes),
-            fontSize = 15.sp,
-            fontFamily = LatoFamily,
-            color = ink,
-            maxLines = 2,
-        )
     }
 }
 

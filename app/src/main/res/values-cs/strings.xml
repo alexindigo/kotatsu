@@ -170,7 +170,7 @@
     <string name="section_all_apps">Všechny aplikace</string>
     <string name="section_gestures">Gesta</string>
     <string name="section_notifications">Oznámení</string>
-    <string name="section_eink">E-Ink</string>
+    <string name="section_eink">E-ink</string>
     <string name="section_system">Systém</string>
     <string name="reorder_hint">Klepnutím na aplikaci ji prohodíte se zvýrazněnou</string>
     <string name="section_experimental">Oznámení na zamykací obrazovce (Experimentální)</string>
@@ -345,4 +345,35 @@
     <string name="lockscreen_widgets_remove">Odebrat</string>
     <string name="lockscreen_widgets_no_room">Na zamčené obrazovce není dost místa</string>
     <string name="lockscreen_widgets_failed">Widget se nepodařilo aktualizovat</string>
+    <string name="paper_back">Zpět</string>
+    <string name="paper_next_page">Další stránka</string>
+    <string name="paper_previous_page">Předchozí stránka</string>
+    <string name="paper_page">Stránka %1$d z %2$d</string>
+    <string name="paper_on">Zapnuto</string>
+    <string name="paper_off">Vypnuto</string>
+    <string name="paper_open">Otevřít</string>
+    <string name="paper_external">Otevřít externí odkaz mimo Kotatsu</string>
+    <string name="paper_service_off">Služba akcí Kotatsu je vypnutá</string>
+    <string name="paper_notice_region">Připomenutí služby akcí</string>
+    <string name="paper_notice_dismiss">Skrýt připomenutí služby akcí</string>
+    <string name="paper_turn_on">Zapnout</string>
+    <string name="paper_summary_off">vypnuto</string>
+    <string name="paper_summary_appearance">%1$s · %2$s · E-ink %3$s</string>
+    <string name="paper_summary_home_on">Budík zapnutý · Dok +%1$d</string>
+    <string name="paper_summary_home_off">Budík vypnutý · Dok +%1$d</string>
+    <string name="paper_access_granted">Přístup povolen</string>
+    <string name="paper_access_missing">Přístup nepovolen</string>
+    <string name="paper_summary_system">Přístup a výchozí volby</string>
+    <string name="paper_summary_about">Kotatsu %1$s</string>
+    <plurals name="paper_widgets_configured"><item quantity="one">%d nastavený widget</item><item quantity="few">%d nastavené widgety</item><item quantity="many">%d nastaveného widgetu</item><item quantity="other">%d nastavených widgetů</item></plurals>
+    <string name="paper_group_icons">Ikony</string>
+    <string name="paper_group_screen">Obrazovka</string>
+    <string name="paper_icon_shape_help">Tvar ikon aplikací</string>
+    <string name="paper_icon_size_help">Velikost ikon aplikací</string>
+    <string name="paper_eink_mode_help">Zvolte režim obnovování E-ink</string>
+    <string name="paper_about_eink">O E-ink</string>
+    <string name="paper_eink_disabled">Vypnuto</string>
+    <string name="paper_eink_clear">Čistý</string>
+    <string name="paper_eink_contrast">Kontrast</string>
+    <string name="paper_eink_reading">Čtení</string>
 </resources>

@@ -59,7 +59,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
             ui.scrollTo(context.getString(R.string.lockscreen_message_desc))
             assertFalse(ui.has(context.getString(R.string.lockscreen_weather)))
             ui.back()
-            ui.click(context.getString(R.string.cat_home))
+            ui.click(context.getString(R.string.section_home))
             ui.scrollTo(context.getString(R.string.show_alarm))
             assertFalse(ui.has(context.getString(R.string.show_weather)))
             ui.scrollTo(context.getString(R.string.extra_dock_row))

@@ -170,7 +170,7 @@
     <string name="section_all_apps">Alle Apps</string>
     <string name="section_gestures">Gesten</string>
     <string name="section_notifications">Benachrichtigungen</string>
-    <string name="section_eink">E-Ink</string>
+    <string name="section_eink">E-ink</string>
     <string name="section_system">System</string>
     <string name="reorder_hint">Tippe auf eine App, um sie mit der markierten zu tauschen</string>
     <string name="section_experimental">Sperrbildschirm-Benachrichtigungen (Experimentell)</string>
@@ -343,4 +343,35 @@
     <string name="lockscreen_widgets_remove">Entfernen</string>
     <string name="lockscreen_widgets_no_room">Nicht genug Platz auf dem Sperrbildschirm</string>
     <string name="lockscreen_widgets_failed">Widget konnte nicht aktualisiert werden</string>
+    <string name="paper_back">Zurück</string>
+    <string name="paper_next_page">Nächste Seite</string>
+    <string name="paper_previous_page">Vorherige Seite</string>
+    <string name="paper_page">Seite %1$d von %2$d</string>
+    <string name="paper_on">An</string>
+    <string name="paper_off">Aus</string>
+    <string name="paper_open">Öffnen</string>
+    <string name="paper_external">Externen Link öffnen, verlässt Kotatsu</string>
+    <string name="paper_service_off">Kotatsu-Aktionsdienst ist aus</string>
+    <string name="paper_notice_region">Erinnerung an den Aktionsdienst</string>
+    <string name="paper_notice_dismiss">Erinnerung an den Aktionsdienst ausblenden</string>
+    <string name="paper_turn_on">Aktivieren</string>
+    <string name="paper_summary_off">aus</string>
+    <string name="paper_summary_appearance">%1$s · %2$s · E-ink %3$s</string>
+    <string name="paper_summary_home_on">Wecker an · Dock +%1$d</string>
+    <string name="paper_summary_home_off">Wecker aus · Dock +%1$d</string>
+    <string name="paper_access_granted">Zugriff erlaubt</string>
+    <string name="paper_access_missing">Kein Zugriff</string>
+    <string name="paper_summary_system">Zugriff und Standards</string>
+    <string name="paper_summary_about">Kotatsu %1$s</string>
+    <plurals name="paper_widgets_configured"><item quantity="one">%d Widget eingerichtet</item><item quantity="other">%d Widgets eingerichtet</item></plurals>
+    <string name="paper_group_icons">Symbole</string>
+    <string name="paper_group_screen">Bildschirm</string>
+    <string name="paper_icon_shape_help">Form der App-Symbole</string>
+    <string name="paper_icon_size_help">Größe der App-Symbole</string>
+    <string name="paper_eink_mode_help">E-ink-Aktualisierungsmodus wählen</string>
+    <string name="paper_about_eink">Über E-ink</string>
+    <string name="paper_eink_disabled">Deaktiviert</string>
+    <string name="paper_eink_clear">Klar</string>
+    <string name="paper_eink_contrast">Kontrast</string>
+    <string name="paper_eink_reading">Lesen</string>
 </resources>

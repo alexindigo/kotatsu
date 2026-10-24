@@ -159,6 +159,24 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     private var pendingActionServiceFeature: AccessibilityFeature? = null
 
+    var actionServiceNotice by mutableStateOf(com.gezimos.katapult.ui.settings.ActionServiceNoticeState(
+        com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(application), prefs.noticeActionServiceDismissed))
+        private set
+
+    fun observeActionService(on: Boolean) {
+        actionServiceNotice = actionServiceNotice.observe(on)
+        if (on && prefs.noticeActionServiceDismissed) prefs.noticeActionServiceDismissed = false
+    }
+
+    fun dismissActionServiceNotice() {
+        actionServiceNotice = actionServiceNotice.dismiss()
+        prefs.noticeActionServiceDismissed = true
+    }
+
+    fun actionServiceNoticeAnnounced() {
+        actionServiceNotice = actionServiceNotice.announced()
+    }
+
     fun requestActionService(feature: AccessibilityFeature?) {
         actionServiceSetup = ActionServiceSetup(feature)
     }
@@ -182,6 +200,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     internal fun checkLockscreenService(serviceEnabled: Boolean) {
+        observeActionService(serviceEnabled)
         if (serviceEnabled) {
             lockscreenReEnableChecked = false
             showLockscreenReEnable = false

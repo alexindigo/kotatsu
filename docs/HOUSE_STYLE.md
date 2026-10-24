@@ -6,10 +6,11 @@ categories are chapters; groups are subheadings; sheets are pages in the same
 book. Typography and state carry the interface, rather than a collection of
 Android control shapes.
 
-**Settings implementation is pending.** Until it lands, the current HTML
-mockups are the reference, not evidence that the installed app already follows
-this guide. Apply this language to future Kotatsu-owned screens; Android's
-system settings remain outside Kotatsu's visual ownership.
+The shared Android kit lives in `app/src/main/java/com/gezimos/katapult/ui/settings/`.
+Settings root and Appearance use its data model, renderer, Notice and page sheets;
+the remaining chapters and secondary sheets are being migrated separately.
+Apply this language to future Kotatsu-owned screens; Android's system settings
+remain outside Kotatsu's visual ownership.
 
 ## Principles
 

@@ -37,6 +37,10 @@ class PrefsManager(context: Context) {
     fun sensitiveChoices(): Map<String, Boolean> =
         SensitiveChoice.entries.associate { it.key to sensitiveChoice(it) }
 
+    var noticeActionServiceDismissed: Boolean
+        get() = boolPref(KEY_NOTICE_ACTION_SERVICE_DISMISSED, false)
+        set(value) { prefs.edit().putBoolean(KEY_NOTICE_ACTION_SERVICE_DISMISSED, value).apply() }
+
     /** Retain the platform listener strongly for the subscription's full lifetime. */
     fun subscribeChanges(changed: (String?) -> Unit): AutoCloseable {
         synchronized(changeListeners) {
@@ -596,6 +600,7 @@ class PrefsManager(context: Context) {
         json.put(CONFIG_TYPE_KEY, CONFIG_TYPE)
         json.put(CONFIG_VERSION_KEY, appVersionCode(context))
         for ((key, value) in prefs.all) {
+            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED) continue
             when (value) {
                 is Boolean -> json.put(key, value)
                 is Int -> json.put(key, value)
@@ -876,6 +881,7 @@ class PrefsManager(context: Context) {
         const val APP_SORT_USED = 2
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
 
-        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, KEY_LOCKSCREEN_WIDGETS)
+        private const val KEY_NOTICE_ACTION_SERVICE_DISMISSED = "notice_action_service_dismissed"
+        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, KEY_LOCKSCREEN_WIDGETS, KEY_NOTICE_ACTION_SERVICE_DISMISSED)
     }
 }

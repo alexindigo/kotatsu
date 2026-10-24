@@ -170,7 +170,7 @@
     <string name="section_all_apps">Alle apps</string>
     <string name="section_gestures">Gebaren</string>
     <string name="section_notifications">Meldingen</string>
-    <string name="section_eink">E-Ink</string>
+    <string name="section_eink">E-ink</string>
     <string name="section_system">Systeem</string>
     <string name="reorder_hint">Tik op een app om deze te wisselen met de gemarkeerde</string>
     <string name="section_experimental">Meldingen op vergrendelscherm (Experimenteel)</string>
@@ -343,4 +343,35 @@
     <string name="lockscreen_widgets_remove">Verwijderen</string>
     <string name="lockscreen_widgets_no_room">Onvoldoende ruimte op het vergrendelscherm</string>
     <string name="lockscreen_widgets_failed">Widget kon niet worden bijgewerkt</string>
+    <string name="paper_back">Terug</string>
+    <string name="paper_next_page">Volgende pagina</string>
+    <string name="paper_previous_page">Vorige pagina</string>
+    <string name="paper_page">Pagina %1$d van %2$d</string>
+    <string name="paper_on">Aan</string>
+    <string name="paper_off">Uit</string>
+    <string name="paper_open">Openen</string>
+    <string name="paper_external">Externe link openen, Kotatsu verlaten</string>
+    <string name="paper_service_off">Kotatsu-actieservice staat uit</string>
+    <string name="paper_notice_region">Herinnering voor actieservice</string>
+    <string name="paper_notice_dismiss">Herinnering voor actieservice verbergen</string>
+    <string name="paper_turn_on">Aanzetten</string>
+    <string name="paper_summary_off">uit</string>
+    <string name="paper_summary_appearance">%1$s · %2$s · E-ink %3$s</string>
+    <string name="paper_summary_home_on">Alarm aan · Dock +%1$d</string>
+    <string name="paper_summary_home_off">Alarm uit · Dock +%1$d</string>
+    <string name="paper_access_granted">Toegang verleend</string>
+    <string name="paper_access_missing">Geen toegang</string>
+    <string name="paper_summary_system">Toegang en standaarden</string>
+    <string name="paper_summary_about">Kotatsu %1$s</string>
+    <plurals name="paper_widgets_configured"><item quantity="one">%d widget ingesteld</item><item quantity="other">%d widgets ingesteld</item></plurals>
+    <string name="paper_group_icons">Pictogrammen</string>
+    <string name="paper_group_screen">Scherm</string>
+    <string name="paper_icon_shape_help">Vorm van app-pictogrammen</string>
+    <string name="paper_icon_size_help">Grootte van app-pictogrammen</string>
+    <string name="paper_eink_mode_help">Kies de E-ink-verversingsmodus</string>
+    <string name="paper_about_eink">Over E-ink</string>
+    <string name="paper_eink_disabled">Uitgeschakeld</string>
+    <string name="paper_eink_clear">Helder</string>
+    <string name="paper_eink_contrast">Contrast</string>
+    <string name="paper_eink_reading">Lezen</string>
 </resources>

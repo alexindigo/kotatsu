@@ -120,7 +120,7 @@ class WallpaperFilesInstrumentedTest {
             } }
             instrumentation.waitForIdleSync()
             val ui = PlatformUiDriver(instrumentation)
-            ui.await("Fixture Settings grid is not ready") { ui.has(context.getString(R.string.cat_screensaver_sub)) }
+            ui.await("Fixture Settings index is not ready") { ui.has(context.getString(R.string.section_screensaver)) }
             ui.click(context.getString(R.string.screensaver))
             ui.await("Screensaver category is not ready") { ui.has(context.getString(R.string.screensaver_enable_desc)) }
             assertEquals(true, ui.checked(context.getString(R.string.screensaver_enable_desc)))
