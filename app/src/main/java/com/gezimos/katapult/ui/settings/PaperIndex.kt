@@ -178,12 +178,14 @@ private fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit)
         is SettingsEntry.Switch -> if (entry.checked) on else off
         is SettingsEntry.Open -> open
         is SettingsEntry.Link -> "↗"
+        is SettingsEntry.Metadata -> entry.value
     }
     val action = when (entry) {
         is SettingsEntry.Switch -> Modifier.toggleable(entry.checked, role = Role.Switch, onValueChange = entry.onCheckedChange)
         is SettingsEntry.Value -> Modifier.clickable(role = Role.Button) { onChoice(entry) }
         is SettingsEntry.Open -> Modifier.clickable(role = Role.Button, onClick = entry.onOpen)
         is SettingsEntry.Link -> Modifier.clickable(role = Role.Button, onClickLabel = external, onClick = entry.onOpen)
+        is SettingsEntry.Metadata -> Modifier
     }
     Column(Modifier.fillMaxWidth().heightIn(min = 67.5.dp).inkFocus().then(action)
         .semantics(mergeDescendants = true) {
@@ -193,6 +195,9 @@ private fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit)
         IndexLine(entry.title, value)
         if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
             lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
+        if (entry is SettingsEntry.Open && entry.summary.isNotEmpty()) Text(entry.summary,
+            fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 16.5.sp, fontWeight = FontWeight.Bold,
+            color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
     }
 }
 
@@ -225,6 +230,23 @@ private fun PageArrow(next: Boolean, modifier: Modifier, onClick: () -> Unit) {
 }
 
 @Composable
+private fun IndexGroup(group: SettingsGroup, onChoice: (SettingsEntry.Value) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        GroupHeading(group.title)
+        group.visibleEntries.forEach { entry -> Entry(entry, onChoice) }
+    }
+}
+
+/** The same footer is measured for allocation and placed below the current page's content. */
+@Composable
+private fun ChapterFooter(page: Int, count: Int, notice: NoticeContent?, onPage: (Int) -> Unit) {
+    Column(Modifier.fillMaxWidth()) {
+        if (notice != null) Notice(notice)
+        if (count > 1) Pager(page, count, notice != null, onPage)
+    }
+}
+
+@Composable
 fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier: Modifier = Modifier,
     notice: NoticeContent? = null, noticeGroup: String? = null) {
     var page by rememberSaveable(category.id) { mutableIntStateOf(0) }
@@ -232,53 +254,62 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
     var choice by remember { mutableStateOf<SettingsEntry.Value?>(null) }
     var help by remember { mutableStateOf(false) }
     val groups = category.groups.filter { it.visibleEntries.isNotEmpty() }
-    var pageGroups by remember(category.id) { mutableStateOf<List<String>>(emptyList()) }
-    val activeNotice = notice?.takeIf { noticeGroup == null || noticeGroup in pageGroups }
     BackHandler { onBack() }
     Column(modifier.fillMaxSize()) {
         ChapterHeader(category.title, category.help, onBack) { help = true }
-        // Measure entire groups; capacity uses the actual viewport and localized text heights.
+        // The body constraint is independent of the current page's footer. Measure the same
+        // footer grammar for each candidate, including wrapped/localized Notice text.
         var drag by remember { mutableFloatStateOf(0f) }
-        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().pointerInput(count) {
+        val scroll = rememberScrollState()
+        SubcomposeLayout(Modifier.weight(1f).fillMaxWidth().pointerInput(count) {
             detectVerticalDragGestures(onDragStart = { drag = 0f }, onDragEnd = {
                 if (abs(drag) > 80 && count > 1) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
             }, onVerticalDrag = { _, amount -> drag += amount })
-        }) {
-            val viewportHeight = maxHeight
-            val scroll = rememberScrollState()
-            SubcomposeLayout(Modifier.fillMaxWidth().heightIn(min = viewportHeight).verticalScroll(scroll)) { constraints ->
-                val childConstraints = Constraints(maxWidth = constraints.maxWidth)
-                val measured = groups.map { group ->
-                    subcompose(group.id) {
-                        Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                            GroupHeading(group.title)
-                            group.visibleEntries.forEach { entry -> Entry(entry) { choice = it } }
-                        }
-                    }.single().measure(childConstraints)
-                }
-                // Reserve the Notice on every candidate page containing its prerequisite group.
-                // The footer's maximum intrinsic budget prevents page-count oscillation between pages.
-                val groupGap = 9.dp.roundToPx()
-                val pages = paginateGroups(groups.map { it.visibleEntries.size }, measured.map { it.height + groupGap }, viewportHeight.roundToPx() + groupGap)
-                if (count != pages.size.coerceAtLeast(1)) count = pages.size.coerceAtLeast(1)
-                val current = page.coerceIn(0, count - 1)
-                if (page != current) page = current
-                val range = pages.getOrNull(current) ?: IntRange.EMPTY
-                val ids = range.map { groups[it].id }
-                if (pageGroups != ids) pageGroups = ids
-                val height = max(viewportHeight.roundToPx(), range.sumOf { measured[it].height } + (range.count() - 1).coerceAtLeast(0) * groupGap)
-                layout(constraints.maxWidth, height) {
-                    var y = 0
-                    range.forEach { i -> measured[i].placeRelative(0, y); y += measured[i].height + groupGap }
-                }
+        }) { constraints ->
+            val childConstraints = Constraints(maxWidth = constraints.maxWidth)
+            val measured = groups.map { group ->
+                subcompose("measure-${group.id}") { IndexGroup(group) {} }.single().measure(childConstraints)
             }
-            LaunchedEffect(page) { scroll.scrollTo(0) }
+            fun noticeFor(range: IntRange) = notice?.takeIf {
+                noticeGroup == null || range.any { groups[it].id == noticeGroup }
+            }
+            val footerHeights = mutableMapOf<Pair<Boolean, Boolean>, Int>()
+            fun footerHeight(paged: Boolean, hasNotice: Boolean): Int = footerHeights.getOrPut(paged to hasNotice) {
+                subcompose("measure-footer-$paged-$hasNotice") {
+                    ChapterFooter(0, if (paged) 2 else 1,
+                        if (hasNotice) notice?.copy(announcementPending = false, onAnnounced = {}) else null) {}
+                }.single().measure(childConstraints).height
+            }
+            val groupGap = 9.dp.roundToPx()
+            val all = groups.indices
+            val singleFits = groups.sumOf { it.visibleEntries.size } <= 6 &&
+                measured.sumOf { it.height } + (groups.size - 1).coerceAtLeast(0) * groupGap <=
+                constraints.maxHeight - footerHeight(false, noticeFor(all) != null)
+            val pages = if (singleFits) listOf(all) else paginateGroups(
+                groups.map { it.visibleEntries.size }, measured.map { it.height + groupGap }) { candidate ->
+                constraints.maxHeight - footerHeight(true, noticeFor(candidate) != null) + groupGap
+            }
+            val pageCount = pages.size.coerceAtLeast(1)
+            if (count != pageCount) count = pageCount
+            val current = page.coerceIn(0, pageCount - 1)
+            if (page != current) page = current
+            val range = pages.getOrNull(current) ?: IntRange.EMPTY
+            val activeNotice = noticeFor(range)
+            val footer = subcompose("footer") {
+                ChapterFooter(current, pageCount, activeNotice) { page = it }
+            }.single().measure(childConstraints)
+            val contentHeight = (constraints.maxHeight - footer.height).coerceAtLeast(0)
+            val content = subcompose("content") {
+                Column(Modifier.fillMaxWidth().verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    range.forEach { index -> IndexGroup(groups[index]) { choice = it } }
+                }
+            }.single().measure(Constraints.fixed(constraints.maxWidth, contentHeight))
+            layout(constraints.maxWidth, constraints.maxHeight) {
+                content.placeRelative(0, 0)
+                footer.placeRelative(0, contentHeight)
+            }
         }
-        // Reserve the shared bottom lane independently of the current page's reminder visibility.
-        if (notice != null) {
-            if (activeNotice != null) Notice(activeNotice) else Spacer(Modifier.height(if (count > 1) 33.dp else 48.dp))
-        }
-        if (count > 1) Pager(page, count, activeNotice != null) { page = it }
+        LaunchedEffect(page) { scroll.scrollTo(0) }
     }
     choice?.let { selected ->
         ChoiceSheet(selected.title, selected.choices, selected.selected, { id -> selected.onSelect(id) }, { choice = null })

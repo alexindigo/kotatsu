@@ -52,9 +52,11 @@ class LockscreenWidgetsSettingsInstrumentedTest {
             }
             val ui = PlatformUiDriver(instrumentation)
             ui.click(context.getString(R.string.cat_lockscreen))
-            ui.scrollTo(context.getString(R.string.lockscreen_music_widget_desc) + "\n" + context.getString(R.string.action_service_off))
+            ui.await("Lock screen chapter did not open") { ui.has(context.getString(R.string.lockscreen_widget_desc)) }
+            if (!ui.has(context.getString(R.string.lockscreen_music_widget_desc))) ui.click(context.getString(R.string.paper_next_page))
+            ui.await("Lock screen widgets chapter did not open") { ui.has(context.getString(R.string.lockscreen_music_widget_desc)) }
             assertFalse(ui.has(context.getString(R.string.lockscreen_widgets)))
-            ui.scrollTo(context.getString(R.string.lockscreen_message_desc))
+            assertTrue(ui.has(context.getString(R.string.lockscreen_message_desc)))
             assertFalse("Mudita-only widget row was rendered", ui.has(context.getString(R.string.lockscreen_widgets)))
             assertFalse(ui.has("Lock-screen panel (test)"))
             instrumentation.runOnMainSync {

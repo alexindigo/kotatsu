@@ -72,10 +72,11 @@ class StoredFeatureSwitchInstrumentedTest {
             }
             val ui = PlatformUiDriver(instrumentation)
             ui.click(context.getString(category))
-            // The notifications page header and switch title have identical text.
-            // The row's description identifies the switch without matching that header.
-            val label = context.getString(description) + "\n" + context.getString(R.string.action_service_off)
-            ui.scrollTo(label)
+            val chapterAnchor = if (category == R.string.cat_lockscreen) R.string.lockscreen_widget_desc else R.string.screensaver_enable_desc
+            ui.await("Feature chapter did not open") { ui.has(context.getString(chapterAnchor)) }
+            val label = context.getString(description)
+            if (!ui.has(label)) ui.click(context.getString(R.string.paper_next_page))
+            ui.await("Chapter did not expose the stored feature row") { ui.has(label) }
             ui.await("Stored-on ${context.getString(title)} was shown off without the service") { ui.checked(label) == true }
             ui.click(label)
             ui.await("Turning off did not persist false") { !prefs.read() && ui.checked(label) == false }

@@ -4,6 +4,27 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SettingsModelTest {
+    @Test fun footerCapacityBelongsOnlyToItsCandidatePage() {
+        val counts = listOf(3, 2, 3, 1)
+        val heights = listOf(239, 180, 230, 90)
+        // The five-row first page has the ordinary pager, the second owns the Notice.
+        assertEquals(listOf(0..1, 2..3), paginateGroups(counts, heights) { range ->
+            if (2 in range) 411 else 444
+        })
+        // A genuinely taller Notice can move whole groups, never overlap the rows.
+        assertEquals(listOf(0..1, 2..2, 3..3), paginateGroups(counts, heights) { range ->
+            if (2 in range) 250 else 444
+        })
+    }
+
+    @Test fun chaptersKeepBalancedWholeGroupPagesWhenNoticeIsDismissed() {
+        // A tall viewport must not turn Screensaver 4/4 or System 4/3 into an arbitrary
+        // short first page just because several equally small page-count solutions fit.
+        assertEquals(listOf(0..1, 2..3), paginateGroups(listOf(3, 1, 3, 1), listOf(230, 90, 230, 90), 450))
+        assertEquals(listOf(0..1, 2..3), paginateGroups(listOf(2, 2, 1, 2), listOf(160, 160, 90, 160), 450))
+        assertEquals(listOf(0..1, 2..3), paginateGroups(listOf(3, 2, 3, 1), listOf(230, 160, 230, 90), 450))
+    }
+
     @Test fun appearanceKeepsIconsApartFromScreenAndEink() {
         assertEquals(listOf(0..0, 1..2), paginateGroups(listOf(3, 3, 2), listOf(230, 230, 160), 411))
     }

@@ -78,7 +78,9 @@ class DraftsAndPickersInstrumentedTest {
             fun open() {
                 scenario.onActivity { it.viewModel.navigateTo(Screen.SETTINGS) }
                 ui.click(context.getString(R.string.cat_lockscreen))
-                ui.scrollTo(context.getString(R.string.lockscreen_message))
+                ui.await("Lock screen chapter not rendered") { ui.has(context.getString(R.string.lockscreen_widget_desc)) }
+                if (!ui.has(context.getString(R.string.lockscreen_message))) ui.click(context.getString(R.string.paper_next_page))
+                ui.await("Lock screen message chapter not rendered") { ui.has(context.getString(R.string.lockscreen_message)) }
                 ui.click(context.getString(R.string.lockscreen_message))
                 ui.await("Message editor not rendered") { ui.has(context.getString(R.string.save)) }
             }

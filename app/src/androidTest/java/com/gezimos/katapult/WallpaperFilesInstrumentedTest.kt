@@ -124,7 +124,8 @@ class WallpaperFilesInstrumentedTest {
             ui.click(context.getString(R.string.screensaver))
             ui.await("Screensaver category is not ready") { ui.has(context.getString(R.string.screensaver_enable_desc)) }
             assertEquals(true, ui.checked(context.getString(R.string.screensaver_enable_desc)))
-            ui.scrollTo(context.getString(R.string.screensaver_wallpaper_home))
+            if (!ui.has(context.getString(R.string.screensaver_wallpaper_home))) ui.click(context.getString(R.string.paper_next_page))
+            ui.await("Screensaver background chapter is not ready") { ui.has(context.getString(R.string.screensaver_wallpaper_home)) }
             save(model, context, Uri.fromFile(source), true)
             ui.await("Async save did not update the visible Settings row") {
                 ui.has(context.getString(R.string.clear_image)) && ui.has(context.getString(R.string.screensaver_wallpaper_custom))

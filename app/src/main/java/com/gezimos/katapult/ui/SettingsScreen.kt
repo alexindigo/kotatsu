@@ -12,7 +12,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,21 +33,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material.icons.rounded.ArrowDownward
 import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.DeleteForever
 import androidx.compose.material.icons.rounded.DoneAll
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Home
-import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.RadioButtonChecked
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.RemoveDone
@@ -75,14 +69,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.layout.SubcomposeLayout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.disabled
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.MainViewModel
@@ -111,12 +103,17 @@ import kotlin.math.abs
 import com.gezimos.katapult.ui.settings.ContentsEntry
 import com.gezimos.katapult.ui.settings.NoticeContent
 import com.gezimos.katapult.ui.settings.PaperIndexRenderer
-import com.gezimos.katapult.ui.settings.SettingsSummaries
 import com.gezimos.katapult.ui.settings.TableOfContents
 import com.gezimos.katapult.ui.settings.appearanceCategory
+import com.gezimos.katapult.ui.settings.homeCategory
+import com.gezimos.katapult.ui.settings.appsCategory
+import com.gezimos.katapult.ui.settings.gesturesCategory
+import com.gezimos.katapult.ui.settings.notificationsCategory
+import com.gezimos.katapult.ui.settings.lockCategory
+import com.gezimos.katapult.ui.settings.screensaverCategory
+import com.gezimos.katapult.ui.settings.systemCategory
+import com.gezimos.katapult.ui.settings.aboutCategory
 
-private val ClockFormats = listOf("system", "HH:mm", "hh:mm a", "h:mm a", "h:mm")
-private val DateFormats = listOf("system", "EEE, MMM d", "EEEE, MMMM d", "MMMM d, yyyy", "M/d/yyyy", "yyyy-MM-dd")
 private val sensitiveRows = listOf(
     SensitiveChoice.SMS_BADGES to R.string.policy_sms_badges,
     SensitiveChoice.CALL_BADGES to R.string.policy_call_badges,
@@ -128,10 +125,6 @@ private val sensitiveRows = listOf(
     SensitiveChoice.MEDIA_CONTROLS to R.string.policy_media_controls,
     SensitiveChoice.ACCESSIBILITY_FEATURES to R.string.policy_accessibility_features,
 )
-
-private fun formatLabel(pattern: String): String =
-    if (pattern == "system") "System"
-    else java.text.SimpleDateFormat(pattern, java.util.Locale.getDefault()).format(java.util.Date())
 
 @Composable
 fun SettingsScreen(
@@ -178,13 +171,7 @@ fun SettingsScreen(
     var hideAppNames by remember { mutableStateOf(prefs.hideAppNames) }
     var hideArrowButtons by remember { mutableStateOf(prefs.hideArrowButtons) }
     var homeLongPress by remember { mutableIntStateOf(prefs.homeLongPressAction) }
-    var showLongPressSheet by remember { mutableStateOf(false) }
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
-    var showSortSheet by remember { mutableStateOf(false) }
-    var lockscreenMessage by remember { mutableStateOf(prefs.lockscreenMessage.orEmpty()) }
-    var showClockFormatSheet by remember { mutableStateOf(false) }
-    var showDateFormatSheet by remember { mutableStateOf(false) }
-    var showDoubleTapSheet by remember { mutableStateOf(false) }
     var showScreensaverModeSheet by remember { mutableStateOf(false) }
     var showScreensaverCustomSheet by remember { mutableStateOf(false) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
@@ -202,10 +189,6 @@ fun SettingsScreen(
     var showLockscreenApps by remember { mutableStateOf(false) }
     var showHiddenApps by remember { mutableStateOf(false) }
     var showSystemApps by remember { mutableStateOf(false) }
-    var showLockscreenReadMe by remember { mutableStateOf(false) }
-    var showNotificationsReadMe by remember { mutableStateOf(false) }
-    var showScreensaverReadMe by remember { mutableStateOf(false) }
-    var showGesturesReadMe by remember { mutableStateOf(false) }
     var showPermissionsSheet by remember { mutableStateOf(false) }
     var showConfigSheet by remember { mutableStateOf(false) }
     var showClearConfirm by remember { mutableStateOf(false) }
@@ -243,17 +226,9 @@ fun SettingsScreen(
         }
     }
 
-    var currentPage by remember { mutableIntStateOf(0) }
-    var pageCount by remember { mutableIntStateOf(1) }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
     var selectedCategory by rememberSaveable { mutableStateOf<Int?>(null) }
 
     BackHandler(enabled = selectedCategory != null) { selectedCategory = null }
-
-    LaunchedEffect(pageCount) {
-        if (currentPage >= pageCount) currentPage = (pageCount - 1).coerceAtLeast(0)
-    }
-    LaunchedEffect(selectedCategory) { currentPage = 0 }
 
     val notice = if (viewModel.actionServiceNotice.visible) NoticeContent(
         message = stringResource(R.string.paper_service_off),
@@ -291,808 +266,120 @@ fun SettingsScreen(
         onRefreshHome = { einkRefreshOnHome = it; prefs.einkRefreshOnHome = it },
     )
 
+    val home = homeCategory(clockFormat, dateFormat, showAlarm, showBattery, weatherSource != null, showWeather,
+        weatherCelsius, homeExtraRow, homeIslands, disableMusicWidget,
+        onClock = { clockFormat = it; prefs.clockFormat = it; viewModel.updateClock() },
+        onDate = { dateFormat = it; prefs.dateFormat = it; viewModel.updateClock() },
+        onAlarm = { showAlarm = it; prefs.showAlarm = it }, onBattery = { showBattery = it; prefs.showBattery = it },
+        onWeather = { showWeather = it; prefs.showWeather = it; viewModel.refreshWeather(force = true) },
+        onCelsius = { weatherCelsius = it; prefs.weatherCelsius = it },
+        onDock = { homeExtraRow = it; prefs.homeExtraRow = it }, onBackgrounds = { homeIslands = it; prefs.homeIslands = it },
+        onMusic = { disableMusicWidget = !it; prefs.disableMusicWidget = !it })
+    val apps = appsCategory(isMudita, appSortMode, showKatapultIcon, hideAllAppsButton, infiniteScroll, hideArrowButtons,
+        onSort = {
+            appSortMode = it; prefs.appSortMode = it; viewModel.loadApps()
+            if (it != PrefsManager.APP_SORT_MANUAL && !UsageHelper.hasPermission(context)) UsageHelper.openSettings(context)
+        },
+        onIcon = { showKatapultIcon = it; prefs.showKatapultIcon = it; viewModel.loadApps() },
+        onHidden = { showHiddenApps = true }, onSystem = { showSystemApps = true },
+        onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
+        onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
+    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress,
+        onSwipe = { swipeUpAllApps = it; prefs.swipeUpAllApps = it },
+        onVertical = { verticalAppGestures = it; prefs.verticalAppGestures = it },
+        onDoubleTap = {
+            doubleTapAction = it; prefs.doubleTapAction = it
+            if (it == PrefsManager.DOUBLE_TAP_LOCK && !LockscreenWidgetService.isEnabled(context))
+                viewModel.requestActionService(AccessibilityFeature.DOUBLE_TAP_LOCK)
+        }, onLongPress = { homeLongPress = it; prefs.homeLongPressAction = it })
+    val notificationAccess = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
+    val notifications = notificationsCategory(notificationIndicators, notificationAccess,
+        onIndicators = { requested ->
+            notificationIndicators = requested; prefs.notificationIndicators = requested
+            if (requested && !NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)) {
+                try { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) }
+                catch (_: Exception) { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", context.packageName, null)
+                }) }
+            }
+        }, onApps = {
+            try { context.startActivity(Intent().apply { component = ComponentName("com.android.settings", "com.android.settings.Settings\$NotificationAppListActivity") }) }
+            catch (_: Exception) {}
+        }, onLog = {
+            try { context.startActivity(Intent().apply { component = ComponentName("com.android.settings", "com.android.settings.Settings\$NotificationStationActivity") }) }
+            catch (_: Exception) {}
+        }, onHistory = { try { context.startActivity(Intent("android.settings.NOTIFICATION_HISTORY")) } catch (_: Exception) {} })
+    val lock = lockCategory(isMudita, weatherSource != null, lockscreenWidget, lockscreenLatestFirst,
+        lockscreenMusicWidget, lockscreenWeather, widgetSettings.enabled, widgetSettings.rows.size,
+        onNotifications = { requested ->
+            val serviceOn = LockscreenWidgetService.isEnabled(context)
+            actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
+            if (!requested || serviceOn) { lockscreenWidget = requested; prefs.lockscreenWidget = requested }
+            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WIDGET)
+        }, onApps = { showLockscreenApps = true },
+        onLatest = { lockscreenLatestFirst = it; prefs.lockscreenWidgetLatestFirst = it },
+        onMusic = { requested ->
+            val serviceOn = LockscreenWidgetService.isEnabled(context)
+            actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
+            if (!requested || serviceOn) { lockscreenMusicWidget = requested; prefs.lockscreenMusicWidget = requested }
+            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MEDIA)
+        }, onWeather = { requested ->
+            val serviceOn = LockscreenWidgetService.isEnabled(context)
+            actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
+            if (!requested || serviceOn) { lockscreenWeather = requested; prefs.lockscreenWeather = requested }
+            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
+        }, onWidgets = { widgetSettings.refresh(); showLockscreenWidgetsSheet = true }, onMessage = viewModel::beginLockscreenMessage)
+    val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
+        screensaverIslands, screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
+        screensaverDoubleTapBrightness, screensaverOnPower, screensaverAppIcon, screensaverUpdateMode,
+        onEnabled = { screensaverEnabled = it; prefs.screensaverEnabled = it },
+        onSystem = { try { context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS)) } catch (_: Exception) {} },
+        onCustomize = { showScreensaverCustomSheet = true }, onWallpaper = { screensaverWallpaper = it; prefs.screensaverWallpaper = it },
+        onImage = { if (screensaverWallpaperPath != null) viewModel.clearScreensaverWallpaper() else screensaverWallpaperPicker.launch("image/*") },
+        onBrightness = { screensaverDoubleTapBrightness = it; prefs.screensaverDoubleTapBrightness = it },
+        onPower = { requested ->
+            val serviceOn = LockscreenWidgetService.isEnabled(context)
+            actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
+            if (!requested || serviceOn) { screensaverOnPower = requested; prefs.screensaverOnPower = requested }
+            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.POWER_SCREENSAVER)
+        }, onIcon = { screensaverAppIcon = it; ScreensaverShortcut.setIconEnabled(context, it) },
+        onMode = {
+            screensaverUpdateMode = it; prefs.screensaverUpdateMode = it
+            if (it == PrefsManager.SCREENSAVER_MODE_INTERVAL) showScreensaverModeSheet = true
+        })
+    val system = systemCategory(onSensitive = { showSensitiveAccess = true }, onPermissions = { showPermissionsSheet = true },
+        onDefault = { context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) },
+        onSearch = {
+            try { context.startActivity(Intent(Settings.ACTION_APP_SEARCH_SETTINGS)) }
+            catch (_: Exception) { try { context.startActivity(Intent(Settings.ACTION_SETTINGS)) } catch (_: Exception) {} }
+        }, onConfig = { showConfigSheet = true },
+        onAppLicense = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult/blob/main/LICENSE"))) },
+        onFontLicense = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult/blob/main/LICENSE-Lato.txt"))) })
+    val about = aboutCategory(versionName,
+        onSource = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/alexindigo/kotatsu"))) },
+        onUpstream = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult"))) })
+    val chapters = linkedMapOf(R.string.section_appearance to appearance, R.string.section_home to home,
+        R.string.section_all_apps to apps, R.string.section_gestures to gestures, R.string.section_notifications to notifications,
+        R.string.section_experimental to lock, R.string.section_screensaver to screensaver, R.string.section_system to system,
+        R.string.section_about to about)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(LocalSurface.current)
             .statusBarsPadding()
-            .navigationBarsPadding()
-            .then(
-                if (selectedCategory == null || selectedCategory == R.string.section_appearance) Modifier
-                else Modifier.padding(16.dp)
-            ),
+            .navigationBarsPadding(),
     ) {
-        if (selectedCategory != null && selectedCategory != R.string.section_appearance) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            if (selectedCategory != null) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
-                    contentDescription = null,
-                    tint = LocalInk.current,
-                    modifier = Modifier
-                        .clickable { selectedCategory = null }
-                        .padding(end = 8.dp)
-                        .size(30.dp),
-                )
-            }
-            Text(
-                text = selectedCategory?.let { stringResource(it) }
-                    ?: stringResource(R.string.settings),
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.weight(1f),
-            )
-            if (selectedCategory != null && pageCount > 1) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    for (i in 0 until pageCount) {
-                        Box(
-                            Modifier
-                                .padding(horizontal = 2.dp)
-                                .size(6.dp)
-                                .then(
-                                    if (i == currentPage) Modifier.background(LocalInk.current, CircleShape)
-                                    else Modifier.border(1.5.dp, LocalInk.current, CircleShape)
-                                )
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-        }
-
-        val headerIndices = mutableSetOf<Int>()
-        val sectionTitles = mutableListOf<Int>()
-        val sectionStarts = mutableListOf<Int>()
-        val rows = buildList<@Composable () -> Unit> {
-            fun addHeader(titleRes: Int) {
-                sectionTitles += titleRes
-                sectionStarts += size
-                headerIndices += size
-                add { SettingsSectionHeader(stringResource(titleRes)) }
-            }
-            // --- Home Screen ---
-            addHeader(R.string.section_home)
-            add {
-                SettingsCycleRow(
-                    title = stringResource(R.string.clock_format),
-                    description = formatLabel(clockFormat),
-                    onClick = { showClockFormatSheet = true },
-                )
-            }
-            add {
-                SettingsCycleRow(
-                    title = stringResource(R.string.date_format),
-                    description = formatLabel(dateFormat),
-                    onClick = { showDateFormatSheet = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.show_alarm),
-                    description = stringResource(R.string.show_alarm_desc),
-                    checked = showAlarm,
-                    onCheckedChange = {
-                        showAlarm = it
-                        prefs.showAlarm = it
-                    },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.show_battery),
-                    description = stringResource(R.string.show_battery_desc),
-                    checked = showBattery,
-                    onCheckedChange = {
-                        showBattery = it
-                        prefs.showBattery = it
-                    },
-                )
-            }
-            if (weatherSource != null) {
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.show_weather),
-                        description = stringResource(R.string.show_weather_desc),
-                        checked = showWeather,
-                        onCheckedChange = {
-                            showWeather = it
-                            prefs.showWeather = it
-                            viewModel.refreshWeather(force = true)
-                        },
-                    )
-                }
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.weather_celsius),
-                        description = stringResource(R.string.weather_celsius_desc),
-                        checked = weatherCelsius,
-                        onCheckedChange = {
-                            weatherCelsius = it
-                            prefs.weatherCelsius = it
-                        },
-                    )
-                }
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.extra_dock_row),
-                    description = stringResource(R.string.extra_dock_row_desc),
-                    checked = homeExtraRow,
-                    onCheckedChange = {
-                        homeExtraRow = it
-                        prefs.homeExtraRow = it
-                    },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.home_islands),
-                    description = stringResource(R.string.home_islands_desc),
-                    checked = homeIslands,
-                    onCheckedChange = {
-                        homeIslands = it
-                        prefs.homeIslands = it
-                    },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.disable_music_widget),
-                    description = stringResource(R.string.disable_music_widget_desc),
-                    checked = disableMusicWidget,
-                    onCheckedChange = {
-                        disableMusicWidget = it
-                        prefs.disableMusicWidget = it
-                    },
-                )
-            }
-            // --- All Apps ---
-            addHeader(R.string.section_all_apps)
-            add {
-                val sortLabel = when (appSortMode) {
-                    PrefsManager.APP_SORT_RECENT -> stringResource(R.string.app_sort_recent)
-                    PrefsManager.APP_SORT_USED -> stringResource(R.string.app_sort_used)
-                    else -> stringResource(R.string.app_sort_alphabetical)
-                }
-                SettingsCycleRow(
-                    title = stringResource(R.string.app_sort_order),
-                    description = stringResource(R.string.app_sort_order_desc),
-                    value = sortLabel,
-                    onClick = { showSortSheet = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.show_katapult_icon),
-                    description = stringResource(R.string.show_katapult_icon_desc),
-                    checked = showKatapultIcon,
-                    onCheckedChange = {
-                        showKatapultIcon = it
-                        prefs.showKatapultIcon = it
-                        viewModel.loadApps()
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.hidden_apps),
-                    description = stringResource(R.string.hidden_apps_desc),
-                    onClick = { showHiddenApps = true },
-                )
-            }
-            if (isMudita) add {
-                SettingsActionRow(
-                    title = stringResource(R.string.system_apps),
-                    description = stringResource(R.string.system_apps_desc),
-                    onClick = { showSystemApps = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.hide_all_apps_button),
-                    description = stringResource(R.string.hide_all_apps_button_desc),
-                    checked = hideAllAppsButton,
-                    onCheckedChange = {
-                        hideAllAppsButton = it
-                        prefs.hideAllAppsButton = it
-                    },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.infinite_scroll),
-                    description = stringResource(R.string.infinite_scroll_desc),
-                    checked = infiniteScroll,
-                    onCheckedChange = {
-                        infiniteScroll = it
-                        prefs.infiniteScroll = it
-                    },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.hide_arrow_buttons),
-                    description = stringResource(R.string.hide_arrow_buttons_desc),
-                    checked = hideArrowButtons,
-                    onCheckedChange = {
-                        hideArrowButtons = it
-                        prefs.hideArrowButtons = it
-                    },
-                )
-            }
-
-            // --- Gestures ---
-            addHeader(R.string.section_gestures)
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_readme),
-                    description = stringResource(R.string.gestures_readme_desc),
-                    onClick = { showGesturesReadMe = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.swipe_up_all_apps),
-                    description = stringResource(R.string.swipe_up_all_apps_desc),
-                    checked = swipeUpAllApps,
-                    onCheckedChange = {
-                        swipeUpAllApps = it
-                        prefs.swipeUpAllApps = it
-                    },
-                )
-            }
-            add {
-                SettingsCycleRow(
-                    title = stringResource(R.string.app_gesture_direction),
-                    description = if (verticalAppGestures) stringResource(R.string.gesture_vertical)
-                        else stringResource(R.string.gesture_horizontal),
-                    onClick = {
-                        verticalAppGestures = !verticalAppGestures
-                        prefs.verticalAppGestures = verticalAppGestures
-                    },
-                )
-            }
-            add {
-                val actionLabel = when (doubleTapAction) {
-                    PrefsManager.DOUBLE_TAP_BRIGHTNESS -> stringResource(R.string.double_tap_brightness)
-                    PrefsManager.DOUBLE_TAP_LOCK -> stringResource(R.string.double_tap_lock)
-                    else -> stringResource(R.string.double_tap_off)
-                }
-                SettingsCycleRow(
-                    title = stringResource(R.string.double_tap_action),
-                    description = actionLabel,
-                    onClick = { showDoubleTapSheet = true },
-                )
-            }
-            add {
-                val longPressLabel = when (homeLongPress) {
-                    PrefsManager.HOME_LONG_PRESS_NONE ->
-                        stringResource(R.string.home_long_press_none)
-                    PrefsManager.HOME_LONG_PRESS_APP_INFO ->
-                        stringResource(R.string.home_long_press_app_info)
-                    PrefsManager.HOME_LONG_PRESS_MENU ->
-                        stringResource(R.string.home_long_press_menu)
-                    PrefsManager.HOME_LONG_PRESS_CLEAR ->
-                        stringResource(R.string.home_long_press_clear)
-                    else -> stringResource(R.string.home_long_press_edit)
-                }
-                SettingsCycleRow(
-                    title = stringResource(R.string.home_long_press),
-                    description = stringResource(R.string.home_long_press_desc),
-                    value = longPressLabel,
-                    onClick = { showLongPressSheet = true },
-                )
-            }
-
-            // --- Notifications ---
-            addHeader(R.string.section_notifications)
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_readme),
-                    description = stringResource(R.string.notifications_readme_desc),
-                    onClick = { showNotificationsReadMe = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.notification_indicators),
-                    description = stringResource(R.string.notification_indicators_desc),
-                    checked = notificationIndicators,
-                    onCheckedChange = { requested ->
-                        notificationIndicators = requested
-                        prefs.notificationIndicators = requested
-                        val hasPermission = NotificationManagerCompat.getEnabledListenerPackages(context)
-                            .contains(context.packageName)
-                        if (requested && !hasPermission) {
-                                try {
-                                    context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
-                                } catch (_: Exception) {
-                                    context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                                        data = Uri.fromParts("package", context.packageName, null)
-                                    })
-                                }
-                        }
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.app_notifications),
-                    description = stringResource(R.string.app_notifications_desc),
-                    onClick = {
-                        try {
-                            context.startActivity(Intent().apply {
-                                component = android.content.ComponentName(
-                                    "com.android.settings",
-                                    "com.android.settings.Settings\$NotificationAppListActivity"
-                                )
-                            })
-                        } catch (_: Exception) {}
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.notification_log),
-                    description = stringResource(R.string.notification_log_desc),
-                    onClick = {
-                        try {
-                            context.startActivity(Intent().apply {
-                                component = android.content.ComponentName(
-                                    "com.android.settings",
-                                    "com.android.settings.Settings\$NotificationStationActivity"
-                                )
-                            })
-                        } catch (_: Exception) {}
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.notification_history),
-                    description = stringResource(R.string.notification_history_desc),
-                    onClick = {
-                        try {
-                            context.startActivity(Intent("android.settings.NOTIFICATION_HISTORY"))
-                        } catch (_: Exception) {}
-                    },
-                )
-            }
-
-            // --- System ---
-            addHeader(R.string.section_system)
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.sensitive_access),
-                    description = stringResource(R.string.sensitive_access_desc),
-                    onClick = { showSensitiveAccess = true },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.set_default_launcher),
-                    description = stringResource(R.string.set_default_launcher_desc),
-                    onClick = {
-                        context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.search_settings),
-                    description = stringResource(R.string.search_settings_desc),
-                    onClick = {
-                        try {
-                            context.startActivity(Intent(Settings.ACTION_APP_SEARCH_SETTINGS))
-                        } catch (_: Exception) {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_SETTINGS))
-                            } catch (_: Exception) {}
-                        }
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.permissions),
-                    description = stringResource(R.string.permissions_desc),
-                    onClick = { showPermissionsSheet = true },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.config_backup),
-                    description = stringResource(R.string.config_backup_desc),
-                    onClick = { showConfigSheet = true },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lic_app_title),
-                    description = stringResource(R.string.lic_app_desc),
-                    onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult/blob/main/LICENSE"))
-                        )
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lic_font_title),
-                    description = stringResource(R.string.lic_font_desc),
-                    onClick = {
-                        context.startActivity(
-                            Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult/blob/main/LICENSE-Lato.txt"))
-                        )
-                    },
-                )
-            }
-
-            // --- About ---
-            addHeader(R.string.section_about)
-            add {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = stringResource(R.string.app_name),
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = LatoFamily,
-                            color = LocalInk.current,
-                        )
-                        Text(
-                            text = versionName,
-                            fontSize = 14.sp,
-                            fontFamily = LatoFamily,
-                            color = LocalInk.current,
-                        )
-                    }
-                }
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.github_label),
-                    description = stringResource(R.string.github_desc),
-                    onClick = {
-                        context.startActivity(
-                             Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/alexindigo/kotatsu"))
-                        )
-                    },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.upstream_source_label),
-                    description = stringResource(R.string.upstream_source_desc),
-                    onClick = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult")))
-                    },
-                )
-            }
-            // --- Experimental ---
-            addHeader(R.string.section_experimental)
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_readme),
-                    description = stringResource(R.string.lockscreen_readme_desc),
-                    onClick = { showLockscreenReadMe = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.lockscreen_widget),
-                    description = stringResource(R.string.lockscreen_widget_desc) +
-                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
-                    checked = lockscreenWidget,
-                    onCheckedChange = { requested ->
-                        val serviceOn = LockscreenWidgetService.isEnabled(context)
-                        actionServiceEnabled = serviceOn
-                        if (!requested || serviceOn) {
-                            lockscreenWidget = requested
-                            prefs.lockscreenWidget = requested
-                        }
-                        if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WIDGET)
-                    },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.lockscreen_music_widget),
-                    description = stringResource(R.string.lockscreen_music_widget_desc) +
-                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
-                    checked = lockscreenMusicWidget,
-                    onCheckedChange = { requested ->
-                        val serviceOn = LockscreenWidgetService.isEnabled(context)
-                        actionServiceEnabled = serviceOn
-                        if (!requested || serviceOn) {
-                            lockscreenMusicWidget = requested
-                            prefs.lockscreenMusicWidget = requested
-                        }
-                        if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MEDIA)
-                    },
-                )
-            }
-            if (weatherSource != null) add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.lockscreen_weather),
-                    description = stringResource(R.string.lockscreen_weather_desc) +
-                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
-                    checked = lockscreenWeather,
-                    onCheckedChange = { requested ->
-                        val serviceOn = LockscreenWidgetService.isEnabled(context)
-                        actionServiceEnabled = serviceOn
-                        if (!requested || serviceOn) {
-                            lockscreenWeather = requested
-                            prefs.lockscreenWeather = requested
-                        }
-                        if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
-                    },
-                )
-            }
-            if (isMudita) add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_widgets),
-                    description = (if (widgetSettings.enabled)
-                        pluralStringResource(R.plurals.lockscreen_widgets_on, widgetSettings.rows.size, widgetSettings.rows.size)
-                        else stringResource(R.string.lockscreen_widgets_off)) +
-                        if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
-                    onClick = { widgetSettings.refresh(); showLockscreenWidgetsSheet = true },
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_message),
-                    description = lockscreenMessage.ifBlank {
-                        stringResource(R.string.lockscreen_message_desc)
-                    },
-                    onClick = viewModel::beginLockscreenMessage,
-                )
-            }
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_widget_apps),
-                    description = stringResource(R.string.lockscreen_widget_apps_desc),
-                    onClick = { showLockscreenApps = true },
-                )
-            }
-            add {
-                SettingsCycleRow(
-                    title = stringResource(R.string.lockscreen_sort),
-                    description = if (lockscreenLatestFirst) stringResource(R.string.sort_latest_top)
-                        else stringResource(R.string.sort_oldest_top),
-                    onClick = {
-                        lockscreenLatestFirst = !lockscreenLatestFirst
-                        prefs.lockscreenWidgetLatestFirst = lockscreenLatestFirst
-                    },
-                )
-            }
-            addHeader(R.string.section_screensaver)
-            add {
-                SettingsActionRow(
-                    title = stringResource(R.string.lockscreen_readme),
-                    description = stringResource(R.string.screensaver_readme_desc),
-                    onClick = { showScreensaverReadMe = true },
-                )
-            }
-            add {
-                SettingsToggleRow(
-                    title = stringResource(R.string.screensaver),
-                    description = stringResource(R.string.screensaver_enable_desc),
-                    checked = screensaverEnabled,
-                    onCheckedChange = {
-                        screensaverEnabled = it
-                        prefs.screensaverEnabled = it
-                    },
-                )
-            }
-            if (screensaverEnabled) {
-                add {
-                    SettingsActionRow(
-                        title = stringResource(R.string.screensaver_system),
-                        description = stringResource(R.string.screensaver_settings_desc),
-                        onClick = {
-                            try {
-                                context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS))
-                            } catch (_: Exception) {}
-                        },
-                    )
-                }
-                add {
-                    val enabled = listOfNotNull(
-                        stringResource(R.string.screensaver_show_clock).takeIf { screensaverShowClock },
-                        stringResource(R.string.screensaver_show_notifications)
-                            .takeIf { screensaverShowNotifications },
-                        stringResource(R.string.home_islands).takeIf { screensaverIslands },
-                        stringResource(R.string.screensaver_eink_refresh)
-                            .takeIf { screensaverEinkRefresh },
-                    )
-                    SettingsActionRow(
-                        title = stringResource(R.string.screensaver_customization),
-                        description = if (enabled.isEmpty()) {
-                            stringResource(R.string.double_tap_off)
-                        } else {
-                            enabled.joinToString(", ")
-                        },
-                        onClick = { showScreensaverCustomSheet = true },
-                    )
-                }
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.screensaver_wallpaper),
-                        description = stringResource(R.string.screensaver_wallpaper_desc),
-                        checked = screensaverWallpaper,
-                        onCheckedChange = {
-                            screensaverWallpaper = it
-                            prefs.screensaverWallpaper = it
-                        },
-                    )
-                }
-                if (screensaverWallpaper) {
-                    add {
-                        val hasImage = screensaverWallpaperPath != null
-                        SettingsActionRow(
-                            title = if (hasImage) stringResource(R.string.clear_image)
-                                else stringResource(R.string.screensaver_image),
-                            description = if (hasImage) stringResource(R.string.screensaver_wallpaper_custom)
-                                else stringResource(R.string.screensaver_wallpaper_home),
-                            onClick = {
-                                if (hasImage) {
-                                    viewModel.clearScreensaverWallpaper()
-                                } else {
-                                    screensaverWallpaperPicker.launch("image/*")
-                                }
-                            },
-                        )
-                    }
-                }
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.screensaver_double_tap_brightness),
-                        description = stringResource(R.string.screensaver_double_tap_brightness_desc),
-                        checked = screensaverDoubleTapBrightness,
-                        onCheckedChange = {
-                            screensaverDoubleTapBrightness = it
-                            prefs.screensaverDoubleTapBrightness = it
-                        },
-                    )
-                }
-                add {
-                    val modeLabel = when (screensaverUpdateMode) {
-                        PrefsManager.SCREENSAVER_MODE_INTERVAL -> stringResource(R.string.screensaver_mode_interval)
-                        PrefsManager.SCREENSAVER_MODE_STATIC -> stringResource(R.string.screensaver_mode_static)
-                        else -> stringResource(R.string.screensaver_mode_auto)
-                    }
-                    SettingsCycleRow(
-                        title = stringResource(R.string.screensaver_update_mode),
-                        description = modeLabel,
-                        onClick = { showScreensaverModeSheet = true },
-                    )
-                }
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.screensaver_on_power),
-                        description = stringResource(R.string.screensaver_on_power_desc) +
-                            if (actionServiceEnabled) "" else "\n" + stringResource(R.string.action_service_off),
-                        checked = screensaverOnPower,
-                        onCheckedChange = { requested ->
-                            val serviceOn = LockscreenWidgetService.isEnabled(context)
-                            actionServiceEnabled = serviceOn
-                            if (!requested || serviceOn) {
-                                screensaverOnPower = requested
-                                prefs.screensaverOnPower = requested
-                            }
-                            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.POWER_SCREENSAVER)
-                        },
-                    )
-                }
-                add {
-                    SettingsToggleRow(
-                        title = stringResource(R.string.screensaver_app_icon),
-                        description = stringResource(R.string.screensaver_app_icon_desc),
-                        checked = screensaverAppIcon,
-                        onCheckedChange = {
-                            screensaverAppIcon = it
-                            ScreensaverShortcut.setIconEnabled(context, it)
-                        },
-                    )
-                }
-            }
-        }
-
         if (selectedCategory == null) {
-            val notificationAccess = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
-            val entries = listOf(
-                R.string.section_appearance to appearance.summary,
-                R.string.section_home to SettingsSummaries.home(stringResource(
-                    if (showAlarm) R.string.paper_summary_home_on else R.string.paper_summary_home_off),
-                    if (homeExtraRow) 3 else 0),
-                R.string.section_all_apps to stringResource(when (appSortMode) {
-                    PrefsManager.APP_SORT_RECENT -> R.string.app_sort_recent
-                    PrefsManager.APP_SORT_USED -> R.string.app_sort_used
-                    else -> R.string.app_sort_alphabetical
-                }),
-                R.string.section_gestures to stringResource(if (verticalAppGestures) R.string.gesture_vertical else R.string.gesture_horizontal),
-                R.string.section_notifications to stringResource(if (notificationAccess) R.string.paper_access_granted else R.string.paper_access_missing),
-                R.string.section_experimental to pluralStringResource(R.plurals.paper_widgets_configured, widgetSettings.rows.size, widgetSettings.rows.size),
-                R.string.section_screensaver to stringResource(if (screensaverEnabled) R.string.paper_on else R.string.paper_off),
-                R.string.section_system to stringResource(R.string.paper_summary_system),
-                R.string.section_about to stringResource(R.string.paper_summary_about, versionName),
-            ).map { (id, summary) -> ContentsEntry(id.toString(),
-                stringResource(if (id == R.string.section_experimental) R.string.cat_lockscreen else id), summary) { selectedCategory = id } }
-            TableOfContents(stringResource(R.string.settings), entries, notice, Modifier.weight(1f))
-        } else if (selectedCategory == R.string.section_appearance) {
-            PaperIndexRenderer(appearance, { selectedCategory = null }, Modifier.weight(1f), notice, "screen")
-        } else {
-            val sel = sectionTitles.indexOf(selectedCategory).coerceIn(0, (sectionStarts.size - 1).coerceAtLeast(0))
-            val start = sectionStarts[sel] + 1
-            val end = sectionStarts.getOrElse(sel + 1) { rows.size }
-            val activeRows = rows.subList(start, end)
-            SubcomposeLayout(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .pointerInput(sel) {
-                        detectVerticalDragGestures(
-                            onDragStart = { dragAccumulator = 0f },
-                            onDragEnd = {
-                                if (abs(dragAccumulator) > 80f && pageCount > 1) {
-                                    val delta = if (dragAccumulator < 0) 1 else -1
-                                    currentPage = (currentPage + delta).coerceIn(0, pageCount - 1)
-                                }
-                            },
-                            onVerticalDrag = { _, amount -> dragAccumulator += amount },
-                        )
-                    },
-            ) { constraints ->
-                val childConstraints = Constraints(maxWidth = constraints.maxWidth)
-                val rowPlaceables = activeRows.mapIndexed { i, content ->
-                    subcompose(i) { content() }.map { it.measure(childConstraints) }
-                }
-                val rowHeights = rowPlaceables.map { ps -> ps.sumOf { it.height } }
-
-                val groups = mutableListOf<IntRange>()
-                var groupStart = 0
-                var accH = 0
-                for (i in rowHeights.indices) {
-                    if (accH + rowHeights[i] > constraints.maxHeight && i > groupStart) {
-                        groups.add(groupStart until i)
-                        groupStart = i
-                        accH = rowHeights[i]
-                    } else {
-                        accH += rowHeights[i]
-                    }
-                }
-                if (groupStart < rowHeights.size) groups.add(groupStart until rowHeights.size)
-                if (groups.isEmpty()) groups.add(0 until 0)
-
-                if (pageCount != groups.size) pageCount = groups.size
-
-                val page = currentPage.coerceIn(0, groups.size - 1)
-                val visible = groups[page]
-
-                layout(constraints.maxWidth, constraints.maxHeight) {
-                    var y = 0
-                    for (i in visible) {
-                        for (p in rowPlaceables[i]) {
-                            p.place(0, y)
-                            y += p.height
-                        }
-                    }
-                }
+            val entries = chapters.map { (id, chapter) ->
+                ContentsEntry(chapter.id, chapter.title, chapter.summary) { selectedCategory = id }
             }
+            TableOfContents(stringResource(R.string.settings), entries, notice, Modifier.weight(1f))
+        } else {
+            val chapter = chapters.getValue(selectedCategory!!)
+            val chapterNotice = notice.takeIf { chapter.id in setOf("appearance", "lock", "screensaver") && (chapter.id != "screensaver" || screensaverEnabled) }
+            PaperIndexRenderer(chapter, { selectedCategory = null }, Modifier.weight(1f), chapterNotice,
+                when (chapter.id) { "appearance" -> "screen"; "screensaver" -> "interaction"; else -> null })
         }
     }
 
@@ -1115,138 +402,6 @@ fun SettingsScreen(
             viewModel = viewModel,
             onDismiss = { showSystemApps = false },
         )
-    }
-
-    if (showLockscreenReadMe) {
-        BottomSheet(onDismiss = { showLockscreenReadMe = false }) {
-            Text(
-                text = stringResource(R.string.lockscreen_readme),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.lockscreen_readme_privacy),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.a11y_shortcut_warning),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.lockscreen_readme_usage),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-    }
-
-    if (showNotificationsReadMe) {
-        BottomSheet(onDismiss = { showNotificationsReadMe = false }) {
-            Text(
-                text = stringResource(R.string.lockscreen_readme),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.notifications_readme_control),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.notifications_readme_debug),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-    }
-
-    if (showScreensaverReadMe) {
-        BottomSheet(onDismiss = { showScreensaverReadMe = false }) {
-            Text(
-                text = stringResource(R.string.lockscreen_readme),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.screensaver_readme_accessibility),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.a11y_shortcut_warning),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.screensaver_readme_about),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.screensaver_readme_use),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.screensaver_readme_modes),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-    }
-
-    if (showGesturesReadMe) {
-        BottomSheet(onDismiss = { showGesturesReadMe = false }) {
-            Text(
-                text = stringResource(R.string.lockscreen_readme),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.gestures_readme_nav),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            Text(
-                text = stringResource(R.string.gestures_readme_apps),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
     }
 
     if (showLockscreenWidgetsSheet && widgetChoice == null && widgetProviders == null) {
@@ -1311,7 +466,6 @@ fun SettingsScreen(
                     viewModel.lockscreenMessageDraft = null
                     val serviceOn = LockscreenWidgetService.isEnabled(context)
                     actionServiceEnabled = serviceOn
-                    lockscreenMessage = text
                     prefs.lockscreenMessage = text
                     if (text.isNotBlank() && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MESSAGE)
                 }
@@ -1484,46 +638,6 @@ fun SettingsScreen(
         }
     }
 
-    if (showSortSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.app_sort_order),
-            options = listOf(
-                PrefsManager.APP_SORT_MANUAL to stringResource(R.string.app_sort_alphabetical),
-                PrefsManager.APP_SORT_RECENT to stringResource(R.string.app_sort_recent),
-                PrefsManager.APP_SORT_USED to stringResource(R.string.app_sort_used),
-            ),
-            selected = appSortMode,
-            onSelect = { mode ->
-                appSortMode = mode
-                prefs.appSortMode = mode
-                viewModel.loadApps()
-                if (mode != PrefsManager.APP_SORT_MANUAL && !UsageHelper.hasPermission(context)) {
-                    UsageHelper.openSettings(context)
-                }
-            },
-            onDismiss = { showSortSheet = false },
-        )
-    }
-
-    if (showLongPressSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.home_long_press),
-            options = listOf(
-                PrefsManager.HOME_LONG_PRESS_APP_INFO to stringResource(R.string.home_long_press_app_info),
-                PrefsManager.HOME_LONG_PRESS_MENU to stringResource(R.string.home_long_press_menu),
-                PrefsManager.HOME_LONG_PRESS_CLEAR to stringResource(R.string.home_long_press_clear),
-                PrefsManager.HOME_LONG_PRESS_EDIT to stringResource(R.string.home_long_press_edit),
-                PrefsManager.HOME_LONG_PRESS_NONE to stringResource(R.string.home_long_press_none),
-            ),
-            selected = homeLongPress,
-            onSelect = {
-                homeLongPress = it
-                prefs.homeLongPressAction = it
-            },
-            onDismiss = { showLongPressSheet = false },
-        )
-    }
-
     if (showScreensaverModeSheet) {
         var minutesText by remember {
             mutableStateOf(
@@ -1629,54 +743,6 @@ fun SettingsScreen(
                 ),
             ),
             onDismiss = { showScreensaverCustomSheet = false },
-        )
-    }
-
-    if (showDoubleTapSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.double_tap_action),
-            options = listOf(
-                PrefsManager.DOUBLE_TAP_OFF to stringResource(R.string.double_tap_off),
-                PrefsManager.DOUBLE_TAP_BRIGHTNESS to stringResource(R.string.double_tap_brightness),
-                PrefsManager.DOUBLE_TAP_LOCK to stringResource(R.string.double_tap_lock),
-            ),
-            selected = doubleTapAction,
-            onSelect = {
-                doubleTapAction = it
-                prefs.doubleTapAction = it
-                if (it == PrefsManager.DOUBLE_TAP_LOCK && !LockscreenWidgetService.isEnabled(context)) {
-                    viewModel.requestActionService(AccessibilityFeature.DOUBLE_TAP_LOCK)
-                }
-            },
-            onDismiss = { showDoubleTapSheet = false },
-        )
-    }
-
-    if (showClockFormatSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.clock_format),
-            options = ClockFormats.map { it to formatLabel(it) },
-            selected = clockFormat,
-            onSelect = {
-                clockFormat = it
-                prefs.clockFormat = it
-                viewModel.updateClock()
-            },
-            onDismiss = { showClockFormatSheet = false },
-        )
-    }
-
-    if (showDateFormatSheet) {
-        ChoiceSheet(
-            title = stringResource(R.string.date_format),
-            options = DateFormats.map { it to formatLabel(it) },
-            selected = dateFormat,
-            onSelect = {
-                dateFormat = it
-                prefs.dateFormat = it
-                viewModel.updateClock()
-            },
-            onDismiss = { showDateFormatSheet = false },
         )
     }
 
@@ -2202,25 +1268,6 @@ private fun AppChecklistSheet(
 }
 
 @Composable
-private fun SettingsSectionHeader(title: String) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp, bottom = 3.dp),
-    ) {
-        Text(
-            text = title,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-        )
-        Spacer(Modifier.height(3.dp))
-        Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
-    }
-}
-
-@Composable
 fun SettingsToggleRow(
     title: String,
     description: String,
@@ -2274,54 +1321,6 @@ fun SettingsToggleRow(
                         if (checked) LocalSurface.current else LocalInk.current,
                         CircleShape,
                     ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsButtonRow(
-    title: String,
-    description: String,
-    buttonText: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-            Text(
-                text = description,
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        val trackShape = RoundedCornerShape(10.dp)
-        Box(
-            modifier = Modifier
-                .border(2.5.dp, LocalInk.current, trackShape)
-                .clickable(onClick = onClick)
-                .padding(horizontal = 10.dp, vertical = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = buttonText,
-                fontSize = 12.sp,
-                fontFamily = LatoFamily,
-                fontWeight = FontWeight.Bold,
-                color = LocalInk.current,
             )
         }
     }
@@ -2487,36 +1486,6 @@ private fun MultiChoiceSheet(
     }
 }
 
-@Composable
-private fun <T> ChoiceSheet(
-    title: String,
-    options: List<Pair<T, String>>,
-    selected: T,
-    onSelect: (T) -> Unit,
-    onDismiss: () -> Unit,
-) {
-    BottomSheet(onDismiss = onDismiss) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-        options.forEach { (value, label) ->
-            BottomSheetOption(
-                text = label,
-                icon = if (value == selected) Icons.Rounded.RadioButtonChecked
-                else Icons.Rounded.RadioButtonUnchecked,
-            ) {
-                onSelect(value)
-                onDismiss()
-            }
-        }
-    }
-}
-
 /** Size is a choice (radio options); moving, editing and removing are actions (icon + verb, like the app menu). */
 @Composable
 private fun LockscreenWidgetMenu(
@@ -2574,51 +1543,4 @@ private fun widgetSizeTitle(size: com.gezimos.katapult.lockscreen.LockscreenWidg
     com.gezimos.katapult.lockscreen.LockscreenWidgetSize.S -> R.string.lockscreen_widgets_small
     com.gezimos.katapult.lockscreen.LockscreenWidgetSize.M -> R.string.lockscreen_widgets_medium
     com.gezimos.katapult.lockscreen.LockscreenWidgetSize.L -> R.string.lockscreen_widgets_large
-}
-
-@Composable
-private fun SettingsCycleRow(
-    title: String,
-    description: String,
-    value: String = description,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-            Text(
-                text = description,
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-        val trackShape = RoundedCornerShape(10.dp)
-        Box(
-            modifier = Modifier
-                .border(2.5.dp, LocalInk.current, trackShape)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = value,
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                fontWeight = FontWeight.Bold,
-                color = LocalInk.current,
-            )
-        }
-    }
 }

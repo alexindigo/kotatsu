@@ -330,30 +330,30 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Kotatsu Settings index missing") { model.screen == Screen.SETTINGS && ui.has("Notifications") }
         assertEquals(badgeChoice, model.prefs.notificationIndicators)
         ui.click("Notifications")
-        ui.await("Notifications category missing") { ui.has("Notification Indicators") }
+        ui.await("Notifications category missing") { ui.has("Notification indicators") }
         val choiceBefore = model.prefs.notificationIndicators
-        ui.click("Notification Indicators")
+        ui.click("Notification indicators")
         ui.await("Explicit badge choice was not stored") { model.prefs.notificationIndicators != choiceBefore }
         if (!choiceBefore) {
             ui.await("Optional notification access screen missing") { ui.packageVisible("com.android.settings") }
             ui.back()
         }
-        ui.await("Badge choice UI did not return") { ui.has("Notification Indicators") }
+        ui.await("Badge choice UI did not return") { ui.has("Notification indicators") }
         // Wait through multiple status polling periods; no access is granted.
         android.os.SystemClock.sleep(1700)
         assertEquals(!choiceBefore, model.prefs.notificationIndicators)
         assertFalse(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName))
-        ui.click("Notification Indicators")
+        ui.click("Notification indicators")
         ui.await("Original badge choice was not restored") { model.prefs.notificationIndicators == choiceBefore }
         if (choiceBefore) {
             ui.await("Optional status screen missing on explicit enable") { ui.packageVisible("com.android.settings") }
             ui.back()
         }
-        ui.await("Settings category did not return") { ui.has("Notification Indicators") }
+        ui.await("Settings category did not return") { ui.has("Notification indicators") }
         android.os.SystemClock.sleep(1700)
         assertEquals(choiceBefore, model.prefs.notificationIndicators)
         ui.back()
-        ui.await("Category Back skipped Settings index") { model.screen == Screen.SETTINGS && ui.has("Appearance") && !ui.has("Notification Indicators") }
+        ui.await("Category Back skipped Settings index") { model.screen == Screen.SETTINGS && ui.has("Appearance") && !ui.has("Notification indicators") }
         assertEquals(activation, listOf(model.prefs.appSortMode, model.prefs.doubleTapAction,
             model.prefs.lockscreenWidget, model.prefs.lockscreenMusicWidget, model.prefs.screensaverEnabled))
         case("badge-choice-without-access-restored-and-category-back-default-fidelity")

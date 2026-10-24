@@ -52,17 +52,20 @@ class LockscreenWeatherSettingsInstrumentedTest {
             }
             val ui = PlatformUiDriver(instrumentation)
             ui.click(context.getString(R.string.cat_lockscreen))
-            ui.scrollTo(context.getString(R.string.lockscreen_music_widget_desc) + "\n" + context.getString(R.string.action_service_off))
+            ui.await("Lock screen chapter did not open") { ui.has(context.getString(R.string.lockscreen_widget_desc)) }
+            if (!ui.has(context.getString(R.string.lockscreen_music_widget_desc))) ui.click(context.getString(R.string.paper_next_page))
+            ui.await("Lock screen widgets chapter did not open") { ui.has(context.getString(R.string.lockscreen_music_widget_desc)) }
             assertFalse("Unavailable weather row was rendered", ui.has(context.getString(R.string.lockscreen_weather)))
             // The following row proves this is the weather row's actual position,
             // rather than an assertion against an unopened/off-screen page.
-            ui.scrollTo(context.getString(R.string.lockscreen_message_desc))
+            assertTrue(ui.has(context.getString(R.string.lockscreen_message_desc)))
             assertFalse(ui.has(context.getString(R.string.lockscreen_weather)))
             ui.back()
             ui.click(context.getString(R.string.section_home))
             ui.scrollTo(context.getString(R.string.show_alarm))
             assertFalse(ui.has(context.getString(R.string.show_weather)))
-            ui.scrollTo(context.getString(R.string.extra_dock_row))
+            ui.click(context.getString(R.string.paper_next_page))
+            ui.await("Home layout chapter did not open") { ui.has(context.getString(R.string.extra_dock_row)) }
             assertFalse(ui.has(context.getString(R.string.show_weather)))
             assertFalse("Unavailable Celsius row was rendered", ui.has(context.getString(R.string.weather_celsius)))
             instrumentation.runOnMainSync {
