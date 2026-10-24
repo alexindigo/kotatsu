@@ -15,13 +15,13 @@
     <string name="camera">Camera</string>
     <string name="settings">Settings</string>
     <string name="hidden_apps">Hidden apps</string>
-    <string name="hidden_apps_count">Hidden Apps (%1$d)</string>
+    <string name="hidden_apps_count">Hidden apps (%1$d)</string>
     <string name="hidden_apps_hide_column">Hide</string>
     <string name="hidden_apps_notify_column">Notify</string>
-    <string name="hidden_apps_notify_desc">Hidden apps stay off the lock screen unless Notify is ticked.</string>
+    <string name="hidden_apps_notify_desc">Tick Notify for hidden apps on the lock screen</string>
     <string name="hidden_apps_desc">Choose which apps to hide from the app list</string>
     <string name="system_apps">System apps</string>
-    <string name="system_apps_count">System Apps (%1$d)</string>
+    <string name="system_apps_count">System apps (%1$d)</string>
     <string name="system_apps_desc">Hide Android\'s built-in apps, like Mudita does</string>
     <string name="clear_wallpaper">Clear Wallpaper</string>
     <string name="set_wallpaper">Set Wallpaper</string>
@@ -152,7 +152,7 @@
     <string name="config_backup_desc">Save or restore your settings as a JSON file</string>
     <string name="config_export">Export</string>
     <string name="config_import">Import</string>
-    <string name="config_clear">Clear All Data</string>
+    <string name="config_clear">Clear all data</string>
     <string name="config_clear_confirm">Erase all settings and restart Kotatsu?</string>
     <string name="config_exported">Config exported</string>
     <string name="config_export_failed">Export failed</string>
@@ -165,13 +165,13 @@
     <string name="shortcut_already_added">%1$s is already in All Apps</string>
     <string name="permissions">Permissions</string>
     <string name="permissions_desc">See and manage what Kotatsu can access</string>
-    <string name="perm_notification_access">Notification Access</string>
-    <string name="perm_call_log">Call Log</string>
+    <string name="perm_notification_access">Notification access</string>
+    <string name="perm_call_log">Call log</string>
     <string name="perm_sms">SMS</string>
-    <string name="perm_write_settings">Modify System Settings</string>
+    <string name="perm_write_settings">Modify system settings</string>
     <string name="perm_action_service">Kotatsu Action Service</string>
-    <string name="perm_notification_access_desc">Notification badges and lockscreen notifications</string>
-    <string name="perm_action_service_desc">Lockscreen widgets, clock cover, screensaver and locking</string>
+    <string name="perm_notification_access_desc">Notification badges and lock screen notifications</string>
+    <string name="perm_action_service_desc">Lock screen widgets, clock cover, screensaver and locking</string>
     <string name="action_service_off">Action Service is off</string>
     <string name="perm_call_log_desc">Missed calls in the Phone badge</string>
     <string name="perm_sms_desc">Unread messages in the Messages badge</string>
@@ -181,7 +181,7 @@
     <string name="app_sort_alphabetical">Alphabetical</string>
     <string name="app_sort_recent">Most Recent</string>
     <string name="app_sort_used">Most Used</string>
-    <string name="perm_usage_access">Usage Access</string>
+    <string name="perm_usage_access">Usage access</string>
     <string name="perm_usage_access_desc">Sorting apps by most recent or most used</string>
 
     <string name="notification_access_title">Enable Notification Access</string>
@@ -400,4 +400,22 @@
     <string name="app_store_open_website">Open f-droid.org</string>
     <string name="app_store_no_browser">No app can open f-droid.org on this phone.</string>
     <string name="app_store_launch_failed">F-Droid couldn\'t be opened.</string>
+    <string name="paper_widget_manage_help">Resize, move, edit or remove this widget</string>
+    <string name="paper_permissions_hint">Tap a row to manage access</string>
+    <string name="paper_group_android_access">Android access</string>
+    <string name="paper_granted">Granted</string>
+    <string name="paper_not_granted">Not granted</string>
+    <string name="paper_group_transfer">Transfer</string>
+    <string name="paper_group_reset">Reset</string>
+    <string name="paper_save_file">Save file</string>
+    <string name="paper_choose_file">Choose file</string>
+    <string name="paper_export_help">Save your settings as a JSON file</string>
+    <string name="paper_import_help">Restore your settings from a JSON file</string>
+    <string name="paper_clear_help">Review before erasing settings</string>
+    <string name="paper_select_all">Select all</string>
+    <string name="paper_deselect_all">Deselect all</string>
+    <string name="paper_hide_app">Hide: %1$s</string>
+    <string name="paper_notify_app">Notify: %1$s</string>
+    <string name="paper_unavailable">Unavailable</string>
+    <string name="paper_not_applicable">Not applicable</string>
 </resources>

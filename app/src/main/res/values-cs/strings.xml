@@ -398,4 +398,22 @@
     <string name="app_store_open_website">Otevřít f-droid.org</string>
     <string name="app_store_no_browser">Žádná aplikace v tomto telefonu nemůže otevřít f-droid.org.</string>
     <string name="app_store_launch_failed">F-Droid se nepodařilo otevřít.</string>
+    <string name="paper_widget_manage_help">Změňte velikost, přesuňte, upravte nebo odeberte widget</string>
+    <string name="paper_permissions_hint">Klepnutím na řádek spravujete přístup</string>
+    <string name="paper_group_android_access">Přístup v Androidu</string>
+    <string name="paper_granted">Uděleno</string>
+    <string name="paper_not_granted">Neuděleno</string>
+    <string name="paper_group_transfer">Přenos</string>
+    <string name="paper_group_reset">Obnovení</string>
+    <string name="paper_save_file">Uložit soubor</string>
+    <string name="paper_choose_file">Vybrat soubor</string>
+    <string name="paper_export_help">Uložte nastavení jako soubor JSON</string>
+    <string name="paper_import_help">Obnovte nastavení ze souboru JSON</string>
+    <string name="paper_clear_help">Před smazáním nastavení zkontrolujte</string>
+    <string name="paper_select_all">Vybrat vše</string>
+    <string name="paper_deselect_all">Zrušit výběr</string>
+    <string name="paper_hide_app">Skrýt: %1$s</string>
+    <string name="paper_notify_app">Oznámení: %1$s</string>
+    <string name="paper_unavailable">Nedostupné</string>
+    <string name="paper_not_applicable">Nelze použít</string>
 </resources>

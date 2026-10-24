@@ -11,7 +11,6 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,40 +28,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.ActivityResultLauncher
-import androidx.compose.material.icons.Icons
-import androidx.compose.ui.platform.LocalWindowInfo
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.icons.rounded.ArrowDownward
-import androidx.compose.material.icons.rounded.ArrowUpward
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.CheckBox
-import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.DeleteForever
-import androidx.compose.material.icons.rounded.DoneAll
-import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.RadioButtonChecked
-import androidx.compose.material.icons.rounded.RadioButtonUnchecked
-import androidx.compose.material.icons.rounded.RemoveDone
-import androidx.compose.material.icons.rounded.Upload
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.focus.focusRequester
@@ -72,9 +49,6 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.MainViewModel
@@ -92,14 +66,11 @@ import com.gezimos.katapult.util.UsageHelper
 import com.gezimos.katapult.util.SensitiveChoice
 import com.gezimos.katapult.util.SensitiveAccess
 import com.gezimos.katapult.weather.WeatherSources
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
-import kotlin.math.abs
 import com.gezimos.katapult.ui.settings.SettingsEntry
 import com.gezimos.katapult.ui.settings.AppStorePackages
 import com.gezimos.katapult.ui.settings.appStoreEntry
@@ -117,6 +88,15 @@ import com.gezimos.katapult.ui.settings.lockCategory
 import com.gezimos.katapult.ui.settings.screensaverCategory
 import com.gezimos.katapult.ui.settings.systemCategory
 import com.gezimos.katapult.ui.settings.aboutCategory
+import com.gezimos.katapult.ui.settings.SheetPage
+import com.gezimos.katapult.ui.settings.SheetText
+import com.gezimos.katapult.ui.settings.SheetAction
+import com.gezimos.katapult.ui.settings.Entry
+import com.gezimos.katapult.ui.settings.GroupHeading
+import com.gezimos.katapult.ui.settings.ChoiceOption
+import com.gezimos.katapult.ui.settings.CheckboxOption
+import com.gezimos.katapult.ui.settings.AppChecklistPage
+import com.gezimos.katapult.ui.settings.NotifyCell
 
 private val sensitiveRows = listOf(
     SensitiveChoice.SMS_BADGES to R.string.policy_sms_badges,
@@ -412,27 +392,21 @@ fun SettingsScreen(
     }
 
     if (showLockscreenWidgetsSheet && widgetChoice == null && widgetProviders == null) {
-        BottomSheet(onDismiss = { showLockscreenWidgetsSheet = false }) {
-            // Wraps its content like Kotatsu's other sheets; scrolls only once it would pass 80 % of the screen.
-            val maxHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.8f).toDp() }
-            Column(Modifier.fillMaxWidth().heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
-                Text(stringResource(R.string.lockscreen_widgets), fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                    fontFamily = LatoFamily, color = LocalInk.current, modifier = Modifier.padding(bottom = 12.dp))
-                SettingsToggleRow(
-                    title = stringResource(R.string.lockscreen_widgets_show),
-                    description = stringResource(if (actionServiceEnabled) R.string.lockscreen_widgets_show_desc else R.string.action_service_off),
-                    checked = widgetSettings.enabled,
-                    onCheckedChange = { on ->
-                        widgetSettings.requestEnabled(on) { viewModel.requestActionService(AccessibilityFeature.LOCKSCREEN_WIDGETS) }
-                    },
-                )
-                widgetSettings.rows.forEach { row ->
-                    SettingsActionRow(row.label, stringResource(widgetSizeTitle(row.widget.size)),
-                        onClick = { widgetChoice = row })
-                }
-                SettingsActionRow(stringResource(R.string.lockscreen_widgets_add), stringResource(R.string.lockscreen_widgets_add_desc),
-                    onClick = { widgetProviders = widgetSettings.providers() })
+        SheetPage(stringResource(R.string.lockscreen_widgets), { showLockscreenWidgetsSheet = false }) {
+            SheetText(androidx.compose.ui.res.pluralStringResource(R.plurals.paper_widgets_configured,
+                widgetSettings.rows.size, widgetSettings.rows.size))
+            Entry(SettingsEntry.Switch("show", stringResource(R.string.lockscreen_widgets_show),
+                stringResource(R.string.lockscreen_widgets_show_desc), widgetSettings.enabled,
+                { on ->
+                    widgetSettings.requestEnabled(on) { viewModel.requestActionService(AccessibilityFeature.LOCKSCREEN_WIDGETS) }
+                }))
+            widgetSettings.rows.forEach { row ->
+                Entry(SettingsEntry.Open(row.widget.id.toString(), row.label,
+                    stringResource(R.string.paper_widget_manage_help), { widgetChoice = row },
+                    summary = stringResource(widgetSizeTitle(row.widget.size))))
             }
+            Entry(SettingsEntry.Open("add", stringResource(R.string.lockscreen_widgets_add),
+                stringResource(R.string.lockscreen_widgets_add_desc), { widgetProviders = widgetSettings.providers() }))
         }
     }
     widgetChoice?.let { row ->
@@ -481,42 +455,34 @@ fun SettingsScreen(
     }
 
     if (showSensitiveAccess) {
-        BottomSheet(onDismiss = { showSensitiveAccess = false }) {
-            Column(Modifier.fillMaxWidth().fillMaxHeight(0.8f).verticalScroll(rememberScrollState())) {
-                Text(stringResource(R.string.sensitive_access), fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                    fontFamily = LatoFamily, color = LocalInk.current)
-                Text(stringResource(R.string.policy_boundary), fontFamily = LatoFamily, color = LocalInk.current)
-                for ((choice, title) in sensitiveRows) {
-                    val grant = when (choice) {
-                        SensitiveChoice.SMS_BADGES -> context.checkSelfPermission(android.Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        SensitiveChoice.CALL_BADGES -> context.checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        SensitiveChoice.CALL_ACKNOWLEDGMENT -> context.checkSelfPermission(android.Manifest.permission.WRITE_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
-                        SensitiveChoice.USAGE_STATS -> UsageHelper.hasPermission(context)
-                        SensitiveChoice.ACCESSIBILITY_FEATURES -> LockscreenWidgetService.isEnabled(context)
-                        else -> NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
-                    }
-                    val supported = choice !in setOf(SensitiveChoice.SMS_BADGES, SensitiveChoice.CALL_BADGES,
-                        SensitiveChoice.CALL_ACKNOWLEDGMENT) || isMudita
-                    val connected = when (choice) {
-                        SensitiveChoice.NOTIFICATION_BADGES, SensitiveChoice.NOTIFICATION_DISMISSAL,
-                        SensitiveChoice.MEDIA_INFO, SensitiveChoice.MEDIA_CONTROLS -> SensitiveAccess.notificationConnected
-                        SensitiveChoice.ACCESSIBILITY_FEATURES -> SensitiveAccess.accessibilityConnected
-                        else -> true
-                    }
-                    val status = stringResource(if (!supported) R.string.policy_unsupported else if (!grant)
-                        R.string.policy_not_granted else if (!connected) R.string.policy_granted_disconnected else R.string.policy_granted)
-                    SettingsToggleRow(
-                        title = stringResource(title),
-                        description = status,
-                        checked = policyChoices.getValue(choice.key),
-                        onCheckedChange = { prefs.setSensitiveChoice(choice, it) },
-                    )
+        SheetPage(stringResource(R.string.sensitive_access), { showSensitiveAccess = false }) {
+            SheetText(stringResource(R.string.policy_boundary))
+            for ((choice, title) in sensitiveRows) {
+                val grant = when (choice) {
+                    SensitiveChoice.SMS_BADGES -> context.checkSelfPermission(android.Manifest.permission.READ_SMS) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    SensitiveChoice.CALL_BADGES -> context.checkSelfPermission(android.Manifest.permission.READ_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    SensitiveChoice.CALL_ACKNOWLEDGMENT -> context.checkSelfPermission(android.Manifest.permission.WRITE_CALL_LOG) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    SensitiveChoice.USAGE_STATS -> UsageHelper.hasPermission(context)
+                    SensitiveChoice.ACCESSIBILITY_FEATURES -> LockscreenWidgetService.isEnabled(context)
+                    else -> NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
                 }
-                Text(stringResource(R.string.policy_action_boundary), fontFamily = LatoFamily, color = LocalInk.current)
-                SettingsActionRow(title = stringResource(R.string.permissions),
-                    description = stringResource(R.string.policy_grants_separate),
-                    onClick = { showSensitiveAccess = false; showPermissionsSheet = true })
+                val supported = choice !in setOf(SensitiveChoice.SMS_BADGES, SensitiveChoice.CALL_BADGES,
+                    SensitiveChoice.CALL_ACKNOWLEDGMENT) || isMudita
+                val connected = when (choice) {
+                    SensitiveChoice.NOTIFICATION_BADGES, SensitiveChoice.NOTIFICATION_DISMISSAL,
+                    SensitiveChoice.MEDIA_INFO, SensitiveChoice.MEDIA_CONTROLS -> SensitiveAccess.notificationConnected
+                    SensitiveChoice.ACCESSIBILITY_FEATURES -> SensitiveAccess.accessibilityConnected
+                    else -> true
+                }
+                val status = stringResource(if (!supported) R.string.policy_unsupported else if (!grant)
+                    R.string.policy_not_granted else if (!connected) R.string.policy_granted_disconnected else R.string.policy_granted)
+                Entry(SettingsEntry.Switch(choice.key, stringResource(title), status,
+                    policyChoices.getValue(choice.key), { prefs.setSensitiveChoice(choice, it) }))
             }
+            SheetText(stringResource(R.string.policy_action_boundary))
+            Entry(SettingsEntry.Open("permissions", stringResource(R.string.permissions),
+                stringResource(R.string.policy_grants_separate),
+                { showSensitiveAccess = false; showPermissionsSheet = true }))
         }
     }
 
@@ -528,18 +494,15 @@ fun SettingsScreen(
                 viewModel.pendingImportText = null
             }
         }
-        BottomSheet(onDismiss = dismissImport) {
-            Text(stringResource(R.string.policy_import_confirmation), fontSize = 18.sp, fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily, color = LocalInk.current)
-            Text(stringResource(R.string.config_import_replaces_settings),
-                fontFamily = LatoFamily, color = LocalInk.current)
+        SheetPage(stringResource(R.string.policy_import_confirmation), dismissImport) {
+            SheetText(stringResource(R.string.config_import_replaces_settings))
             for ((choice, title) in sensitiveRows) {
                 preview.changes[choice.key]?.let { incoming ->
-                    Text(stringResource(title) + ": " + stringResource(if (incoming) R.string.policy_enabled else R.string.policy_disabled),
-                        fontFamily = LatoFamily, color = LocalInk.current)
+                    Entry(SettingsEntry.Metadata(choice.key, stringResource(title),
+                        stringResource(if (incoming) R.string.policy_enabled else R.string.policy_disabled)))
                 }
             }
-            BottomSheetOption(stringResource(R.string.config_import)) {
+            SheetAction(stringResource(R.string.config_import)) {
                 val text = viewModel.pendingImportText
                 val current = text?.let { prefs.previewPolicyImport(it) }
                 if (current != null && current.localChoices != preview.localChoices) {
@@ -550,7 +513,7 @@ fun SettingsScreen(
                     Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
                 }
             }
-            BottomSheetOption(stringResource(R.string.cancel), onClick = dismissImport)
+            SheetAction(stringResource(R.string.cancel), dismissImport)
         }
     }
 
@@ -583,15 +546,9 @@ fun SettingsScreen(
                 )
             } catch (_: Exception) {}
         }
-        BottomSheet(onDismiss = { showPermissionsSheet = false }) {
-            Text(
-                text = stringResource(R.string.permissions),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+        SheetPage(stringResource(R.string.permissions), { showPermissionsSheet = false }) {
+            SheetText(stringResource(R.string.paper_permissions_hint))
+            GroupHeading(stringResource(R.string.paper_group_android_access))
             PermissionRow(
                 title = stringResource(R.string.perm_notification_access),
                 description = stringResource(R.string.perm_notification_access_desc),
@@ -605,6 +562,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.perm_action_service),
                 description = stringResource(R.string.perm_action_service_desc),
                 checked = serviceOn,
+                service = true,
             ) {
                 // Off: the guided setup. On: straight to Android's list, to manage or turn it off.
                 if (!serviceOn) viewModel.requestActionService(null)
@@ -656,25 +614,13 @@ fun SettingsScreen(
                 ),
             )
         }
-        BottomSheet(onDismiss = { showScreensaverModeSheet = false }, imePadding = true) {
-            Text(
-                text = stringResource(R.string.screensaver_update_mode),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
+        SheetPage(stringResource(R.string.screensaver_update_mode), { showScreensaverModeSheet = false }, imePadding = true) {
             listOf(
                 PrefsManager.SCREENSAVER_MODE_AUTO to stringResource(R.string.screensaver_mode_auto),
                 PrefsManager.SCREENSAVER_MODE_INTERVAL to stringResource(R.string.screensaver_mode_interval),
                 PrefsManager.SCREENSAVER_MODE_STATIC to stringResource(R.string.screensaver_mode_static),
             ).forEach { (mode, label) ->
-                BottomSheetOption(
-                    text = label,
-                    icon = if (screensaverUpdateMode == mode) Icons.Rounded.RadioButtonChecked
-                    else Icons.Rounded.RadioButtonUnchecked,
-                ) {
+                ChoiceOption(label, screensaverUpdateMode == mode) {
                     screensaverUpdateMode = mode
                     prefs.screensaverUpdateMode = mode
                     if (mode != PrefsManager.SCREENSAVER_MODE_INTERVAL) {
@@ -754,42 +700,31 @@ fun SettingsScreen(
     }
 
     if (showConfigSheet) {
-        BottomSheet(onDismiss = { showConfigSheet = false }) {
-            Text(
-                text = stringResource(R.string.config_backup),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            BottomSheetOption(stringResource(R.string.config_export), icon = Icons.Rounded.Upload) {
+        SheetPage(stringResource(R.string.config_backup), { showConfigSheet = false }) {
+            GroupHeading(stringResource(R.string.paper_group_transfer))
+            Entry(SettingsEntry.Open("export", stringResource(R.string.config_export), stringResource(R.string.paper_export_help), {
                 showConfigSheet = false
                 val stamp = java.text.SimpleDateFormat("yyyy-MM-dd-HHmm", java.util.Locale.US)
                     .format(java.util.Date())
                 configExporter.launch("kotatsu-config-$stamp.json")
-            }
-            BottomSheetOption(stringResource(R.string.config_import), icon = Icons.Rounded.Download) {
+            }, actionLabel = stringResource(R.string.paper_save_file)))
+            Entry(SettingsEntry.Open("import", stringResource(R.string.config_import), stringResource(R.string.paper_import_help), {
                 showConfigSheet = false
                 configImporter.launch(arrayOf("application/json", "text/plain", "*/*"))
-            }
-            BottomSheetOption(stringResource(R.string.config_clear), icon = Icons.Rounded.DeleteForever) {
+            }, actionLabel = stringResource(R.string.paper_choose_file)))
+            Spacer(Modifier.height(9.dp))
+            GroupHeading(stringResource(R.string.paper_group_reset))
+            Entry(SettingsEntry.Open("clear", stringResource(R.string.config_clear), stringResource(R.string.paper_clear_help), {
                 showConfigSheet = false
                 showClearConfirm = true
-            }
+            }))
         }
     }
 
     if (showClearConfirm) {
-        BottomSheet(onDismiss = { showClearConfirm = false }) {
-            Text(
-                text = stringResource(R.string.config_clear_confirm),
-                fontSize = 18.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
-            BottomSheetOption(stringResource(R.string.config_clear), icon = Icons.Rounded.DeleteForever) {
+        SheetPage(stringResource(R.string.config_clear), { showClearConfirm = false }) {
+            SheetText(stringResource(R.string.config_clear_confirm))
+            SheetAction(stringResource(R.string.config_clear)) {
                 showClearConfirm = false
                 prefs.clearAll(context)
                 IconUtility.invalidateOverrides()
@@ -842,163 +777,20 @@ private fun LockscreenAppsDialog(
         (launcherApps + extras).sortedBy { it.label.lowercase() }
     }
     var excludedSet by remember { mutableStateOf(viewModel.prefs.getLockscreenExcludedApps()) }
-    val itemsPerPage = 6
-    var page by remember { mutableIntStateOf(0) }
-    val totalPages = (allApps.size + itemsPerPage - 1) / itemsPerPage
-    val pageApps = remember(page) {
-        val start = page * itemsPerPage
-        val end = minOf(start + itemsPerPage, allApps.size)
-        allApps.subList(start, end)
-    }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
-    val iconShape = appIconShape(viewModel.roundedIcons)
-
-    BottomSheet(onDismiss = onDismiss) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = stringResource(R.string.lockscreen_widget_apps),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.weight(1f),
-            )
-            val allSelected = excludedSet.isEmpty()
-            Icon(
-                imageVector = if (allSelected) Icons.Rounded.RemoveDone else Icons.Rounded.DoneAll,
-                contentDescription = null,
-                tint = LocalInk.current,
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable {
-                        val updated = if (allSelected) allApps.map { it.packageName }.toSet()
-                            else emptySet()
-                        viewModel.prefs.setLockscreenExcludedApps(updated)
-                        excludedSet = updated
-                    },
-            )
-        }
-        Column(
-            modifier = Modifier
-                .pointerInput(page, totalPages) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragAccumulator = 0f },
-                        onDragEnd = {
-                            if (abs(dragAccumulator) > 80f) {
-                                if (dragAccumulator < 0 && page < totalPages - 1) page++
-                                else if (dragAccumulator > 0 && page > 0) page--
-                            }
-                        },
-                        onHorizontalDrag = { _, amount -> dragAccumulator += amount },
-                    )
-                },
-        ) {
-            for (i in 0 until itemsPerPage) {
-                if (i < pageApps.size) {
-                    val app = pageApps[i]
-                    val isShown = app.packageName !in excludedSet
-                    val sizePx = remember { (36 * context.resources.displayMetrics.density).toInt() }
-                    val bitmap = remember(app.packageName) {
-                        IconUtility.loadIcon(context, app.packageName, app.activityName, sizePx)
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                val updated = if (isShown) excludedSet + app.packageName
-                                    else excludedSet - app.packageName
-                                viewModel.prefs.setLockscreenExcludedApps(updated)
-                                excludedSet = updated
-                            }
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AppIconCircle(bitmap = bitmap, size = 36.dp, borderWidth = 1.5.dp, shape = iconShape)
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            app.label,
-                            fontSize = 18.sp,
-                            fontFamily = LatoFamily,
-                            color = LocalInk.current,
-                            modifier = Modifier.weight(1f),
-                        )
-                        val checkShape = RoundedCornerShape(4.dp)
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .then(
-                                    if (isShown) Modifier.background(LocalInk.current, checkShape)
-                                    else Modifier.border(2.5.dp, LocalInk.current, checkShape)
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (isShown) {
-                                Text(
-                                    text = "✓",
-                                    color = LocalSurface.current,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                        Box(Modifier.size(36.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text("", fontSize = 18.sp)
-                    }
-                }
-            }
-            if (totalPages > 1) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (page > 0) {
-                        ArrowButton(
-                            iconRes = R.drawable.ic_arrow_left,
-                            onClick = { page-- },
-                        )
-                    } else {
-                        Spacer(Modifier.size(ArrowSize))
-                    }
-
-                    Row(
-                        Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        for (i in 0 until totalPages) {
-                            Box(
-                                Modifier
-                                    .padding(horizontal = 2.dp)
-                                    .size(6.dp)
-                                    .then(
-                                        if (i == page) Modifier.background(LocalInk.current, CircleShape)
-                                        else Modifier.border(1.5.dp, LocalInk.current, CircleShape)
-                                    )
-                            )
-                        }
-                    }
-
-                    if (page < totalPages - 1) {
-                        ArrowButton(
-                            iconRes = R.drawable.ic_arrow_right,
-                            onClick = { page++ },
-                        )
-                    } else {
-                        Spacer(Modifier.size(ArrowSize))
-                    }
-                }
-            }
-        }
-    }
+    AppChecklistPage(stringResource(R.string.lockscreen_widget_apps), allApps,
+        allApps.filter { it.packageName !in excludedSet }.map { it.key }.toSet(), onDismiss,
+        onToggle = { app ->
+            val updated = if (app.packageName !in excludedSet) excludedSet + app.packageName
+                else excludedSet - app.packageName
+            viewModel.prefs.setLockscreenExcludedApps(updated)
+            excludedSet = updated
+        },
+        selectAllLabel = stringResource(if (excludedSet.isEmpty()) R.string.paper_deselect_all else R.string.paper_select_all),
+        onSelectAll = {
+            val updated = if (excludedSet.isEmpty()) allApps.map { it.packageName }.toSet() else emptySet()
+            viewModel.prefs.setLockscreenExcludedApps(updated)
+            excludedSet = updated
+        })
 }
 
 /** Hidden Apps: apps the user installed (and pinned shortcuts); a checked box hides the app. */
@@ -1049,11 +841,10 @@ private fun AppVisibilitySheet(
         onDispose { subscription.close() }
     }
     val checked = apps.filter { AppVisibility.isHidden(it, hidden, shown) }.map { it.key }.toSet()
-    AppChecklistSheet(
+    AppChecklistPage(
         title = if (checked.isNotEmpty()) stringResource(countRes, checked.size) else stringResource(titleRes),
         apps = apps,
         checked = checked,
-        iconShape = appIconShape(viewModel.roundedIcons),
         onDismiss = onDismiss,
         notifyCell = { app ->
             when {
@@ -1076,204 +867,7 @@ private fun AppVisibilitySheet(
     )
 }
 
-private enum class NotifyCell { NONE, OFF, ON, DISABLED }
-private val HideColumnWidth = 32.dp
-private val NotifyColumnWidth = 64.dp
-
-@Composable
-private fun CheckMark(checked: Boolean, enabled: Boolean = true) {
-    val shape = RoundedCornerShape(4.dp)
-    Box(
-        modifier = Modifier.size(20.dp).then(
-            if (checked && enabled) Modifier.background(LocalInk.current, shape)
-            else Modifier.border(if (enabled) 2.5.dp else 1.dp, LocalInk.current, shape)
-        ),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (checked && enabled) {
-            Text("✓", color = LocalSurface.current, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-/** Paged visibility checklist; the caller owns the choices and their storage. */
-@Composable
-private fun AppChecklistSheet(
-    title: String,
-    apps: List<com.gezimos.katapult.model.AppModel>,
-    checked: Set<String>,
-    iconShape: androidx.compose.ui.graphics.Shape,
-    onDismiss: () -> Unit,
-    notifyCell: (com.gezimos.katapult.model.AppModel) -> NotifyCell,
-    onToggleNotify: (com.gezimos.katapult.model.AppModel) -> Unit,
-    onToggle: (com.gezimos.katapult.model.AppModel) -> Unit,
-) {
-    val context = LocalContext.current
-    val allApps = apps
-    val itemsPerPage = 6
-    var page by remember { mutableIntStateOf(0) }
-    val totalPages = (allApps.size + itemsPerPage - 1) / itemsPerPage
-    val pageApps = remember(page) {
-        val start = page * itemsPerPage
-        val end = minOf(start + itemsPerPage, allApps.size)
-        allApps.subList(start, end)
-    }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
-
-    BottomSheet(onDismiss = onDismiss) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-        Text(
-            text = stringResource(R.string.hidden_apps_notify_desc),
-            fontSize = 14.sp,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                stringResource(R.string.hidden_apps_hide_column),
-                fontSize = 14.sp, fontFamily = LatoFamily, color = LocalInk.current,
-                maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.width(HideColumnWidth),
-            )
-            Spacer(Modifier.weight(1f))
-            Text(
-                stringResource(R.string.hidden_apps_notify_column),
-                fontSize = 14.sp, fontFamily = LatoFamily, color = LocalInk.current,
-                maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.width(NotifyColumnWidth),
-            )
-        }
-        Column(
-            modifier = Modifier
-                .pointerInput(page, totalPages) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragAccumulator = 0f },
-                        onDragEnd = {
-                            if (abs(dragAccumulator) > 80f) {
-                                if (dragAccumulator < 0 && page < totalPages - 1) page++
-                                else if (dragAccumulator > 0 && page > 0) page--
-                            }
-                        },
-                        onHorizontalDrag = { _, amount -> dragAccumulator += amount },
-                    )
-                },
-        ) {
-            for (i in 0 until itemsPerPage) {
-                if (i < pageApps.size) {
-                    val app = pageApps[i]
-                    val isHidden = app.key in checked
-                    val sizePx = remember { (36 * context.resources.displayMetrics.density).toInt() }
-                    val bitmap = remember(app.key) {
-                        if (app.shortcutId.isNotEmpty()) {
-                            IconUtility.loadShortcutIcon(context, app.packageName, app.shortcutId, sizePx)
-                        } else {
-                            IconUtility.loadIcon(context, app.packageName, app.activityName, sizePx)
-                        }
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(androidx.compose.foundation.layout.IntrinsicSize.Min)
-                            .clickable { onToggle(app) },
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Box(Modifier.width(HideColumnWidth), contentAlignment = Alignment.Center) {
-                            CheckMark(isHidden)
-                        }
-                        Box(Modifier.padding(vertical = 10.dp)) {
-                            AppIconCircle(bitmap = bitmap, size = 36.dp, borderWidth = 1.5.dp, shape = iconShape)
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            app.label,
-                            fontSize = 18.sp,
-                            fontFamily = LatoFamily,
-                            color = LocalInk.current,
-                            modifier = Modifier.weight(1f),
-                        )
-                        val cell = notifyCell(app)
-                        val notifyLabel = stringResource(R.string.hidden_apps_notify_column)
-                        Box(
-                            modifier = Modifier
-                                .width(NotifyColumnWidth)
-                                .fillMaxHeight()
-                                // Even absent/disabled cells consume taps rather than toggling Hide.
-                                .clickable {
-                                    if (cell == NotifyCell.OFF || cell == NotifyCell.ON) onToggleNotify(app)
-                                }
-                                .then(if (cell != NotifyCell.NONE) Modifier.semantics {
-                                    contentDescription = "$notifyLabel: ${app.label}"
-                                    role = Role.Checkbox
-                                    toggleableState = if (cell == NotifyCell.ON) ToggleableState.On else ToggleableState.Off
-                                    if (cell == NotifyCell.DISABLED) disabled()
-                                } else Modifier),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (cell != NotifyCell.NONE) CheckMark(cell == NotifyCell.ON, cell != NotifyCell.DISABLED)
-                        }
-                    }
-                } else {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                        Spacer(Modifier.width(HideColumnWidth))
-                        Box(Modifier.size(36.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text("", fontSize = 18.sp, modifier = Modifier.weight(1f))
-                        Spacer(Modifier.width(NotifyColumnWidth))
-                    }
-                }
-            }
-            if (totalPages > 1) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (page > 0) {
-                        ArrowButton(
-                            iconRes = R.drawable.ic_arrow_left,
-                            onClick = { page-- },
-                        )
-                    } else {
-                        Spacer(Modifier.size(ArrowSize))
-                    }
-
-                    Row(
-                        Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        for (i in 0 until totalPages) {
-                            Box(
-                                Modifier
-                                    .padding(horizontal = 2.dp)
-                                    .size(6.dp)
-                                    .then(
-                                        if (i == page) Modifier.background(LocalInk.current, CircleShape)
-                                        else Modifier.border(1.5.dp, LocalInk.current, CircleShape)
-                                    )
-                            )
-                        }
-                    }
-
-                    if (page < totalPages - 1) {
-                        ArrowButton(
-                            iconRes = R.drawable.ic_arrow_right,
-                            onClick = { page++ },
-                        )
-                    } else {
-                        Spacer(Modifier.size(ArrowSize))
-                    }
-                }
-            }
-        }
-    }
-}
-
+/** Kept unchanged for Onboarding, its only consumer. Settings uses the Paper-index kit. */
 @Composable
 fun SettingsToggleRow(
     title: String,
@@ -1334,43 +928,6 @@ fun SettingsToggleRow(
 }
 
 @Composable
-fun SettingsActionRow(
-    title: String,
-    description: String,
-    onClick: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-            Text(
-                text = description,
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-        Icon(
-            imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
-            contentDescription = null,
-            tint = LocalInk.current,
-            modifier = Modifier.size(24.dp),
-        )
-    }
-}
-
-@Composable
 private fun LockscreenMessageSheet(
     textFieldValue: androidx.compose.ui.text.input.TextFieldValue,
     onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
@@ -1379,15 +936,7 @@ private fun LockscreenMessageSheet(
 ) {
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
-    BottomSheet(onDismiss = onDismiss, imePadding = true) {
-        Text(
-            text = stringResource(R.string.lockscreen_message),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
+    SheetPage(stringResource(R.string.lockscreen_message), onDismiss, imePadding = true) {
         BasicTextField(
             value = textFieldValue,
             onValueChange = onValueChange,
@@ -1400,29 +949,8 @@ private fun LockscreenMessageSheet(
                 .padding(12.dp)
                 .focusRequester(focusRequester),
         )
-        Spacer(Modifier.height(16.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            Text(
-                text = stringResource(R.string.cancel),
-                fontSize = 18.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier
-                    .clickable { onDismiss() }
-                    .padding(12.dp),
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = stringResource(R.string.save),
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier
-                    .clickable { onConfirm(textFieldValue.text.trim()) }
-                    .padding(12.dp),
-            )
-        }
+        SheetAction(stringResource(R.string.save)) { onConfirm(textFieldValue.text.trim()) }
+        SheetAction(stringResource(R.string.cancel), onDismiss)
         LaunchedEffect(Unit) { focusRequester.requestFocus() }
     }
 }
@@ -1432,70 +960,31 @@ private fun PermissionRow(
     title: String,
     description: String,
     checked: Boolean,
+    service: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = if (checked) Icons.Rounded.CheckBox
-            else Icons.Rounded.CheckBoxOutlineBlank,
-            contentDescription = null,
-            tint = LocalInk.current,
-            modifier = Modifier.size(22.dp),
-        )
-        Spacer(Modifier.width(12.dp))
-        Column {
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-            Text(
-                text = description,
-                fontSize = 13.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-            )
-        }
-    }
+    val status = stringResource(if (service) {
+        if (checked) R.string.paper_on else R.string.paper_off
+    } else if (checked) R.string.paper_granted else R.string.paper_not_granted)
+    Entry(SettingsEntry.Open(title, title, description, onClick, actionLabel = status), minimumHeight = 63.dp)
 }
 
 @Composable
-private fun MultiChoiceSheet(
+internal fun MultiChoiceSheet(
     title: String,
     options: List<Triple<String, Boolean, (Boolean) -> Unit>>,
     onDismiss: () -> Unit,
 ) {
-    BottomSheet(onDismiss = onDismiss) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
+    SheetPage(title, onDismiss) {
         options.forEach { (label, checked, onToggle) ->
-            BottomSheetOption(
-                text = label,
-                icon = if (checked) Icons.Rounded.CheckBox
-                else Icons.Rounded.CheckBoxOutlineBlank,
-            ) {
-                onToggle(!checked)
-            }
+            CheckboxOption(label, checked, onToggle)
         }
     }
 }
 
-/** Size is a choice (radio options); moving, editing and removing are actions (icon + verb, like the app menu). */
+/** A mixed menu: size is a choice; moving, editing and removing remain actions. */
 @Composable
-private fun LockscreenWidgetMenu(
+internal fun LockscreenWidgetMenu(
     row: com.gezimos.katapult.lockscreen.WidgetSettingsRow,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -1505,25 +994,22 @@ private fun LockscreenWidgetMenu(
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BottomSheet(onDismiss = onDismiss) {
-        Text(row.label, fontSize = 18.sp, fontWeight = FontWeight.Bold, fontFamily = LatoFamily,
-            color = LocalInk.current, modifier = Modifier.padding(bottom = 12.dp))
+    SheetPage(row.label, onDismiss) {
         com.gezimos.katapult.lockscreen.LockscreenWidgetSize.entries.forEach { size ->
-            BottomSheetOption(stringResource(widgetSizeTitle(size)),
-                icon = if (size == row.widget.size) Icons.Rounded.RadioButtonChecked else Icons.Rounded.RadioButtonUnchecked) {
+            ChoiceOption(stringResource(widgetSizeTitle(size)), size == row.widget.size) {
                 onResize(size); onDismiss()
             }
         }
-        if (canMoveUp) BottomSheetOption(stringResource(R.string.lockscreen_widgets_up), icon = Icons.Rounded.ArrowUpward) {
+        if (canMoveUp) SheetAction(stringResource(R.string.lockscreen_widgets_up)) {
             onMove(-1); onDismiss()
         }
-        if (canMoveDown) BottomSheetOption(stringResource(R.string.lockscreen_widgets_down), icon = Icons.Rounded.ArrowDownward) {
+        if (canMoveDown) SheetAction(stringResource(R.string.lockscreen_widgets_down)) {
             onMove(1); onDismiss()
         }
-        if (row.canEdit) BottomSheetOption(stringResource(R.string.lockscreen_widgets_edit), icon = Icons.Rounded.Edit) {
+        if (row.canEdit) SheetAction(stringResource(R.string.lockscreen_widgets_edit)) {
             onEdit(); onDismiss()
         }
-        BottomSheetOption(stringResource(R.string.lockscreen_widgets_remove), icon = Icons.Rounded.Delete) {
+        SheetAction(stringResource(R.string.lockscreen_widgets_remove)) {
             onRemove(); onDismiss()
         }
     }
@@ -1531,18 +1017,13 @@ private fun LockscreenWidgetMenu(
 
 /** A plain pick list: nothing is selected yet, so no radio marks. */
 @Composable
-private fun WidgetProviderSheet(
+internal fun WidgetProviderSheet(
     providers: List<com.gezimos.katapult.lockscreen.WidgetProviderChoice>,
     onPick: (com.gezimos.katapult.lockscreen.WidgetProviderChoice) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    BottomSheet(onDismiss = onDismiss) {
-        Text(stringResource(R.string.lockscreen_widgets_add), fontSize = 18.sp, fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily, color = LocalInk.current, modifier = Modifier.padding(bottom = 12.dp))
-        val maxHeight = with(LocalDensity.current) { (LocalWindowInfo.current.containerSize.height * 0.7f).toDp() }
-        Column(Modifier.heightIn(max = maxHeight).verticalScroll(rememberScrollState())) {
-            providers.forEach { provider -> BottomSheetOption(provider.label) { onPick(provider); onDismiss() } }
-        }
+    SheetPage(stringResource(R.string.lockscreen_widgets_add), onDismiss) {
+        providers.forEach { provider -> SheetAction(provider.label) { onPick(provider); onDismiss() } }
     }
 }
 

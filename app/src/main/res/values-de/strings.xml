@@ -398,4 +398,22 @@
     <string name="app_store_open_website">f-droid.org öffnen</string>
     <string name="app_store_no_browser">Keine App auf diesem Telefon kann f-droid.org öffnen.</string>
     <string name="app_store_launch_failed">F-Droid konnte nicht geöffnet werden.</string>
+    <string name="paper_widget_manage_help">Größe ändern, verschieben, bearbeiten oder entfernen</string>
+    <string name="paper_permissions_hint">Eine Zeile antippen, um den Zugriff zu verwalten</string>
+    <string name="paper_group_android_access">Android-Zugriff</string>
+    <string name="paper_granted">Gewährt</string>
+    <string name="paper_not_granted">Nicht gewährt</string>
+    <string name="paper_group_transfer">Übertragung</string>
+    <string name="paper_group_reset">Zurücksetzen</string>
+    <string name="paper_save_file">Datei speichern</string>
+    <string name="paper_choose_file">Datei wählen</string>
+    <string name="paper_export_help">Einstellungen als JSON-Datei speichern</string>
+    <string name="paper_import_help">Einstellungen aus einer JSON-Datei wiederherstellen</string>
+    <string name="paper_clear_help">Vor dem Löschen der Einstellungen prüfen</string>
+    <string name="paper_select_all">Alle auswählen</string>
+    <string name="paper_deselect_all">Auswahl aufheben</string>
+    <string name="paper_hide_app">Ausblenden: %1$s</string>
+    <string name="paper_notify_app">Benachrichtigen: %1$s</string>
+    <string name="paper_unavailable">Nicht verfügbar</string>
+    <string name="paper_not_applicable">Nicht zutreffend</string>
 </resources>

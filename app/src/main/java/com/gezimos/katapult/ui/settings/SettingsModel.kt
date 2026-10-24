@@ -37,6 +37,7 @@ sealed class SettingsEntry {
         override val id: String, override val title: String, override val help: String,
         val onOpen: () -> Unit, override val visible: Boolean = true,
         val summary: String = "",
+        val actionLabel: String? = null,
     ) : SettingsEntry()
 
     data class Link(

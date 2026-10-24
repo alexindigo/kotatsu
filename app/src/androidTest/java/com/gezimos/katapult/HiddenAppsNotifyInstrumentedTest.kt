@@ -50,6 +50,12 @@ class HiddenAppsNotifyInstrumentedTest {
             ui.await("App missing from first Hidden Apps page") { ui.has(app.label) }
             val notify = context.getString(R.string.hidden_apps_notify_column) + ": " + app.label
             assertFalse("Visible app has a Notify box", ui.has(notify))
+            val blankHeader = Rect().also { ui.find(context.getString(R.string.hidden_apps_notify_column))!!.getBoundsInScreen(it) }
+            val visibleName = Rect().also { ui.find(app.label)!!.getBoundsInScreen(it) }
+            val beforeBlank = raw.all
+            tap(blankHeader.centerX().toFloat(), visibleName.centerY().toFloat())
+            instrumentation.waitForIdleSync()
+            assertEquals("Blank Notify tap changed preferences or fell through to Hide", beforeBlank, raw.all)
             ui.click(app.label)
             ui.await("Hiding did not reveal an unticked Notify box") { ui.checked(notify) == false }
             assertTrue(AppVisibility.isHidden(app, prefs.getHiddenApps(), prefs.getShownDefaultHiddenApps()))
@@ -62,6 +68,14 @@ class HiddenAppsNotifyInstrumentedTest {
             assertEquals(header.exactCenterX(), cell.exactCenterX(), 1f)
             assertEquals(64f * context.resources.displayMetrics.density, cell.width().toFloat(), 1f)
             assertEquals(row.height(), cell.height())
+            assertTrue("Notify cell is shorter than 64dp", cell.height() >= 64f * context.resources.displayMetrics.density - 1f)
+            val hide = context.getString(R.string.paper_hide_app, app.label)
+            val hideHeader = Rect().also { ui.find(context.getString(R.string.hidden_apps_hide_column))!!.getBoundsInScreen(it) }
+            val hideCell = Rect().also { ui.findAncestor(hide) { it.isClickable }!!.getBoundsInScreen(it) }
+            assertEquals(hideHeader.exactCenterX(), hideCell.exactCenterX(), 1f)
+            assertEquals(64f * context.resources.displayMetrics.density, hideCell.width().toFloat(), 1f)
+            assertEquals(cell.height(), hideCell.height())
+            assertEquals(true, ui.checked(hide))
 
             ui.click(notify)
             ui.await("Notify opt-in did not persist") { app.packageName in prefs.getNotifyWhileHiddenApps() && ui.checked(notify) == true }
@@ -82,6 +96,16 @@ class HiddenAppsNotifyInstrumentedTest {
             assertEquals("Disabled Notify tap changed preferences or fell through to Hide", before, raw.all)
         } finally {
             instrumentation.runOnMainSync { activity.finish() }
+        }
+    }
+
+    private fun tap(x: Float, y: Float) {
+        val time = android.os.SystemClock.uptimeMillis()
+        for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
+            val event = android.view.MotionEvent.obtain(time, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
+            event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+            assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true))
+            event.recycle()
         }
     }
 

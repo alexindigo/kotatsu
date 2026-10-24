@@ -1,9 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.NotificationsOff
-import androidx.compose.material.icons.rounded.Settings as SettingsIcon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -14,10 +11,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.MainViewModel
 import com.gezimos.katapult.R
-import com.gezimos.katapult.ui.BottomSheet
-import com.gezimos.katapult.ui.BottomSheetOption
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
+import com.gezimos.katapult.ui.settings.SheetPage
+import com.gezimos.katapult.ui.settings.SheetText
+import com.gezimos.katapult.ui.settings.SheetAction
+import com.gezimos.katapult.ui.settings.Entry
+import com.gezimos.katapult.ui.settings.SettingsEntry
 
 /**
  * The one way Kotatsu sends someone to Android's Accessibility settings. Android opens a single service's page
@@ -32,30 +32,19 @@ fun ActionServiceSetupSheet(
     onTurnOffFeatures: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
-    BottomSheet(onDismiss = onDismiss) {
-        Text(
-            text = stringResource(R.string.a11y_setup_title),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 8.dp),
-        )
-        Text(reason, fontSize = 14.sp, fontFamily = LatoFamily, color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp))
+    SheetPage(stringResource(R.string.a11y_setup_title), onDismiss) {
+        SheetText(reason)
         // The features waiting for the service: bold, so they read as a list between the reason and the steps.
         for (title in featureTitles) {
             Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, fontFamily = LatoFamily, color = LocalInk.current,
                 modifier = Modifier.padding(bottom = 8.dp))
         }
         for (step in listOf(R.string.a11y_setup_step_open, R.string.a11y_setup_step_use, R.string.a11y_setup_step_shortcut)) {
-            Text(stringResource(step), fontSize = 14.sp, fontFamily = LatoFamily, color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 6.dp))
+            SheetText(stringResource(step))
         }
-        BottomSheetOption(text = stringResource(R.string.a11y_setup_open), icon = Icons.Rounded.SettingsIcon, onClick = onOpenSettings)
+        Entry(SettingsEntry.Link("accessibility", stringResource(R.string.a11y_setup_open), "", onOpenSettings))
         if (onTurnOffFeatures != null) {
-            BottomSheetOption(text = stringResource(R.string.lockscreen_reenable_disable), icon = Icons.Rounded.NotificationsOff,
-                onClick = onTurnOffFeatures)
+            SheetAction(stringResource(R.string.lockscreen_reenable_disable), onTurnOffFeatures)
         }
     }
 }

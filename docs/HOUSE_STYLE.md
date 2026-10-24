@@ -7,8 +7,8 @@ book. Typography and state carry the interface, rather than a collection of
 Android control shapes.
 
 The shared Android kit lives in `app/src/main/java/com/gezimos/katapult/ui/settings/`.
-Settings root and all chapters use its data model, renderer, Notice and page sheets;
-secondary management sheets are being migrated separately.
+Settings root, all chapters and secondary management sheets use its data model,
+renderer, Notice, page sheets and shared choice/checkbox drawings.
 Apply this language to future Kotatsu-owned screens; Android's system settings
 remain outside Kotatsu's visual ownership.
 

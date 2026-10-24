@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -183,7 +184,7 @@ internal fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit
     val value = when (entry) {
         is SettingsEntry.Value -> entry.value
         is SettingsEntry.Switch -> if (entry.checked) on else off
-        is SettingsEntry.Open -> open
+        is SettingsEntry.Open -> entry.actionLabel ?: open
         is SettingsEntry.Link -> "↗"
         is SettingsEntry.Metadata -> entry.value
     }
@@ -209,7 +210,7 @@ internal fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit
 }
 
 @Composable
-private fun Pager(page: Int, count: Int, compact: Boolean, onPage: (Int) -> Unit) {
+internal fun Pager(page: Int, count: Int, compact: Boolean, onPage: (Int) -> Unit) {
     val label = stringResource(R.string.paper_page, page + 1, count)
     Box(Modifier.fillMaxWidth().height(if (compact) 48.dp else 63.dp)
         .padding(start = 12.dp, end = 12.dp, bottom = if (compact) 0.dp else 7.5.dp)
@@ -355,15 +356,76 @@ fun TableOfContents(title: String, entries: List<SettingsEntry>, notice: NoticeC
 
 /** Reuses the app's no-scrim, no-animation, Back-dismissable page window. */
 @Composable
-fun SheetPage(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
-    BottomSheet(onDismiss = onDismiss) {
+private fun SheetTitle(title: String) {
+    Text(title, fontFamily = LatoFamily, fontSize = 21.sp, lineHeight = 25.5.sp,
+        fontWeight = FontWeight.Bold, color = LocalInk.current,
+        modifier = Modifier.padding(bottom = 10.5.dp).semantics { heading() })
+}
+
+@Composable
+fun SheetPage(title: String, onDismiss: () -> Unit, imePadding: Boolean = false,
+    content: @Composable ColumnScope.() -> Unit) {
+    BottomSheet(onDismiss = onDismiss, imePadding = imePadding) {
         Column(Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
-            Text(title, fontFamily = LatoFamily, fontSize = 21.sp, lineHeight = 25.5.sp,
-                fontWeight = FontWeight.Bold, color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 10.5.dp).semantics { heading() })
+            SheetTitle(title)
             content()
         }
     }
+}
+
+/** Allocate complete list rows from measured page capacity; the pager never belongs to scrolling content. */
+@Composable
+internal fun <T> PagedSheetPage(title: String, items: List<T>, onDismiss: () -> Unit,
+    header: @Composable () -> Unit, row: @Composable (T) -> Unit) {
+    var page by remember { mutableIntStateOf(0) }
+    var count by remember { mutableIntStateOf(1) }
+    var drag by remember { mutableFloatStateOf(0f) }
+    val scroll = rememberScrollState()
+    BottomSheet(onDismiss = onDismiss) {
+        SubcomposeLayout(Modifier.fillMaxWidth().heightIn(max = 500.dp).pointerInput(page, count) {
+            detectHorizontalDragGestures(
+                onDragStart = { drag = 0f }, onDragEnd = {
+                    if (abs(drag) > 80) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
+                }, onHorizontalDrag = { _, amount -> drag += amount })
+        }) { constraints ->
+            val width = constraints.maxWidth
+            val loose = Constraints(maxWidth = width)
+            val heading = subcompose("heading") { Column { SheetTitle(title); header() } }.single().measure(loose)
+            val heights = items.mapIndexed { index, item ->
+                subcompose("measure-$index") { Box(Modifier.fillMaxWidth()) { row(item) } }.single().measure(loose).height
+            }
+            val paged = items.size > 6 || heading.height + heights.sum() > constraints.maxHeight
+            val footerHeight = if (paged) subcompose("measure-pager") { Pager(0, 2, false) {} }.single().measure(loose).height else 0
+            val capacity = (constraints.maxHeight - heading.height - footerHeight).coerceAtLeast(0)
+            val pages = mutableListOf<IntRange>()
+            var start = 0
+            while (start < items.size) {
+                var end = start
+                var height = heights[start]
+                while (end + 1 < items.size && end - start + 1 < 6 && height + heights[end + 1] <= capacity) {
+                    end++; height += heights[end]
+                }
+                pages += start..end
+                start = end + 1
+            }
+            if (pages.isEmpty()) pages += IntRange.EMPTY
+            val current = page.coerceIn(0, pages.lastIndex)
+            if (page != current) page = current
+            if (count != pages.size) count = pages.size
+            val active = pages[current]
+            val bodyHeight = active.sumOf { heights[it] }.coerceAtMost(capacity)
+            val body = subcompose("body") {
+                Column(Modifier.fillMaxWidth().verticalScroll(scroll)) { active.forEach { row(items[it]) } }
+            }.single().measure(Constraints.fixed(width, bodyHeight))
+            val footer = if (pages.size > 1) subcompose("pager") { Pager(current, pages.size, false) { page = it } }.single().measure(loose) else null
+            layout(width, heading.height + body.height + (footer?.height ?: 0)) {
+                heading.placeRelative(0, 0)
+                body.placeRelative(0, heading.height)
+                footer?.placeRelative(0, heading.height + body.height)
+            }
+        }
+    }
+    LaunchedEffect(page) { scroll.scrollTo(0) }
 }
 
 @Composable
@@ -371,17 +433,38 @@ fun ChoiceSheet(title: String, choices: List<SettingsChoice>, selected: String,
     onSelect: (String) -> Unit, onDismiss: () -> Unit) {
     SheetPage(title, onDismiss) {
         choices.forEach { choice ->
-            Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus()
-                .selectable(choice.id == selected, role = Role.RadioButton, onClick = { onSelect(choice.id); onDismiss() }),
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(choice.label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
-                    fontWeight = if (choice.id == selected) FontWeight.Bold else FontWeight.Normal,
-                    color = LocalInk.current, modifier = Modifier.weight(1f))
-                Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
-                    if (choice.id == selected) CheckMark()
-                }
-            }
+            ChoiceOption(choice.label, choice.id == selected) { onSelect(choice.id); onDismiss() }
         }
+    }
+}
+
+/** Shared by pure choices and mixed menus which also contain ordinary actions. */
+@Composable
+fun ChoiceOption(label: String, selected: Boolean, onSelect: () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus()
+        .selectable(selected, role = Role.RadioButton, onClick = onSelect),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            color = LocalInk.current, modifier = Modifier.weight(1f))
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { if (selected) CheckMark() }
+    }
+}
+
+@Composable
+fun SheetText(text: String) {
+    Text(text, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 19.5.sp,
+        color = LocalInk.current, modifier = Modifier.padding(bottom = 6.dp))
+}
+
+@Composable
+fun CheckboxOption(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus()
+        .toggleable(checked, role = Role.Checkbox, onValueChange = onToggle),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
+            fontWeight = FontWeight.Bold, color = LocalInk.current, modifier = Modifier.weight(1f))
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { IndexCheckbox(checked, true) }
     }
 }
 
