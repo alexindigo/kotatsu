@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Vybrat vlastní obrázek spořiče</string>
     <string name="paper_clear_image_help">Odebrat vlastní obrázek spořiče</string>
     <string name="paper_screensaver_mode_help">Jak často se spořič obnovuje</string>
+    <string name="app_store_title">Obchod s aplikacemi</string>
+    <string name="app_store_open">Otevřít F-Droid</string>
+    <string name="app_store_absent">F-Droid není nainstalován</string>
+    <string name="app_store_missing_title">F-Droid není nainstalován.</string>
+    <string name="app_store_missing_body">Stáhněte jej z f-droid.org a nainstalujte jej.</string>
+    <string name="app_store_open_website">Otevřít f-droid.org</string>
+    <string name="app_store_no_browser">Žádná aplikace v tomto telefonu nemůže otevřít f-droid.org.</string>
+    <string name="app_store_launch_failed">F-Droid se nepodařilo otevřít.</string>
 </resources>

@@ -55,14 +55,20 @@ private fun Modifier.inkFocus(): Modifier {
 
 /** The three tracks share a real text baseline. The leader never occupies either text's bounds. */
 @Composable
-fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root: Boolean = false) {
+fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root: Boolean = false,
+    external: Boolean = false) {
     val ink = LocalInk.current
     Layout(modifier = modifier.fillMaxWidth(), content = {
         Text(title, fontFamily = LatoFamily, fontSize = if (root) 21.sp else 18.sp,
             lineHeight = if (root) 25.5.sp else 21.75.sp, fontWeight = FontWeight.Bold, color = ink)
-        Text(value, fontFamily = LatoFamily, fontSize = if (root) 14.sp else 18.sp,
-            lineHeight = if (root) 17.25.sp else 21.75.sp,
-            fontWeight = if (root) FontWeight.Normal else FontWeight.Bold, color = ink)
+        Row(horizontalArrangement = Arrangement.spacedBy(7.5.dp)) {
+            Text(value, fontFamily = LatoFamily, fontSize = if (root) 14.sp else 18.sp,
+                lineHeight = if (root) 17.25.sp else 21.75.sp,
+                fontWeight = if (root) FontWeight.Normal else FontWeight.Bold, color = ink,
+                modifier = Modifier.alignByBaseline())
+            if (external) Text("↗", fontFamily = LatoFamily, fontSize = 18.75.sp,
+                fontWeight = FontWeight.Bold, color = ink, modifier = Modifier.alignByBaseline())
+        }
         Canvas(Modifier) {
             drawLine(ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
                 strokeWidth = size.height, cap = StrokeCap.Round,
@@ -168,7 +174,8 @@ fun Notice(content: NoticeContent) {
 }
 
 @Composable
-private fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit) {
+internal fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
+    minimumHeight: androidx.compose.ui.unit.Dp = 67.5.dp) {
     val on = stringResource(R.string.paper_on)
     val off = stringResource(R.string.paper_off)
     val open = stringResource(R.string.paper_open)
@@ -187,7 +194,7 @@ private fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit)
         is SettingsEntry.Link -> Modifier.clickable(role = Role.Button, onClickLabel = external, onClick = entry.onOpen)
         is SettingsEntry.Metadata -> Modifier
     }
-    Column(Modifier.fillMaxWidth().heightIn(min = 67.5.dp).inkFocus().then(action)
+    Column(Modifier.fillMaxWidth().heightIn(min = minimumHeight).inkFocus().then(action)
         .semantics(mergeDescendants = true) {
             if (entry is SettingsEntry.Switch) stateDescription = if (entry.checked) on else off
             if (entry is SettingsEntry.Value) contentDescription = "${entry.title}, ${entry.value}"
@@ -318,7 +325,8 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
 }
 
 @Composable
-fun TableOfContents(title: String, entries: List<ContentsEntry>, notice: NoticeContent?, modifier: Modifier = Modifier) {
+fun TableOfContents(title: String, entries: List<SettingsEntry>, notice: NoticeContent?, modifier: Modifier = Modifier) {
+    val external = stringResource(R.string.paper_external)
     Column(modifier.fillMaxSize()) {
         Box(Modifier.fillMaxWidth().heightIn(min = 36.dp).padding(horizontal = 16.dp), contentAlignment = Alignment.CenterStart) {
             Text(title, fontFamily = LatoFamily, fontSize = 26.sp, lineHeight = 31.5.sp,
@@ -326,10 +334,18 @@ fun TableOfContents(title: String, entries: List<ContentsEntry>, notice: NoticeC
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())) {
             entries.forEach { entry ->
+                val summary: String
+                val onOpen: () -> Unit
+                when (entry) {
+                    is SettingsEntry.Open -> { summary = entry.summary; onOpen = entry.onOpen }
+                    is SettingsEntry.Link -> { summary = entry.summary; onOpen = entry.onOpen }
+                    else -> error("Contents entries must open a chapter or an external destination")
+                }
                 Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).inkFocus()
-                    .clickable(role = Role.Button, onClick = entry.onOpen).semantics(mergeDescendants = true) {}
+                    .clickable(role = Role.Button, onClickLabel = external.takeIf { entry is SettingsEntry.Link },
+                        onClick = onOpen).semantics(mergeDescendants = true) {}
                     .padding(horizontal = 16.dp, vertical = 9.dp), contentAlignment = Alignment.CenterStart) {
-                    IndexLine(entry.title, entry.summary, root = true)
+                    IndexLine(entry.title, summary, root = true, external = entry is SettingsEntry.Link)
                 }
             }
         }
@@ -400,5 +416,14 @@ fun HelpSheet(title: String, paragraphs: List<String>, onDismiss: () -> Unit) {
             Text(paragraph, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 19.5.sp,
                 color = LocalInk.current, modifier = Modifier.padding(bottom = 13.5.dp))
         }
+    }
+}
+
+/** A full-row sheet action without a fabricated value or decorative leader. */
+@Composable
+fun SheetAction(label: String, onClick: () -> Unit) {
+    Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).inkFocus()
+        .clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.CenterStart) {
+        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp, color = LocalInk.current)
     }
 }

@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Kies een eigen afbeelding voor de schermbeveiliging</string>
     <string name="paper_clear_image_help">Verwijder de eigen schermbeveiligingsafbeelding</string>
     <string name="paper_screensaver_mode_help">Hoe vaak de schermbeveiliging wordt vernieuwd</string>
+    <string name="app_store_title">Appwinkel</string>
+    <string name="app_store_open">F-Droid openen</string>
+    <string name="app_store_absent">F-Droid niet geïnstalleerd</string>
+    <string name="app_store_missing_title">F-Droid is niet geïnstalleerd.</string>
+    <string name="app_store_missing_body">Download het van f-droid.org en installeer het.</string>
+    <string name="app_store_open_website">f-droid.org openen</string>
+    <string name="app_store_no_browser">Geen app op deze telefoon kan f-droid.org openen.</string>
+    <string name="app_store_launch_failed">F-Droid kon niet worden geopend.</string>
 </resources>

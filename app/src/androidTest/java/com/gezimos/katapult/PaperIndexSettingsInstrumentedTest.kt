@@ -70,16 +70,17 @@ class PaperIndexSettingsInstrumentedTest {
         ui.await("Back did not return to Settings root") { ui.has(context.getString(R.string.section_system)) }
     }
 
-    @Test fun contentsKeepsAllNineExistingChaptersOnOneScreen() = withSettings { _, _, _, ui ->
+    @Test fun contentsKeepsAllTenDestinationsOnOneScreen() = withSettings { _, _, _, ui ->
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val titles = listOf(R.string.section_appearance, R.string.section_home, R.string.section_all_apps,
             R.string.section_gestures, R.string.section_notifications, R.string.cat_lockscreen,
-            R.string.section_screensaver, R.string.section_system, R.string.section_about).map { context.getString(it) }
+            R.string.section_screensaver, R.string.section_system, R.string.section_about,
+            R.string.app_store_title).map { context.getString(it) }
         ui.await("Existing contents destinations are missing") { titles.all { ui.has(it) } }
         assertEquals(titles, ui.gridLabels(titles))
         assertFalse(ui.has(context.getString(R.string.paper_next_page)))
         assertFalse(ui.has(context.getString(R.string.paper_previous_page)))
-        // App Store is Item 3. E-ink remains in Appearance rather than regaining a root row.
+        // E-ink remains in Appearance rather than regaining a root row.
         assertFalse(ui.has(context.getString(R.string.section_eink)))
     }
 

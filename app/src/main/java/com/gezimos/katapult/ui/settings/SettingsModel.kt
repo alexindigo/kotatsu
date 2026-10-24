@@ -42,6 +42,7 @@ sealed class SettingsEntry {
     data class Link(
         override val id: String, override val title: String, override val help: String,
         val onOpen: () -> Unit, override val visible: Boolean = true,
+        val summary: String = "",
     ) : SettingsEntry()
 
     /** Runtime information is rendered in the same grammar, without an invented action. */
@@ -52,7 +53,6 @@ sealed class SettingsEntry {
 }
 
 data class SettingsChoice(val id: String, val label: String)
-data class ContentsEntry(val id: String, val title: String, val summary: String, val onOpen: () -> Unit)
 
 /** Whole-group allocation: fewest pages, then no avoidable singleton, then balanced entry counts. */
 fun paginateGroups(counts: List<Int>, heights: List<Int>, availableHeight: Int): List<IntRange> =

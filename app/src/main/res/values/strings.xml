@@ -392,4 +392,12 @@
     <string name="paper_screensaver_image_help">Choose a custom screensaver image</string>
     <string name="paper_clear_image_help">Remove the custom screensaver image</string>
     <string name="paper_screensaver_mode_help">How often the screensaver refreshes</string>
+    <string name="app_store_title">App Store</string>
+    <string name="app_store_open">Open F-Droid</string>
+    <string name="app_store_absent">F-Droid not installed</string>
+    <string name="app_store_missing_title">F-Droid isn\'t installed.</string>
+    <string name="app_store_missing_body">Download it from f-droid.org, then install it.</string>
+    <string name="app_store_open_website">Open f-droid.org</string>
+    <string name="app_store_no_browser">No app can open f-droid.org on this phone.</string>
+    <string name="app_store_launch_failed">F-Droid couldn\'t be opened.</string>
 </resources>

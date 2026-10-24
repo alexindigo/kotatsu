@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Eigenes Bild für den Bildschirmschoner wählen</string>
     <string name="paper_clear_image_help">Eigenes Bild des Bildschirmschoners entfernen</string>
     <string name="paper_screensaver_mode_help">Wie oft der Bildschirmschoner aktualisiert wird</string>
+    <string name="app_store_title">App-Store</string>
+    <string name="app_store_open">F-Droid öffnen</string>
+    <string name="app_store_absent">F-Droid nicht installiert</string>
+    <string name="app_store_missing_title">F-Droid ist nicht installiert.</string>
+    <string name="app_store_missing_body">Lade F-Droid von f-droid.org herunter und installiere es.</string>
+    <string name="app_store_open_website">f-droid.org öffnen</string>
+    <string name="app_store_no_browser">Keine App auf diesem Telefon kann f-droid.org öffnen.</string>
+    <string name="app_store_launch_failed">F-Droid konnte nicht geöffnet werden.</string>
 </resources>

@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Choisir une image personnalisée pour l\'économiseur</string>
     <string name="paper_clear_image_help">Supprimer l\'image personnalisée de l\'économiseur</string>
     <string name="paper_screensaver_mode_help">Fréquence de rafraîchissement de l\'économiseur</string>
+    <string name="app_store_title">Boutique d’apps</string>
+    <string name="app_store_open">Ouvrir F-Droid</string>
+    <string name="app_store_absent">F-Droid non installé</string>
+    <string name="app_store_missing_title">F-Droid n’est pas installé.</string>
+    <string name="app_store_missing_body">Téléchargez-le depuis f-droid.org, puis installez-le.</string>
+    <string name="app_store_open_website">Ouvrir f-droid.org</string>
+    <string name="app_store_no_browser">Aucune app sur ce téléphone ne peut ouvrir f-droid.org.</string>
+    <string name="app_store_launch_failed">Impossible d’ouvrir F-Droid.</string>
 </resources>

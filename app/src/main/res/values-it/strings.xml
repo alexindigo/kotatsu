@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Scegli un\'immagine personalizzata per il salvaschermo</string>
     <string name="paper_clear_image_help">Rimuovi l\'immagine personalizzata del salvaschermo</string>
     <string name="paper_screensaver_mode_help">Frequenza di aggiornamento del salvaschermo</string>
+    <string name="app_store_title">Negozio di app</string>
+    <string name="app_store_open">Apri F-Droid</string>
+    <string name="app_store_absent">F-Droid non installato</string>
+    <string name="app_store_missing_title">F-Droid non è installato.</string>
+    <string name="app_store_missing_body">Scaricalo da f-droid.org, poi installalo.</string>
+    <string name="app_store_open_website">Apri f-droid.org</string>
+    <string name="app_store_no_browser">Nessuna app su questo telefono può aprire f-droid.org.</string>
+    <string name="app_store_launch_failed">Impossibile aprire F-Droid.</string>
 </resources>

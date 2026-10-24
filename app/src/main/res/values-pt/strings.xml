@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Escolher uma imagem personalizada para a proteção de ecrã</string>
     <string name="paper_clear_image_help">Remover a imagem personalizada da proteção de ecrã</string>
     <string name="paper_screensaver_mode_help">Frequência de atualização da proteção de ecrã</string>
+    <string name="app_store_title">Loja de apps</string>
+    <string name="app_store_open">Abrir F-Droid</string>
+    <string name="app_store_absent">F-Droid não instalado</string>
+    <string name="app_store_missing_title">O F-Droid não está instalado.</string>
+    <string name="app_store_missing_body">Transfira-o de f-droid.org e instale-o.</string>
+    <string name="app_store_open_website">Abrir f-droid.org</string>
+    <string name="app_store_no_browser">Nenhuma app neste telefone pode abrir f-droid.org.</string>
+    <string name="app_store_launch_failed">Não foi possível abrir o F-Droid.</string>
 </resources>

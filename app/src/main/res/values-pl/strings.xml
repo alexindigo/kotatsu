@@ -390,4 +390,12 @@
     <string name="paper_screensaver_image_help">Wybierz własny obraz wygaszacza</string>
     <string name="paper_clear_image_help">Usuń własny obraz wygaszacza</string>
     <string name="paper_screensaver_mode_help">Częstotliwość odświeżania wygaszacza</string>
+    <string name="app_store_title">Sklep z aplikacjami</string>
+    <string name="app_store_open">Otwórz F-Droid</string>
+    <string name="app_store_absent">F-Droid niezainstalowany</string>
+    <string name="app_store_missing_title">F-Droid nie jest zainstalowany.</string>
+    <string name="app_store_missing_body">Pobierz go z f-droid.org i zainstaluj.</string>
+    <string name="app_store_open_website">Otwórz f-droid.org</string>
+    <string name="app_store_no_browser">Żadna aplikacja na tym telefonie nie może otworzyć f-droid.org.</string>
+    <string name="app_store_launch_failed">Nie udało się otworzyć F-Droid.</string>
 </resources>

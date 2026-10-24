@@ -100,7 +100,11 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import kotlin.math.abs
-import com.gezimos.katapult.ui.settings.ContentsEntry
+import com.gezimos.katapult.ui.settings.SettingsEntry
+import com.gezimos.katapult.ui.settings.AppStorePackages
+import com.gezimos.katapult.ui.settings.appStoreEntry
+import com.gezimos.katapult.ui.settings.rememberAppStorePackages
+import com.gezimos.katapult.ui.settings.openAppStoreIntent
 import com.gezimos.katapult.ui.settings.NoticeContent
 import com.gezimos.katapult.ui.settings.PaperIndexRenderer
 import com.gezimos.katapult.ui.settings.TableOfContents
@@ -132,8 +136,11 @@ fun SettingsScreen(
     configExporter: ActivityResultLauncher<String>,
     configImporter: ActivityResultLauncher<Array<String>>,
     screensaverWallpaperPicker: ActivityResultLauncher<String>,
+    appStorePackages: AppStorePackages = rememberAppStorePackages(),
+    openStoreIntent: ((Intent) -> Boolean)? = null,
 ) {
     val context = LocalContext.current
+    val store = appStoreEntry(appStorePackages, openStoreIntent ?: { openAppStoreIntent(context, it) })
     val prefs = viewModel.prefs
     val policyTick = viewModel.policyRefresh
     val policyChoices = remember(policyTick) { prefs.sensitiveChoices() }
@@ -372,8 +379,8 @@ fun SettingsScreen(
     ) {
         if (selectedCategory == null) {
             val entries = chapters.map { (id, chapter) ->
-                ContentsEntry(chapter.id, chapter.title, chapter.summary) { selectedCategory = id }
-            }
+                SettingsEntry.Open(chapter.id, chapter.title, "", onOpen = { selectedCategory = id }, summary = chapter.summary)
+            } + store
             TableOfContents(stringResource(R.string.settings), entries, notice, Modifier.weight(1f))
         } else {
             val chapter = chapters.getValue(selectedCategory!!)
