@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Kotatsu Weather</string>
+    <string name="widget_description">Weersverwachting op een tijdlijn voor je plaatsen</string>
+    <string name="config_unreadable">Deze opgeslagen instellingen kunnen niet worden gelezen. Ze zijn ongewijzigd bewaard.</string>
+    <string name="widget_gone">Deze widget is niet meer beschikbaar.</string>
+    <string name="place_gone">Deze plaats is in een andere editor verwijderd.</string>
+    <string name="places_full">Een widget toont maximaal vier plaatsen. Verwijder er een om een andere toe te voegen.</string>
+    <string name="save_failed">Deze wijziging kon niet worden opgeslagen. Probeer het opnieuw.</string>
+</resources>

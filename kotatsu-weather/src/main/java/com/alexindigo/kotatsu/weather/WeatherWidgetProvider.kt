@@ -25,6 +25,10 @@ class WeatherWidgetProvider : AppWidgetProvider() {
         val store = WeatherStore(context)
         appWidgetIds.forEach(store::delete)
     }
+    override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
+        val store = WeatherStore(context)
+        oldWidgetIds.zip(newWidgetIds).forEach { (old, new) -> store.restore(old, new) }
+    }
     override fun onUpdate(context: Context, manager: AppWidgetManager, ids: IntArray) {
         if (WeatherRuntime.ids(context).isEmpty()) return
         WeatherRuntime.schedule(context)
@@ -73,7 +77,7 @@ object WeatherRuntime {
         val store = WeatherStore(context)
         val now = System.currentTimeMillis()
         val needed = force || ids(context).any { id ->
-            val config = store.config(id)
+            val config = store.config(id) ?: return@any false
             config.locations.any { location ->
                 val cached = store.cached(location, config.fahrenheit)
                 cached == null || now - cached.fetchedAt > 10 * 60 * 1000L
@@ -94,7 +98,7 @@ object WeatherRuntime {
         val density = context.resources.displayMetrics.density
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300).coerceAtLeast(1)
         val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112).coerceAtLeast(1)
-        val config = WeatherStore(context).config(id)
+        val config = WeatherStore(context).config(id) ?: return
         val forecasts = config.locations.map { WeatherStore(context).cached(it, config.fahrenheit) }
         val bitmap = TimelineRenderer.render(context, config, forecasts,
             (width * density).toInt(), (height * density).toInt())
@@ -113,7 +117,7 @@ class RefreshJobService : JobService() {
             val zone = ZoneId.systemDefault().id
             val visited = mutableSetOf<String>()
             for (id in WeatherRuntime.ids(this)) {
-                val config = store.config(id)
+                val config = store.config(id) ?: continue
                 for (location in config.locations) {
                     if (Thread.currentThread().isInterrupted || WeatherRuntime.ids(this).isEmpty()) return@submit
                     if (!visited.add("${location.coordinateKey}|${config.fahrenheit}")) continue

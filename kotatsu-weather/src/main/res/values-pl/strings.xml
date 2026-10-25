@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Kotatsu Weather</string>
+    <string name="widget_description">Oś czasu prognozy dla Twoich miejsc</string>
+    <string name="config_unreadable">Nie można odczytać tych zapisanych ustawień. Zachowano je bez zmian.</string>
+    <string name="widget_gone">Ten widżet nie jest już dostępny.</string>
+    <string name="place_gone">To miejsce zostało usunięte w innym edytorze.</string>
+    <string name="places_full">Widżet wyświetla najwyżej cztery miejsca. Usuń jedno, aby dodać kolejne.</string>
+    <string name="save_failed">Nie udało się zapisać zmiany. Spróbuj ponownie.</string>
+</resources>

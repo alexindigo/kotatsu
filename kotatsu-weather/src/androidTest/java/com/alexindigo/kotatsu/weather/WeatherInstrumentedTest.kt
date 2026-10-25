@@ -102,7 +102,7 @@ class WeatherInstrumentedTest {
         val store = WeatherStore(context)
         val id = 876543
         try {
-            store.save(id, config)
+            context.getSharedPreferences("weather", 0).edit().putString("widget_$id", ConfigJson.encode(config)).commit()
             assertEquals(config, WeatherStore(context).config(id))
             val zone = "fixture/isolated"
             store.cache(home, true, zone, fixture("forecast.json"), timestamp)
@@ -112,7 +112,7 @@ class WeatherInstrumentedTest {
             assertThrows(Exception::class.java) { store.cache(home, true, zone, "{}", timestamp + 1) }
             assertEquals(timestamp, store.cached(home, true, zone)!!.fetchedAt)
         } finally { store.delete(id) }
-        assertTrue(store.config(id).locations.isEmpty())
+        assertTrue(store.config(id)!!.locations.isEmpty())
     }
     @Test fun noWidgetMeansNoNetworkJobs() {
         assertTrue(WeatherRuntime.ids(context).isEmpty())

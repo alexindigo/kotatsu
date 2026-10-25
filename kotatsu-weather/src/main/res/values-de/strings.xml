@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Kotatsu Weather</string>
+    <string name="widget_description">Vorhersage-Zeitleiste für deine Orte</string>
+    <string name="config_unreadable">Diese gespeicherten Einstellungen können nicht gelesen werden. Sie bleiben unverändert.</string>
+    <string name="widget_gone">Dieses Widget ist nicht mehr verfügbar.</string>
+    <string name="place_gone">Dieser Ort wurde in einem anderen Editor entfernt.</string>
+    <string name="places_full">Ein Widget zeigt höchstens vier Orte. Entferne einen, um einen weiteren hinzuzufügen.</string>
+    <string name="save_failed">Diese Änderung konnte nicht gespeichert werden. Versuche es erneut.</string>
+</resources>

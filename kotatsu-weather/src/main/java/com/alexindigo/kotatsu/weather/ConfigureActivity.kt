@@ -12,6 +12,8 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.CancellationSignal
 import android.text.InputFilter
+import android.text.Editable
+import android.text.TextWatcher
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -21,11 +23,17 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
 import java.util.concurrent.Executors
 
 class ConfigureActivity : Activity() {
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
-    private var config = WidgetConfig(emptyList())
+    private val store by lazy { WeatherStore(this) }
+    private var editorReady = false
+    private var choosing = false
+    private data class PlaceEdit(val widgetId: Int, val placeId: String, val label: String, val start: Int, val end: Int)
+    private var editing: PlaceEdit? = null
+    private var editDialog: AlertDialog? = null
     private lateinit var rows: LinearLayout
     private lateinit var add: TextView
     private lateinit var addNote: TextView
@@ -46,6 +54,10 @@ class ConfigureActivity : Activity() {
         window.navigationBarColor = Color.WHITE
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         val requested = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+        val restored = savedInstanceState?.getInt("widgetId", AppWidgetManager.INVALID_APPWIDGET_ID)
+            ?: AppWidgetManager.INVALID_APPWIDGET_ID
+        // Saved fields belong only to their original bound widget. Never move them to a replacement.
+        if (restored != AppWidgetManager.INVALID_APPWIDGET_ID && restored !in WeatherRuntime.ids(this)) { finish(); return }
         widgetId = if (requested != AppWidgetManager.INVALID_APPWIDGET_ID) requested else {
             // Opened from the app icon: settings belong to a widget.
             when (val target = settingsTarget(WeatherRuntime.ids(this))) {
@@ -55,13 +67,16 @@ class ConfigureActivity : Activity() {
             }
         }
         if (widgetId !in WeatherRuntime.ids(this)) { finish(); return }
-        config = savedInstanceState?.getString("draft")?.let { ConfigJson.decode(it) } ?: WeatherStore(this).config(widgetId)
+        if (restored == widgetId && savedInstanceState?.containsKey("editPlace") == true) {
+            editing = PlaceEdit(widgetId, savedInstanceState.getString("editPlace")!!,
+                savedInstanceState.getString("editLabel")!!, savedInstanceState.getInt("editStart"), savedInstanceState.getInt("editEnd"))
+        }
+        if (store.config(widgetId) == null) { showUnreadable(); return }
         // Settings scroll; the actions stay in a fixed footer, so Done is always on screen at the bottom.
         val body = column().apply { setPadding(dp(16), dp(16), dp(16), dp(8)) }
         body.addView(text("Kotatsu Weather", 24f, bold = true).apply { setPadding(0, 0, 0, dp(8)) })
         units = cycleRow("Temperature") {
-            config = config.copy(fahrenheit = !config.fahrenheit)
-            showUnits()
+            changed(store.toggleUnits(widgetId))
         }
         body.addView(units)
         rows = column()
@@ -79,10 +94,8 @@ class ConfigureActivity : Activity() {
         add = button("Add location") { search() }
         footer.addView(add, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(16) })
         done = button("Done") {
-            WeatherStore(this@ConfigureActivity).save(widgetId, config)
-            WeatherRuntime.schedule(this@ConfigureActivity)
-            WeatherRuntime.redraw(this@ConfigureActivity, widgetId)
-            WeatherRuntime.refresh(this@ConfigureActivity, force = true)
+            // Every change is already saved by the store. Closing an old editor cannot write a list.
+            if (widgetId !in WeatherRuntime.ids(this)) { finish(); return@button }
             setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
             finish()
         }
@@ -102,13 +115,62 @@ class ConfigureActivity : Activity() {
         })
         showRows()
         showUnits()
+        editorReady = true
+        editing?.let { edit(it.placeId, it) }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (!editorReady || choosing) return
+        if (widgetId !in WeatherRuntime.ids(this)) { finish(); return }
+        if (!intent.hasExtra(AppWidgetManager.EXTRA_APPWIDGET_ID)) {
+            when (val target = settingsTarget(WeatherRuntime.ids(this))) {
+                is SettingsTarget.Choose -> { chooseWidget(target.widgetIds); return }
+                is SettingsTarget.One -> if (target.widgetId != widgetId) { finish(); return }
+                SettingsTarget.NoWidget -> { finish(); return }
+            }
+        }
+        if (store.config(widgetId) == null) { showUnreadable(); return }
+        showRows(); showUnits()
+    }
+
+    private fun changed(result: WeatherStore.Result) {
+        when (result) {
+            WeatherStore.Result.APPLIED -> {
+                WeatherRuntime.schedule(this)
+                WeatherRuntime.redraw(this, widgetId)
+                WeatherRuntime.refresh(this, force = true)
+            }
+            WeatherStore.Result.UNREADABLE -> { showUnreadable(); return }
+            WeatherStore.Result.GONE -> {
+                Toast.makeText(this, R.string.widget_gone, Toast.LENGTH_SHORT).show()
+                finish(); return
+            }
+            WeatherStore.Result.FULL -> Toast.makeText(this, R.string.places_full, Toast.LENGTH_SHORT).show()
+            WeatherStore.Result.MISSING -> Toast.makeText(this, R.string.place_gone, Toast.LENGTH_SHORT).show()
+            WeatherStore.Result.WRITE_FAILED -> Toast.makeText(this, R.string.save_failed, Toast.LENGTH_SHORT).show()
+        }
+        if (editorReady) { showRows(); showUnits() }
+    }
+
+    private fun showUnreadable() {
+        editorReady = false
+        editDialog?.dismiss()
+        setContentView(column().apply {
+            setBackgroundColor(Color.WHITE); setPadding(dp(16), dp(16), dp(16), dp(20))
+            addView(text("Kotatsu Weather", 24f, bold = true))
+            addView(text(getString(R.string.config_unreadable), 18f).apply { setPadding(0, dp(16), 0, 0) })
+        })
     }
 
     /** Several widgets: ask which one's settings to open, naming each by its places. */
     private fun chooseWidget(widgetIds: List<Int>) {
+        if (choosing) return
+        choosing = true
         val store = WeatherStore(this)
         val names = widgetIds.map { id ->
-            store.config(id).locations.joinToString(", ") { it.label }.ifEmpty { "No places yet" }
+            store.config(id)?.locations?.joinToString(", ") { it.label }?.ifEmpty { "No places yet" }
+                ?: getString(R.string.config_unreadable)
         }
         AlertDialog.Builder(this).setCustomTitle(dialogTitle("Which widget?"))
             .setAdapter(listItems(names)) { _, which ->
@@ -136,14 +198,15 @@ class ConfigureActivity : Activity() {
     }
 
     private fun showRows() {
+        val config = store.config(widgetId) ?: run { showUnreadable(); return }
         rows.removeAllViews()
         if (config.locations.isEmpty()) {
             rows.addView(text("No places yet. Each place you add gets its own line on the widget.", 14f).apply {
                 setPadding(0, dp(6), 0, dp(6))
             })
         }
-        config.locations.forEachIndexed { index, location ->
-            rows.addView(actionRow(location.label, "${location.place}\n${hours(location.start)} to ${hours(location.end)}") { edit(index) })
+        config.locations.forEach { location ->
+            rows.addView(actionRow(location.label, "${location.place}\n${hours(location.start)} to ${hours(location.end)}") { edit(location.id) })
         }
         val full = config.locations.size >= MAX_LOCATIONS
         add.isEnabled = !full
@@ -158,12 +221,14 @@ class ConfigureActivity : Activity() {
     }
 
     private fun showUnits() {
+        val config = store.config(widgetId) ?: return
         setRowDetail(units, if (config.fahrenheit) "Fahrenheit" else "Celsius")
         units.findViewWithTag<TextView>(PILL).text = if (config.fahrenheit) "°F" else "°C"
     }
 
-    private fun edit(index: Int) {
-        val location = config.locations[index]
+    private fun edit(placeId: String, restored: PlaceEdit? = null) {
+        val location = store.config(widgetId)?.locations?.firstOrNull { it.id == placeId } ?: return
+        editing = restored ?: PlaceEdit(widgetId, placeId, location.label, location.start, location.end)
         lateinit var dialog: AlertDialog
         // The title row lives in the body, whose edges line up with Mudita's full-width dialog buttons, so the
         // remove icon's edge sits on the buttons' edge. (Mudita stacks dialog buttons, so a third would run off.)
@@ -176,14 +241,14 @@ class ConfigureActivity : Activity() {
                 contentDescription = "Remove location"
                 setPadding(dp(16), dp(12), 0, dp(12))
                 setOnClickListener {
-                    config = config.copy(locations = config.locations.filterIndexed { i, _ -> i != index })
-                    showRows(); dialog.dismiss()
+                    changed(store.remove(widgetId, placeId))
+                    dialog.dismiss()
                 }
             })
         })
         body.addView(text(location.place, 14f))
         val label = field("Up to 8 characters").apply {
-            setText(location.label)
+            setText(editing!!.label)
             filters = arrayOf(InputFilter { source, start, end, dest, dstart, dend ->
                 val kept = dest.toString().removeRange(dstart, dend)
                 val available = 8 - kept.codePointCount(0, kept.length)
@@ -191,17 +256,24 @@ class ConfigureActivity : Activity() {
                 if (input.codePointCount(0, input.length) <= available) null
                 else input.substring(0, input.offsetByCodePoints(0, available.coerceAtLeast(0)))
             })
+            addTextChangedListener(object : TextWatcher {
+                override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
+                override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {
+                    editing = editing?.copy(label = s.toString())
+                }
+                override fun afterTextChanged(s: Editable?) = Unit
+            })
         }
         body.addView(caption("Label").apply { setPadding(0, dp(20), 0, dp(6)) })
         body.addView(label)
         // Hours step between marks (odd hours) with − and +; the steppers keep the end after the start, so the
         // span is always valid. No scroll wheels: they animate badly on e-ink and their dividers are system grey.
-        var start = location.start
-        var end = location.end
+        var start = editing!!.start
+        var end = editing!!.end
         lateinit var refresh: () -> Unit
-        val startRow = stepper("Start", { start }, { start = it; refresh() },
+        val startRow = stepper("Start", { start }, { start = it; editing = editing?.copy(start = it); refresh() },
             min = { MARK_HOURS.first }, max = { end - MARK_EVERY_HOURS })
-        val endRow = stepper("End", { end }, { end = it; refresh() },
+        val endRow = stepper("End", { end }, { end = it; editing = editing?.copy(end = it); refresh() },
             min = { start + MARK_EVERY_HOURS }, max = { MARK_HOURS.last })
         refresh = { startRow.refresh(); endRow.refresh() }
         body.addView(startRow.view, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(16) })
@@ -210,11 +282,10 @@ class ConfigureActivity : Activity() {
         dialog = AlertDialog.Builder(this).setView(body)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Save") { _, _ ->
-                config = config.copy(locations = config.locations.mapIndexed { i, row ->
-                    if (i == index) row.copy(label = shortLabel(label.text.toString()), start = start, end = end) else row
-                })
-                showRows()
+                changed(store.edit(widgetId, placeId, label.text.toString(), start, end))
             }.create()
+        editDialog = dialog
+        dialog.setOnDismissListener { editing = null; editDialog = null }
         dialog.show()
     }
 
@@ -250,6 +321,7 @@ class ConfigureActivity : Activity() {
     }
 
     private fun search() {
+        val originWidgetId = widgetId
         val input = field("City or town")
         val body = column().apply { setPadding(dp(24), dp(8), dp(24), 0); addView(input) }
         style(body)
@@ -269,10 +341,7 @@ class ConfigureActivity : Activity() {
                 current.isEnabled = true; current.text = ADD_CURRENT
                 when (result) {
                     is CurrentPosition.Result.Found -> {
-                        if (config.locations.size < MAX_LOCATIONS) {
-                            config = config.copy(locations = config.locations + currentLocation(result.latitude, result.longitude))
-                            showRows()
-                        }
+                        changed(store.add(originWidgetId, currentLocation(result.latitude, result.longitude)))
                         dialog.dismiss()
                     }
                     CurrentPosition.Result.Denied ->
@@ -316,11 +385,8 @@ class ConfigureActivity : Activity() {
                                 dialog.dismiss()
                                 AlertDialog.Builder(this).setCustomTitle(dialogTitle("Choose a place"))
                                     .setAdapter(listItems(places.map { it.display })) { _, which ->
-                                        if (config.locations.size < MAX_LOCATIONS) {
-                                            val place = places[which]
-                                            config = config.copy(locations = config.locations + Location(shortLabel(place.name), place.display, place.latitude, place.longitude))
-                                            showRows()
-                                        }
+                                        val place = places[which]
+                                        changed(store.add(originWidgetId, Location(shortLabel(place.name), place.display, place.latitude, place.longitude)))
                                     }.setNegativeButton("Cancel", null).show()
                             }
                         }, onFailure = { input.error = "Search unavailable. Check your connection and try again." })
@@ -332,7 +398,13 @@ class ConfigureActivity : Activity() {
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
-        outState.putString("draft", ConfigJson.encode(config))
+        outState.putInt("widgetId", widgetId)
+        editing?.let {
+            outState.putString("editPlace", it.placeId)
+            outState.putString("editLabel", it.label)
+            outState.putInt("editStart", it.start)
+            outState.putInt("editEnd", it.end)
+        }
         super.onSaveInstanceState(outState)
     }
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

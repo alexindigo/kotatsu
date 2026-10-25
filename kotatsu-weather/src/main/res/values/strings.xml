@@ -1,4 +1,9 @@
 <resources>
     <string name="app_name">Kotatsu Weather</string>
     <string name="widget_description">Forecast timeline for your places</string>
+    <string name="config_unreadable">These saved settings cannot be read. They have been kept unchanged.</string>
+    <string name="widget_gone">This widget is no longer available.</string>
+    <string name="place_gone">This place was removed in another editor.</string>
+    <string name="places_full">Four places is the most a widget shows. Remove one to add another.</string>
+    <string name="save_failed">This change could not be saved. Try again.</string>
 </resources>

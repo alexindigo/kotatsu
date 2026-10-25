@@ -139,7 +139,7 @@ class TimelineTest {
         assertFalse(isStale(100, 99))
     }
     @Test fun configRoundTripWithEscapesAndUnits() {
-        val config = WidgetConfig(listOf(home.copy(label = "A\"\\\n", place = "日本\t\u0001"), home.copy(label = "School", start = 1, end = 11)), false)
+        val config = WidgetConfig(listOf(home.copy(label = "A\"\\\n", place = "日本\t\u0001"), home.copy(label = "School", start = 1, end = 11, id = "school")), false)
         assertEquals(config, ConfigJson.decode(ConfigJson.encode(config)))
         assertEquals(WidgetConfig(emptyList()), ConfigJson.decode(ConfigJson.encode(WidgetConfig(emptyList()))))
     }

@@ -36,12 +36,71 @@ object WeatherJson {
 }
 
 class WeatherStore(context: Context) {
+    private val context = context.applicationContext
     private val prefs = context.getSharedPreferences("weather", Context.MODE_PRIVATE)
-    fun config(id: Int): WidgetConfig = prefs.getString("widget_$id", null)?.let {
-        runCatching { ConfigJson.decode(it) }.getOrNull()
-    } ?: WidgetConfig(emptyList())
-    fun save(id: Int, config: WidgetConfig) { prefs.edit().putString("widget_$id", ConfigJson.encode(config)).apply() }
-    fun delete(id: Int) { prefs.edit().remove("widget_$id").apply() }
+    /** null means unreadable, never an empty editable configuration. Raw bytes stay untouched. */
+    fun config(id: Int): WidgetConfig? = synchronized(configLock) {
+        val raw = prefs.getString("widget_$id", null) ?: return@synchronized WidgetConfig(emptyList())
+        runCatching { ConfigJson.decode(raw) }.getOrElse {
+            android.util.Log.w("KotatsuWeather", "Widget configuration unreadable; retaining original data")
+            null
+        }
+    }
+
+    enum class Result { APPLIED, GONE, UNREADABLE, FULL, MISSING, WRITE_FAILED }
+
+    /** No caller can replace a list. All read/modify/write operations share this process-wide lock. */
+    private fun change(id: Int, operation: (WidgetConfig) -> WidgetConfig?): Result = synchronized(configLock) {
+        if (id !in WeatherRuntime.ids(context)) return@synchronized Result.GONE
+        val current = config(id) ?: return@synchronized Result.UNREADABLE
+        val next = operation(current) ?: return@synchronized Result.MISSING
+        check(next.locations.map { it.id }.distinct().size == next.locations.size)
+        if (prefs.edit().putString("widget_$id", ConfigJson.encode(next)).commit()) Result.APPLIED else Result.WRITE_FAILED
+    }
+
+    fun add(id: Int, location: Location): Result = synchronized(configLock) {
+        if (id !in WeatherRuntime.ids(context)) return@synchronized Result.GONE
+        val current = config(id) ?: return@synchronized Result.UNREADABLE
+        if (current.locations.size >= MAX_LOCATIONS) return@synchronized Result.FULL
+        change(id) { it.copy(locations = it.locations + location.copy(id = java.util.UUID.randomUUID().toString())) }
+    }
+
+    fun remove(id: Int, placeId: String): Result = change(id) { current ->
+        if (current.locations.none { it.id == placeId }) null
+        else current.copy(locations = current.locations.filterNot { it.id == placeId })
+    }
+
+    fun edit(id: Int, placeId: String, label: String, start: Int, end: Int): Result = change(id) { current ->
+        if (current.locations.none { it.id == placeId }) null
+        else current.copy(locations = current.locations.map {
+            if (it.id == placeId) it.copy(label = shortLabel(label), start = start, end = end) else it
+        })
+    }
+
+    fun move(id: Int, placeId: String, delta: Int): Result = change(id) { current ->
+        val rows = current.locations.toMutableList()
+        val from = rows.indexOfFirst { it.id == placeId }
+        val to = from + delta
+        if (from !in rows.indices || to !in rows.indices) null else {
+            java.util.Collections.swap(rows, from, to)
+            current.copy(locations = rows)
+        }
+    }
+
+    fun toggleUnits(id: Int): Result = change(id) { it.copy(fahrenheit = !it.fahrenheit) }
+
+    fun delete(id: Int) { synchronized(configLock) { prefs.edit().remove("widget_$id").commit() } }
+
+    /** Android remaps widget IDs on restore. Never replace a destination or discard unreadable data. */
+    fun restore(oldId: Int, newId: Int) { synchronized(configLock) {
+        if (oldId == newId || newId !in WeatherRuntime.ids(context)) return
+        val raw = prefs.getString("widget_$oldId", null) ?: return
+        if (prefs.contains("widget_$newId")) return
+        // Copy exactly; decoding is a read concern, not permission to discard old data.
+        prefs.edit().putString("widget_$newId", raw).commit()
+    } }
+
+    private companion object { val configLock = Any() }
 
     private fun key(location: Location, fahrenheit: Boolean, zone: String): String {
         val input = "${location.coordinateKey}|$fahrenheit|$zone"

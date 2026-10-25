@@ -14,19 +14,36 @@ object ConfigJson {
         append('"')
     }
 
-    fun encode(config: WidgetConfig): String = """{"fahrenheit":${config.fahrenheit},"locations":[""" +
+    fun encode(config: WidgetConfig): String = """{"version":1,"fahrenheit":${config.fahrenheit},"locations":[""" +
         config.locations.joinToString(",") {
-            """{"label":${quote(it.label)},"place":${quote(it.place)},"latitude":${it.latitude},"longitude":${it.longitude},"start":${it.start},"end":${it.end}}"""
+            """{"id":${quote(it.id)},"label":${quote(it.label)},"place":${quote(it.place)},"latitude":${it.latitude},"longitude":${it.longitude},"start":${it.start},"end":${it.end}}"""
         } + "]}"
 
     fun decode(json: String): WidgetConfig {
         val root = Reader(json).read() as Map<*, *>
-        return WidgetConfig((root["locations"] as List<*>).map {
-            val row = it as Map<*, *>
+        val version = root["version"]
+        require(version == null || version == 1.0) { "Unsupported configuration version" }
+        require(root.keys == if (version == null) setOf("fahrenheit", "locations") else setOf("version", "fahrenheit", "locations"))
+        val locations = (root["locations"] as List<*>).mapIndexed { index, value ->
+            val row = value as Map<*, *>
+            val fields = setOf("label", "place", "latitude", "longitude", "start", "end")
+            require(row.keys == if (version == null) fields else fields + "id")
+            // v0.2 had no row IDs. Stable IDs on read let concurrent editors address the same
+            // legacy row; the first successful operation persists them with the version marker.
+            val id = if (version == null) java.util.UUID.nameUUIDFromBytes(
+                "$index|${row["label"]}|${row["place"]}|${row["latitude"]}|${row["longitude"]}"
+                    .toByteArray(Charsets.UTF_8)).toString() else row["id"] as String
+            fun hour(key: String): Int {
+                val number = (row[key] as Number).toDouble()
+                require(number == number.toInt().toDouble())
+                return number.toInt()
+            }
             Location(row["label"] as String, row["place"] as String,
                 (row["latitude"] as Number).toDouble(), (row["longitude"] as Number).toDouble(),
-                (row["start"] as Number).toInt(), (row["end"] as Number).toInt())
-        }, root["fahrenheit"] as Boolean)
+                hour("start"), hour("end"), id)
+        }
+        require(locations.map { it.id }.distinct().size == locations.size) { "Duplicate place IDs" }
+        return WidgetConfig(locations, root["fahrenheit"] as Boolean)
     }
 
     private class Reader(private val text: String) {
@@ -49,7 +66,7 @@ object ConfigJson {
                     val map = linkedMapOf<String, Any>()
                     space()
                     if (text[index] != '}') while (true) {
-                        space(); val key = string(); take(':'); map[key] = value(); space()
+                        space(); val key = string(); require(key !in map); take(':'); map[key] = value(); space()
                         if (text[index] != ',') break
                         index++
                     }

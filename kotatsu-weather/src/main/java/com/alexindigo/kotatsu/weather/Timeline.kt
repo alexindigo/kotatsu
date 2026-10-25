@@ -12,6 +12,8 @@ data class Location(
     val longitude: Double,
     val start: Int = 7,
     val end: Int = 23,
+    /** Stable identity within a widget, independent of row position, label and coordinates. */
+    val id: String = java.util.UUID.randomUUID().toString(),
 ) {
     init {
         require(label.codePointCount(0, label.length) <= 8)
@@ -19,6 +21,7 @@ data class Location(
         require(start in MARK_HOURS && end in MARK_HOURS && start < end)
         require(latitude.isFinite() && latitude in -90.0..90.0)
         require(longitude.isFinite() && longitude in -180.0..180.0)
+        require(id.isNotBlank())
     }
 
     val coordinateKey: String get() = String.format(Locale.ROOT, "%.4f,%.4f", latitude, longitude)

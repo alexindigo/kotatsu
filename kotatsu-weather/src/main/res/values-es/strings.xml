@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Kotatsu Weather</string>
+    <string name="widget_description">Cronología del pronóstico para tus lugares</string>
+    <string name="config_unreadable">No se pueden leer estos ajustes guardados. Se han conservado sin cambios.</string>
+    <string name="widget_gone">Este widget ya no está disponible.</string>
+    <string name="place_gone">Este lugar se eliminó en otro editor.</string>
+    <string name="places_full">Un widget muestra como máximo cuatro lugares. Elimina uno para añadir otro.</string>
+    <string name="save_failed">No se pudo guardar este cambio. Inténtalo de nuevo.</string>
+</resources>

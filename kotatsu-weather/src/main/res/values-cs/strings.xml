@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">Kotatsu Weather</string>
+    <string name="widget_description">Časová osa předpovědi pro vaše místa</string>
+    <string name="config_unreadable">Uložená nastavení nelze přečíst. Zůstala beze změny.</string>
+    <string name="widget_gone">Tento widget již není dostupný.</string>
+    <string name="place_gone">Toto místo bylo odstraněno v jiném editoru.</string>
+    <string name="places_full">Widget zobrazí nejvýše čtyři místa. Před přidáním dalšího jedno odstraňte.</string>
+    <string name="save_failed">Změnu se nepodařilo uložit. Zkuste to znovu.</string>
+</resources>
