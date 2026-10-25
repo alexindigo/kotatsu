@@ -34,7 +34,7 @@ class PaperIndexSheetsInstrumentedTest {
         instrumentation.runOnMainSync {
             activity.setContent { AppChecklistPage("Fixture apps", apps, emptySet(), {}, {}, notifyCell = { NotifyCell.NONE }) }
         }
-        ui.await("First app page missing") { ui.has("App 1") && ui.has("App 5") }
+        ui.await("First app page missing") { ui.has("App 1") && ui.has("App 6") }
         val pager = android.graphics.Rect().also {
             ui.find(context.getString(R.string.paper_page, 1, 3))!!.getBoundsInScreen(it)
         }
@@ -46,17 +46,17 @@ class PaperIndexSheetsInstrumentedTest {
         }
         assertEquals(48f * context.resources.displayMetrics.density, arrow.height().toFloat(), 1f)
         val lastCell = android.graphics.Rect().also {
-            ui.find(context.getString(R.string.paper_hide_app, "App 5"))!!.getBoundsInScreen(it)
+            ui.find(context.getString(R.string.paper_hide_app, "App 6"))!!.getBoundsInScreen(it)
         }
         assertEquals(64f * context.resources.displayMetrics.density, lastCell.height().toFloat(), 1f)
         assertTrue("The last row must be complete above the pager", lastCell.bottom <= pager.top)
-        assertFalse("An overflowing sixth row must move to the next page", ui.has("App 6"))
+        assertFalse("The seventh row must move to the next page", ui.has("App 7"))
         swipeLeft()
-        ui.await("First swipe did not advance") { ui.has("App 6") && ui.has("App 10") }
+        ui.await("First swipe did not advance") { ui.has("App 7") && ui.has("App 12") }
         swipeLeft()
-        ui.await("Second swipe reused the initial page") { ui.has("App 13") && !ui.has("App 6") }
+        ui.await("Second swipe reused the initial page") { ui.has("App 13") && !ui.has("App 7") }
         ui.click(context.getString(R.string.paper_previous_page))
-        ui.await("Previous-page control missing") { ui.has("App 6") && ui.has("App 10") }
+        ui.await("Previous-page control missing") { ui.has("App 7") && ui.has("App 12") }
     }
 
     @Test fun importPreviewCancelPreservesSettingsAndShowsSeparateIncomingValues() = withActivity { activity ->
@@ -175,9 +175,11 @@ class PaperIndexSheetsInstrumentedTest {
         ui.click(context.getString(R.string.lockscreen_widgets_edit))
         assertTrue(edited); assertTrue(dismissed)
         dismissed = false
+        ui.click(context.getString(R.string.paper_next_page))
         ui.click(context.getString(R.string.lockscreen_widgets_remove))
         assertTrue(removed); assertTrue(dismissed)
         render(up = false, down = false, editable = false)
+        if (ui.has(context.getString(R.string.paper_previous_page))) ui.click(context.getString(R.string.paper_previous_page))
         ui.await("Conditional widget actions were not removed") {
             !ui.has(context.getString(R.string.lockscreen_widgets_up)) &&
                 !ui.has(context.getString(R.string.lockscreen_widgets_down)) &&
@@ -232,6 +234,12 @@ class PaperIndexSheetsInstrumentedTest {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }) as MainActivity
+        instrumentation.runOnMainSync {
+            // Match the Kompakt's hardware navigation, including for standalone page fixtures.
+            activity.window.insetsController?.hide(android.view.WindowInsets.Type.navigationBars())
+        }
+        instrumentation.waitForIdleSync()
+        if (ui.has("GOT IT")) ui.click("GOT IT") else if (ui.has("Got it")) ui.click("Got it")
         try { block(activity) } finally { instrumentation.runOnMainSync { activity.finish() } }
     }
 }

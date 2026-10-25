@@ -2,13 +2,13 @@
 
 Kotatsu's house style for its own screens, chosen by the user during the
 Settings revamp on 2026-10-19. Navigation reads like a table of contents;
-categories are chapters; groups are subheadings; sheets are pages in the same
+categories are chapters; groups are subheadings; secondary destinations are pages in the same
 book. Typography and state carry the interface, rather than a collection of
 Android control shapes.
 
 The shared Android kit lives in `app/src/main/java/com/gezimos/katapult/ui/settings/`.
-Settings root, all chapters and secondary management sheets use its data model,
-renderer, Notice, page sheets and shared choice/checkbox drawings.
+Settings root, all chapters and secondary management pages use its data model,
+renderer, Notice, page frame and shared choice/checkbox drawings.
 Apply this language to future Kotatsu-owned screens; Android's system settings
 remain outside Kotatsu's visual ownership.
 
@@ -35,7 +35,7 @@ measured Android density or a portable sizing API.
 | # | Token | Logical reference | Mockup reference |
 |---|---|---|---|
 | 1 | Chapter heading | 26 sp Bold | 34.667 px, 42 px line |
-| 2 | Root index name / sheet title | 21 sp Bold | 28 px, 34 px line |
+| 2 | Root index name | 21 sp Bold | 28 px, 34 px line |
 | 3 | Chapter entry name / value | 18 sp Bold | 24 px, 29 px line |
 | 4 | Help / summary / group | 14 sp; Regular help/summary, Bold group | 18.667 px, 22–26 px line |
 | 5 | Index row / minimum target | ≥48 dp | 64 px row; 64×64 px independent target |
@@ -45,7 +45,6 @@ measured Android density or a portable sizing API.
 | 9 | Leader | 1.5 dp dotted ink; flexible length | 2 px stroke, ≥12 px visible length; 10 px name gap |
 | 10 | Group rule / group spacing | 2 dp rule; 9 dp gap | 2.667 px rule; 12 px between groups |
 | 11 | Entry spacing | 9 dp column gap and vertical padding | 12 px; 2 px between text tracks |
-| 12 | Sheet boundary | Heavy full-width ink rule | 3 px top rule |
 | 13 | Checkbox | About 20 dp square; 2.5 dp enabled / 1 dp disabled stroke | 27 px; 3.333 / 1.333 px stroke |
 | 14 | Pager | 48 dp targets around smaller round arrow drawings | 54 px circles in 64 px targets; 8 px dots |
 
@@ -72,11 +71,11 @@ The dots in these sketches represent a drawn leader, not literal text.
 | # | Component | Contract |
 |---|---|---|
 | 1 | Index line | Name left, flexible dotted leader, concise value/summary right. Keep the value readable and the leader clear of both texts. Root entries open their destination in one tap |
-| 2 | Chapter entry | Same line, with quiet full-width help underneath. Pure choice values open a choice sheet; boolean rows toggle and display literal **On** / **Off**. Management actions say **Open**; existing external handoffs use **↗**. Static metadata stays noninteractive |
+| 2 | Chapter entry | Same line, with quiet full-width help underneath. Pure choice values open a choice page; boolean rows toggle and display literal **On** / **Off**. Management actions say **Open**; existing external handoffs use **↗**. Static metadata stays noninteractive |
 | 3 | Chapter heading / group | Back and accessible **?** header action where help exists; help replaces a Read Me list row. Named groups use a bold label and rule. At most six settings per chapter page; split at whole-group boundaries and avoid a one-row final page. A genuine single-setting category is valid |
 | 4 | Pager | Bottom dots with the current page filled and round previous/next arrows. Omit unavailable directions and the pager on single-page categories. Swipe remains available, but is not the only route; category Back returns to Settings |
 | 5 | Notice | One reusable bottom component for temporary service/dependency reminders on every current and future screen; see the Notice contract below |
-| 6 | Sheet as page | Full-width white page over unchanged context, separated by the heavy rule. Same typography and entry grammar; no dimming scrim or floating card. Back dismisses. Covering underlying rows is expected occlusion, not permission to clip the sheet's own text |
+| 6 | Pages, not sheets | A destination fills the real usable screen, using the same ‹ Title chapter header, index lines, groups and bottom pager. No slide-in surface, overlay, heavy modal boundary, scrim or previous page visible. One Settings back stack owns root → chapter → page → sub-page; device Back and ‹ pop exactly one level, retaining the parent's page number. Choices apply and return; multi-select stays until Back. Android-owned external screens and prompts outside Settings keep their existing behavior |
 | 7 | Choice list | Short full-row options; one check mark beside the selected option, with its name Bold. No radio rings or leaders pointing to empty cells. Selection applies the choice; Back leaves it unchanged |
 | 8 | Hide / Notify matrix | **Hide** left, app name/leader centre, **Notify** right. Checked = black square with white check; enabled unchecked = heavy empty box; disabled = thin empty box; not applicable = reserved blank cell. Both columns have independent targets; blank/disabled Notify must not activate Hide |
 
@@ -129,8 +128,8 @@ reference pager uses its targets' intrinsic 64 px lane without the ordinary
 84 px lane's spare padding; its 64 px targets and 54 px drawings are unchanged.
 This keeps Appearance's five intact rows on one page. The root title stays
 only **Settings**; removing its Notice leaves the title and ten rows in place.
-A modal sheet covers the underlying screen's Notice along with its content;
-do not hoist that Notice above the sheet or repeat it under sheet rows.
+A secondary page replaces its parent's content and Notice;
+do not carry that Notice onto an unrelated child or repeat it under page rows.
 
 **Dismissal proposal for user confirmation (2026-10-19):** retain one dismissal
 state per semantic message/dependency, shared across all screens and reopening.
@@ -192,7 +191,7 @@ move whole groups to another page rather than truncating explanations.
 | 1 | Show accurate live values and explicit On/Off words | Imply a configured feature is active when its prerequisite is unavailable |
 | 2 | Use leaders for name/value relationships and rules for groups | Add dot leaders, borders or icons as filler |
 | 3 | Keep targets ≥48 dp and let help wrap | Treat a small word/check drawing as the entire touch target |
-| 4 | Reuse the same page language for sheets and management screens | Reintroduce generic pill/switch chrome on secondary pages |
+| 4 | Reuse the chapter page frame for choices, help, editors and management screens | Reintroduce modal sheets or generic pill/switch chrome on secondary pages |
 | 5 | Verify fonts, bounds, baselines and all affected states in a VM | Treat a source-only mockup, one screenshot or a build as proof of app behaviour |
 
 ## Reference status

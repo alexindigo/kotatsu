@@ -34,26 +34,30 @@ internal fun openAppStoreIntent(context: Context, intent: Intent): Boolean = try
 catch (_: SecurityException) { false }
 
 /** Owns only the store interaction; its consumer renders the returned Link in the contents. */
+data class AppStoreContent(val entry: SettingsEntry.Link, val page: @Composable (() -> Unit) -> Unit)
+
 @Composable
-fun appStoreEntry(packages: AppStorePackages, openIntent: (Intent) -> Boolean): SettingsEntry.Link {
+fun appStoreEntry(packages: AppStorePackages, openIntent: (Intent) -> Boolean,
+    onOpenPage: () -> Unit, onAvailable: () -> Unit = {}): AppStoreContent {
     var installed by remember(packages) { mutableStateOf(preferredFdroidPackage(packages)) }
-    var showSheet by rememberSaveable { mutableStateOf(false) }
     var launchFailed by rememberSaveable { mutableStateOf(false) }
     var browserMissing by rememberSaveable { mutableStateOf(false) }
+    val closeAvailablePage by rememberUpdatedState(onAvailable)
     val lifecycle = LocalView.current.findViewTreeLifecycleOwner()!!.lifecycle
     DisposableEffect(lifecycle, packages) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 installed = preferredFdroidPackage(packages)
                 browserMissing = false
-                if (installed != null && !launchFailed) showSheet = false
+                if (installed != null && !launchFailed) closeAvailablePage()
             }
         }
         lifecycle.addObserver(observer)
         onDispose { lifecycle.removeObserver(observer) }
     }
-    if (showSheet) SheetPage(stringResource(if (launchFailed) R.string.app_store_launch_failed else R.string.app_store_missing_title),
-        onDismiss = { showSheet = false }) {
+    val page: @Composable (() -> Unit) -> Unit = { onBack ->
+      SettingsPage(stringResource(if (launchFailed) R.string.app_store_launch_failed else R.string.app_store_missing_title),
+        onDismiss = onBack) {
         Text(stringResource(R.string.app_store_missing_body), fontFamily = LatoFamily, fontSize = 14.sp,
             lineHeight = 19.5.sp, color = LocalInk.current, modifier = Modifier.padding(bottom = 16.5.dp))
         if (browserMissing) Text(stringResource(R.string.app_store_no_browser), fontFamily = LatoFamily,
@@ -61,18 +65,20 @@ fun appStoreEntry(packages: AppStorePackages, openIntent: (Intent) -> Boolean): 
             modifier = Modifier.padding(bottom = 6.dp).semantics { liveRegion = LiveRegionMode.Polite })
         Entry(SettingsEntry.Link("fdroid-website", stringResource(R.string.app_store_open_website), "", onOpen = {
             browserMissing = !openIntent(Intent(Intent.ACTION_VIEW, Uri.parse("https://f-droid.org/")))
-            if (!browserMissing) showSheet = false
+            if (!browserMissing) onBack()
         }), minimumHeight = 48.dp)
-        SheetAction(stringResource(R.string.cancel)) { showSheet = false }
+        SheetAction(stringResource(R.string.cancel), onBack)
+      }
     }
-    return SettingsEntry.Link("app-store", stringResource(R.string.app_store_title), "", onOpen = {
+    val entry = SettingsEntry.Link("app-store", stringResource(R.string.app_store_title), "", onOpen = {
         // Recheck at the action boundary too: a package can disappear while Settings is foreground.
         installed = preferredFdroidPackage(packages)
         val intent = installed?.let(packages::launchIntent)
         launchFailed = installed != null && (intent == null || !openIntent(intent))
         browserMissing = false
-        showSheet = installed == null || launchFailed
+        if (installed == null || launchFailed) onOpenPage()
     }, summary = stringResource(if (installed == null) R.string.app_store_absent else R.string.app_store_open))
+    return AppStoreContent(entry, page)
 }
 
 @Composable

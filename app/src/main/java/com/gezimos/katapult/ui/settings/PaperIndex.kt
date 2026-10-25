@@ -38,7 +38,6 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.R
-import com.gezimos.katapult.ui.BottomSheet
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
@@ -256,20 +255,30 @@ private fun ChapterFooter(page: Int, count: Int, notice: NoticeContent?, onPage:
 
 @Composable
 fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier: Modifier = Modifier,
-    notice: NoticeContent? = null, noticeGroup: String? = null) {
+    notice: NoticeContent? = null, noticeGroup: String? = null,
+    onChoice: ((SettingsEntry.Value) -> Unit)? = null, onHelp: (() -> Unit)? = null) {
     var page by rememberSaveable(category.id) { mutableIntStateOf(0) }
     var count by remember(category.id) { mutableIntStateOf(1) }
-    var choice by remember { mutableStateOf<SettingsEntry.Value?>(null) }
-    var help by remember { mutableStateOf(false) }
+    // Standalone consumers use the same stack contract as the Settings owner.
+    val navigation = rememberSettingsNavigation("chapter")
+    val values = category.groups.flatMap { it.visibleEntries }.filterIsInstance<SettingsEntry.Value>()
+    if (navigation.current.startsWith("choice:")) {
+        val selected = values.single { it.id == navigation.current.removePrefix("choice:") }
+        ChoicePage(selected.title, selected.choices, selected.selected, selected.onSelect, navigation::pop)
+        return
+    }
+    if (navigation.current == "help") {
+        category.help?.let { HelpPage(it.title, it.paragraphs, navigation::pop) }
+        return
+    }
     val groups = category.groups.filter { it.visibleEntries.isNotEmpty() }
-    BackHandler { onBack() }
-    Column(modifier.fillMaxSize()) {
-        ChapterHeader(category.title, category.help, onBack) { help = true }
+    PageFrame(category.title, onBack, modifier, category.help,
+        onHelp ?: { navigation.push("help") }) {
         // The body constraint is independent of the current page's footer. Measure the same
         // footer grammar for each candidate, including wrapped/localized Notice text.
         var drag by remember { mutableFloatStateOf(0f) }
         val scroll = rememberScrollState()
-        SubcomposeLayout(Modifier.weight(1f).fillMaxWidth().pointerInput(count) {
+        SubcomposeLayout(Modifier.fillMaxSize().pointerInput(page, count) {
             detectVerticalDragGestures(onDragStart = { drag = 0f }, onDragEnd = {
                 if (abs(drag) > 80 && count > 1) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
             }, onVerticalDrag = { _, amount -> drag += amount })
@@ -309,7 +318,9 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
             val contentHeight = (constraints.maxHeight - footer.height).coerceAtLeast(0)
             val content = subcompose("content") {
                 Column(Modifier.fillMaxWidth().verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(9.dp)) {
-                    range.forEach { index -> IndexGroup(groups[index]) { choice = it } }
+                    range.forEach { index -> IndexGroup(groups[index]) {
+                        onChoice?.invoke(it) ?: navigation.push("choice:${it.id}")
+                    } }
                 }
             }.single().measure(Constraints.fixed(constraints.maxWidth, contentHeight))
             layout(constraints.maxWidth, constraints.maxHeight) {
@@ -319,10 +330,6 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
         }
         LaunchedEffect(page) { scroll.scrollTo(0) }
     }
-    choice?.let { selected ->
-        ChoiceSheet(selected.title, selected.choices, selected.selected, { id -> selected.onSelect(id) }, { choice = null })
-    }
-    if (help) category.help?.let { HelpSheet(it.title, it.paragraphs) { help = false } }
 }
 
 @Composable
@@ -354,35 +361,43 @@ fun TableOfContents(title: String, entries: List<SettingsEntry>, notice: NoticeC
     }
 }
 
-/** Reuses the app's no-scrim, no-animation, Back-dismissable page window. */
+/** One full-height page frame for chapters, management, choices and editors. Insets belong to its owner. */
 @Composable
-private fun SheetTitle(title: String) {
-    Text(title, fontFamily = LatoFamily, fontSize = 21.sp, lineHeight = 25.5.sp,
-        fontWeight = FontWeight.Bold, color = LocalInk.current,
-        modifier = Modifier.padding(bottom = 10.5.dp).semantics { heading() })
+internal fun PageFrame(title: String, onBack: () -> Unit, modifier: Modifier = Modifier,
+    help: SettingsHelp? = null, onHelp: () -> Unit = {}, content: @Composable () -> Unit) {
+    BackHandler(onBack = onBack)
+    Column(modifier.fillMaxSize().background(LocalSurface.current)) {
+        ChapterHeader(title, help, onBack, onHelp)
+        Box(Modifier.weight(1f).fillMaxWidth()) { content() }
+    }
 }
 
+/** Content is measured once as complete blocks; only this leaf page owns the available screen height. */
 @Composable
-fun SheetPage(title: String, onDismiss: () -> Unit, imePadding: Boolean = false,
-    content: @Composable ColumnScope.() -> Unit) {
-    BottomSheet(onDismiss = onDismiss, imePadding = imePadding) {
-        Column(Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
-            SheetTitle(title)
-            content()
-        }
+fun SettingsPage(title: String, onDismiss: () -> Unit, imePadding: Boolean = false,
+    content: @Composable () -> Unit) {
+    PageFrame(title, onDismiss, if (imePadding) Modifier.imePadding() else Modifier) {
+        PagedContent(header = {}, content = content)
     }
 }
 
 /** Allocate complete list rows from measured page capacity; the pager never belongs to scrolling content. */
 @Composable
-internal fun <T> PagedSheetPage(title: String, items: List<T>, onDismiss: () -> Unit,
+internal fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
     header: @Composable () -> Unit, row: @Composable (T) -> Unit) {
-    var page by remember { mutableIntStateOf(0) }
+    PageFrame(title, onDismiss) {
+        PagedContent(header = header) { items.forEach { item -> row(item) } }
+    }
+}
+
+@Composable
+private fun PagedContent(header: @Composable () -> Unit, content: @Composable () -> Unit) {
+    var page by rememberSaveable { mutableIntStateOf(0) }
     var count by remember { mutableIntStateOf(1) }
     var drag by remember { mutableFloatStateOf(0f) }
     val scroll = rememberScrollState()
-    BottomSheet(onDismiss = onDismiss) {
-        SubcomposeLayout(Modifier.fillMaxWidth().heightIn(max = 500.dp).pointerInput(page, count) {
+    val renderedCount = count
+    SubcomposeLayout(Modifier.fillMaxSize().pointerInput(page, count) {
             detectHorizontalDragGestures(
                 onDragStart = { drag = 0f }, onDragEnd = {
                     if (abs(drag) > 80) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
@@ -390,50 +405,58 @@ internal fun <T> PagedSheetPage(title: String, items: List<T>, onDismiss: () -> 
         }) { constraints ->
             val width = constraints.maxWidth
             val loose = Constraints(maxWidth = width)
-            val heading = subcompose("heading") { Column { SheetTitle(title); header() } }.single().measure(loose)
-            val heights = items.mapIndexed { index, item ->
-                subcompose("measure-$index") { Box(Modifier.fillMaxWidth()) { row(item) } }.single().measure(loose).height
-            }
-            val paged = items.size > 6 || heading.height + heights.sum() > constraints.maxHeight
-            val footerHeight = if (paged) subcompose("measure-pager") { Pager(0, 2, false) {} }.single().measure(loose).height else 0
-            val capacity = (constraints.maxHeight - heading.height - footerHeight).coerceAtLeast(0)
-            val pages = mutableListOf<IntRange>()
-            var start = 0
-            while (start < items.size) {
-                var end = start
-                var height = heights[start]
-                while (end + 1 < items.size && end - start + 1 < 6 && height + heights[end + 1] <= capacity) {
-                    end++; height += heights[end]
-                }
-                pages += start..end
-                start = end + 1
-            }
-            if (pages.isEmpty()) pages += IntRange.EMPTY
-            val current = page.coerceIn(0, pages.lastIndex)
-            if (page != current) page = current
-            if (count != pages.size) count = pages.size
-            val active = pages[current]
-            val bodyHeight = active.sumOf { heights[it] }.coerceAtMost(capacity)
+            val inset = 16.dp.roundToPx()
+            val heading = subcompose("heading") { Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) { header() } }.single().measure(loose)
+            val pagerHeight = subcompose("measure-pager") { Pager(0, 2, false) {} }.single().measure(loose).height
+            val available = (constraints.maxHeight - heading.height).coerceAtLeast(0)
+            // The content has one composition owner. Its layout allocates whole blocks while the
+            // scroll viewport handles a genuinely oversized block (large text, or an editor's IME).
+            // Allocation uses the full stable screen capacity, never the previous page's footer.
             val body = subcompose("body") {
-                Column(Modifier.fillMaxWidth().verticalScroll(scroll)) { active.forEach { row(items[it]) } }
-            }.single().measure(Constraints.fixed(width, bodyHeight))
-            val footer = if (pages.size > 1) subcompose("pager") { Pager(current, pages.size, false) { page = it } }.single().measure(loose) else null
-            layout(width, heading.height + body.height + (footer?.height ?: 0)) {
+                Layout(content = content, modifier = Modifier.fillMaxWidth().verticalScroll(scroll)) { children, bodyConstraints ->
+                    val blocks = children.map { it.measure(Constraints(maxWidth = (width - inset * 2).coerceAtLeast(0))) }
+                    val heights = blocks.map { it.height }
+                    val paged = blocks.size > 6 || heights.sum() > available
+                    val capacity = (available - if (paged) pagerHeight else 0).coerceAtLeast(0)
+                    val pages = mutableListOf<IntRange>()
+                    var start = 0
+                    while (start < blocks.size) {
+                        var end = start
+                        var height = heights[start]
+                        while (end + 1 < blocks.size && end - start + 1 < 6 && height + heights[end + 1] <= capacity) {
+                            end++; height += heights[end]
+                        }
+                        pages += start..end
+                        start = end + 1
+                    }
+                    if (pages.isEmpty()) pages += IntRange.EMPTY
+                    val current = page.coerceIn(0, pages.lastIndex)
+                    if (page != current) page = current
+                    if (count != pages.size) count = pages.size
+                    val active = pages[current]
+                    layout(bodyConstraints.maxWidth, active.sumOf { heights[it] }.coerceAtLeast(bodyConstraints.minHeight)) {
+                        var y = 0
+                        active.forEach { index -> blocks[index].placeRelative(inset, y); y += heights[index] }
+                    }
+                }
+            }.single().measure(Constraints.fixed(width, (available - if (renderedCount > 1) pagerHeight else 0).coerceAtLeast(0)))
+            val footer = if (count > 1) subcompose("pager") { Pager(page, count, false) { page = it } }.single().measure(loose) else null
+            layout(width, constraints.maxHeight) {
                 heading.placeRelative(0, 0)
                 body.placeRelative(0, heading.height)
-                footer?.placeRelative(0, heading.height + body.height)
+                footer?.placeRelative(0, constraints.maxHeight - footer.height)
             }
         }
-    }
     LaunchedEffect(page) { scroll.scrollTo(0) }
 }
 
 @Composable
-fun ChoiceSheet(title: String, choices: List<SettingsChoice>, selected: String,
+fun ChoicePage(title: String, choices: List<SettingsChoice>, selected: String,
     onSelect: (String) -> Unit, onDismiss: () -> Unit) {
-    SheetPage(title, onDismiss) {
+    SettingsPage(title, onDismiss) {
         choices.forEach { choice ->
-            ChoiceOption(choice.label, choice.id == selected) { onSelect(choice.id); onDismiss() }
+            // Pop first: applying a choice may itself open another page (for example the timed editor).
+            ChoiceOption(choice.label, choice.id == selected) { onDismiss(); onSelect(choice.id) }
         }
     }
 }
@@ -493,8 +516,8 @@ fun IndexCheckbox(checked: Boolean, enabled: Boolean, modifier: Modifier = Modif
 }
 
 @Composable
-fun HelpSheet(title: String, paragraphs: List<String>, onDismiss: () -> Unit) {
-    SheetPage(title, onDismiss) {
+fun HelpPage(title: String, paragraphs: List<String>, onDismiss: () -> Unit) {
+    SettingsPage(title, onDismiss) {
         paragraphs.forEach { paragraph ->
             Text(paragraph, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 19.5.sp,
                 color = LocalInk.current, modifier = Modifier.padding(bottom = 13.5.dp))

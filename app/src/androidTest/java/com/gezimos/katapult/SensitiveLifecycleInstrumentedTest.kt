@@ -163,7 +163,16 @@ class SensitiveLifecycleInstrumentedTest {
             }
             val labels = listOf("Collect call badges", "Collect notification badges", "Collect media information",
                 "Collect usage statistics", "Allow notification dismissal", "Allow call acknowledgment", "Allow media controls", "Allow accessibility features")
-            for (label in labels) { ui.scrollTo(label); assertNotNull("Stored choice not exposed as a switch: $label", ui.checked(label)) }
+            for (label in labels) {
+                while (!ui.has(label) && ui.has(context.getString(R.string.paper_next_page))) {
+                    val old = ui.find { it.contentDescription?.toString()?.startsWith("Page ") == true }?.contentDescription?.toString()
+                    ui.click(context.getString(R.string.paper_next_page))
+                    ui.await("Sensitive access pager did not advance") {
+                        ui.find { it.contentDescription?.toString()?.startsWith("Page ") == true }?.contentDescription?.toString() != old
+                    }
+                }
+                assertNotNull("Stored choice not exposed as a switch: $label", ui.checked(label))
+            }
         } finally {
             instrumentation.runOnMainSync {
                 val editor = raw.edit()

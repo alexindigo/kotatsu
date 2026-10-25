@@ -28,7 +28,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.activity.compose.BackHandler
 import androidx.activity.result.ActivityResultLauncher
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -88,7 +88,10 @@ import com.gezimos.katapult.ui.settings.lockCategory
 import com.gezimos.katapult.ui.settings.screensaverCategory
 import com.gezimos.katapult.ui.settings.systemCategory
 import com.gezimos.katapult.ui.settings.aboutCategory
-import com.gezimos.katapult.ui.settings.SheetPage
+import com.gezimos.katapult.ui.settings.SettingsPage
+import com.gezimos.katapult.ui.settings.ChoicePage
+import com.gezimos.katapult.ui.settings.HelpPage
+import com.gezimos.katapult.ui.settings.rememberSettingsNavigation
 import com.gezimos.katapult.ui.settings.SheetText
 import com.gezimos.katapult.ui.settings.SheetAction
 import com.gezimos.katapult.ui.settings.Entry
@@ -120,11 +123,13 @@ fun SettingsScreen(
     openStoreIntent: ((Intent) -> Boolean)? = null,
 ) {
     val context = LocalContext.current
-    val store = appStoreEntry(appStorePackages, openStoreIntent ?: { openAppStoreIntent(context, it) })
+    val navigation = rememberSettingsNavigation()
+    val pageStates = rememberSaveableStateHolder()
+    val store = appStoreEntry(appStorePackages, openStoreIntent ?: { openAppStoreIntent(context, it) },
+        { navigation.push("store") }, { if (navigation.current == "store") navigation.pop() })
     val prefs = viewModel.prefs
     val policyTick = viewModel.policyRefresh
     val policyChoices = remember(policyTick) { prefs.sensitiveChoices() }
-    var showSensitiveAccess by remember { mutableStateOf(false) }
     val applyImport: (String, Map<String, Boolean>?) -> Boolean = { text, confirmed ->
         viewModel.applyConfigImport(context, text, confirmed)
     }
@@ -159,8 +164,6 @@ fun SettingsScreen(
     var hideArrowButtons by remember { mutableStateOf(prefs.hideArrowButtons) }
     var homeLongPress by remember { mutableIntStateOf(prefs.homeLongPressAction) }
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
-    var showScreensaverModeSheet by remember { mutableStateOf(false) }
-    var showScreensaverCustomSheet by remember { mutableStateOf(false) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
     var swipeUpAllApps by remember { mutableStateOf(prefs.swipeUpAllApps) }
     var homeIslands by remember { mutableStateOf(prefs.homeIslands) }
@@ -169,16 +172,7 @@ fun SettingsScreen(
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
     var lockscreenWeather by remember { mutableStateOf(prefs.lockscreenWeather) }
     val widgetSettings = viewModel.lockscreenWidgets
-    var showLockscreenWidgetsSheet by remember { mutableStateOf(false) }
-    var widgetChoice by remember { mutableStateOf<com.gezimos.katapult.lockscreen.WidgetSettingsRow?>(null) }
-    var widgetProviders by remember { mutableStateOf<List<com.gezimos.katapult.lockscreen.WidgetProviderChoice>?>(null) }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
-    var showLockscreenApps by remember { mutableStateOf(false) }
-    var showHiddenApps by remember { mutableStateOf(false) }
-    var showSystemApps by remember { mutableStateOf(false) }
-    var showPermissionsSheet by remember { mutableStateOf(false) }
-    var showConfigSheet by remember { mutableStateOf(false) }
-    var showClearConfirm by remember { mutableStateOf(false) }
     var lockscreenLatestFirst by remember { mutableStateOf(prefs.lockscreenWidgetLatestFirst) }
     var screensaverIslands by remember { mutableStateOf(prefs.screensaverIslands) }
     var screensaverWallpaper by remember { mutableStateOf(prefs.screensaverWallpaper) }
@@ -213,9 +207,37 @@ fun SettingsScreen(
         }
     }
 
-    var selectedCategory by rememberSaveable { mutableStateOf<Int?>(null) }
-
-    BackHandler(enabled = selectedCategory != null) { selectedCategory = null }
+    val popPage = {
+        when (navigation.current) {
+            "message" -> {
+                viewModel.showLockscreenMessageSheet = false
+                viewModel.lockscreenMessageDraft = null
+            }
+            "import-preview" -> {
+                viewModel.pendingImportPreview = null
+                viewModel.pendingImportText = null
+            }
+            "service" -> {
+                viewModel.actionServiceSetup = null
+                if (viewModel.showLockscreenReEnable) viewModel.resolveLockscreenReEnable()
+            }
+        }
+        pageStates.removeState(navigation.current)
+        navigation.pop()
+    }
+    BackHandler(enabled = navigation.canGoBack, onBack = popPage)
+    LaunchedEffect(viewModel.showLockscreenMessageSheet) {
+        if (viewModel.showLockscreenMessageSheet && !navigation.contains("message")) navigation.push("message")
+    }
+    LaunchedEffect(viewModel.pendingImportPreview) {
+        if (viewModel.pendingImportPreview != null && !navigation.contains("import-preview")) navigation.push("import-preview")
+    }
+    val serviceRequested = viewModel.actionServiceSetup != null ||
+        (viewModel.screen == com.gezimos.katapult.Screen.SETTINGS && viewModel.showLockscreenReEnable)
+    LaunchedEffect(serviceRequested) {
+        if (serviceRequested && !navigation.contains("service")) navigation.push("service")
+        if (!serviceRequested && navigation.current == "service") popPage()
+    }
 
     val notice = if (viewModel.actionServiceNotice.visible) NoticeContent(
         message = stringResource(R.string.paper_service_off),
@@ -268,7 +290,7 @@ fun SettingsScreen(
             if (it != PrefsManager.APP_SORT_MANUAL && !UsageHelper.hasPermission(context)) UsageHelper.openSettings(context)
         },
         onIcon = { showKatapultIcon = it; prefs.showKatapultIcon = it; viewModel.loadApps() },
-        onHidden = { showHiddenApps = true }, onSystem = { showSystemApps = true },
+        onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
         onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
         onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
     val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress,
@@ -303,7 +325,7 @@ fun SettingsScreen(
             actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
             if (!requested || serviceOn) { lockscreenWidget = requested; prefs.lockscreenWidget = requested }
             if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WIDGET)
-        }, onApps = { showLockscreenApps = true },
+        }, onApps = { navigation.push("notification-apps") },
         onLatest = { lockscreenLatestFirst = it; prefs.lockscreenWidgetLatestFirst = it },
         onMusic = { requested ->
             val serviceOn = LockscreenWidgetService.isEnabled(context)
@@ -315,13 +337,13 @@ fun SettingsScreen(
             actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
             if (!requested || serviceOn) { lockscreenWeather = requested; prefs.lockscreenWeather = requested }
             if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
-        }, onWidgets = { widgetSettings.refresh(); showLockscreenWidgetsSheet = true }, onMessage = viewModel::beginLockscreenMessage)
+        }, onWidgets = { widgetSettings.refresh(); navigation.push("widgets") }, onMessage = viewModel::beginLockscreenMessage)
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
         screensaverIslands, screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
         screensaverDoubleTapBrightness, screensaverOnPower, screensaverAppIcon, screensaverUpdateMode,
         onEnabled = { screensaverEnabled = it; prefs.screensaverEnabled = it },
         onSystem = { try { context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS)) } catch (_: Exception) {} },
-        onCustomize = { showScreensaverCustomSheet = true }, onWallpaper = { screensaverWallpaper = it; prefs.screensaverWallpaper = it },
+        onCustomize = { navigation.push("customization") }, onWallpaper = { screensaverWallpaper = it; prefs.screensaverWallpaper = it },
         onImage = { if (screensaverWallpaperPath != null) viewModel.clearScreensaverWallpaper() else screensaverWallpaperPicker.launch("image/*") },
         onBrightness = { screensaverDoubleTapBrightness = it; prefs.screensaverDoubleTapBrightness = it },
         onPower = { requested ->
@@ -332,14 +354,14 @@ fun SettingsScreen(
         }, onIcon = { screensaverAppIcon = it; ScreensaverShortcut.setIconEnabled(context, it) },
         onMode = {
             screensaverUpdateMode = it; prefs.screensaverUpdateMode = it
-            if (it == PrefsManager.SCREENSAVER_MODE_INTERVAL) showScreensaverModeSheet = true
+            if (it == PrefsManager.SCREENSAVER_MODE_INTERVAL) navigation.push("timed")
         })
-    val system = systemCategory(onSensitive = { showSensitiveAccess = true }, onPermissions = { showPermissionsSheet = true },
+    val system = systemCategory(onSensitive = { navigation.push("sensitive") }, onPermissions = { navigation.push("permissions") },
         onDefault = { context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS)) },
         onSearch = {
             try { context.startActivity(Intent(Settings.ACTION_APP_SEARCH_SETTINGS)) }
             catch (_: Exception) { try { context.startActivity(Intent(Settings.ACTION_SETTINGS)) } catch (_: Exception) {} }
-        }, onConfig = { showConfigSheet = true },
+        }, onConfig = { navigation.push("config") },
         onAppLicense = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult/blob/main/LICENSE"))) },
         onFontLicense = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/gezimos/Katapult/blob/main/LICENSE-Lato.txt"))) })
     val about = aboutCategory(versionName,
@@ -350,49 +372,65 @@ fun SettingsScreen(
         R.string.section_experimental to lock, R.string.section_screensaver to screensaver, R.string.section_system to system,
         R.string.section_about to about)
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(LocalSurface.current)
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-        if (selectedCategory == null) {
+      pageStates.SaveableStateProvider(navigation.current) {
+        val destination = navigation.current
+        if (destination == "root") {
             val entries = chapters.map { (id, chapter) ->
-                SettingsEntry.Open(chapter.id, chapter.title, "", onOpen = { selectedCategory = id }, summary = chapter.summary)
-            } + store
-            TableOfContents(stringResource(R.string.settings), entries, notice, Modifier.weight(1f))
-        } else {
-            val chapter = chapters.getValue(selectedCategory!!)
+                SettingsEntry.Open(chapter.id, chapter.title, "", onOpen = { navigation.push("chapter:$id") }, summary = chapter.summary)
+            } + store.entry
+            TableOfContents(stringResource(R.string.settings), entries, notice)
+        } else if (destination.startsWith("chapter:")) {
+            val chapter = chapters.getValue(destination.removePrefix("chapter:").toInt())
             val chapterNotice = notice.takeIf { chapter.id in setOf("appearance", "lock", "screensaver") && (chapter.id != "screensaver" || screensaverEnabled) }
-            PaperIndexRenderer(chapter, { selectedCategory = null }, Modifier.weight(1f), chapterNotice,
-                when (chapter.id) { "appearance" -> "screen"; "screensaver" -> "interaction"; else -> null })
+            PaperIndexRenderer(chapter, popPage, notice = chapterNotice,
+                noticeGroup = when (chapter.id) { "appearance" -> "screen"; "screensaver" -> "interaction"; else -> null },
+                onChoice = { navigation.push("choice:${chapter.id}:${it.id}") },
+                onHelp = { navigation.push("help:${chapter.id}") })
+        } else if (destination.startsWith("choice:")) {
+            val (_, chapterId, entryId) = destination.split(":")
+            val choice = chapters.values.single { it.id == chapterId }.groups.flatMap { it.visibleEntries }
+                .filterIsInstance<SettingsEntry.Value>().single { it.id == entryId }
+            ChoicePage(choice.title, choice.choices, choice.selected, choice.onSelect, popPage)
+        } else if (destination.startsWith("help:")) {
+            chapters.values.single { it.id == destination.removePrefix("help:") }.help?.let {
+                HelpPage(it.title, it.paragraphs, popPage)
+            }
+        } else if (destination == "store") {
+            store.page(popPage)
+        } else if (destination == "service") {
+            com.gezimos.katapult.lockscreen.ActionServiceSheet(viewModel, asPage = true, onPageDismiss = popPage)
         }
-    }
 
-    if (showLockscreenApps) {
+    if (destination == "notification-apps") {
         LockscreenAppsDialog(
             viewModel = viewModel,
-            onDismiss = { showLockscreenApps = false },
+            onDismiss = popPage,
         )
     }
 
-    if (showHiddenApps) {
+    if (destination == "hidden") {
         HiddenAppsDialog(
             viewModel = viewModel,
-            onDismiss = { showHiddenApps = false },
+            onDismiss = popPage,
         )
     }
 
-    if (showSystemApps) {
+    if (destination == "system-apps") {
         SystemAppsDialog(
             viewModel = viewModel,
-            onDismiss = { showSystemApps = false },
+            onDismiss = popPage,
         )
     }
 
-    if (showLockscreenWidgetsSheet && widgetChoice == null && widgetProviders == null) {
-        SheetPage(stringResource(R.string.lockscreen_widgets), { showLockscreenWidgetsSheet = false }) {
+    if (destination == "widgets") {
+        SettingsPage(stringResource(R.string.lockscreen_widgets), popPage) {
             SheetText(androidx.compose.ui.res.pluralStringResource(R.plurals.paper_widgets_configured,
                 widgetSettings.rows.size, widgetSettings.rows.size))
             Entry(SettingsEntry.Switch("show", stringResource(R.string.lockscreen_widgets_show),
@@ -402,14 +440,15 @@ fun SettingsScreen(
                 }))
             widgetSettings.rows.forEach { row ->
                 Entry(SettingsEntry.Open(row.widget.id.toString(), row.label,
-                    stringResource(R.string.paper_widget_manage_help), { widgetChoice = row },
+                    stringResource(R.string.paper_widget_manage_help), { navigation.push("widget:${row.widget.id}") },
                     summary = stringResource(widgetSizeTitle(row.widget.size))))
             }
             Entry(SettingsEntry.Open("add", stringResource(R.string.lockscreen_widgets_add),
-                stringResource(R.string.lockscreen_widgets_add_desc), { widgetProviders = widgetSettings.providers() }))
+                stringResource(R.string.lockscreen_widgets_add_desc), { navigation.push("providers") }))
         }
     }
-    widgetChoice?.let { row ->
+    if (destination.startsWith("widget:")) {
+        val row = widgetSettings.rows.single { it.widget.id == destination.removePrefix("widget:").toInt() }
         val index = widgetSettings.rows.indexOfFirst { it.widget.id == row.widget.id }
         LockscreenWidgetMenu(
             row = row,
@@ -419,19 +458,20 @@ fun SettingsScreen(
             onMove = { delta -> widgetSettings.move(row.widget.id, delta) },
             onEdit = { (context as? MainActivity)?.editLockscreenWidget(row.widget.id) },
             onRemove = { widgetSettings.remove(row.widget.id) },
-            onDismiss = { widgetChoice = null },
+            onDismiss = popPage,
         )
     }
-    widgetProviders?.let { providers ->
+    if (destination == "providers") {
+        val providers = remember { widgetSettings.providers() }
         WidgetProviderSheet(
             providers = providers,
             onPick = { provider -> (context as? MainActivity)?.addLockscreenWidget(provider.info) },
-            onDismiss = { widgetProviders = null },
+            onDismiss = popPage,
         )
     }
 
     val messageDraft = viewModel.lockscreenMessageDraft
-    if (viewModel.showLockscreenMessageSheet && messageDraft != null) androidx.compose.runtime.key(messageDraft) {
+    if (destination == "message" && messageDraft != null) androidx.compose.runtime.key(messageDraft) {
         LockscreenMessageSheet(
             textFieldValue = messageDraft.value,
             onValueChange = { messageDraft.value = it },
@@ -439,6 +479,7 @@ fun SettingsScreen(
                 if (viewModel.lockscreenMessageDraft === messageDraft) {
                     if (viewModel.showLockscreenMessageSheet) viewModel.lockscreenMessageDraft = null
                     viewModel.showLockscreenMessageSheet = false
+                    popPage()
                 }
             },
             onConfirm = { text ->
@@ -448,14 +489,15 @@ fun SettingsScreen(
                     val serviceOn = LockscreenWidgetService.isEnabled(context)
                     actionServiceEnabled = serviceOn
                     prefs.lockscreenMessage = text
+                    popPage()
                     if (text.isNotBlank() && !serviceOn) viewModel.requestActionService(AccessibilityFeature.MESSAGE)
                 }
             },
         )
     }
 
-    if (showSensitiveAccess) {
-        SheetPage(stringResource(R.string.sensitive_access), { showSensitiveAccess = false }) {
+    if (destination == "sensitive") {
+        SettingsPage(stringResource(R.string.sensitive_access), popPage) {
             SheetText(stringResource(R.string.policy_boundary))
             for ((choice, title) in sensitiveRows) {
                 val grant = when (choice) {
@@ -482,19 +524,20 @@ fun SettingsScreen(
             SheetText(stringResource(R.string.policy_action_boundary))
             Entry(SettingsEntry.Open("permissions", stringResource(R.string.permissions),
                 stringResource(R.string.policy_grants_separate),
-                { showSensitiveAccess = false; showPermissionsSheet = true }))
+                { navigation.push("permissions") }))
         }
     }
 
-    viewModel.pendingImportPreview?.let { preview ->
+    if (destination == "import-preview") viewModel.pendingImportPreview?.let { preview ->
         val dismissImport = {
             // HOME removes Settings; only an explicit dismissal in Settings cancels the preview.
             if (viewModel.screen == com.gezimos.katapult.Screen.SETTINGS) {
                 viewModel.pendingImportPreview = null
                 viewModel.pendingImportText = null
+                popPage()
             }
         }
-        SheetPage(stringResource(R.string.policy_import_confirmation), dismissImport) {
+        SettingsPage(stringResource(R.string.policy_import_confirmation), dismissImport) {
             SheetText(stringResource(R.string.config_import_replaces_settings))
             for ((choice, title) in sensitiveRows) {
                 preview.changes[choice.key]?.let { incoming ->
@@ -509,6 +552,7 @@ fun SettingsScreen(
                     viewModel.pendingImportPreview = current
                 } else if (text != null && current != null && applyImport(text, preview.localChoices)) {
                     viewModel.pendingImportPreview = null; viewModel.pendingImportText = null
+                    popPage()
                 } else {
                     Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
                 }
@@ -517,7 +561,7 @@ fun SettingsScreen(
         }
     }
 
-    if (showPermissionsSheet) {
+    if (destination == "permissions") {
         var permTick by remember { mutableIntStateOf(0) }
         LaunchedEffect(Unit) {
             while (true) {
@@ -546,8 +590,9 @@ fun SettingsScreen(
                 )
             } catch (_: Exception) {}
         }
-        SheetPage(stringResource(R.string.permissions), { showPermissionsSheet = false }) {
+        SettingsPage(stringResource(R.string.permissions), popPage) {
             SheetText(stringResource(R.string.paper_permissions_hint))
+          Column {
             GroupHeading(stringResource(R.string.paper_group_android_access))
             PermissionRow(
                 title = stringResource(R.string.perm_notification_access),
@@ -600,10 +645,11 @@ fun SettingsScreen(
             ) {
                 UsageHelper.openSettings(context)
             }
+          }
         }
     }
 
-    if (showScreensaverModeSheet) {
+    if (destination == "timed") {
         var minutesText by remember {
             mutableStateOf(
                 androidx.compose.ui.text.input.TextFieldValue(
@@ -614,7 +660,7 @@ fun SettingsScreen(
                 ),
             )
         }
-        SheetPage(stringResource(R.string.screensaver_update_mode), { showScreensaverModeSheet = false }, imePadding = true) {
+        SettingsPage(stringResource(R.string.screensaver_update_mode), popPage, imePadding = true) {
             listOf(
                 PrefsManager.SCREENSAVER_MODE_AUTO to stringResource(R.string.screensaver_mode_auto),
                 PrefsManager.SCREENSAVER_MODE_INTERVAL to stringResource(R.string.screensaver_mode_interval),
@@ -624,7 +670,7 @@ fun SettingsScreen(
                     screensaverUpdateMode = mode
                     prefs.screensaverUpdateMode = mode
                     if (mode != PrefsManager.SCREENSAVER_MODE_INTERVAL) {
-                        showScreensaverModeSheet = false
+                        popPage()
                     }
                 }
             }
@@ -664,7 +710,7 @@ fun SettingsScreen(
         }
     }
 
-    if (showScreensaverCustomSheet) {
+    if (destination == "customization") {
         MultiChoiceSheet(
             title = stringResource(R.string.screensaver_customization),
             options = listOf(
@@ -695,42 +741,44 @@ fun SettingsScreen(
                     },
                 ),
             ),
-            onDismiss = { showScreensaverCustomSheet = false },
+            onDismiss = popPage,
         )
     }
 
-    if (showConfigSheet) {
-        SheetPage(stringResource(R.string.config_backup), { showConfigSheet = false }) {
+    if (destination == "config") {
+        SettingsPage(stringResource(R.string.config_backup), popPage) {
+          Column {
             GroupHeading(stringResource(R.string.paper_group_transfer))
             Entry(SettingsEntry.Open("export", stringResource(R.string.config_export), stringResource(R.string.paper_export_help), {
-                showConfigSheet = false
                 val stamp = java.text.SimpleDateFormat("yyyy-MM-dd-HHmm", java.util.Locale.US)
                     .format(java.util.Date())
                 configExporter.launch("kotatsu-config-$stamp.json")
             }, actionLabel = stringResource(R.string.paper_save_file)))
             Entry(SettingsEntry.Open("import", stringResource(R.string.config_import), stringResource(R.string.paper_import_help), {
-                showConfigSheet = false
                 configImporter.launch(arrayOf("application/json", "text/plain", "*/*"))
             }, actionLabel = stringResource(R.string.paper_choose_file)))
-            Spacer(Modifier.height(9.dp))
+          }
+          Column(Modifier.padding(top = 9.dp)) {
             GroupHeading(stringResource(R.string.paper_group_reset))
             Entry(SettingsEntry.Open("clear", stringResource(R.string.config_clear), stringResource(R.string.paper_clear_help), {
-                showConfigSheet = false
-                showClearConfirm = true
+                navigation.push("clear")
             }))
+          }
         }
     }
 
-    if (showClearConfirm) {
-        SheetPage(stringResource(R.string.config_clear), { showClearConfirm = false }) {
+    if (destination == "clear") {
+        SettingsPage(stringResource(R.string.config_clear), popPage) {
             SheetText(stringResource(R.string.config_clear_confirm))
             SheetAction(stringResource(R.string.config_clear)) {
-                showClearConfirm = false
+                popPage()
                 prefs.clearAll(context)
                 IconUtility.invalidateOverrides()
                 restartApp(context)
             }
         }
+    }
+      }
     }
 }
 
@@ -936,7 +984,7 @@ private fun LockscreenMessageSheet(
 ) {
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
-    SheetPage(stringResource(R.string.lockscreen_message), onDismiss, imePadding = true) {
+    SettingsPage(stringResource(R.string.lockscreen_message), onDismiss, imePadding = true) {
         BasicTextField(
             value = textFieldValue,
             onValueChange = onValueChange,
@@ -975,7 +1023,7 @@ internal fun MultiChoiceSheet(
     options: List<Triple<String, Boolean, (Boolean) -> Unit>>,
     onDismiss: () -> Unit,
 ) {
-    SheetPage(title, onDismiss) {
+    SettingsPage(title, onDismiss) {
         options.forEach { (label, checked, onToggle) ->
             CheckboxOption(label, checked, onToggle)
         }
@@ -994,7 +1042,7 @@ internal fun LockscreenWidgetMenu(
     onRemove: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    SheetPage(row.label, onDismiss) {
+    SettingsPage(row.label, onDismiss) {
         com.gezimos.katapult.lockscreen.LockscreenWidgetSize.entries.forEach { size ->
             ChoiceOption(stringResource(widgetSizeTitle(size)), size == row.widget.size) {
                 onResize(size); onDismiss()
@@ -1022,7 +1070,7 @@ internal fun WidgetProviderSheet(
     onPick: (com.gezimos.katapult.lockscreen.WidgetProviderChoice) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    SheetPage(stringResource(R.string.lockscreen_widgets_add), onDismiss) {
+    SettingsPage(stringResource(R.string.lockscreen_widgets_add), onDismiss) {
         providers.forEach { provider -> SheetAction(provider.label) { onPick(provider); onDismiss() } }
     }
 }

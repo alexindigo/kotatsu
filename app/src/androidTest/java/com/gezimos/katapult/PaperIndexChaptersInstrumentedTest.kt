@@ -128,6 +128,7 @@ class PaperIndexChaptersInstrumentedTest {
                         }
                     }
                     assertEquals("$id/${entry.id} changed immediately", before, calls)
+                    assertFalse("$id chapter leaked behind its choice page", ui.has(definition.title))
                     ui.back()
                     ui.await("Choice Back did not dismiss $id/${entry.id}") { ui.find { it.className == "android.widget.RadioButton" } == null }
                     assertEquals("Choice Back applied $id/${entry.id}", before, calls)
@@ -138,6 +139,29 @@ class PaperIndexChaptersInstrumentedTest {
             }
         }
         assertEquals("All twelve Value entries must be exercised", 12, opened)
+    }
+
+    @Test fun everyHelpPageReplacesItsChapterAndReturnsToItsPageNumber() = withActivity { activity, ui ->
+        var opened = 0
+        for ((id, pages) in expected) {
+            val definition = show(activity, id)
+            val help = definition.help ?: continue
+            if (pages.size > 1) {
+                ui.await("Chapter pager not ready") { ui.has(context.getString(R.string.paper_page, 1, pages.size)) }
+                ui.click(context.getString(R.string.paper_next_page))
+            }
+            ui.click(help.label)
+            ui.await("Help page missing for $id") { ui.has(help.paragraphs.first()) }
+            assertFalse("Chapter pager leaked into help", ui.has(context.getString(R.string.paper_page, if (pages.size > 1) 2 else 1, pages.size)))
+            ui.click(context.getString(R.string.paper_back))
+            val labels = pages[if (pages.size > 1) 1 else 0].map { entryId ->
+                definition.groups.flatMap { it.visibleEntries }.single { it.id == entryId }.title
+            }
+            ui.await("Help Back lost $id chapter state") { labels.all { ui.has(it) } }
+            if (pages.size > 1) assertTrue(ui.has(context.getString(R.string.paper_page, 2, pages.size)))
+            opened++
+        }
+        assertEquals("All five chapter help pages must be exercised", 5, opened)
     }
 
     @Test fun lockNoticeIsOneSharedRegionAndNeverPerRow() = withActivity { activity, ui ->

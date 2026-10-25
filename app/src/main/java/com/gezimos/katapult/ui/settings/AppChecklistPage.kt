@@ -33,7 +33,7 @@ fun AppChecklistPage(
     selectAllLabel: String? = null,
     onSelectAll: () -> Unit = {},
 ) {
-    PagedSheetPage(title, apps, onDismiss, header = {
+    PagedSettingsPage(title, apps, onDismiss, header = {
         if (notifyCell != null) {
             SheetText(stringResource(R.string.hidden_apps_notify_desc))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
