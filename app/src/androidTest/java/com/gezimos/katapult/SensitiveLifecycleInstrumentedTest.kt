@@ -122,7 +122,7 @@ class SensitiveLifecycleInstrumentedTest {
             assertEquals(1, first); assertEquals(2, second)
         } finally {
             one.close(); two.close()
-            context.deleteSharedPreferences(name)
+            deleteTestPreferences(context, name)
         }
     }
     @Test fun publicChoicesRemainIndependentAndPersistWithoutGrantOrActivationChanges() {
@@ -237,7 +237,7 @@ class SensitiveLifecycleInstrumentedTest {
             assertTrue(prefs.sensitiveChoices().values.all { it })
         } finally {
             subscription.close(); subscription.close()
-            context.deleteSharedPreferences(name) // Only this uniquely named synthetic fixture.
+            deleteTestPreferences(context, name) // Only this uniquely named synthetic fixture.
         }
     }
 

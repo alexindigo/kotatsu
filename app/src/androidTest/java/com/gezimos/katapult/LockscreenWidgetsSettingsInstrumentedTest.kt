@@ -66,7 +66,7 @@ class LockscreenWidgetsSettingsInstrumentedTest {
             }
         } finally {
             instrumentation.runOnMainSync { owner.clear(); activity.finish() }
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
         }
     }
 }

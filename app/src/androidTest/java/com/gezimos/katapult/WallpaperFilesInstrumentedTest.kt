@@ -61,7 +61,7 @@ class WallpaperFilesInstrumentedTest {
             instrumentation.runOnMainSync { owner.clear() }
             IconUtility.clearCacheFor(key)
             assertTrue(root.deleteRecursively())
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
         }
     }
 

@@ -57,7 +57,7 @@ class IconPersistenceInstrumentedTest {
             }
         } finally {
             assertTrue(backing.edit().clear().commit())
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
             assertTrue(file.delete())
         }
     }

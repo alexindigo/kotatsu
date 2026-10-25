@@ -28,7 +28,7 @@ class ConfigImportInstrumentedTest {
             override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = raw
         }
         try { test(PrefsManager(fixture), raw) }
-        finally { assertTrue(context.deleteSharedPreferences(name)) }
+        finally { deleteTestPreferences(context, name) }
     }
 
     private fun config() = JSONObject().put("_type", "katapult_config")

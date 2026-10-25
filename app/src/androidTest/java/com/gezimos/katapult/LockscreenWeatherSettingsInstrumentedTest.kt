@@ -77,7 +77,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
                 owner.clear()
                 activity.finish()
             }
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
         }
     }
 }

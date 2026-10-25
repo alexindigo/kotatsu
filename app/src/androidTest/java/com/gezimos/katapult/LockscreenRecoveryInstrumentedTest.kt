@@ -44,7 +44,7 @@ class LockscreenRecoveryInstrumentedTest {
             test(model)
         } finally {
             instrumentation.runOnMainSync { owner.clear() }
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
         }
     }
 

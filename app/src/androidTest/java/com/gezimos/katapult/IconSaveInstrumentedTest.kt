@@ -61,7 +61,7 @@ class IconSaveInstrumentedTest {
             instrumentation.runOnMainSync { owner.clear() }
             IconUtility.clearCacheFor(key)
             assertTrue(root.deleteRecursively())
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
         }
     }
 
@@ -160,7 +160,7 @@ class IconSaveInstrumentedTest {
             release.countDown()
             worker.shutdownNow()
             IconUtility.clearCacheFor(key)
-            assertTrue(context.deleteSharedPreferences(name))
+            deleteTestPreferences(context, name)
         }
     }
 
