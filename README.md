@@ -10,7 +10,7 @@ Kotatsu is a privacy-focused Android launcher for the Mudita Kompakt e-ink phone
 
 **The launcher has no Internet permission or built-in updater.** Kotatsu Weather is a separate, optional app that uses the network.
 
-[Download the latest release](https://github.com/alexindigo/kotatsu/releases/latest) · [Website](https://alexindigo.github.io/kotatsu/) · [What's new in 0.1](CHANGELOG.md)
+[Download the latest release](https://github.com/alexindigo/kotatsu/releases/latest) · [Website](https://alexindigo.github.io/kotatsu/) · [What's new in 0.2](CHANGELOG.md)
 
 Kotatsu on a Mudita Kompakt:
 
@@ -23,7 +23,7 @@ Kotatsu on a Mudita Kompakt:
             <td><img src='docs/img/screenshots/kotatsu_weather_setup.png' height='300' alt="Kotatsu Weather places"></td>
         </tr>
         <tr>
-            <td><img src='docs/img/screenshots/kotatsu_hidden_apps.png' height='300' alt="Hidden Apps with Hide and Notify controls"></td>
+            <td><img src='docs/img/screenshots/kotatsu_hidden_apps.png' height='300' alt="Hidden apps page with Hide and Notify controls"></td>
             <td><img src='docs/img/screenshots/kotatsu_home_wallpaper.png' height='300' alt="Home screen with a wallpaper and no text backgrounds"></td>
             <td><img src='docs/img/screenshots/kotatsu_lockscreen_widgets.png' height='300' alt="Lock-screen widgets settings"></td>
             <td><img src='docs/img/screenshots/kotatsu_home_dark.png' height='300' alt="Dark home screen with battery percentage and no wallpaper"></td>
@@ -46,12 +46,12 @@ Kotatsu on a Mudita Kompakt:
 
 Requires **Android 11 or newer** (API 30). Kompakt-specific integration, including lock-screen widget hosting, is designed for the Mudita Kompakt.
 
-Get the APKs from [Kotatsu Releases](https://github.com/alexindigo/kotatsu/releases/latest). The [v0.1 release](https://github.com/alexindigo/kotatsu/releases/tag/v0.1) includes:
+Get the APKs from [Kotatsu Releases](https://github.com/alexindigo/kotatsu/releases/latest). The [v0.2 release](https://github.com/alexindigo/kotatsu/releases/tag/v0.2) includes:
 
 | # | APK | Install for |
 |---|---|---|
-| 1 | [kotatsu-v0.1.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.1/kotatsu-v0.1.apk) | The launcher |
-| 2 | [kotatsu-weather-v0.1.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.1/kotatsu-weather-v0.1.apk) | Optional weather widget; separate app with network access |
+| 1 | [kotatsu-v0.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.2/kotatsu-v0.2.apk) | The launcher |
+| 2 | [kotatsu-weather-v0.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.2/kotatsu-weather-v0.2.apk) | Optional weather widget; separate app with network access |
 
 Open the downloaded APK on the phone and allow installation from that source when Android asks. Open Kotatsu to preview it; choose it as the default Home app in Android settings when ready. Updates are installed manually from Releases.
 
@@ -61,7 +61,7 @@ The release APK signing certificate's **SHA-256** is:
 8fa0f259c8cf159d9fa4d995ab1b55fae7eb3c463a249b985b20107edfbbf607
 ```
 
-This is the certificate fingerprint, not an APK file checksum. With Android SDK Build Tools installed, inspect an APK using `apksigner verify --print-certs kotatsu-v0.1.apk`.
+This is the certificate fingerprint, not an APK file checksum. With Android SDK Build Tools installed, inspect an APK using `apksigner verify --print-certs kotatsu-v0.2.apk`.
 
 ## Kotatsu Weather
 

@@ -2,6 +2,21 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.2] — 2026-10-25
+
+### Added
+- **App Store**: a Settings entry opens F-Droid, or explains how to get it when it is not installed.
+
+### Changed
+- **Settings**: rebuilt in the Paper index style, with a table of contents and live summaries, grouped chapters, choice pages and "?" help. Settings pages replace slide-in sheets, Back returns one level, and switches use On/Off words.
+- **E-ink controls**: moved into Appearance alongside the other screen settings.
+- **App icons**: bundled and catalogue glyphs and newly imported artwork are capped at 54% of the icon tile. Mudita artwork and existing saved imports stay unchanged. The Kotatsu Weather glyph is smaller, with its frame unchanged.
+- **Action Service reminder**: one dismissible notice replaces repeated warnings in Settings.
+- **README and website**: refreshed with Kotatsu's own screenshots, features and installation guide.
+
+### Fixed
+- **Settings wording**: consistent "Lock screen" labels, a single % in "Show battery %", clearer descriptions for Android's Notification log and Notification history, and a positive "Music widget" switch.
+
 ## [0.1] — 2026-10-18
 
 First Kotatsu release, based on Katapult 1.6.
