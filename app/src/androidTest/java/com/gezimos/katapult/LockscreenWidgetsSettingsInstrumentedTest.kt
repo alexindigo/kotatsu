@@ -10,6 +10,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.ui.SettingsScreen
 import com.gezimos.katapult.util.DeviceHelper
+import com.gezimos.katapult.lockscreen.LockscreenWidget
+import com.gezimos.katapult.lockscreen.LockscreenWidgetList
+import com.gezimos.katapult.lockscreen.LockscreenWidgetSize
+import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,12 +39,15 @@ class LockscreenWidgetsSettingsInstrumentedTest {
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
         val owner = ViewModelStore()
         lateinit var model: MainViewModel
-        val list = """[{"id":27,"size":"M"}]"""
+        val widgets = WidgetHostTestFixture(context)
+        val provider = widgets.providers.firstProvider("com.android.deskclock")
+        val list = LockscreenWidgetList.encode(listOf(LockscreenWidget(widgets.bind(provider), LockscreenWidgetSize.M)))
         try {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, raw))
                 owner.put("k2", model)
-                model.prefs.lockscreenWidgets = list
+                assertEquals(LockscreenWidgetStore.Result.APPLIED,
+                    model.prefs.lockscreenWidgetStore.replaceImportedSelection(list))
                 model.prefs.lockscreenWidgetsEnabled = true
                 model.screen = Screen.HOME
                 model.checkLockscreenService(false)
@@ -67,6 +74,7 @@ class LockscreenWidgetsSettingsInstrumentedTest {
         } finally {
             instrumentation.runOnMainSync { owner.clear(); activity.finish() }
             deleteTestPreferences(context, name)
+            widgets.close()
         }
     }
 }

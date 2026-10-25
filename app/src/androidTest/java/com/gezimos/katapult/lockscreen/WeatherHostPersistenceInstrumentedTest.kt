@@ -1,6 +1,5 @@
 package com.gezimos.katapult.lockscreen
 
-import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.ParcelFileDescriptor
 import android.widget.ImageView
@@ -9,6 +8,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.MainActivity
 import com.gezimos.katapult.PlatformUiDriver
 import com.gezimos.katapult.WidgetHostTestFixture
+import com.gezimos.katapult.WidgetProviderTestFixture
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -27,16 +27,15 @@ class WeatherHostPersistenceInstrumentedTest {
         // A retained acceptance fixture deliberately outlives instrumentation. Normal tests own a
         // scoped selection and all allocations, with a synchronous teardown barrier.
         val fixture = if (retained) null else WidgetHostTestFixture(context, applicationPreferences = true)
-        try { exerciseHost() } finally { fixture?.close() }
+        try { WidgetProviderTestFixture(context).use { exerciseHost(it) } } finally { fixture?.close() }
     }
 
-    private fun exerciseHost() {
+    private fun exerciseHost(providers: WidgetProviderTestFixture) {
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
         val ui = PlatformUiDriver(instrumentation)
         val host = LockscreenWidgetHost.get(context)
-        val manager = AppWidgetManager.getInstance(context)
-        val info = manager.installedProviders.single { it.provider.packageName == weather }
+        val info = providers.singleProvider(weather)
         val before = activity.viewModel.lockscreenWidgets.rows.map { it.widget.id }.toSet()
         var id: Int? = null
         fun locate(lat: Int, lon: Int) {

@@ -18,7 +18,7 @@ class WidgetHostTestFixtureInstrumentedTest {
         val beforeIds = host.appWidgetIds.toSet()
         WidgetHostTestFixture(context, applicationPreferences = true).use { fixture ->
             val id = fixture.host.allocateAppWidgetId()
-            fixture.prefs.lockscreenWidgets = LockscreenWidgetList.encode(listOf(LockscreenWidget(id, LockscreenWidgetSize.M)))
+            fixture.raw.edit().putString("lockscreen_widgets", LockscreenWidgetList.encode(listOf(LockscreenWidget(id, LockscreenWidgetSize.M)))).apply()
             assertTrue(id in host.appWidgetIds)
             // Deliberately leave allocation and apply write for the shared scope to own at teardown.
         }

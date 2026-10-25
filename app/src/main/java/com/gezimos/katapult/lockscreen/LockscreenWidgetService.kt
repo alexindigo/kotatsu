@@ -592,7 +592,7 @@ class LockscreenWidgetService :
     }
 
     private fun applyWidgets(onLockscreen: Boolean) {
-        val selected = LockscreenWidgetList.decode(prefs.lockscreenWidgets)
+        val selected = prefs.lockscreenWidgetStore.read()
         if (!DeviceHelper.isMuditaKompakt() || !prefs.lockscreenWidgetsEnabled || selected.isEmpty()) {
             stopWidgets()
             return

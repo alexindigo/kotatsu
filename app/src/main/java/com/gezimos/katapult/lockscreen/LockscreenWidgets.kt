@@ -27,15 +27,22 @@ object LockscreenWidgetList {
     }
 
     fun decode(json: String): List<LockscreenWidget> = runCatching {
-        val rows = Reader(json).read() as List<*>
-        rows.mapNotNull { entry ->
-            val row = entry as? Map<*, *> ?: return@mapNotNull null
-            val number = row["id"] as? Double ?: return@mapNotNull null
-            if (number < 1 || number > Int.MAX_VALUE || number != number.toInt().toDouble()) return@mapNotNull null
-            val size = LockscreenWidgetSize.entries.firstOrNull { it.name == row["size"] } ?: return@mapNotNull null
-            LockscreenWidget(number.toInt(), size)
-        }.distinctBy { it.id }
+        decodeRows(Reader(json).read() as List<*>)
     }.getOrDefault(emptyList())
+
+    /** Explicit replacement must not turn a malformed document into a valid empty selection. */
+    internal fun decodeForImport(json: String): List<LockscreenWidget>? = runCatching {
+        val rows = Reader(json).read() as List<*>
+        decodeRows(rows).also { require(it.size == rows.size) }
+    }.getOrNull()
+
+    private fun decodeRows(rows: List<*>): List<LockscreenWidget> = rows.mapNotNull { entry ->
+        val row = entry as? Map<*, *> ?: return@mapNotNull null
+        val number = row["id"] as? Double ?: return@mapNotNull null
+        if (number < 1 || number > Int.MAX_VALUE || number != number.toInt().toDouble()) return@mapNotNull null
+        val size = LockscreenWidgetSize.entries.firstOrNull { it.name == row["size"] } ?: return@mapNotNull null
+        LockscreenWidget(number.toInt(), size)
+    }.distinctBy { it.id }
 
     private class Reader(private val text: String) {
         private var index = 0

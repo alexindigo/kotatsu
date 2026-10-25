@@ -7,6 +7,7 @@ import android.content.ContextWrapper
 import android.content.SharedPreferences
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.lockscreen.LockscreenWidgetHost
+import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
 import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import java.util.UUID
@@ -15,6 +16,7 @@ import java.util.UUID
 internal class WidgetHostTestFixture(private val context: Context, applicationPreferences: Boolean = false) : AutoCloseable {
     val host = LockscreenWidgetHost.get(context)
     val manager = AppWidgetManager.getInstance(context)
+    val providers = WidgetProviderTestFixture(context)
     private val initialIds = host.appWidgetIds.toSet()
     private val name = if (applicationPreferences) "katapult_prefs" else "widget-host-${UUID.randomUUID()}"
     val raw: SharedPreferences = context.getSharedPreferences(name, Context.MODE_PRIVATE)
@@ -40,8 +42,17 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
         } finally { automation.dropShellPermissionIdentity() }
     }
 
+    /** Simulate external/legacy restored bytes, deliberately before the owner's reconciling read. */
+    fun restoreExternalSelection(serialized: String) {
+        assertTrue(raw.edit().putString(LockscreenWidgetStore.KEY, serialized).commit())
+    }
+
     /** Call only after the test has stopped its Activities/models and their subscriptions. */
     override fun close() {
+        try { releaseAllocationsAndPreferences() } finally { providers.close() }
+    }
+
+    private fun releaseAllocationsAndPreferences() {
         (host.appWidgetIds.toSet() - initialIds).forEach(host::deleteAppWidgetId)
         if (usesApplicationPreferences) {
             val editor = raw.edit()

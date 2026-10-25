@@ -169,6 +169,7 @@ class MainActivity : ComponentActivity() {
         viewModel.startNotificationListener() // Reconcile current choices/grants before cache refresh.
         viewModel.applyStatusBar(this)
         viewModel.checkLockscreenService(this)
+        viewModel.lockscreenWidgets.refresh()
         viewModel.refreshWeather()
         viewModel.startClock()
         viewModel.loadApps()

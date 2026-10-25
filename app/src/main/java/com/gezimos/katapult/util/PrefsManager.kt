@@ -3,6 +3,7 @@ package com.gezimos.katapult.util
 import android.content.Context
 import android.content.SharedPreferences
 import com.gezimos.katapult.model.AppModel
+import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -20,6 +21,7 @@ class PrefsManager(context: Context) {
 
     private val prefs: SharedPreferences =
         context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
+    val lockscreenWidgetStore by lazy { LockscreenWidgetStore(appContext, prefs) }
 
     private val changeListeners = java.util.concurrent.CopyOnWriteArrayList<(String?) -> Unit>()
     private val platformListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -54,6 +56,12 @@ class PrefsManager(context: Context) {
                 if (changeListeners.isEmpty()) prefs.unregisterOnSharedPreferenceChangeListener(platformListener)
             }
         }
+    }
+
+    /** Widget state must not take its transaction lock for unrelated preference notifications
+     * (e.g. an icon commit whose caller is still waiting for a Main-thread interaction). */
+    fun subscribeLockscreenWidgetChanges(changed: () -> Unit): AutoCloseable = subscribeChanges { key ->
+        if (key == null || key == LockscreenWidgetStore.KEY || key == KEY_LOCKSCREEN_WIDGETS_ENABLED) changed()
     }
 
     data class PolicyImportPreview(val localChoices: Map<String, Boolean>, val incomingChoices: Map<String, Boolean>) {
@@ -423,9 +431,8 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_LOCKSCREEN_WIDGETS_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WIDGETS_ENABLED, value).apply()
 
-    var lockscreenWidgets: String
-        get() = strPref(KEY_LOCKSCREEN_WIDGETS, "[]") ?: "[]"
-        set(value) = prefs.edit().putString(KEY_LOCKSCREEN_WIDGETS, value).apply()
+    val lockscreenWidgets: String
+        get() = lockscreenWidgetStore.exportSelection() ?: "[]"
 
     var lockscreenWidgetY: Int
         get() = intPref(KEY_LOCKSCREEN_WIDGET_Y, -1)
@@ -595,12 +602,13 @@ class PrefsManager(context: Context) {
         }
     }
 
-    fun exportToJson(context: Context): String {
+    fun exportToJson(context: Context): String = synchronized(prefs) {
         val json = JSONObject()
         json.put(CONFIG_TYPE_KEY, CONFIG_TYPE)
         json.put(CONFIG_VERSION_KEY, appVersionCode(context))
+        val widgets = lockscreenWidgetStore.exportSelection()
         for ((key, value) in prefs.all) {
-            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED) continue
+            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED || key == LockscreenWidgetStore.KEY) continue
             when (value) {
                 is Boolean -> json.put(key, value)
                 is Int -> json.put(key, value)
@@ -611,7 +619,8 @@ class PrefsManager(context: Context) {
                 else -> {}
             }
         }
-        return json.toString(2)
+        if (widgets != null) json.put(LockscreenWidgetStore.KEY, widgets)
+        json.toString(2)
     }
 
     private fun isDeadFileRef(key: String, value: String): Boolean {
@@ -656,8 +665,9 @@ class PrefsManager(context: Context) {
         }
         val existing = prefs.all
         val editor = prefs.edit().clear()
-        // Local state is neither replaced nor removed, including absent keys.
-        for (key in LOCAL_IMPORT_KEYS) when (val value = existing[key]) {
+        // Other local state is neither replaced nor removed, including absent keys.
+        // The widget owner stages its current reconciled selection at the final commit below.
+        for (key in LOCAL_IMPORT_KEYS - LockscreenWidgetStore.KEY) when (val value = existing[key]) {
             is Boolean -> editor.putBoolean(key, value)
             is Int -> editor.putInt(key, value)
             is Long -> editor.putLong(key, value)
@@ -684,7 +694,7 @@ class PrefsManager(context: Context) {
         }
         // Preserve omissions and missing-key true defaults in the SAME import editor.
         preservedChoices.forEach { (key, value) -> editor.putBoolean(key, value) }
-        editor.commit()
+        lockscreenWidgetStore.commitImportedPreferences(editor)
     }
 
     /** Types follow the defaults declared by the getters, not a device's stored values. */
@@ -843,7 +853,6 @@ class PrefsManager(context: Context) {
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
         private const val KEY_LOCKSCREEN_WEATHER = "lockscreen_weather"
         private const val KEY_LOCKSCREEN_WIDGETS_ENABLED = "lockscreen_widgets_enabled"
-        private const val KEY_LOCKSCREEN_WIDGETS = "lockscreen_widgets"
         private const val KEY_LOCKSCREEN_WIDGET_Y = "lockscreen_widget_y"
         private const val KEY_LOCKSCREEN_WIDGET_ROWS = "lockscreen_widget_rows"
         private const val KEY_LOCKSCREEN_WIDGET_EXCLUDED = "lockscreen_widget_excluded"
@@ -882,6 +891,6 @@ class PrefsManager(context: Context) {
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
 
         private const val KEY_NOTICE_ACTION_SERVICE_DISMISSED = "notice_action_service_dismissed"
-        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, KEY_LOCKSCREEN_WIDGETS, KEY_NOTICE_ACTION_SERVICE_DISMISSED)
+        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, LockscreenWidgetStore.KEY, KEY_NOTICE_ACTION_SERVICE_DISMISSED)
     }
 }

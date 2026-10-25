@@ -19,13 +19,14 @@ data class WidgetSettingsRow(val widget: LockscreenWidget, val label: String, va
 class LockscreenWidgetSettings(private val context: Context, private val prefs: PrefsManager) : AutoCloseable {
     private val manager = AppWidgetManager.getInstance(context)
     private val host get() = LockscreenWidgetHost.get(context)
+    private val store = prefs.lockscreenWidgetStore
     var enabled by mutableStateOf(prefs.lockscreenWidgetsEnabled)
         private set
     var rows by mutableStateOf(emptyList<WidgetSettingsRow>())
         private set
     private data class Pending(val widget: LockscreenWidget, val editing: Boolean)
     private var pending: Pending? = null
-    private val subscription = prefs.subscribeChanges { refresh() }
+    private val subscription = prefs.subscribeLockscreenWidgetChanges(::refresh)
 
     init { refresh() }
 
@@ -38,8 +39,7 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         }
     }
 
-    private fun widgets() = LockscreenWidgetList.decode(prefs.lockscreenWidgets)
-    private fun save(widgets: List<LockscreenWidget>) { prefs.lockscreenWidgets = LockscreenWidgetList.encode(widgets); refresh() }
+    private fun widgets() = store.read()
     /** "Messaging (SMS)" — the app is named only when the widget's own name doesn't already say it. */
     private fun label(info: AppWidgetProviderInfo): String {
         val pm = context.packageManager
@@ -62,40 +62,35 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         refresh()
     }
 
-    private fun fits(widgets: List<LockscreenWidget>): Boolean {
-        val fits = lockscreenBoxLayout(widgets.map { it.size.heightDp }, LockscreenWidgetHost.availableDp(context)) != null
-        if (!fits) Toast.makeText(context, R.string.lockscreen_widgets_no_room, Toast.LENGTH_SHORT).show()
-        return fits
+    private fun applied(result: LockscreenWidgetStore.Result): Boolean {
+        when (result) {
+            LockscreenWidgetStore.Result.APPLIED -> Unit
+            LockscreenWidgetStore.Result.MISSING -> Unit
+            LockscreenWidgetStore.Result.NO_ROOM -> Toast.makeText(context, R.string.lockscreen_widgets_no_room, Toast.LENGTH_SHORT).show()
+            LockscreenWidgetStore.Result.UNBOUND, LockscreenWidgetStore.Result.INVALID, LockscreenWidgetStore.Result.WRITE_FAILED -> failed()
+        }
+        refresh()
+        return result == LockscreenWidgetStore.Result.APPLIED
     }
 
     fun resize(id: Int, size: LockscreenWidgetSize) {
-        val list = widgets().map { if (it.id == id) it.copy(size = size) else it }
-        if (!fits(list)) return
-        try {
-            list.firstOrNull { it.id == id }?.let { LockscreenWidgetHost.updateSize(context, it) }
-            save(list)
-        } catch (_: Exception) { failed() }
+        try { applied(store.resize(id, size)) } catch (_: Exception) { failed() }
     }
 
     fun move(id: Int, delta: Int) {
-        val list = widgets().toMutableList()
-        val from = list.indexOfFirst { it.id == id }
-        val to = from + delta
-        if (from !in list.indices || to !in list.indices) return
-        java.util.Collections.swap(list, from, to)
-        save(list)
+        try { applied(store.move(id, delta)) } catch (_: Exception) { failed() }
     }
 
     fun remove(id: Int) {
-        try { host.deleteAppWidgetId(id); save(widgets().filterNot { it.id == id }) }
+        try { applied(store.remove(id)) }
         catch (_: Exception) { failed() }
     }
 
     fun add(info: AppWidgetProviderInfo, bind: (Intent) -> Unit, configure: (Int) -> Unit) {
         if (pending != null) return
         val size = defaultLockscreenWidgetSize(info.minHeight / context.resources.displayMetrics.density)
-        if (!fits(widgets() + LockscreenWidget(1, size))) return
         try {
+            if (!applied(store.canAdd(size))) return
             val id = host.allocateAppWidgetId()
             check(id > 0)
             pending = Pending(LockscreenWidget(id, size), false)
@@ -119,6 +114,7 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
 
     fun edit(id: Int, configure: (Int) -> Unit) {
         if (pending != null) return
+        refresh()
         val row = rows.firstOrNull { it.widget.id == id && it.canEdit } ?: return
         pending = Pending(row.widget, true)
         try { configure(id) } catch (_: Exception) { cancel(); failed() }
@@ -130,10 +126,7 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         try {
             check(manager.getAppWidgetInfo(request.widget.id) != null)
             if (!request.editing) {
-                val list = widgets() + request.widget
-                if (!fits(list)) { cancel(); return }
-                LockscreenWidgetHost.updateSize(context, request.widget)
-                save(list)
+                if (!applied(store.addAfterConfigure(request.widget))) { cancel(); return }
             }
             pending = null
             refresh()
@@ -144,7 +137,7 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
     private fun failed() { Toast.makeText(context, R.string.lockscreen_widgets_failed, Toast.LENGTH_SHORT).show() }
     private fun cancel() {
         val request = pending ?: return
-        if (!request.editing) host.deleteAppWidgetId(request.widget.id)
+        if (!request.editing) store.discardPending(request.widget.id)
         pending = null
     }
 

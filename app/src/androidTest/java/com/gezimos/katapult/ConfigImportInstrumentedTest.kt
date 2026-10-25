@@ -7,6 +7,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SensitiveChoice
+import com.gezimos.katapult.lockscreen.LockscreenWidget
+import com.gezimos.katapult.lockscreen.LockscreenWidgetList
+import com.gezimos.katapult.lockscreen.LockscreenWidgetSize
+import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.*
@@ -88,13 +92,19 @@ class ConfigImportInstrumentedTest {
         assertTrue(prefs.importFromJson(config().put("lockscreen_widgets", "[{\"id\":999,\"size\":\"L\"}]").toString()))
         assertFalse(raw.contains("lockscreen_widgets"))
         assertEquals("[]", prefs.lockscreenWidgets)
-        val local = """[{"id":27,"size":"M"},{"id":4,"size":"S"}]"""
-        prefs.lockscreenWidgets = local
-        for (incoming in listOf(config(), config().put("lockscreen_widgets", "[]"),
-            config().put("lockscreen_widgets", true), config().put("lockscreen_widgets", "foreign-phone-ids"))) {
-            assertTrue(prefs.importFromJson(incoming.put("lockscreen_widgets_enabled", true).toString()))
-            assertEquals(local, prefs.lockscreenWidgets)
-            assertTrue(prefs.lockscreenWidgetsEnabled)
+        WidgetHostTestFixture(context).use { widgets ->
+            val provider = widgets.providers.firstProvider("com.android.deskclock")
+            val local = LockscreenWidgetList.encode(listOf(
+                LockscreenWidget(widgets.bind(provider), LockscreenWidgetSize.M),
+                LockscreenWidget(widgets.bind(provider), LockscreenWidgetSize.S)))
+            assertEquals(LockscreenWidgetStore.Result.APPLIED,
+                prefs.lockscreenWidgetStore.replaceImportedSelection(local))
+            for (incoming in listOf(config(), config().put("lockscreen_widgets", "[]"),
+                config().put("lockscreen_widgets", true), config().put("lockscreen_widgets", "foreign-phone-ids"))) {
+                assertTrue(prefs.importFromJson(incoming.put("lockscreen_widgets_enabled", true).toString()))
+                assertEquals(local, prefs.lockscreenWidgets)
+                assertTrue(prefs.lockscreenWidgetsEnabled)
+            }
         }
     }
 
