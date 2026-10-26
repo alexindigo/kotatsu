@@ -10,7 +10,7 @@ import java.time.ZonedDateTime
 
 object TimelineRenderer {
     fun render(
-        context: Context, config: WidgetConfig, forecasts: List<Forecast?>,
+        context: Context, config: WidgetConfig, forecasts: List<ForecastSeries?>,
         width: Int, height: Int, now: ZonedDateTime = ZonedDateTime.now(),
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
@@ -71,11 +71,12 @@ object TimelineRenderer {
         val belowBaseline = glyphBox(textSize).bottom.toFloat()
         paint.textSize = textSize
         val bottoms = stackedRowBottoms(count, rowHeight, rowGap, height - bottomInset)
+        val day = DayWindow.of(now.toLocalDate(), now.zone)
         val rows = config.locations.mapIndexed { index, location ->
             val forecast = forecasts.getOrNull(index)
-            val numbers = forecast?.let { temperatureNumbers(location, it, now.toLocalDate()) }.orEmpty()
+            val numbers = forecast?.let { temperatureNumbers(location, it, day) }.orEmpty()
             RenderRow(location, forecast, numbers, bottoms[index] - belowBaseline, bottoms[index] - rowHeight / 2,
-                forecast == null || isStale(forecast.fetchedAt, now.toInstant().toEpochMilli()))
+                forecast == null || isStale(forecast.fetchedAt.toEpochMilli(), now.toInstant().toEpochMilli()))
         }
         val placedRows = rows.map { row ->
             if (right <= left) emptyList() else placeNumbers(row.numbers, axis, left, right, numberGap, paint::measureText)
@@ -93,7 +94,7 @@ object TimelineRenderer {
             for (hour in hourDots(axis, placedRows[index])) {
                 canvas.drawCircle(axis.x(hour.toDouble(), left, right), row.y, dotRadius, paint)
             }
-            val condition = spanHours(row.location, row.forecast!!, now.toLocalDate())
+            val condition = spanHours(row.location, row.forecast!!, day)
                 .mapNotNull { condition(it.code, it.gust, config.fahrenheit) }.maxOrNull() ?: Condition.CLEAR
             val resource = when (condition) {
                 Condition.THUNDERSTORM -> R.drawable.ic_weather_thunderstorm
@@ -148,7 +149,7 @@ object TimelineRenderer {
     private const val ROW_GLYPHS = "H0123456789"
 
     private data class RenderRow(
-        val location: Location, val forecast: Forecast?, val numbers: List<TemperatureNumber>,
+        val location: Location, val forecast: ForecastSeries?, val numbers: List<TemperatureNumber>,
         val baseline: Float, val y: Float, val stale: Boolean,
     )
 }

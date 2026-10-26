@@ -5,27 +5,10 @@ import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
-import java.security.MessageDigest
-import java.time.Instant
-import java.time.LocalDateTime
-import java.time.ZoneId
 
 data class Place(val name: String, val display: String, val latitude: Double, val longitude: Double)
 
 object WeatherJson {
-    fun forecast(json: String, fetchedAt: Long): Forecast {
-        val hourly = JSONObject(json).getJSONObject("hourly")
-        val times = hourly.getJSONArray("time")
-        val temperatures = hourly.getJSONArray("temperature_2m")
-        val codes = hourly.getJSONArray("weather_code")
-        val gusts = hourly.getJSONArray("wind_gusts_10m")
-        return Forecast((0 until times.length()).mapNotNull {
-            if (times.isNull(it) || temperatures.isNull(it)) null
-            else Hour(LocalDateTime.parse(times.getString(it)), temperatures.getDouble(it),
-                if (codes.isNull(it)) null else codes.getInt(it), if (gusts.isNull(it)) null else gusts.getDouble(it))
-        }, fetchedAt)
-    }
-
     fun places(json: String): List<Place> {
         val results = JSONObject(json).optJSONArray("results") ?: return emptyList()
         return (0 until results.length()).map {
@@ -103,31 +86,6 @@ class WeatherStore(context: Context) {
     } }
 
     private companion object { val configLock = Any() }
-
-    private fun key(location: Location, fahrenheit: Boolean, zone: String): String {
-        val input = "${location.coordinateKey}|$fahrenheit|$zone"
-        return "cache_" + MessageDigest.getInstance("SHA-256").digest(input.toByteArray()).joinToString("") { "%02x".format(it) }
-    }
-
-    fun cached(location: Location, fahrenheit: Boolean, zone: String = ZoneId.systemDefault().id): Forecast? =
-        prefs.getString(key(location, fahrenheit, zone), null)?.let {
-            runCatching {
-                val envelope = JSONObject(it)
-                WeatherJson.forecast(envelope.getString("data"), envelope.getLong("fetchedAt"))
-            }.getOrNull()
-        }
-
-    fun cache(location: Location, fahrenheit: Boolean, zone: String, json: String, now: Long) {
-        // Parse first (malformed responses throw); retain readable data unless usefulness is positive and no lower.
-        val forecast = WeatherJson.forecast(json, now)
-        val today = Instant.ofEpochMilli(now).atZone(ZoneId.of(zone)).toLocalDate()
-        if (!shouldReplaceForecast(cached(location, fahrenheit, zone), forecast, today)) {
-            android.util.Log.w("KotatsuWeather", "Less useful weather response; retaining cached forecast and fetch time")
-            return
-        }
-        prefs.edit().putString(key(location, fahrenheit, zone), JSONObject()
-            .put("fetchedAt", now).put("data", json).toString()).apply()
-    }
 }
 
 object OpenMeteo {
@@ -148,7 +106,8 @@ object OpenMeteo {
             "&longitude=${location.coordinateKey.substringAfter(',')}" +
             "&hourly=temperature_2m,weather_code,wind_gusts_10m" +
             "&temperature_unit=${if (fahrenheit) "fahrenheit" else "celsius"}" +
-            "&wind_speed_unit=${if (fahrenheit) "mph" else "kmh"}&timezone=${encode(zone)}&forecast_days=3")
+            "&wind_speed_unit=${if (fahrenheit) "mph" else "kmh"}&timezone=${encode(zone)}" +
+            "&timeformat=unixtime&forecast_days=${DayWindow.forecastDays}")
 
     fun search(query: String): List<Place> = WeatherJson.places(get(
         "https://geocoding-api.open-meteo.com/v1/search?name=${encode(query)}&count=10&language=en&format=json"))

@@ -3,13 +3,18 @@ package com.alexindigo.kotatsu.weather
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
+import java.time.Instant
+import java.time.ZoneOffset
 
 class TimelineTest {
     private val today = LocalDate.of(2026, 10, 16)
+    private val zone = ZoneOffset.UTC
+    private val day = DayWindow.of(today, zone)
+    private fun series(samples: List<HourSample>, fetchedAt: Long = 0) = ForecastSeries(samples, Instant.ofEpochMilli(fetchedAt))
     private val home = Location("Home", "Portola Valley", 37.38, -122.23)
     // Base 60; mark blocks (h-1, h, h+1): 1 → 50, 9 → 55, 13 → 70, 23 → 57, every other mark 60.
     private val hours = (0..47).map { hour ->
-        Hour(today.atStartOfDay().plusHours(hour.toLong()), when (hour) {
+        HourSample(today.atStartOfDay().plusHours(hour.toLong()).toInstant(zone), when (hour) {
             0 -> 30.0
             9 -> 45.0
             13 -> 90.0
@@ -22,15 +27,15 @@ class TimelineTest {
         assertEquals(Axis(3, 23), sharedAxis(listOf(home, home.copy(start = 3, end = 17))))
     }
     @Test fun markValuesAverageTheHourBeforeTheMarkAndTheHourAfter() {
-        val byTime = hours.associateBy { it.time }
-        assertEquals(50.0, markTemperature(byTime, today, 1)!!, 1e-9)
-        assertEquals(55.0, markTemperature(byTime, today, 9)!!, 1e-9)
+        val byTime = hours.associateBy { it.instant }
+        assertEquals(50.0, markTemperature(byTime, day, 1)!!, 1e-9)
+        assertEquals(55.0, markTemperature(byTime, day, 9)!!, 1e-9)
         // Hour 24 is the next day's 00:00.
-        assertEquals(57.0, markTemperature(byTime, today, 23)!!, 1e-9)
-        assertNull(markTemperature(byTime - today.atTime(10, 0), today, 11))
+        assertEquals(57.0, markTemperature(byTime, day, 23)!!, 1e-9)
+        assertNull(markTemperature(byTime - today.atTime(10, 0).toInstant(zone), day, 11))
     }
     @Test fun numbersComeFromMarkAverages() {
-        val numbers = temperatureNumbers(home, Forecast(hours, 1), today)
+        val numbers = temperatureNumbers(home, series(hours, 1), day)
         assertEquals(TemperatureNumber(7, 60, NumberKind.START), numbers.single { it.kind == NumberKind.START })
         assertEquals(TemperatureNumber(23, 57, NumberKind.END), numbers.single { it.kind == NumberKind.END })
         assertEquals(TemperatureNumber(13, 70, NumberKind.HIGH), numbers.single { it.kind == NumberKind.HIGH })
@@ -38,15 +43,15 @@ class TimelineTest {
         assertFalse(numbers.any { it.kind == NumberKind.LOW })
     }
     @Test fun lowStrictlyInsideSpan() {
-        val forecast = Forecast(hours.map { if (it.time.hour == 0) it.copy(temperature = 60.0) else it }, 0)
-        assertEquals(TemperatureNumber(9, 55, NumberKind.LOW), temperatureNumbers(home, forecast, today).single { it.kind == NumberKind.LOW })
-        assertFalse(temperatureNumbers(home.copy(start = 9), forecast, today).any { it.kind == NumberKind.LOW })
+        val forecast = series(hours.map { if (it.instant.atZone(zone).hour == 0) it.copy(temperature = 60.0) else it })
+        assertEquals(TemperatureNumber(9, 55, NumberKind.LOW), temperatureNumbers(home, forecast, day).single { it.kind == NumberKind.LOW })
+        assertFalse(temperatureNumbers(home.copy(start = 9), forecast, day).any { it.kind == NumberKind.LOW })
     }
     @Test fun missingHourOfAnySpanBlockMeansNoForecast() {
         for (missing in listOf(today.plusDays(1).atStartOfDay(), today.atTime(10, 0), today.atTime(6, 0))) {
-            assertTrue(temperatureNumbers(home, Forecast(hours.filter { it.time != missing }, 0), today).isEmpty())
+            assertTrue(temperatureNumbers(home, series(hours.filter { it.instant != missing.toInstant(zone) }), day).isEmpty())
         }
-        assertTrue(temperatureNumbers(home, Forecast(hours, 0), today.plusDays(3)).isEmpty())
+        assertTrue(temperatureNumbers(home, series(hours), DayWindow.of(today.plusDays(3), zone)).isEmpty())
     }
     @Test fun priorityDropsOverlapsAndPreservesHourPlacement() {
         val numbers = listOf(
@@ -138,28 +143,29 @@ class TimelineTest {
         assertNull(samples.take(1).mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
     }
     @Test fun cacheReplacementRequiresPositiveNonDecreasingUsefulnessUnlessAbsent() {
-        val good = Forecast(hours, 1)
-        val fewer = good.copy(hours = hours.take(24))
-        val zero = good.copy(hours = emptyList())
-        assertTrue(shouldReplaceForecast(null, good, today))
-        assertTrue(shouldReplaceForecast(null, zero, today))
-        assertTrue(shouldReplaceForecast(fewer, good, today))
-        assertTrue(shouldReplaceForecast(good, good.copy(fetchedAt = 2), today))
-        assertFalse(shouldReplaceForecast(good, fewer, today))
-        assertFalse(shouldReplaceForecast(good, zero, today))
-        assertFalse(shouldReplaceForecast(zero, zero, today))
+        val good = series(hours, 1)
+        val fewer = good.copy(samples = hours.take(24))
+        val zero = good.copy(samples = emptyList())
+        assertTrue(shouldReplaceForecast(null, good, day))
+        assertTrue(shouldReplaceForecast(null, zero, day))
+        assertTrue(shouldReplaceForecast(fewer, good, day))
+        assertTrue(shouldReplaceForecast(good, good.copy(fetchedAt = Instant.ofEpochMilli(2)), day))
+        assertFalse(shouldReplaceForecast(good, fewer, day))
+        assertFalse(shouldReplaceForecast(good, zero, day))
+        assertFalse(shouldReplaceForecast(zero, zero, day))
     }
     @Test fun usefulnessStartsAtLocalMidnightNotNowOrFetchTime() {
-        val old = Forecast(listOf(hours[0], hours[1]), 999)
-        val past = hours[0].copy(time = today.minusDays(1).atTime(23, 0))
-        assertFalse(shouldReplaceForecast(old, Forecast(listOf(past, hours[0]), 1000), today))
-        assertTrue(shouldReplaceForecast(old, Forecast(listOf(past, hours[0], hours[24]), 0), today))
-        assertFalse(shouldReplaceForecast(old, old, today.plusDays(1)))
-        assertTrue(shouldReplaceForecast(old, Forecast(listOf(hours[24]), 0), today.plusDays(1)))
+        val old = series(listOf(hours[0], hours[1]), 999)
+        val past = hours[0].copy(instant = today.minusDays(1).atTime(23, 0).toInstant(zone))
+        assertFalse(shouldReplaceForecast(old, series(listOf(past, hours[0]), 1000), day))
+        assertTrue(shouldReplaceForecast(old, series(listOf(past, hours[0], hours[24])), day))
+        val tomorrow = DayWindow.of(today.plusDays(1), zone)
+        assertFalse(shouldReplaceForecast(old, old, tomorrow))
+        assertTrue(shouldReplaceForecast(old, series(listOf(hours[24])), tomorrow))
     }
     @Test fun conditionUsesOnlyTodaysSpan() {
-        val forecast = Forecast(hours.map { it.copy(code = if (it.time.hour == 3) 99 else 0) }, 0)
-        assertTrue(spanHours(home, forecast, today).all { it.code == 0 && it.time.toLocalDate() == today })
+        val forecast = series(hours.map { it.copy(code = if (it.instant.atZone(zone).hour == 3) 99 else 0) })
+        assertTrue(spanHours(home, forecast, day).all { it.code == 0 && it.instant.atZone(zone).toLocalDate() == today })
     }
     @Test fun staleIsStrictlyOverTwelveHours() {
         val twelveHours = 12 * 60 * 60 * 1000L

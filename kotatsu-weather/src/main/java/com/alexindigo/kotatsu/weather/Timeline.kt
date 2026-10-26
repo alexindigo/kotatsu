@@ -1,7 +1,5 @@
 package com.alexindigo.kotatsu.weather
 
-import java.time.LocalDate
-import java.time.LocalDateTime
 import java.util.Locale
 import kotlin.math.roundToInt
 
@@ -48,16 +46,6 @@ data class WidgetConfig(val locations: List<Location>, val fahrenheit: Boolean =
     init { require(locations.size <= MAX_LOCATIONS) }
 }
 
-data class Hour(val time: LocalDateTime, val temperature: Double, val code: Int?, val gust: Double?)
-data class Forecast(val hours: List<Hour>, val fetchedAt: Long)
-
-/** Keep readable saved data unless the response has at least as many temperature hours from today on. */
-fun shouldReplaceForecast(old: Forecast?, new: Forecast, today: LocalDate): Boolean {
-    fun usefulness(forecast: Forecast) = forecast.hours.count { !it.time.isBefore(today.atStartOfDay()) }
-    val useful = usefulness(new)
-    return old == null || (useful > 0 && useful >= usefulness(old))
-}
-
 fun isStale(fetchedAt: Long, now: Long): Boolean = now - fetchedAt > 12 * 60 * 60 * 1000L
 
 enum class Condition { CLEAR, CLOUDS, WIND, FOG, RAIN, SNOW, THUNDERSTORM }
@@ -88,25 +76,25 @@ enum class NumberKind(val priority: Int) { END(0), START(1), LOW(2), HIGH(3) }
 data class TemperatureNumber(val hour: Int, val value: Int, val kind: NumberKind)
 data class PlacedNumber(val number: TemperatureNumber, val x: Float, val width: Float)
 
-fun spanHours(location: Location, forecast: Forecast, today: LocalDate): List<Hour> =
-    forecast.hours.filter { it.time.toLocalDate() == today && it.time.hour in location.start until location.end }
+fun spanHours(location: Location, forecast: ForecastSeries, day: DayWindow): List<HourSample> {
+    val instants = day.conditionInstants(location.start, location.end)
+    return forecast.samples.filter { it.instant in instants }
+}
 
 /**
  * A mark's temperature: the mean of the hour before, the mark's own hour and the hour after, so neighbouring
- * marks share their boundary hour. Null unless all three hours exist (hour 24 is the next day's 00:00).
+ * marks share their boundary hour. DayWindow resolves the actual hours across DST changes.
  */
-fun markTemperature(byTime: Map<LocalDateTime, Hour>, today: LocalDate, mark: Int): Double? {
-    val midnight = today.atStartOfDay()
-    return (mark - 1..mark + 1).map { byTime[midnight.plusHours(it.toLong())]?.temperature ?: return null }.average()
-}
+fun markTemperature(byTime: Map<java.time.Instant, HourSample>, day: DayWindow, mark: Int): Double? =
+    day.block(mark).temperature(byTime)
 
-fun temperatureNumbers(location: Location, forecast: Forecast, today: LocalDate): List<TemperatureNumber> {
-    val byTime = forecast.hours.associateBy { it.time }
+fun temperatureNumbers(location: Location, forecast: ForecastSeries, dayWindow: DayWindow): List<TemperatureNumber> {
+    val byTime = forecast.samples.associateBy { it.instant }
     val span = (location.start..location.end step MARK_EVERY_HOURS).map { mark ->
-        mark to (markTemperature(byTime, today, mark) ?: return emptyList())
+        mark to (markTemperature(byTime, dayWindow, mark) ?: return emptyList())
     }
     // The day's high and low come from the same block averages, over every mark of the day.
-    val day = MARK_HOURS.mapNotNull { mark -> markTemperature(byTime, today, mark)?.let { mark to it } }
+    val day = MARK_HOURS.mapNotNull { mark -> markTemperature(byTime, dayWindow, mark)?.let { mark to it } }
     val high = day.maxByOrNull { it.second }
     val low = day.minByOrNull { it.second }
     return buildList {

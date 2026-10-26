@@ -14,6 +14,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.widget.RemoteViews
+import java.time.Instant
 import java.time.ZoneId
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -75,12 +76,13 @@ object WeatherRuntime {
     fun refresh(context: Context, force: Boolean = false) {
         if (ids(context).isEmpty()) return
         val store = WeatherStore(context)
+        val forecasts = ForecastStore(context)
         val now = System.currentTimeMillis()
         val needed = force || ids(context).any { id ->
             val config = store.config(id) ?: return@any false
             config.locations.any { location ->
-                val cached = store.cached(location, config.fahrenheit)
-                cached == null || now - cached.fetchedAt > 10 * 60 * 1000L
+                val cached = forecasts.read(location, config.fahrenheit)
+                cached == null || now - cached.fetchedAt.toEpochMilli() > 10 * 60 * 1000L
             }
         }
         if (needed) {
@@ -99,7 +101,7 @@ object WeatherRuntime {
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300).coerceAtLeast(1)
         val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112).coerceAtLeast(1)
         val config = WeatherStore(context).config(id) ?: return
-        val forecasts = config.locations.map { WeatherStore(context).cached(it, config.fahrenheit) }
+        val forecasts = config.locations.map { ForecastStore(context).read(it, config.fahrenheit) }
         val bitmap = TimelineRenderer.render(context, config, forecasts,
             (width * density).toInt(), (height * density).toInt())
         manager.updateAppWidget(id, RemoteViews(context.packageName, R.layout.widget_timeline).apply {
@@ -109,24 +111,29 @@ object WeatherRuntime {
 }
 
 class RefreshJobService : JobService() {
+    companion object {
+        /** Ingestion seam shared by real jobs and deterministic cache-to-widget tests. */
+        @Volatile internal var fetcher: (Location, Boolean, String) -> String = OpenMeteo::forecast
+    }
     private val executor = Executors.newSingleThreadExecutor()
     private val tasks = mutableMapOf<Int, Future<*>>()
     override fun onStartJob(params: JobParameters): Boolean {
         tasks[params.jobId] = executor.submit {
             val store = WeatherStore(this)
-            val zone = ZoneId.systemDefault().id
+            val forecasts = ForecastStore(this)
+            val zone = ZoneId.systemDefault()
             val visited = mutableSetOf<String>()
             for (id in WeatherRuntime.ids(this)) {
                 val config = store.config(id) ?: continue
                 for (location in config.locations) {
                     if (Thread.currentThread().isInterrupted || WeatherRuntime.ids(this).isEmpty()) return@submit
                     if (!visited.add("${location.coordinateKey}|${config.fahrenheit}")) continue
-                    val cached = store.cached(location, config.fahrenheit, zone)
+                    val cached = forecasts.read(location, config.fahrenheit, zone)
                     if (params.extras.getBoolean("force") || params.isPeriodic() || cached == null ||
-                        System.currentTimeMillis() - cached.fetchedAt > 10 * 60 * 1000L) {
+                        System.currentTimeMillis() - cached.fetchedAt.toEpochMilli() > 10 * 60 * 1000L) {
                         try {
-                            val json = OpenMeteo.forecast(location, config.fahrenheit, zone)
-                            store.cache(location, config.fahrenheit, zone, json, System.currentTimeMillis())
+                            val json = fetcher(location, config.fahrenheit, zone.id)
+                            forecasts.accept(location, config.fahrenheit, OpenMeteoParser.parse(json), Instant.now(), zone)
                         } catch (error: Exception) {
                             Log.w("KotatsuWeather", "Forecast unavailable; keeping cached data", error)
                         }
