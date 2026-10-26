@@ -128,6 +128,35 @@ class TimelineTest {
         assertEquals(Condition.CLOUDS, condition(2, 39.99, false))
         assertEquals(Condition.WIND, condition(2, 40.0, false))
     }
+    @Test fun missingConditionsAreIgnoredAndMissingGustIsNotWindy() {
+        assertNull(condition(null, 90.0, true))
+        assertEquals(Condition.CLEAR, condition(0, null, true))
+        assertEquals(Condition.CLOUDS, condition(2, null, false))
+        assertEquals(Condition.RAIN, condition(61, null, true))
+        val samples = listOf(hours[7].copy(code = null, gust = 90.0), hours[8].copy(code = 2, gust = null))
+        assertEquals(Condition.CLOUDS, samples.mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
+        assertNull(samples.take(1).mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
+    }
+    @Test fun cacheReplacementRequiresPositiveNonDecreasingUsefulnessUnlessAbsent() {
+        val good = Forecast(hours, 1)
+        val fewer = good.copy(hours = hours.take(24))
+        val zero = good.copy(hours = emptyList())
+        assertTrue(shouldReplaceForecast(null, good, today))
+        assertTrue(shouldReplaceForecast(null, zero, today))
+        assertTrue(shouldReplaceForecast(fewer, good, today))
+        assertTrue(shouldReplaceForecast(good, good.copy(fetchedAt = 2), today))
+        assertFalse(shouldReplaceForecast(good, fewer, today))
+        assertFalse(shouldReplaceForecast(good, zero, today))
+        assertFalse(shouldReplaceForecast(zero, zero, today))
+    }
+    @Test fun usefulnessStartsAtLocalMidnightNotNowOrFetchTime() {
+        val old = Forecast(listOf(hours[0], hours[1]), 999)
+        val past = hours[0].copy(time = today.minusDays(1).atTime(23, 0))
+        assertFalse(shouldReplaceForecast(old, Forecast(listOf(past, hours[0]), 1000), today))
+        assertTrue(shouldReplaceForecast(old, Forecast(listOf(past, hours[0], hours[24]), 0), today))
+        assertFalse(shouldReplaceForecast(old, old, today.plusDays(1)))
+        assertTrue(shouldReplaceForecast(old, Forecast(listOf(hours[24]), 0), today.plusDays(1)))
+    }
     @Test fun conditionUsesOnlyTodaysSpan() {
         val forecast = Forecast(hours.map { it.copy(code = if (it.time.hour == 3) 99 else 0) }, 0)
         assertTrue(spanHours(home, forecast, today).all { it.code == 0 && it.time.toLocalDate() == today })

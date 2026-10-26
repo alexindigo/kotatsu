@@ -2,6 +2,13 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.3.1] — 2026-10-25
+
+### Fixed
+- **Kotatsu Weather** downloads three days of weather, fixing morning "No forecast" after an evening update.
+- **Kotatsu Weather** keeps a good saved forecast when a partial server reply has fewer useful hours.
+- **Kotatsu Weather** keeps the temperature when wind or condition values are missing.
+
 ## [0.3] — 2026-10-25
 
 ### Changed

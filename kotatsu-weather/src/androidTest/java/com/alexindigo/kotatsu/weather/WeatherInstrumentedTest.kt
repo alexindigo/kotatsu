@@ -11,6 +11,8 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -26,6 +28,72 @@ class WeatherInstrumentedTest {
     private val config = WidgetConfig(listOf(home, school))
     private fun fixture(name: String) = instrumentation.context.assets.open(name).bufferedReader().use { it.readText() }
     private fun forecast() = WeatherJson.forecast(fixture("forecast.json"), timestamp)
+
+    private fun threeDayFixture(): String {
+        val json = JSONObject(fixture("forecast.json"))
+        val hourly = json.getJSONObject("hourly")
+        val firstDay = now.toLocalDate().atStartOfDay()
+        for (key in listOf("time", "temperature_2m", "weather_code", "wind_gusts_10m")) {
+            val original = hourly.getJSONArray(key)
+            hourly.put(key, JSONArray().apply {
+                repeat(72) { hour -> put(if (key == "time") firstDay.plusHours(hour.toLong()).toString() else original.get(hour % 24)) }
+            })
+        }
+        return json.toString()
+    }
+
+    @Test fun missingGustOrConditionKeepsTheTemperature() {
+        val json = JSONObject(fixture("forecast.json"))
+        json.getJSONObject("hourly").getJSONArray("wind_gusts_10m").put(10, JSONObject.NULL)
+        json.getJSONObject("hourly").getJSONArray("weather_code").put(11, JSONObject.NULL)
+        val result = WeatherJson.forecast(json.toString(), timestamp)
+        assertEquals(25, result.hours.size)
+        val ten = result.hours.single { it.time == now.toLocalDate().atTime(10, 0) }
+        assertEquals(55.0, ten.temperature, 0.0)
+        assertNull(ten.gust)
+        assertEquals(60.0, result.hours.single { it.time.hour == 11 }.temperature, 0.0)
+        assertFalse(temperatureNumbers(home, result, now.toLocalDate()).isEmpty())
+    }
+
+    @Test fun partialReplyKeepsGoodForecastAndOriginalEnvelope() {
+        val store = WeatherStore(context)
+        val location = home.copy(latitude = 12.3456, longitude = 65.4321)
+        val prefs = context.getSharedPreferences("weather", 0)
+        val before = prefs.all
+        try {
+            store.cache(location, true, now.zone.id, threeDayFixture(), timestamp)
+            val good = store.cached(location, true, now.zone.id)!!
+            val envelope = prefs.all
+            val partial = JSONObject(threeDayFixture())
+            val temperatures = partial.getJSONObject("hourly").getJSONArray("temperature_2m")
+            for (hour in 12 until 72) temperatures.put(hour, JSONObject.NULL)
+            store.cache(location, true, now.zone.id, partial.toString(), timestamp + 60_000)
+            assertEquals(good, store.cached(location, true, now.zone.id))
+            assertEquals(timestamp, store.cached(location, true, now.zone.id)!!.fetchedAt)
+            assertEquals(envelope, prefs.all)
+            for (hour in 0 until 12) temperatures.put(hour, JSONObject.NULL)
+            store.cache(location, true, now.zone.id, partial.toString(), timestamp + 120_000)
+            assertEquals(envelope, prefs.all)
+            assertThrows(Exception::class.java) { store.cache(location, true, now.zone.id, "{}", timestamp + 180_000) }
+            assertEquals(envelope, prefs.all)
+        } finally {
+            prefs.edit().apply { (prefs.all.keys - before.keys).forEach { remove(it) } }.commit()
+        }
+    }
+
+    @Test fun morningAfterEveningFetchHasAllSevenToTwentyThreeNumbers() {
+        val evening = now.withHour(23).withMinute(50)
+        val result = WeatherJson.forecast(threeDayFixture(), evening.toInstant().toEpochMilli())
+        val tomorrow = evening.toLocalDate().plusDays(1)
+        val numbers = temperatureNumbers(home, result, tomorrow)
+        assertEquals(TemperatureNumber(7, 49, NumberKind.START), numbers.single { it.kind == NumberKind.START })
+        assertEquals(TemperatureNumber(23, 56, NumberKind.END), numbers.single { it.kind == NumberKind.END })
+        assertEquals(TemperatureNumber(15, 70, NumberKind.HIGH), numbers.single { it.kind == NumberKind.HIGH })
+        assertFalse(numbers.any { it.kind == NumberKind.LOW })
+        val byTime = result.hours.associateBy { it.time }
+        for (mark in 7..23 step 2) assertNotNull(markTemperature(byTime, tomorrow, mark))
+        assertTrue(temperatureNumbers(home, result.copy(hours = result.hours.take(48)), tomorrow).isEmpty())
+    }
 
     @Test fun weatherGlyphIs54PercentInsideUnchangedFrame() {
         // Frozen pre-resize frame geometry. The glyph must change without moving any frame pixels.
@@ -62,7 +130,7 @@ class WeatherInstrumentedTest {
         assertEquals(54.0, result.hours.last().temperature, 0.0)
         // 23:00 mark = mean of 22:00, 23:00 and the next day's 00:00 (56, 55, 54).
         assertEquals(55, temperatureNumbers(home, result, now.toLocalDate()).single { it.kind == NumberKind.END }.value)
-        assertEquals(Condition.CLOUDS, spanHours(home, result, now.toLocalDate()).maxOf { condition(it.code, it.gust, true) })
+        assertEquals(Condition.CLOUDS, spanHours(home, result, now.toLocalDate()).mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
     }
     @Test fun parseGeocodingFixture() {
         val result = WeatherJson.places(fixture("geocoding.json"))
@@ -104,7 +172,7 @@ class WeatherInstrumentedTest {
         try {
             context.getSharedPreferences("weather", 0).edit().putString("widget_$id", ConfigJson.encode(config)).commit()
             assertEquals(config, WeatherStore(context).config(id))
-            val zone = "fixture/isolated"
+            val zone = "America/Los_Angeles"
             store.cache(home, true, zone, fixture("forecast.json"), timestamp)
             assertEquals(25, store.cached(home.copy(latitude = 37.384101), true, zone)!!.hours.size)
             assertNull(store.cached(home, false, zone))

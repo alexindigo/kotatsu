@@ -94,7 +94,7 @@ object TimelineRenderer {
                 canvas.drawCircle(axis.x(hour.toDouble(), left, right), row.y, dotRadius, paint)
             }
             val condition = spanHours(row.location, row.forecast!!, now.toLocalDate())
-                .maxOfOrNull { condition(it.code, it.gust, config.fahrenheit) } ?: Condition.CLEAR
+                .mapNotNull { condition(it.code, it.gust, config.fahrenheit) }.maxOrNull() ?: Condition.CLEAR
             val resource = when (condition) {
                 Condition.THUNDERSTORM -> R.drawable.ic_weather_thunderstorm
                 Condition.SNOW -> R.drawable.ic_weather_snowy

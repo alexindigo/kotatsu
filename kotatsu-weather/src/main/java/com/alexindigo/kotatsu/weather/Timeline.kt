@@ -48,19 +48,27 @@ data class WidgetConfig(val locations: List<Location>, val fahrenheit: Boolean =
     init { require(locations.size <= MAX_LOCATIONS) }
 }
 
-data class Hour(val time: LocalDateTime, val temperature: Double, val code: Int, val gust: Double)
+data class Hour(val time: LocalDateTime, val temperature: Double, val code: Int?, val gust: Double?)
 data class Forecast(val hours: List<Hour>, val fetchedAt: Long)
+
+/** Keep readable saved data unless the response has at least as many temperature hours from today on. */
+fun shouldReplaceForecast(old: Forecast?, new: Forecast, today: LocalDate): Boolean {
+    fun usefulness(forecast: Forecast) = forecast.hours.count { !it.time.isBefore(today.atStartOfDay()) }
+    val useful = usefulness(new)
+    return old == null || (useful > 0 && useful >= usefulness(old))
+}
 
 fun isStale(fetchedAt: Long, now: Long): Boolean = now - fetchedAt > 12 * 60 * 60 * 1000L
 
 enum class Condition { CLEAR, CLOUDS, WIND, FOG, RAIN, SNOW, THUNDERSTORM }
 
-fun condition(code: Int, gust: Double, fahrenheit: Boolean): Condition = when {
+fun condition(code: Int?, gust: Double?, fahrenheit: Boolean): Condition? = when {
+    code == null -> null
     code in 95..99 -> Condition.THUNDERSTORM
     code in 71..77 || code in 85..86 -> Condition.SNOW
     code in 51..67 || code in 80..82 -> Condition.RAIN
     code == 45 || code == 48 -> Condition.FOG
-    gust >= if (fahrenheit) 25.0 else 40.0 -> Condition.WIND
+    gust != null && gust >= if (fahrenheit) 25.0 else 40.0 -> Condition.WIND
     code in 2..3 -> Condition.CLOUDS
     else -> Condition.CLEAR
 }
