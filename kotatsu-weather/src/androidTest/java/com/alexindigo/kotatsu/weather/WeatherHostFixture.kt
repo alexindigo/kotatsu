@@ -69,6 +69,19 @@ internal class WeatherHostFixture : AutoCloseable {
         assertTrue(description, ready())
     }
 
+    /** Provider publication and the host's RemoteViews callback are separate asynchronous boundaries. */
+    fun awaitPublishedModel(description: String, timeout: Long = 15_000, accepts: (TimelineModel) -> Boolean): TimelineModel {
+        var observed: TimelineModel? = null
+        await(description, timeout) {
+            val model = WidgetReconciler.publishedModel(id)
+            if (model != null && accepts(model) && latest.get()?.sameAs(TimelineRenderer.render(context, model, width, height)) == true) {
+                observed = model
+                true
+            } else false
+        }
+        return checkNotNull(observed)
+    }
+
     override fun close() {
         WeatherRuntime.cancel(context)
         instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }

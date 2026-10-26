@@ -203,7 +203,7 @@ class WeatherInstrumentedTest {
     @Test fun noWidgetMeansNoNetworkJobs() {
         assertTrue(WeatherRuntime.ids(context).isEmpty())
         WeatherRuntime.cancel(context)
-        WeatherRuntime.schedule(context)
+        WidgetReconciler.reconcile(context, ReconcileReason.UPDATE)
         WeatherRuntime.refresh(context, force = true)
         assertTrue(context.getSystemService(android.app.job.JobScheduler::class.java).allPendingJobs.isEmpty())
     }

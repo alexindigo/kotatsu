@@ -9,16 +9,21 @@ import org.junit.runner.RunWith
 import java.io.IOException
 import java.time.Instant
 import java.time.ZoneId
+import java.time.Clock
 
 @RunWith(AndroidJUnit4::class)
 class RefreshInstrumentedTest {
     @Test fun realFailedJobPersistsStatusAndSchedulesDelayedNetworkRetryThenSuccessClearsIt() {
+        val previousClock = WidgetReconciler.clock
+        val clock = Clock.fixed(Instant.now(), ZoneId.systemDefault())
+        try {
+        WidgetReconciler.clock = clock
         WeatherHostFixture().use { host ->
             val context = host.context
             val place = Location("Retry", "Fixture", 19.2345, 79.2345)
             val config = WidgetConfig(listOf(place, place.copy(label = "Shared", id = "shared")))
-            val zone = ZoneId.systemDefault()
-            val at = Instant.now()
+            val zone = clock.zone
+            val at = clock.instant()
             val start = at.atZone(zone).toLocalDate().atStartOfDay(zone).toInstant()
             val parsed = Parsed.Valid(ForecastSeries((0..72).map { HourSample(start.plusSeconds(it * 3600L), 60.0, 0, null) }, at))
             val store = ForecastStore(context)
@@ -43,7 +48,7 @@ class RefreshInstrumentedTest {
             assertEquals(JobInfo.NETWORK_TYPE_ANY, retry.networkType)
             assertTrue("Retry latency ${retry.minLatencyMillis}", retry.minLatencyMillis in 55_000..60_000)
             assertEquals(failed.status.nextAttemptAt!!.toEpochMilli(), retry.extras.getLong("at"))
-            val expected = buildTimeline(config, List(2) { retained }, List(2) { failed.status }, java.time.ZonedDateTime.now())
+            val expected = buildTimeline(config, List(2) { retained }, List(2) { failed.status }, java.time.ZonedDateTime.now(clock))
             host.await("Failure keeps hosted numbers and appearance") {
                 host.latest.get()?.sameAs(TimelineRenderer.render(context, expected, host.width, host.height)) == true
             }
@@ -69,5 +74,6 @@ class RefreshInstrumentedTest {
             assertNotNull(success.lastAttemptAt)
             assertEquals(success.lastAttemptAt, success.lastSuccessAt)
         }
+        } finally { WidgetReconciler.clock = previousClock }
     }
 }

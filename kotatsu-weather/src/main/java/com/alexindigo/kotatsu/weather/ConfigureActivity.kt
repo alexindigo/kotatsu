@@ -137,9 +137,7 @@ class ConfigureActivity : Activity() {
     private fun changed(result: WeatherStore.Result) {
         when (result) {
             WeatherStore.Result.APPLIED -> {
-                WeatherRuntime.schedule(this)
-                WeatherRuntime.redraw(this, widgetId)
-                WeatherRuntime.refresh(this, force = true)
+                WidgetReconciler.reconcile(this, ReconcileReason.CONFIG_CHANGED)
             }
             WeatherStore.Result.UNREADABLE -> { showUnreadable(); return }
             WeatherStore.Result.GONE -> {

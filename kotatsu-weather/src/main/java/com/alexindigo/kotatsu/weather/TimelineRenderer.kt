@@ -80,7 +80,7 @@ object TimelineRenderer {
             paint.letterSpacing = LABEL_TRACKING_EM
             canvas.drawText(row.model.label, padding, row.baseline, paint)
             paint.letterSpacing = 0f
-            if (row.numbers.isEmpty() || right <= left) {
+            if (row.model.state == RowState.NO_DATA || right <= left) {
                 paint.color = Color.rgb(160, 160, 160)
                 canvas.drawText("No forecast", padding + labelWidth + 10 * density, row.baseline, paint)
                 continue

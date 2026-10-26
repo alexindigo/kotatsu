@@ -3,6 +3,8 @@ package com.alexindigo.kotatsu.weather
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.ZonedDateTime
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 enum class RowState { FRESH, STALE, NO_DATA }
 enum class NoDataReason { NOT_FETCHED, MISSING_HOURS }
@@ -24,6 +26,7 @@ data class TimelineModel(
     val axis: Axis,
     val needleHour: Double?,
     val rows: List<TimelineRow>,
+    val validUntil: Instant,
 )
 
 /** The only owner of row meaning. Rendering needs neither forecast samples nor a clock. */
@@ -44,5 +47,29 @@ fun buildTimeline(
                 stale, numbers, forecast?.let { series -> spanHours(location, series, day)
                     .mapNotNull { condition(it.code, it.gust, config.fahrenheit) }.maxOrNull() } ?: Condition.CLEAR,
                 status.getOrElse(index) { RefreshStatus() })
-        })
+        }, timelineValidUntil(stored, status, now))
 }
+
+/** Expired boundaries have already been reflected in the model; never schedule an alarm in the past. */
+fun timelineValidUntil(stored: List<ForecastSeries?>, status: List<RefreshStatus>, now: ZonedDateTime): Instant {
+    val instant = now.toInstant()
+    val nextStep = now.truncatedTo(ChronoUnit.MINUTES).minusMinutes((now.minute % 15).toLong()).plusMinutes(15).toInstant()
+    val midnight = now.toLocalDate().plusDays(1).atStartOfDay(now.zone).toInstant()
+    val candidates = mutableListOf(nextStep, midnight)
+    stored.filterNotNull().forEach { series ->
+        val grey = series.fetchedAt.plusSeconds(12 * 3600)
+        // isStale is strictly >12h, preserved from the existing presentation contract.
+        candidates += if (grey.toEpochMilli() == instant.toEpochMilli()) Instant.ofEpochMilli(grey.toEpochMilli() + 1) else grey
+        // Samples are points: the final sample is the right edge of the available forecast horizon.
+        series.samples.lastOrNull()?.instant?.let(candidates::add)
+    }
+    status.mapNotNullTo(candidates) { it.nextAttemptAt }
+    return candidates.filter { it > instant }.minOrNull()!!
+}
+
+enum class ReconcileReason { UPDATE, OPTIONS_CHANGED, TIME_SET, TIMEZONE_CHANGED, DEADLINE, JOB_DONE, CONFIG_CHANGED, DELETED, RESTORED }
+
+data class PublishedTimeline(val model: TimelineModel, val width: Int, val height: Int)
+
+fun shouldPublish(previous: PublishedTimeline?, next: PublishedTimeline, reason: ReconcileReason): Boolean =
+    reason == ReconcileReason.OPTIONS_CHANGED || previous != next

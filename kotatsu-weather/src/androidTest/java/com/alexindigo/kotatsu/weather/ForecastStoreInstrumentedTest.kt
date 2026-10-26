@@ -187,7 +187,11 @@ class ForecastStoreInstrumentedTest {
 
     @Test fun incompleteRefreshJobPublishesRetainedNumbersToTheRealWidgetHost() = isolated {
         val deviceZone = ZoneId.systemDefault()
-        val at = ZonedDateTime.now(deviceZone)
+        val previousClock = WidgetReconciler.clock
+        val clock = java.time.Clock.fixed(Instant.now(), deviceZone)
+        try {
+        WidgetReconciler.clock = clock
+        val at = ZonedDateTime.now(clock)
         val first = DayWindow.of(at.toLocalDate(), deviceZone).start
         val hourly = JSONObject().put("time", JSONArray()).put("temperature_2m", JSONArray())
             .put("weather_code", JSONArray()).put("wind_gusts_10m", JSONArray())
@@ -243,10 +247,10 @@ class ForecastStoreInstrumentedTest {
                     putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 464)
                     putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112)
                 })
-                WeatherRuntime.redraw(context, id)
+                WidgetReconciler.reconcile(context, ReconcileReason.UPDATE)
             }
             await("Hosted numbers before refresh") {
-                latest.get()?.sameAs(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now()), width, height)) == true
+                latest.get()?.sameAs(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now(clock)), width, height)) == true
             }
             val beforeUpdates = updates.get()
             WeatherRuntime.refresh(context, force = true)
@@ -254,7 +258,7 @@ class ForecastStoreInstrumentedTest {
             await("Job completion and a new retained-data host bitmap") {
                 context.getSystemService(android.app.job.JobScheduler::class.java).getPendingJob(WeatherRuntime.IMMEDIATE) == null &&
                     updates.get() > beforeUpdates && latest.get()?.sameAs(TimelineRenderer.render(context,
-                         buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now()), width, height)) == true
+                          buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now(clock)), width, height)) == true
             }
             assertEquals(original, store.read(place, true, deviceZone))
         } finally {
@@ -265,5 +269,6 @@ class ForecastStoreInstrumentedTest {
             instrumentation.uiAutomation.dropShellPermissionIdentity()
             assertEquals(initialIds, host.appWidgetIds.toSet())
         }
+        } finally { WidgetReconciler.clock = previousClock }
     }
 }

@@ -16,7 +16,7 @@ class TimelineModelTest {
             TemperatureNumber(15, 70, NumberKind.HIGH))
         val expected = TimelineRow("Home", RowState.FRESH, null, false, numbers, Condition.CLOUDS, RefreshStatus())
         val model = buildTimeline(WidgetConfig(listOf(home)), listOf(series), emptyList(), now)
-        assertEquals(TimelineModel(now.toLocalDate(), now.zone, Axis(7, 23), 12.5, listOf(expected)), model)
+        assertEquals(TimelineModel(now.toLocalDate(), now.zone, Axis(7, 23), 12.5, listOf(expected), now.withMinute(45).toInstant()), model)
         val old = series.copy(fetchedAt = now.toInstant().minusSeconds(13 * 3600))
         assertEquals(model.copy(rows = listOf(expected.copy(state = RowState.STALE, stale = true))),
             buildTimeline(WidgetConfig(listOf(home)), listOf(old), emptyList(), now))
