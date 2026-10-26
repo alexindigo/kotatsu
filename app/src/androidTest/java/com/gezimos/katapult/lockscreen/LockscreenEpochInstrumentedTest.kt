@@ -13,6 +13,7 @@ import android.widget.ImageView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.WidgetHostTestFixture
+import com.gezimos.katapult.WeatherHostViewProbe
 import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import org.junit.Test
@@ -169,8 +170,7 @@ class LockscreenEpochInstrumentedTest {
             val timeline = context.packageManager.getResourcesForApplication(weather).getIdentifier("timeline", "id", weather)
             val view = main { host.listen(true); LockscreenWidgetHost.updateSize(context, widget); host.createView(context, widget.id, info) }
             try {
-                await("Weather's initial bitmap") { main { view.findViewById<ImageView>(timeline)?.drawable != null } }
-                val original = main { (view.findViewById<ImageView>(timeline).drawable as BitmapDrawable).bitmap.copy(Bitmap.Config.ARGB_8888, false) }
+                val original = WeatherHostViewProbe(context, view, timeline).awaitSizedBitmap()
                 // Distinct host-only marker: only a new RemoteViews application can restore the provider image.
                 val marker = Bitmap.createBitmap(original.width, original.height, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.MAGENTA) }
                 val state = LockscreenVisibility()
