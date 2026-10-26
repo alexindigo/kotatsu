@@ -57,7 +57,7 @@ class ApkIdentityFlowTest(unittest.TestCase):
             file=f'res/v{i}.xml';self.xml[file]=data.decode();self.payloads[file]=b'compiled vector'
             self.resources+=f'  resource 0x7f00000{i} {name}\n    () (file) {file} type=XML\n'
         self.write_zip()
-        self.version = '0.2-debug'
+        self.version = '0.3-debug'
         self.labels = {locale.lstrip('-') or 'default': 'Kotatsu Debug' for locale in verify.LOCALES}
         self.debuggable = True
         self.min_sdk = '30'
@@ -111,7 +111,7 @@ class ApkIdentityFlowTest(unittest.TestCase):
             return ET.tostring(self.manifest, encoding='unicode')
         if args[1:3] == ('dump', 'badging'):
             labels = '\n'.join(f"application-label{'' if locale == 'default' else '-' + locale}:'{value}'" for locale, value in self.labels.items())
-            return f"package: name='{self.package}' versionCode='9' versionName='{self.version}'\n{labels}\n" + ('application-debuggable\n' if self.debuggable else '')
+            return f"package: name='{self.package}' versionCode='10' versionName='{self.version}'\n{labels}\n" + ('application-debuggable\n' if self.debuggable else '')
         if args[1:3] == ('manifest', 'min-sdk'):
             return self.min_sdk
         if args[1:3] == ('manifest', 'target-sdk'):
@@ -175,7 +175,7 @@ class ApkIdentityFlowTest(unittest.TestCase):
         for wrong_version in ('1.6-debug', '2.0'):
             self.version = wrong_version
             self.rejected('Compiled APK version/ID mismatch')
-        self.version = '0.2-debug'
+        self.version = '0.3-debug'
         self.min_sdk = '32'
         self.rejected('Compiled SDK mismatch')
 
@@ -193,7 +193,7 @@ class ApkIdentityFlowTest(unittest.TestCase):
         self.manifest.set('package', self.package)
         self.xml['res/c.xml'] = self.xml['res/c.xml'].replace(verify.RELEASE_ID + '.debug', self.package)
         self.labels = {locale: 'Kotatsu' for locale in self.labels}
-        self.version = '0.2'
+        self.version = '0.3'
         self.debuggable = False
         release_dir = self.directory.parent / 'release'
         self.directory.rename(release_dir)

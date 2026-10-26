@@ -2,6 +2,15 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.3] — 2026-10-25
+
+### Changed
+- **Kotatsu Weather settings**: each change is saved immediately; Done closes the screen.
+
+### Fixed
+- **Kotatsu Weather places** could be lost when an older or restored settings screen saved its stale list over newer changes. Changes are now saved as you make them.
+- **Lock-screen widgets** that no longer exist in Android, for example after reinstalling the widget's app, no longer stay listed or block adding new ones.
+
 ## [0.2] — 2026-10-25
 
 ### Added
