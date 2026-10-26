@@ -16,6 +16,9 @@ import android.util.Log
 import android.widget.RemoteViews
 import java.time.Instant
 import java.time.ZoneId
+import java.time.ZonedDateTime
+import android.os.Handler
+import android.os.Looper
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
@@ -51,7 +54,8 @@ class WeatherWidgetProvider : AppWidgetProvider() {
 object WeatherRuntime {
     const val REFRESH = "com.alexindigo.kotatsu.weather.REFRESH"
     private const val PERIODIC = 0x4b5701
-    private const val IMMEDIATE = 0x4b5702
+    internal const val IMMEDIATE = 0x4b5702
+    internal const val RETRY = 0x4b5703
     fun ids(context: Context): IntArray = AppWidgetManager.getInstance(context)
         .getAppWidgetIds(ComponentName(context, WeatherWidgetProvider::class.java))
 
@@ -69,7 +73,7 @@ object WeatherRuntime {
     }
 
     fun cancel(context: Context) {
-        context.getSystemService(JobScheduler::class.java).apply { cancel(PERIODIC); cancel(IMMEDIATE) }
+        context.getSystemService(JobScheduler::class.java).apply { cancel(PERIODIC); cancel(IMMEDIATE); cancel(RETRY) }
         context.getSystemService(AlarmManager::class.java).cancel(alarmIntent(context))
     }
 
@@ -77,20 +81,27 @@ object WeatherRuntime {
         if (ids(context).isEmpty()) return
         val store = WeatherStore(context)
         val forecasts = ForecastStore(context)
-        val now = System.currentTimeMillis()
-        val needed = force || ids(context).any { id ->
-            val config = store.config(id) ?: return@any false
-            config.locations.any { location ->
-                val cached = forecasts.read(location, config.fahrenheit)
-                cached == null || now - cached.fetchedAt.toEpochMilli() > 10 * 60 * 1000L
+        val now = Instant.now()
+        val next = ids(context).flatMap { id ->
+            val config = store.config(id) ?: return@flatMap emptyList<Instant>()
+            config.locations.mapNotNull { location ->
+                val snapshot = forecasts.snapshot(location, config.fahrenheit)
+                RefreshPolicy.nextAttempt(snapshot.series, snapshot.status, now)
             }
-        }
-        if (needed) {
+        }.minOrNull()
+        val scheduler = context.getSystemService(JobScheduler::class.java)
+        if (force || next != null) {
             val extras = android.os.PersistableBundle().apply { putBoolean("force", force) }
-            context.getSystemService(JobScheduler::class.java).schedule(JobInfo.Builder(IMMEDIATE,
+            val jobId = if (force) IMMEDIATE else RETRY
+            val latency = if (force) 0 else java.time.Duration.between(now, next).toMillis().coerceAtLeast(0)
+            val pending = scheduler.getPendingJob(jobId)
+            // Repeated broadcasts must not postpone an already-enqueued retry.
+            if (!force && pending != null && pending.extras.getLong("at") == next!!.toEpochMilli()) return
+            extras.putLong("at", (if (force) now else next!!).toEpochMilli())
+            scheduler.schedule(JobInfo.Builder(jobId,
                 ComponentName(context, RefreshJobService::class.java)).setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                .setMinimumLatency(0).setExtras(extras).build())
-        }
+                .setMinimumLatency(latency).setExtras(extras).build())
+        } else scheduler.cancel(RETRY)
     }
 
     fun redraw(context: Context, id: Int) {
@@ -101,8 +112,9 @@ object WeatherRuntime {
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300).coerceAtLeast(1)
         val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112).coerceAtLeast(1)
         val config = WeatherStore(context).config(id) ?: return
-        val forecasts = config.locations.map { ForecastStore(context).read(it, config.fahrenheit) }
-        val bitmap = TimelineRenderer.render(context, config, forecasts,
+        val snapshots = config.locations.map { ForecastStore(context).snapshot(it, config.fahrenheit) }
+        val model = buildTimeline(config, snapshots.map { it.series }, snapshots.map { it.status }, ZonedDateTime.now())
+        val bitmap = TimelineRenderer.render(context, model,
             (width * density).toInt(), (height * density).toInt())
         manager.updateAppWidget(id, RemoteViews(context.packageName, R.layout.widget_timeline).apply {
             setImageViewBitmap(R.id.timeline, bitmap)
@@ -119,37 +131,49 @@ class RefreshJobService : JobService() {
     private val tasks = mutableMapOf<Int, Future<*>>()
     override fun onStartJob(params: JobParameters): Boolean {
         tasks[params.jobId] = executor.submit {
-            val store = WeatherStore(this)
-            val forecasts = ForecastStore(this)
-            val zone = ZoneId.systemDefault()
-            val visited = mutableSetOf<String>()
-            for (id in WeatherRuntime.ids(this)) {
-                val config = store.config(id) ?: continue
-                for (location in config.locations) {
-                    if (Thread.currentThread().isInterrupted || WeatherRuntime.ids(this).isEmpty()) return@submit
-                    if (!visited.add("${location.coordinateKey}|${config.fahrenheit}")) continue
-                    val cached = forecasts.read(location, config.fahrenheit, zone)
-                    if (params.extras.getBoolean("force") || params.isPeriodic() || cached == null ||
-                        System.currentTimeMillis() - cached.fetchedAt.toEpochMilli() > 10 * 60 * 1000L) {
-                        try {
-                            val json = fetcher(location, config.fahrenheit, zone.id)
-                            forecasts.accept(location, config.fahrenheit, OpenMeteoParser.parse(json), Instant.now(), zone)
-                        } catch (error: Exception) {
-                            Log.w("KotatsuWeather", "Forecast unavailable; keeping cached data", error)
-                        }
-                    }
+            try {
+                ForecastRefresher.refresh(this, params.extras.getBoolean("force"), fetcher)
+            } catch (error: RuntimeException) {
+                Log.w("KotatsuWeather", "Forecast refresh failed; keeping cached data", error)
+            } finally {
+                Handler(Looper.getMainLooper()).post {
+                    tasks.remove(params.jobId)
+                    jobFinished(params, false)
+                    WeatherRuntime.ids(this).forEach { WeatherRuntime.redraw(this, it) }
+                    WeatherRuntime.refresh(this)
                 }
             }
-            WeatherRuntime.ids(this).forEach { WeatherRuntime.redraw(this, it) }
-            jobFinished(params, false)
         }
         return true
     }
-    // JobParameters has no periodic flag; identify our one periodic job by its stable ID.
-    private fun JobParameters.isPeriodic(): Boolean = jobId == 0x4b5701
     override fun onStopJob(params: JobParameters): Boolean {
         tasks.remove(params.jobId)?.cancel(true)
         return WeatherRuntime.ids(this).isNotEmpty()
     }
     override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
+}
+
+object ForecastRefresher {
+    fun refresh(context: Context, force: Boolean, fetch: (Location, Boolean, String) -> String) {
+        val store = WeatherStore(context)
+        val forecasts = ForecastStore(context)
+        val zone = ZoneId.systemDefault()
+        val visited = mutableSetOf<String>()
+        for (id in WeatherRuntime.ids(context)) {
+            val config = store.config(id) ?: continue
+            for (location in config.locations) {
+                if (Thread.currentThread().isInterrupted || WeatherRuntime.ids(context).isEmpty()) return
+                if (!visited.add("${location.coordinateKey}|${config.fahrenheit}")) continue
+                val snapshot = forecasts.snapshot(location, config.fahrenheit, zone)
+                if (!force && !RefreshPolicy.due(snapshot.series, snapshot.status, Instant.now())) continue
+                try {
+                    val json = fetch(location, config.fahrenheit, zone.id)
+                    forecasts.accept(location, config.fahrenheit, OpenMeteoParser.parse(json), Instant.now(), zone)
+                } catch (error: Exception) {
+                    forecasts.recordFailure(location, config.fahrenheit, RefreshPolicy.failure(error), Instant.now(), zone)
+                    Log.w("KotatsuWeather", "Forecast unavailable; keeping cached data", error)
+                }
+            }
+        }
+    }
 }

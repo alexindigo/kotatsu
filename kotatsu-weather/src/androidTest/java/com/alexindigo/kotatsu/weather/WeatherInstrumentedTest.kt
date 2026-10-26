@@ -84,14 +84,14 @@ class WeatherInstrumentedTest {
             assertEquals(ForecastStore.Result.INCOMPLETE, store.accept(location, true, OpenMeteoParser.parse(partial.toString()), now.toInstant().plusSeconds(60), now.zone))
             assertEquals(good, store.read(location, true, now.zone))
             assertEquals(now.toInstant(), store.read(location, true, now.zone)!!.fetchedAt)
-            assertEquals(envelope, prefs.all)
+            assertEquals(envelope.filterKeys { it.startsWith("forecast_") }, prefs.all.filterKeys { it.startsWith("forecast_") })
             for (hour in 0 until 12) temperatures.put(hour, JSONObject.NULL)
             store.accept(location, true, OpenMeteoParser.parse(partial.toString()), now.toInstant().plusSeconds(120), now.zone)
-            assertEquals(envelope, prefs.all)
+            assertEquals(envelope.filterKeys { it.startsWith("forecast_") }, prefs.all.filterKeys { it.startsWith("forecast_") })
             assertEquals(ForecastStore.Result.MALFORMED, store.accept(location, true, OpenMeteoParser.parse("{}"), now.toInstant().plusSeconds(180), now.zone))
-            assertEquals(envelope, prefs.all)
-            assertTrue(TimelineRenderer.render(context, WidgetConfig(listOf(location)), listOf(store.read(location, true)),
-                464, 112, now).sameAs(TimelineRenderer.render(context, WidgetConfig(listOf(location)), listOf(good), 464, 112, now)))
+            assertEquals(envelope.filterKeys { it.startsWith("forecast_") }, prefs.all.filterKeys { it.startsWith("forecast_") })
+            assertTrue(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(location)), listOf(store.read(location, true)), emptyList(), now),
+                464, 112).sameAs(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(location)), listOf(good), emptyList(), now), 464, 112)))
         } finally {
             prefs.edit().apply { (prefs.all.keys - before.keys).forEach { remove(it) } }.commit()
         }
@@ -210,7 +210,7 @@ class WeatherInstrumentedTest {
 
     private fun render(name: String, forecasts: List<ForecastSeries?>, widget: WidgetConfig = config): Bitmap {
         val density = context.resources.displayMetrics.density
-        val bitmap = TimelineRenderer.render(context, widget, forecasts, (464 * density).toInt(), (112 * density).toInt(), now)
+        val bitmap = TimelineRenderer.render(context, buildTimeline(widget, forecasts, emptyList(), now), (464 * density).toInt(), (112 * density).toInt())
         // Instrumentation executes as the tested debug app, which owns this external directory.
         val directory = File(checkNotNull(context.getExternalFilesDir(null)), "renders")
         check(directory.isDirectory || directory.mkdirs()) { "Cannot create render evidence directory" }

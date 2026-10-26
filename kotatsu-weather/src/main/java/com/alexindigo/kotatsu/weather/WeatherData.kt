@@ -96,7 +96,8 @@ object OpenMeteo {
             connection.connectTimeout = 15_000
             connection.readTimeout = 15_000
             connection.instanceFollowRedirects = false
-            check(connection.responseCode == 200) { "Weather server returned ${connection.responseCode}" }
+            val code = connection.responseCode
+            if (code != 200) throw WeatherHttpException(code)
             return connection.inputStream.bufferedReader().use { it.readText() }
         } finally { connection.disconnect() }
     }

@@ -6,20 +6,18 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
-import java.time.ZonedDateTime
 
 object TimelineRenderer {
     fun render(
-        context: Context, config: WidgetConfig, forecasts: List<ForecastSeries?>,
-        width: Int, height: Int, now: ZonedDateTime = ZonedDateTime.now(),
+        context: Context, model: TimelineModel, width: Int, height: Int,
     ): Bitmap {
         val bitmap = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         canvas.drawColor(Color.WHITE)
-        if (config.locations.isEmpty()) return bitmap
+        if (model.rows.isEmpty()) return bitmap
         val density = context.resources.displayMetrics.density
         val scaledDensity = context.resources.displayMetrics.scaledDensity
-        val count = config.locations.size
+        val count = model.rows.size
         // Rows stack from the bottom, so the text needn't shrink as lines are added; the solver below lowers it
         // only when the axis or the widget's height runs out.
         val maxTextSize = MAX_TEXT_SP * scaledDensity
@@ -29,7 +27,7 @@ object TimelineRenderer {
             strokeWidth = 1.5f * density
         }
         val padding = 8 * density
-        val axis = sharedAxis(config.locations)
+        val axis = model.axis
         val dotRadius = 1f * density
         // White kept around each number: the needle stops this far from the digits, and neighbouring numbers are
         // sized so this white never reaches each other's digits.
@@ -53,7 +51,7 @@ object TimelineRenderer {
         fun axisBounds(size: Float): Pair<Float, Float> {
             val iconLeft = width - padding - iconSize(size)
             paint.textSize = size
-            val labelWidth = config.locations.maxOf { trackedLabelWidth(paint, it.label) }
+            val labelWidth = model.rows.maxOf { trackedLabelWidth(paint, it.label) }
             val halfNumber = paint.measureText("-99") / 2
             return padding + labelWidth + 10 * density + halfNumber to iconLeft - 10 * density - halfNumber
         }
@@ -67,24 +65,20 @@ object TimelineRenderer {
         val iconBox = iconSize(textSize)
         val iconLeft = width - padding - iconBox
         paint.textSize = textSize
-        val labelWidth = config.locations.maxOf { trackedLabelWidth(paint, it.label) }
+        val labelWidth = model.rows.maxOf { trackedLabelWidth(paint, it.label) }
         val belowBaseline = glyphBox(textSize).bottom.toFloat()
         paint.textSize = textSize
         val bottoms = stackedRowBottoms(count, rowHeight, rowGap, height - bottomInset)
-        val day = DayWindow.of(now.toLocalDate(), now.zone)
-        val rows = config.locations.mapIndexed { index, location ->
-            val forecast = forecasts.getOrNull(index)
-            val numbers = forecast?.let { temperatureNumbers(location, it, day) }.orEmpty()
-            RenderRow(location, forecast, numbers, bottoms[index] - belowBaseline, bottoms[index] - rowHeight / 2,
-                forecast == null || isStale(forecast.fetchedAt.toEpochMilli(), now.toInstant().toEpochMilli()))
+        val rows = model.rows.mapIndexed { index, row ->
+            RenderRow(row, bottoms[index] - belowBaseline, bottoms[index] - rowHeight / 2)
         }
         val placedRows = rows.map { row ->
             if (right <= left) emptyList() else placeNumbers(row.numbers, axis, left, right, numberGap, paint::measureText)
         }
         for ((index, row) in rows.withIndex()) {
-            paint.color = if (row.stale) Color.rgb(160, 160, 160) else Color.BLACK
+            paint.color = if (row.model.stale) Color.rgb(160, 160, 160) else Color.BLACK
             paint.letterSpacing = LABEL_TRACKING_EM
-            canvas.drawText(row.location.label, padding, row.baseline, paint)
+            canvas.drawText(row.model.label, padding, row.baseline, paint)
             paint.letterSpacing = 0f
             if (row.numbers.isEmpty() || right <= left) {
                 paint.color = Color.rgb(160, 160, 160)
@@ -94,9 +88,7 @@ object TimelineRenderer {
             for (hour in hourDots(axis, placedRows[index])) {
                 canvas.drawCircle(axis.x(hour.toDouble(), left, right), row.y, dotRadius, paint)
             }
-            val condition = spanHours(row.location, row.forecast!!, day)
-                .mapNotNull { condition(it.code, it.gust, config.fahrenheit) }.maxOrNull() ?: Condition.CLEAR
-            val resource = when (condition) {
+            val resource = when (row.model.condition) {
                 Condition.THUNDERSTORM -> R.drawable.ic_weather_thunderstorm
                 Condition.SNOW -> R.drawable.ic_weather_snowy
                 Condition.RAIN -> R.drawable.ic_weather_rainy
@@ -106,13 +98,13 @@ object TimelineRenderer {
                 Condition.CLEAR -> R.drawable.ic_weather_clear_day
             }
             context.getDrawable(resource)?.mutate()?.apply {
-                setTint(if (row.stale) Color.rgb(160, 160, 160) else Color.BLACK)
+                setTint(if (row.model.stale) Color.rgb(160, 160, 160) else Color.BLACK)
                 setBounds(iconLeft.toInt(), (row.y - iconBox / 2).toInt(), (iconLeft + iconBox).toInt(), (row.y + iconBox / 2).toInt())
                 draw(canvas)
             }
         }
         // A single needle spans the stack of rows (not the empty space above it), beneath the number patches.
-        axis.nowX(now.hour + now.minute / 60.0, left, right)?.takeIf { right > left }?.let { x ->
+        model.needleHour?.let { axis.x(it, left, right) }?.takeIf { right > left }?.let { x ->
             paint.color = Color.rgb(128, 128, 128)
             canvas.drawLine(x, rows.first().y - iconBox / 2, x, rows.last().y + iconBox / 2, paint)
         }
@@ -124,7 +116,7 @@ object TimelineRenderer {
                 val half = number.width / 2 + numberGap
                 canvas.drawRect(number.x - half, row.y - rowHeight / 2 - numberGap,
                     number.x + half, row.y + rowHeight / 2 + numberGap, paint)
-                paint.color = if (row.stale) Color.rgb(160, 160, 160) else Color.BLACK
+                paint.color = if (row.model.stale) Color.rgb(160, 160, 160) else Color.BLACK
                 canvas.drawText(number.number.value.toString(), number.x - number.width / 2, row.baseline, paint)
             }
         }
@@ -149,7 +141,6 @@ object TimelineRenderer {
     private const val ROW_GLYPHS = "H0123456789"
 
     private data class RenderRow(
-        val location: Location, val forecast: ForecastSeries?, val numbers: List<TemperatureNumber>,
-        val baseline: Float, val y: Float, val stale: Boolean,
-    )
+        val model: TimelineRow, val baseline: Float, val y: Float,
+    ) { val numbers get() = model.numbers }
 }

@@ -56,7 +56,7 @@ class ForecastStoreInstrumentedTest {
         }
     }
     private fun render(series: ForecastSeries, at: ZonedDateTime = now, location: Location = place) =
-        TimelineRenderer.render(context, WidgetConfig(listOf(location)), listOf(series), 464, 112, at)
+        TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(location)), listOf(series), emptyList(), at), 464, 112)
 
     @Test fun offlineLegacyUpgradePreservesNumbersPixelsAndFetchTimeAndRemovesZoneKeys() = isolated {
         val raw = fixture("forecast.json") // Kept as the production v0.3 ISO+offset format.
@@ -162,9 +162,9 @@ class ForecastStoreInstrumentedTest {
         val partial = OpenMeteoParser.parse(JSONObject().put("hourly", hourly).toString())
         assertEquals(ForecastStore.Result.INCOMPLETE, store.accept(place, true, partial, evening.toInstant().plusSeconds(600), zone))
         assertEquals(original, store.read(place, true, zone))
-        assertEquals(envelope, prefs.all)
+        assertEquals(envelope.filterKeys { it.startsWith("forecast_") }, prefs.all.filterKeys { it.startsWith("forecast_") })
         assertEquals(ForecastStore.Result.MALFORMED, store.accept(place, true, OpenMeteoParser.parse("{}"), evening.toInstant().plusSeconds(1200), zone))
-        assertEquals(envelope, prefs.all)
+        assertEquals(envelope.filterKeys { it.startsWith("forecast_") }, prefs.all.filterKeys { it.startsWith("forecast_") })
         assertTrue(render(original).sameAs(render(store.read(place, true, zone)!!)))
     }
 
@@ -246,15 +246,15 @@ class ForecastStoreInstrumentedTest {
                 WeatherRuntime.redraw(context, id)
             }
             await("Hosted numbers before refresh") {
-                latest.get()?.sameAs(TimelineRenderer.render(context, WidgetConfig(listOf(place)), listOf(original), width, height)) == true
+                latest.get()?.sameAs(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now()), width, height)) == true
             }
             val beforeUpdates = updates.get()
             WeatherRuntime.refresh(context, force = true)
             assertTrue("Job must use the incomplete fetcher", fetched.await(15, TimeUnit.SECONDS))
             await("Job completion and a new retained-data host bitmap") {
-                context.getSystemService(android.app.job.JobScheduler::class.java).getPendingJob(0x4b5702) == null &&
+                context.getSystemService(android.app.job.JobScheduler::class.java).getPendingJob(WeatherRuntime.IMMEDIATE) == null &&
                     updates.get() > beforeUpdates && latest.get()?.sameAs(TimelineRenderer.render(context,
-                        WidgetConfig(listOf(place)), listOf(original), width, height)) == true
+                         buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now()), width, height)) == true
             }
             assertEquals(original, store.read(place, true, deviceZone))
         } finally {
