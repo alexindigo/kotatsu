@@ -2,12 +2,17 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
-## [0.3.1] — 2026-10-25
+## [0.4] — 2026-10-26
 
 ### Fixed
 - **Kotatsu Weather** downloads three days of weather, fixing morning "No forecast" after an evening update.
-- **Kotatsu Weather** keeps a good saved forecast when a partial server reply has fewer useful hours.
+- **Kotatsu Weather** keeps forecasts at the right hours across daylight-saving and time-zone changes.
+- **Kotatsu Weather** keeps a good saved forecast when a download is broken or a partial server reply has fewer useful hours.
 - **Kotatsu Weather** keeps the temperature when wind or condition values are missing.
+- **Kotatsu Weather updates** retry after a failure, starting at one minute and backing off to at most 30 minutes, without waking the phone.
+- **Kotatsu Weather widgets** redraw when the needle moves, at midnight, when rows turn grey after 12 hours, after a clock or time-zone change, and when the lock screen appears.
+- **Lock-screen overlays** wait until the bare lock screen is confirmed before appearing, so they do not cover the PIN pad.
+- **Lock-screen weather** no longer lets a slow or failing Mudita Weather app freeze or crash the lock-screen service.
 
 ## [0.3] — 2026-10-25
 
