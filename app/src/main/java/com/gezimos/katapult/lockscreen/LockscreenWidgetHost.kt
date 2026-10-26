@@ -48,6 +48,11 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
                 putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD)
             })
         }
+
+        internal fun pulseVisible(context: Context, visibility: LockscreenVisibility, shown: List<LockscreenWidget>) {
+            val pending = visibility.widgetsToPulse(shown.map { it.id }).toSet()
+            shown.filter { it.id in pending }.forEach { updateSize(context, it) }
+        }
     }
 }
 

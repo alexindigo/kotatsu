@@ -233,8 +233,8 @@ class LockscreenWidgetService :
         clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); stopWidgets(); musicState.value = null },
         clearInspection = {
             mainHandler.removeCallbacks(keyguardRecheck)
-            lastCovered = false
-            burstUntil = 0L
+            visibility.invalidate()
+            recheckFastUntil = 0L
         },
     )
     private var policySubscription: AutoCloseable? = null
@@ -283,20 +283,20 @@ class LockscreenWidgetService :
     private var totalCount = 0
     private val editTimeout = Runnable { exitEdit() }
 
-    private var keyguardPossible = true
+    private val visibility = LockscreenVisibility()
 
     private val screenReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    keyguardPossible = true
+                    visibility.invalidate()
                     maybeStartScreensaver()
                 }
                 Intent.ACTION_SCREEN_ON -> {
-                    keyguardPossible = true
+                    visibility.beginEpoch()
                     readWeather()
                 }
-                Intent.ACTION_USER_PRESENT -> keyguardPossible = false
+                Intent.ACTION_USER_PRESENT -> visibility.keyguard(false)
             }
             evaluate()
         }
@@ -331,11 +331,7 @@ class LockscreenWidgetService :
         if (DeviceHelper.isMuditaKompakt()) {
             directBadges = DirectBadgeHelper.getInstance(this)
         }
-        keyguardPossible = try {
-            getSystemService(KeyguardManager::class.java).isKeyguardLocked
-        } catch (_: Exception) {
-            true
-        }
+        visibility.beginEpoch()
         applyClockCover(launcherForeground || screensaverForeground)
         evaluate()
     }
@@ -344,8 +340,7 @@ class LockscreenWidgetService :
         if (!SensitiveAccess.accessibility() ||
             (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&
                 !prefs.lockscreenWidgetsEnabled && prefs.lockscreenMessage.isNullOrBlank())) return
-        if (!keyguardPossible) return
-        burstUntil = SystemClock.elapsedRealtime() + KEYGUARD_BURST_MS
+        recheckFastUntil = SystemClock.elapsedRealtime() + KEYGUARD_BURST_MS
         evaluate()
     }
 
@@ -629,6 +624,8 @@ class LockscreenWidgetService :
                 removeWidgetsOverlay()
                 return
             }
+            // No hold-back: the existing picture may show immediately while providers redraw.
+            LockscreenWidgetHost.pulseVisible(this, visibility, list)
             if (widgetsOverlay != null) return
             val bounds = getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
             val contentHeight = list.sumOf { dp(it.size.heightDp.toFloat()) } + dp(((list.size - 1) * 8 + 16).toFloat())
@@ -667,14 +664,14 @@ class LockscreenWidgetService :
      * PIN inspection are active, so unlock and PIN occlusion are observed without new events.
      */
     private val keyguardRecheck = Runnable { evaluate() }
-    private var burstUntil = 0L
+    private var recheckFastUntil = 0L
 
     private fun scheduleKeyguardRecheck() {
         mainHandler.removeCallbacks(keyguardRecheck)
         if (!SensitiveAccess.accessibility()) return
         if (overlay == null && musicOverlay == null && messageOverlay == null && weatherOverlay == null && widgetsOverlay == null && !consumers.badgesActive &&
             !consumers.mediaActive && !consumers.inspectionActive) return
-        val bursting = SystemClock.elapsedRealtime() < burstUntil
+        val bursting = SystemClock.elapsedRealtime() < recheckFastUntil
         val delay = if (bursting) KEYGUARD_RECHECK_MS else KEYGUARD_IDLE_RECHECK_MS
         mainHandler.postDelayed(keyguardRecheck, delay)
     }
@@ -754,19 +751,20 @@ class LockscreenWidgetService :
             mainHandler.removeCallbacks(keyguardRecheck)
             removeOverlay(); removeMusicOverlay(); removeMessageOverlay()
             stopWidgets()
-            lastCovered = false
-            burstUntil = 0L
+            visibility.invalidate()
+            recheckFastUntil = 0L
             return
         }
         val keyguard = getSystemService(KeyguardManager::class.java)
         val power = getSystemService(PowerManager::class.java)
+        visibility.keyguard(keyguard.isKeyguardLocked)
         val selectedActive = keyguard.isKeyguardLocked &&
             power.isInteractive &&
             !KatapultDreamService.isDreaming &&
             !ScreensaverActivity.isShowing &&
             !inCall()
         val inspection = currentDemand(selectedActive).inspectPin
-        val onLockscreen = selectedActive && (!inspection || !lockscreenCovered(lastCovered || SystemClock.elapsedRealtime() < burstUntil))
+        val onLockscreen = visibility.recheck(selectedActive && inspection, ::lockscreenCovered)
         val demand = currentDemand(onLockscreen)
         // A covered lock screen suppresses overlays/collectors, not the selected
         // recheck itself; otherwise teardown would forget that it is covered.
@@ -808,12 +806,9 @@ class LockscreenWidgetService :
      * hides overlays. Polled instead of event-driven: re-showing the PIN doesn't re-fire focus events when its
      * field kept focus.
      */
-    private var lastCovered = false
-
-    private fun lockscreenCovered(check: Boolean): Boolean {
-        if (!SensitiveAccess.accessibility()) { lastCovered = false; return false }
-        if (!check) return lastCovered
-        lastCovered = AccessibilityPolicy.coveredOrUnknown {
+    private fun lockscreenCovered(): Boolean {
+        if (!SensitiveAccess.accessibility()) return true
+        return AccessibilityPolicy.coveredOrUnknown {
             val focus = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             val pinFocused = try {
                 focus != null && AccessibilityPolicy.isPinField(focus.packageName, focus.isVisibleToUser, focus.className)
@@ -831,7 +826,6 @@ class LockscreenWidgetService :
                 root?.recycle()
             }
         }
-        return lastCovered
     }
 
     /** An incoming or active call shows its own UI over the lock screen — hide the widget then. */
