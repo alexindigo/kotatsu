@@ -54,8 +54,8 @@ object MuditaWeatherSource : WeatherSource {
         return Weather(
             temperature = temperature,
             unit = strOrNull(cursor, "measurement_unit").orEmpty(),
-            conditionId = intOrNull(cursor, "weather_icon_id") ?: 0,
-            iconInfo = strOrNull(cursor, "weather_icon_info"),
+            condition = MuditaConditions.condition(intOrNull(cursor, "weather_icon_id") ?: 0),
+            daytime = MuditaConditions.daytime(strOrNull(cursor, "weather_icon_info")),
         )
     }
 

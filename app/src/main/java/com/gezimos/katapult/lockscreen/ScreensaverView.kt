@@ -71,7 +71,8 @@ import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.PrefsManager
-import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.WeatherFeed
+import com.gezimos.katapult.weather.weather
 import com.gezimos.katapult.weather.api.Weather
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -122,13 +123,16 @@ internal fun ScreensaverView(feed: BadgeFeed) {
 
     val owner = LocalView.current.findViewTreeLifecycleOwner()
     val badgeOwner = remember { Any() }
+    val weatherFeed = remember(context) { WeatherFeed.get(context) }
+    var weatherValue by remember { mutableStateOf<Weather?>(null) }
     var active by remember { mutableStateOf(owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true) }
-    var clock by remember { mutableStateOf(computeClock(context, prefs)) }
+    var clock by remember { mutableStateOf(computeClock(context, prefs, weatherValue)) }
     var rowsState by remember { mutableStateOf(computeRows(context, prefs, active, feed)) }
     DisposableEffect(owner, context, feed) {
         val main = Handler(Looper.getMainLooper())
         var disposed = false
         var lease: AutoCloseable? = null
+        var weatherLease: AutoCloseable? = null
         val refresh: () -> Unit = {
             main.post {
                 if (!disposed) {
@@ -136,6 +140,17 @@ internal fun ScreensaverView(feed: BadgeFeed) {
                     val want = active && prefs.screensaverEnabled && prefs.screensaverShowNotifications
                     if (want && lease == null) lease = feed.acquire(badgeOwner)
                     else if (!want) { val old = lease; lease = null; old?.close() }
+                    val wantWeather = active && prefs.screensaverEnabled && prefs.showWeather
+                    if (wantWeather && weatherLease == null) weatherLease = weatherFeed.acquire { state ->
+                        weatherValue = if (prefs.showWeather) state.weather else null
+                        clock = clock.copy(weather = weatherValue)
+                    }
+                    else if (!wantWeather) {
+                        weatherLease?.close(); weatherLease = null
+                        weatherValue = null
+                        clock = clock.copy(weather = null)
+                    }
+                    if (wantWeather) weatherFeed.refresh()
                     rowsState = computeRows(context, prefs, active, feed)
                 }
             }
@@ -151,6 +166,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
             subscription.close()
             preferencesSubscription.close()
             val old = lease; lease = null; old?.close()
+            weatherLease?.close(); weatherLease = null
         }
     }
 
@@ -159,11 +175,13 @@ internal fun ScreensaverView(feed: BadgeFeed) {
             LaunchedEffect(Unit) {
                 val interval = prefs.screensaverUpdateMinutes.coerceIn(1, 60)
                 kotlinx.coroutines.delay(300)
-                clock = computeClock(context, prefs)
+                weatherFeed.refresh()
+                clock = computeClock(context, prefs, weatherValue)
                 rowsState = computeRows(context, prefs, active, feed)
                 while (true) {
                     kotlinx.coroutines.delay(millisToNextBoundary(interval))
-                    clock = computeClock(context, prefs)
+                    weatherFeed.refresh()
+                    clock = computeClock(context, prefs, weatherValue)
                     rowsState = computeRows(context, prefs, active, feed)
                 }
             }
@@ -171,7 +189,8 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         PrefsManager.SCREENSAVER_MODE_STATIC -> {
             LaunchedEffect(Unit) {
                 kotlinx.coroutines.delay(300)
-                clock = computeClock(context, prefs)
+                weatherFeed.refresh()
+                clock = computeClock(context, prefs, weatherValue)
                 rowsState = computeRows(context, prefs, active, feed)
             }
         }
@@ -192,7 +211,8 @@ internal fun ScreensaverView(feed: BadgeFeed) {
                             }
                             return
                         }
-                        clock = computeClock(context, prefs)
+                        weatherFeed.refresh()
+                        clock = computeClock(context, prefs, weatherValue)
                     }
                 }
                 context.registerReceiver(receiver, IntentFilter().apply {
@@ -354,7 +374,7 @@ private fun dateFormatter(pattern: String): SimpleDateFormat {
     return dateFormatCache.getOrPut("$pattern|$locale") { SimpleDateFormat(pattern, locale) }
 }
 
-private fun computeClock(context: Context, prefs: PrefsManager): SsClock {
+private fun computeClock(context: Context, prefs: PrefsManager, currentWeather: Weather?): SsClock {
     val now = Date()
     val clockPattern = prefs.clockFormat
     val fullTime = if (clockPattern == "system") DateFormat.getTimeFormat(context).format(now)
@@ -383,7 +403,7 @@ private fun computeClock(context: Context, prefs: PrefsManager): SsClock {
         charging = status == BatteryManager.BATTERY_STATUS_CHARGING ||
             status == BatteryManager.BATTERY_STATUS_FULL
     }
-    val weather = if (prefs.showWeather) WeatherSources.active(context)?.read(context) else null
+    val weather = if (prefs.showWeather) currentWeather else null
     return SsClock(time, amPm, date, alarm, battery, charging, weather)
 }
 

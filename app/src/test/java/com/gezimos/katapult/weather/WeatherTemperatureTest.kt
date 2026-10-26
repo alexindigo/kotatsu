@@ -5,7 +5,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class WeatherTemperatureTest {
-    private fun weather(temperature: Int, unit: String) = Weather(temperature, unit, 800, "01d")
+    private fun weather(temperature: Int, unit: String) = Weather(temperature, unit,
+        com.gezimos.katapult.weather.api.WeatherCondition.CLEAR, true)
 
     @Test fun celsiusConvertsToFahrenheitByDefault() {
         assertEquals("52°F", formatWeatherTemperature(weather(11, "C")))

@@ -72,10 +72,11 @@ import com.gezimos.katapult.ui.MusicWidget
 import com.gezimos.katapult.ui.NoIndication
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.weatherIcon
-import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.WeatherFeed
+import com.gezimos.katapult.weather.weather
 import com.gezimos.katapult.weather.formatWeatherTemperature
 import com.gezimos.katapult.weather.api.Weather
-import com.gezimos.katapult.weather.api.WeatherSource
+import com.gezimos.katapult.weather.api.WeatherCondition
 import com.gezimos.katapult.util.AudioWidgetHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -214,10 +215,10 @@ class LockscreenWidgetService :
     private var cachedWidgets: List<LockscreenWidget> = emptyList()
     private val widgetViews = mutableMapOf<LockscreenWidget, AppWidgetHostView>()
     private val widgetHost get() = LockscreenWidgetHost.get(this)
-    private var weatherSource: WeatherSource? = null
-    private var weatherSubscription: AutoCloseable? = null
+    private val weatherFeed by lazy { WeatherFeed.get(this) }
+    private var weatherLease: AutoCloseable? = null
     private var weatherValue: Weather? = null
-    private data class WeatherDisplay(val conditionId: Int, val iconInfo: String?, val temperature: String)
+    private data class WeatherDisplay(val condition: WeatherCondition, val daytime: Boolean, val temperature: String)
     private var shownWeather: WeatherDisplay? = null
     private var shownRows: List<Pair<String, Int>> = emptyList()
     private var directBadges: DirectBadgeHelper? = null
@@ -294,7 +295,8 @@ class LockscreenWidgetService :
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     visibility.beginEpoch()
-                    readWeather()
+                    syncWeatherLease()
+                    weatherFeed.refresh(force = true)
                 }
                 Intent.ACTION_USER_PRESENT -> visibility.keyguard(false)
             }
@@ -320,7 +322,7 @@ class LockscreenWidgetService :
         prefs = PrefsManager(this)
         SensitiveAccess.initialize(this)
         SensitiveAccess.accessibilityConnection(true)
-        policySubscription = SensitiveAccess.subscribe { mainHandler.post { evaluate() } }
+        policySubscription = SensitiveAccess.subscribe { mainHandler.post { syncWeatherLease(); evaluate() } }
         savedStateController.performRestore(null)
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
         registerReceiver(screenReceiver, IntentFilter().apply {
@@ -332,6 +334,7 @@ class LockscreenWidgetService :
             directBadges = DirectBadgeHelper.getInstance(this)
         }
         visibility.beginEpoch()
+        syncWeatherLease()
         applyClockCover(launcherForeground || screensaverForeground)
         evaluate()
     }
@@ -354,7 +357,7 @@ class LockscreenWidgetService :
 
     private fun releaseSensitiveConsumers() {
         consumers.close()
-        closeWeatherSource()
+        closeWeatherLease()
         musicState.value = null
     }
 
@@ -500,44 +503,28 @@ class LockscreenWidgetService :
         musicOverlay = null
     }
 
-    private fun closeWeatherSource() {
-        weatherSubscription?.close()
-        weatherSubscription = null
-        weatherSource = null
+    private fun closeWeatherLease() {
+        weatherLease?.close()
+        weatherLease = null
         weatherValue = null
         removeWeatherOverlay()
     }
 
-    private fun syncWeatherSource() {
-        val source = if (SensitiveAccess.accessibility() && prefs.lockscreenWeather)
-            WeatherSources.active(this) else null
-        if (source === weatherSource) return
-        closeWeatherSource()
-        weatherSource = source ?: return
-        weatherSubscription = source.observe(this) {
-            mainHandler.post {
-                if (weatherSource === source && SensitiveAccess.accessibility() && prefs.lockscreenWeather) {
-                    readWeather()
-                    evaluate()
-                }
-            }
+    private fun syncWeatherLease() {
+        if (!SensitiveAccess.accessibility() || !prefs.lockscreenWeather) { closeWeatherLease(); return }
+        if (weatherLease == null) weatherLease = weatherFeed.acquire { state ->
+            weatherValue = if (SensitiveAccess.accessibility() && prefs.lockscreenWeather) state.weather else null
+            evaluate()
         }
-        readWeather()
-    }
-
-    // Read only on activation, wake or provider changes, never in the keyguard poll.
-    private fun readWeather() {
-        weatherValue = if (::prefs.isInitialized && SensitiveAccess.accessibility() && prefs.lockscreenWeather)
-            weatherSource?.read(this) else null
     }
 
     private fun applyWeather(onLockscreen: Boolean) {
         val weather = weatherValue
-        if (!onLockscreen || !prefs.lockscreenWeather || weatherSource == null || weather == null) {
+        if (!onLockscreen || !prefs.lockscreenWeather || weather == null) {
             removeWeatherOverlay()
             return
         }
-        val rendered = WeatherDisplay(weather.conditionId, weather.iconInfo,
+        val rendered = WeatherDisplay(weather.condition, weather.daytime,
             formatWeatherTemperature(weather, prefs.weatherCelsius))
         if (weatherOverlay != null && shownWeather == rendered) return
         removeWeatherOverlay()
@@ -550,7 +537,7 @@ class LockscreenWidgetService :
             setViewTreeSavedStateRegistryOwner(this@LockscreenWidgetService)
             setContent {
                 Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(weatherIcon(weather.conditionId, weather.iconInfo),
+                    Icon(weatherIcon(weather.condition, weather.daytime),
                         stringResource(R.string.cd_weather), Modifier.size(18.dp), tint = ink)
                     Spacer(Modifier.width(2.dp))
                     Text(rendered.temperature,
@@ -742,7 +729,6 @@ class LockscreenWidgetService :
     private fun evaluate() {
         if (!::prefs.isInitialized) return
         applyClockCover(launcherForeground || screensaverForeground)
-        syncWeatherSource()
         if (!SensitiveAccess.accessibility() ||
             (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&
                 !prefs.lockscreenWidgetsEnabled && prefs.lockscreenMessage.isNullOrBlank())) {

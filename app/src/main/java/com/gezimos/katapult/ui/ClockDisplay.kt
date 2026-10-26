@@ -38,6 +38,7 @@ import androidx.compose.ui.zIndex
 import com.gezimos.katapult.R
 import com.gezimos.katapult.weather.formatWeatherTemperature
 import com.gezimos.katapult.weather.api.Weather
+import com.gezimos.katapult.weather.api.WeatherCondition
 
 /**
  * The home clock block — alarm/battery status, the big clock with AM/PM, and the date,
@@ -84,7 +85,7 @@ fun ColumnScope.ClockDisplay(
                 modifier = if (onWeatherClick != null) Modifier.clickable(onClick = onWeatherClick) else Modifier,
             ) {
                 Icon(
-                    imageVector = weatherIcon(weather.conditionId, weather.iconInfo),
+                    imageVector = weatherIcon(weather.condition, weather.daytime),
                     contentDescription = stringResource(R.string.cd_weather),
                     tint = LocalInk.current,
                     modifier = Modifier.size(18.dp),
@@ -206,22 +207,21 @@ fun ColumnScope.ClockDisplay(
 }
 
 @Composable
-internal fun weatherIcon(conditionId: Int, iconInfo: String?): ImageVector {
-    val day = iconInfo == null || iconInfo.endsWith("d")
-    val res = when (conditionId) {
-        in 200..232 -> R.drawable.ic_weather_thunderstorm
-        in 300..321 -> R.drawable.ic_weather_rainy_light
-        511 -> R.drawable.ic_weather_mix
-        in 500..531 -> R.drawable.ic_weather_rainy
-        in 611..616 -> R.drawable.ic_weather_mix
-        in 600..622 -> R.drawable.ic_weather_snowy
-        in 701..781 -> R.drawable.ic_weather_foggy
-        800, 801 ->
-            if (day) R.drawable.ic_weather_clear_day else R.drawable.ic_weather_clear_night
-        802, 803 ->
-            if (day) R.drawable.ic_weather_partly_cloudy_day
+internal fun weatherIcon(condition: WeatherCondition, daytime: Boolean): ImageVector =
+    ImageVector.vectorResource(weatherIconResource(condition, daytime))
+
+/** Glyph choices stay exactly as before normalization, including few clouds (Mudita 801). */
+internal fun weatherIconResource(condition: WeatherCondition, daytime: Boolean): Int = when (condition) {
+        WeatherCondition.THUNDER -> R.drawable.ic_weather_thunderstorm
+        WeatherCondition.DRIZZLE -> R.drawable.ic_weather_rainy_light
+        WeatherCondition.MIX -> R.drawable.ic_weather_mix
+        WeatherCondition.RAIN -> R.drawable.ic_weather_rainy
+        WeatherCondition.SNOW -> R.drawable.ic_weather_snowy
+        WeatherCondition.FOG -> R.drawable.ic_weather_foggy
+        WeatherCondition.CLEAR, WeatherCondition.FEW_CLOUDS ->
+            if (daytime) R.drawable.ic_weather_clear_day else R.drawable.ic_weather_clear_night
+        WeatherCondition.PARTLY_CLOUDY ->
+            if (daytime) R.drawable.ic_weather_partly_cloudy_day
             else R.drawable.ic_weather_partly_cloudy_night
-        else -> R.drawable.ic_weather_cloudy
+        WeatherCondition.CLOUDY -> R.drawable.ic_weather_cloudy
     }
-    return ImageVector.vectorResource(res)
-}

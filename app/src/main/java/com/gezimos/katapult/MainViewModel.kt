@@ -26,7 +26,8 @@ import android.text.format.DateFormat
 import java.text.SimpleDateFormat
 import java.util.Locale
 import com.gezimos.katapult.util.AudioWidgetHelper
-import com.gezimos.katapult.weather.WeatherSources
+import com.gezimos.katapult.weather.WeatherFeed
+import com.gezimos.katapult.weather.weather
 import com.gezimos.katapult.weather.api.Weather
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -139,8 +140,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var weather by mutableStateOf<Weather?>(null)
         private set
-    private val weatherRefreshMs = 10 * 60 * 1000L
-    private var weatherCheckedAt = -weatherRefreshMs
     var roundedIcons by mutableStateOf(prefs.roundedIcons)
     var iconSize by mutableStateOf(prefs.iconSize)
     var themeMode by mutableIntStateOf(prefs.themeMode)
@@ -297,7 +296,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val ctx get() = getApplication<Application>()
     private val isMudita = DeviceHelper.isMuditaKompakt()
-    private val weatherSource = WeatherSources.active(ctx)
+    private val weatherFeed = WeatherFeed.get(ctx)
+    // Initialize lease storage before init can acquire a subscription through updateClock().
+    private var weatherLease: AutoCloseable? = null
     private val directBadgeHelper = if (isMudita) DirectBadgeHelper.getInstance(application) else null
     private val badgeOwner = Any()
     private val mediaOwner = Any()
@@ -408,59 +409,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             isCharging = status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
         }
 
-        if (!prefs.showWeather) {
-            weather = null
-        } else if (SystemClock.elapsedRealtime() - weatherCheckedAt >= weatherRefreshMs) {
-            refreshWeather()
-        }
-    }
-
-    private var weatherObserverHandle: AutoCloseable? = null
-
-    private fun onWeatherChanged() {
-        val source = weatherSource ?: return
-        weatherCheckedAt = SystemClock.elapsedRealtime()
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val result = source.read(ctx)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                if (result != null) weather = result
-            }
-        }
-    }
-
-    private fun syncWeatherObserver() {
-        val source = weatherSource ?: return
-        val want = prefs.showWeather
-        if (want == (weatherObserverHandle != null)) return
-        try {
-            if (want) {
-                weatherObserverHandle = source.observe(ctx) { onWeatherChanged() }
-            } else {
-                weatherObserverHandle?.close()
-                weatherObserverHandle = null
-            }
-        } catch (_: Exception) {
-        }
+        refreshWeather()
     }
 
     fun refreshWeather(force: Boolean = false) {
-        syncWeatherObserver()
-        val source = weatherSource
-        if (!prefs.showWeather || source == null) {
-            weatherCheckedAt = SystemClock.elapsedRealtime()
+        if (!prefs.showWeather) {
+            weatherLease?.close(); weatherLease = null
             weather = null
             return
         }
-        if (!force && weather != null &&
-            SystemClock.elapsedRealtime() - weatherCheckedAt < weatherRefreshMs
-        ) return
-        weatherCheckedAt = SystemClock.elapsedRealtime()
-        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val result = source.read(ctx)
-            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
-                if (result != null) weather = result
-            }
+        if (weatherLease == null) weatherLease = weatherFeed.acquire { state ->
+            weather = if (prefs.showWeather) state.weather else null
         }
+        weatherFeed.refresh(force)
     }
 
     fun startClock() {
@@ -1184,6 +1145,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         stopClock()
         stopNotificationListener()
         try { ctx.unregisterReceiver(powerReceiver) } catch (_: Exception) {}
-        try { weatherObserverHandle?.close() } catch (_: Exception) {}
+        weatherLease?.close(); weatherLease = null
     }
 }

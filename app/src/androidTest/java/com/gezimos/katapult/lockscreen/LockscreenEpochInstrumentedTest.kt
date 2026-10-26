@@ -14,6 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.WidgetHostTestFixture
 import com.gezimos.katapult.WeatherHostViewProbe
+import com.gezimos.katapult.awaitActionServiceSettingsPersisted
 import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import org.junit.Test
@@ -82,6 +83,7 @@ class LockscreenEpochInstrumentedTest {
             shell("settings put secure enabled_accessibility_services $list")
             shell("settings put secure accessibility_enabled 1")
             await("Service connected") { service() != null }
+            awaitActionServiceSettingsPersisted(component, ::shell)
             val service = service()!!
             val first = main { visibility(service).epoch }
             shell("input keyevent KEYCODE_SLEEP")
@@ -157,6 +159,7 @@ class LockscreenEpochInstrumentedTest {
             await("Keyguard restored unlocked") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
             await("Service disconnected after restoration") { service() == null }
             }
+            restore { awaitActionServiceSettingsPersisted(enabled, ::shell) }
         }
         failure?.let { throw it }
     }
