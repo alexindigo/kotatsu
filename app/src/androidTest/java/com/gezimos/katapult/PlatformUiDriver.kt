@@ -8,16 +8,22 @@ import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import android.view.accessibility.AccessibilityWindowInfo
+import android.accessibilityservice.AccessibilityServiceInfo
 
 /** Test-only public UI input; no adopted shell permissions or production hooks. */
 class PlatformUiDriver(instrumentation: Instrumentation) {
     private val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
 
-    init {
-        // AOSP API31 UiAutomation.getWindows requires this test-service opt-in.
-        automation.serviceInfo = automation.serviceInfo.apply {
-            flags = flags or android.accessibilityservice.AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+    private fun windows(): List<AccessibilityWindowInfo> {
+        // Another test helper can reconnect UiAutomation via its default getter, resetting service flags.
+        // Keep the observation capability with the driver that needs it, including after that reconnect.
+        val service = automation.serviceInfo
+        if (service.flags and AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS == 0) {
+            service.flags = service.flags or AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS
+            automation.serviceInfo = service
         }
+        return automation.windows
     }
 
     fun await(message: String, timeoutMs: Long = 8000, predicate: () -> Boolean) {
@@ -35,7 +41,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
 
     /** Accessibility events can leave cached children at an older layout/text revision. */
     fun find(predicate: (AccessibilityNodeInfo) -> Boolean): AccessibilityNodeInfo? {
-        val root = automation.rootInActiveWindow ?: return null
+        val root = focusedRoot() ?: return null
         fun walk(node: AccessibilityNodeInfo): AccessibilityNodeInfo? {
             if (!node.refresh()) return null
             if (predicate(node)) return node
@@ -46,6 +52,18 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
             return null
         }
         return walk(root)
+    }
+
+    /** Input goes to the focused owner, including system dialogs such as the fullscreen hint. */
+    private fun focusedRoot(): AccessibilityNodeInfo? = windows().singleOrNull {
+        it.isFocused && it.isActive
+    }?.root?.takeIf { it.refresh() }
+
+    /** A model callback can precede dialog disposal. Observe the input destination before the next action. */
+    fun awaitFocusedWindow(windowId: Int) {
+        await("Window $windowId did not regain input focus") {
+            focusedRoot()?.let { it.windowId == windowId && it.childCount > 0 } == true
+        }
     }
 
     fun has(label: String): Boolean = find(label) != null
@@ -71,7 +89,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         repeat(12) {
             if (has(label)) return
             val root = Rect()
-            automation.rootInActiveWindow!!.getBoundsInScreen(root)
+            focusedRoot()!!.getBoundsInScreen(root)
             val x = root.centerX().toFloat()
             val start = root.top + root.height() * 3 / 4f
             val end = root.top + root.height() / 3f
@@ -123,7 +141,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         val sheet = Rect()
         find(label)!!.getBoundsInScreen(sheet)
         val root = Rect()
-        automation.rootInActiveWindow!!.getBoundsInScreen(root)
+        focusedRoot()!!.getBoundsInScreen(root)
         check(sheet.top > root.top) { "No public outside region" }
         tap(root.centerX().toFloat(), (root.top + sheet.top) / 2f, 60)
     }
@@ -134,7 +152,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         check(automation.injectInputEvent(KeyEvent(time, SystemClock.uptimeMillis(), KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK, 0), true))
     }
 
-    fun packageVisible(packageName: String): Boolean = automation.rootInActiveWindow?.packageName?.toString() == packageName
+    fun packageVisible(packageName: String): Boolean = focusedRoot()?.packageName?.toString() == packageName
 
     fun gridLabels(labels: List<String>): List<String> = labels.map { label ->
         val rect = Rect()
@@ -146,7 +164,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
     fun homeMenu() {
         await("HOME is not visible") { has("Apps") }
         val root = Rect()
-        automation.rootInActiveWindow!!.getBoundsInScreen(root)
+        focusedRoot()!!.getBoundsInScreen(root)
         // The empty side of the clock lane, using this frame's actual window bounds.
         tap(root.left + root.width() / 10f, root.top + root.height() / 3f, 750)
         // The wallpaper option is the menu entry present in every configuration.
@@ -155,7 +173,7 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
 
     fun swipeToHome(vertical: Boolean) {
         val root = Rect()
-        automation.rootInActiveWindow!!.getBoundsInScreen(root)
+        focusedRoot()!!.getBoundsInScreen(root)
         val x = root.left + root.width() / 2f
         val y = root.top + root.height() / 2f
         val startX = if (vertical) x else root.left + root.width() / 4f
@@ -179,5 +197,5 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
         }
     }
 
-    fun imeVisible(): Boolean = automation.windows.any { it.type == android.view.accessibility.AccessibilityWindowInfo.TYPE_INPUT_METHOD }
+    fun imeVisible(): Boolean = windows().any { it.type == AccessibilityWindowInfo.TYPE_INPUT_METHOD }
 }

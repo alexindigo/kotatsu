@@ -43,6 +43,7 @@ class LauncherPreviewInstrumentedTest {
         }
         assertEquals(badgeChoice, model.prefs.notificationIndicators)
         assertFalse(DeviceHelper.isDefaultLauncher(context))
+        val launcherWindow = checkNotNull(ui.find("Apps")).windowId
         ui.click("Apps")
         ui.await("App grid did not render") { model.screen == Screen.ALL_APPS && model.orderedApps.size >= 2 }
         assertFalse(model.reorderMode)
@@ -71,12 +72,14 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Dirty Back omitted the decision sheet") { ui.has("Save app order changes?") }
         ui.click("Cancel")
         ui.await("Cancel exited the editor") { model.reorderMode && !model.showReorderExit }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(draft, model.orderedApps.map { it.key })
         assertEquals(saved, model.prefs.loadAppOrder())
 
         ui.back()
         ui.outside("Save app order changes?")
         ui.await("Outside dismissal did not cancel") { model.reorderMode && !model.showReorderExit }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(draft, model.orderedApps.map { it.key })
         assertEquals(saved, model.prefs.loadAppOrder())
 
@@ -88,12 +91,14 @@ class LauncherPreviewInstrumentedTest {
         ui.await("New HOME intent silently resolved dirty work") { ui.has("Save app order changes?") }
         ui.click("Cancel")
         ui.await("HOME-intent Cancel lost editor") { model.reorderMode && !model.showReorderExit }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(Screen.ALL_APPS, model.screen)
         assertEquals(draft, model.orderedApps.map { it.key })
 
         ui.back()
         ui.click("Discard")
         ui.await("Discard did not exit reorder") { !model.reorderMode }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(baseline, model.orderedApps.map { it.key })
         assertEquals("Discard wrote saved order", saved, model.prefs.loadAppOrder())
 
@@ -157,6 +162,7 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Reset confirmation missing") { ui.has("Reset app order to alphabetical?") }
         ui.back()
         ui.await("Reset dialog Back left the editor") { model.reorderMode && !ui.has("Reset app order to alphabetical?") }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(resetBaseline, model.orderedApps.map { it.key })
         ui.click("Reset order")
         ui.click("Reset")
@@ -169,6 +175,7 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Dirty Reset omitted resolution") { ui.has("Save app order changes?") }
         ui.back()
         ui.await("Decision-sheet Back discarded work") { model.reorderMode && !model.showReorderExit }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(alphabetical, model.orderedApps.map { it.key })
         ui.back()
         ui.click("Discard")
@@ -194,6 +201,7 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Dirty swipe silently navigated") { ui.has("Save app order changes?") }
         ui.click("Cancel")
         ui.await("Swipe Cancel lost editor") { model.reorderMode && !model.showReorderExit }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(Screen.ALL_APPS, model.screen)
         assertEquals(controlledDraft, model.orderedApps.map { it.key })
         assertEquals(draft, model.prefs.loadAppOrder())
@@ -248,6 +256,7 @@ class LauncherPreviewInstrumentedTest {
         assertFalse(ScreensaverActivity.isShowing)
         ui.click("Cancel")
         ui.await("Screensaver Cancel did not retain editor") { model.reorderMode && !model.showReorderExit }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(controlledDraft, model.orderedApps.map { it.key })
         assertEquals(draft, model.prefs.loadAppOrder())
         assertFalse(ScreensaverActivity.isShowing)
@@ -316,6 +325,7 @@ class LauncherPreviewInstrumentedTest {
         assertEquals(Screen.ALL_APPS, model.screen)
         ui.back()
         ui.await("Dialog Back left grid or remained open") { !model.showRenameDialog && model.contextMenuApp == null }
+        ui.awaitFocusedWindow(launcherWindow)
         assertEquals(Screen.ALL_APPS, model.screen)
         assertEquals(renameLabel, model.orderedApps[0].label)
         case("ime-and-dialog-back-priority")
