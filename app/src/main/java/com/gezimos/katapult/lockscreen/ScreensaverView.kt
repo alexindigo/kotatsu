@@ -33,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -58,6 +59,8 @@ import com.gezimos.katapult.service.AndroidBadgeFeed
 import com.gezimos.katapult.util.SensitiveAccess
 import com.gezimos.katapult.ui.AppIconCircle
 import com.gezimos.katapult.ui.ClockDisplay
+import com.gezimos.katapult.ui.ContrastInkBox
+import com.gezimos.katapult.ui.WallpaperContrast
 import com.gezimos.katapult.ui.EinkColorFilter
 import com.gezimos.katapult.ui.EinkColorFilterDark
 import com.gezimos.katapult.ui.LatoFamily
@@ -78,6 +81,8 @@ import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
 import java.util.Locale
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val SCREENSAVER_ROWS = 4
 
@@ -105,6 +110,15 @@ internal fun ScreensaverView(feed: BadgeFeed) {
     val context = LocalContext.current
     val prefs = remember { PrefsManager(context) }
     val dark = prefs.darkMode
+    val scope = rememberCoroutineScope()
+    val contrast = remember(scope) { WallpaperContrast(scope) }
+    var wallpaperPath by remember { mutableStateOf(prefs.screensaverPicture()) }
+    LaunchedEffect(wallpaperPath) {
+        val bitmap = withContext(Dispatchers.IO) {
+            wallpaperPath?.let { BitmapHelper.decodeFile(it, BitmapHelper.screenMaxSide(context)) }
+        }
+        contrast.updateWallpaper(bitmap)
+    }
 
     val doubleTapBrightness = prefs.screensaverDoubleTapBrightness
     val window = (context as? android.app.Activity)?.window
@@ -136,6 +150,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         val refresh: () -> Unit = {
             main.post {
                 if (!disposed) {
+                    wallpaperPath = prefs.screensaverPicture()
                     active = owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true
                     val want = active && prefs.screensaverEnabled && prefs.screensaverShowNotifications
                     if (want && lease == null) lease = feed.acquire(badgeOwner)
@@ -226,11 +241,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         }
     }
 
-    val wallpaper = remember {
-        (prefs.screensaverWallpaperPath ?: prefs.wallpaperPath)?.let {
-            BitmapHelper.decodeFile(it, BitmapHelper.screenMaxSide(context))
-        }
-    }
+    val wallpaper = contrast.wallpaper
 
     val iconShape = appIconShape(prefs.roundedIcons)
     CompositionLocalProvider(
@@ -239,7 +250,8 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         LocalSurface provides if (dark) Color.Black else Color.White,
         LocalIconFilter provides if (dark) EinkColorFilterDark else EinkColorFilter,
     ) {
-        Box(
+        ContrastInkBox(
+            contrast,
             Modifier
                 .fillMaxSize()
                 .background(LocalSurface.current)
@@ -251,7 +263,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
                     } else Modifier
                 ),
         ) {
-            if (prefs.screensaverWallpaper && wallpaper != null) {
+            if (wallpaper != null) {
                 Image(
                     bitmap = wallpaper.asImageBitmap(),
                     contentDescription = null,
@@ -278,7 +290,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
                         showAlarm = prefs.showAlarm,
                         weather = clock.weather,
                         weatherCelsius = prefs.weatherCelsius,
-                        islandsActive = prefs.screensaverIslands,
+                        islandsActive = prefs.screensaverIslands && wallpaper == null,
                     )
                 }
                 Spacer(Modifier.weight(1f))
@@ -294,6 +306,9 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         }
     }
 }
+
+private fun PrefsManager.screensaverPicture(): String? =
+    if (screensaverWallpaper) screensaverWallpaperPath ?: wallpaperPath else null
 
 @Composable
 private fun NotificationIsland(rows: List<SsRow>, overflow: Int) {
