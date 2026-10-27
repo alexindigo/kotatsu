@@ -126,8 +126,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     var notificationCounts by mutableStateOf(mapOf<String, Int>())
         private set
-    var wallpaperBitmap by mutableStateOf<Bitmap?>(null)
-        private set
+    val wallpaperContrast = com.gezimos.katapult.ui.WallpaperContrast(viewModelScope)
+    val wallpaperBitmap: Bitmap? get() = wallpaperContrast.wallpaper
     var screensaverWallpaperPath by mutableStateOf(prefs.screensaverWallpaperPath)
         private set
     private var wallpaperRequest = 0L
@@ -916,7 +916,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             saveWallpaperBitmap(file, request, bitmap) { temp ->
                 if (request == wallpaperRequest && temp.renameTo(file)) {
                     prefs.wallpaperPath = file.absolutePath
-                    wallpaperBitmap = bitmap
+                    wallpaperContrast.updateWallpaper(bitmap)
                 }
             }
         }
@@ -926,7 +926,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         ++wallpaperRequest
         val previous = prefs.wallpaperPath
         prefs.wallpaperPath = null
-        wallpaperBitmap = null
+        wallpaperContrast.updateWallpaper(null)
         previous?.let(prefs::deleteOwnedFileIfUnreferenced)
     }
 
@@ -1133,7 +1133,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun loadWallpaper() {
         val path = prefs.wallpaperPath ?: return
         if (!prefs.isOwnedFile(path)) return
-        wallpaperBitmap = BitmapHelper.decodeFile(path, BitmapHelper.screenMaxSide(ctx))
+        wallpaperContrast.updateWallpaper(BitmapHelper.decodeFile(path, BitmapHelper.screenMaxSide(ctx)))
     }
 
     override fun onCleared() {

@@ -148,7 +148,8 @@ fun HomeScreen(
         }
     }
 
-    Box(
+    ContrastInkBox(
+        contrast = viewModel.wallpaperContrast,
         modifier = Modifier
             .fillMaxSize()
             .background(LocalSurface.current)
@@ -243,7 +244,7 @@ fun HomeScreen(
                     showAlarm = viewModel.prefs.showAlarm,
                     weather = viewModel.weather,
                     weatherCelsius = viewModel.prefs.weatherCelsius,
-                    islandsActive = viewModel.prefs.homeIslands,
+                    islandsActive = viewModel.prefs.homeIslands && viewModel.wallpaperBitmap == null,
                     topSpacing = if (viewModel.prefs.hideStatusBar) 32.dp else 8.dp,
                     onClockClick = {
                         val saved = viewModel.prefs.loadShortcut("clock")
@@ -387,8 +388,9 @@ fun HomeScreen(
                             Box(
                                 modifier = Modifier
                                     .size(LocalIconSize.current)
+                                    .contrastInk()
                                     .then(
-                                        if (viewModel.prefs.homeIslands)
+                                        if (viewModel.prefs.homeIslands && viewModel.wallpaperBitmap == null)
                                             Modifier
                                                 .background(LocalSurface.current, tileShape)
                                                 .border(strokeWidth, LocalInk.current, tileShape)
@@ -814,15 +816,17 @@ private fun ShortcutItem(
         }
         if (!viewModel.prefs.hideAppNames) {
             Spacer(Modifier.height(4.dp))
-            val labelWidth = if (viewModel.prefs.homeIslands) 110.dp - 24.dp else 110.dp
+            val islandsActive = viewModel.prefs.homeIslands && viewModel.wallpaperBitmap == null
+            val labelWidth = if (islandsActive) 110.dp - 24.dp else 110.dp
             var lineLeft by remember { mutableFloatStateOf(0f) }
             var lineRight by remember { mutableFloatStateOf(0f) }
             Text(
                 text = label,
                 modifier = Modifier
+                    .contrastInk()
                     .widthIn(max = labelWidth)
                     .homeIsland(
-                        show = viewModel.prefs.homeIslands,
+                        show = islandsActive,
                         surface = LocalSurface.current,
                         ink = LocalInk.current,
                         hPad = 12.dp,

@@ -76,6 +76,7 @@ fun ColumnScope.ClockDisplay(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .contrastInk()
             .then(if (islandsActive) Modifier.zIndex(1f) else Modifier)
             .homeIsland(islandsActive && hasStatus, LocalSurface.current, LocalInk.current, hPad = 12.dp),
     ) {
@@ -159,6 +160,7 @@ fun ColumnScope.ClockDisplay(
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
+            .contrastInk()
             .homeIsland(islandsActive, LocalSurface.current, LocalInk.current, hPad = 16.dp)
             .then(
                 if (onClockClick != null || onClockLongClick != null) {
@@ -194,6 +196,7 @@ fun ColumnScope.ClockDisplay(
         fontFamily = LatoFamily,
         color = LocalInk.current,
         modifier = Modifier
+            .contrastInk()
             .homeIsland(islandsActive, LocalSurface.current, LocalInk.current, hPad = 12.dp)
             .then(
                 if (onDateClick != null || onDateLongClick != null) {
