@@ -34,7 +34,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.gezimos.katapult.R
 import com.gezimos.katapult.weather.formatWeatherTemperature
 import com.gezimos.katapult.weather.api.Weather
@@ -42,7 +41,7 @@ import com.gezimos.katapult.weather.api.WeatherCondition
 
 /**
  * The home clock block — alarm/battery status, the big clock with AM/PM, and the date,
- * with optional "islands" behind each. Shared by the home screen and the screensaver so
+ * with wallpaper-relative contrast ink. Shared by the home screen and the screensaver so
  * they render identically. Click handlers are optional (the screensaver passes none).
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -58,7 +57,6 @@ fun ColumnScope.ClockDisplay(
     showAlarm: Boolean = true,
     weather: Weather? = null,
     weatherCelsius: Boolean = false,
-    islandsActive: Boolean,
     onClockClick: (() -> Unit)? = null,
     onClockLongClick: (() -> Unit)? = null,
     onDateClick: (() -> Unit)? = null,
@@ -71,14 +69,10 @@ fun ColumnScope.ClockDisplay(
     val hasWeather = weather != null
     val hasAlarm = showAlarm && alarmTime != null
     val hasBattery = showBattery && batteryPercent >= 0
-    val hasStatus = hasWeather || hasAlarm || hasBattery
     Row(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .contrastInk()
-            .then(if (islandsActive) Modifier.zIndex(1f) else Modifier)
-            .homeIsland(islandsActive && hasStatus, LocalSurface.current, LocalInk.current, hPad = 12.dp),
+        modifier = Modifier.contrastInk(),
     ) {
         if (weather != null) {
             Row(
@@ -161,7 +155,6 @@ fun ColumnScope.ClockDisplay(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .contrastInk()
-            .homeIsland(islandsActive, LocalSurface.current, LocalInk.current, hPad = 16.dp)
             .then(
                 if (onClockClick != null || onClockLongClick != null) {
                     Modifier.combinedClickable(
@@ -197,7 +190,6 @@ fun ColumnScope.ClockDisplay(
         color = LocalInk.current,
         modifier = Modifier
             .contrastInk()
-            .homeIsland(islandsActive, LocalSurface.current, LocalInk.current, hPad = 12.dp)
             .then(
                 if (onDateClick != null || onDateLongClick != null) {
                     Modifier.combinedClickable(

@@ -64,7 +64,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
             ui.click(context.getString(R.string.section_home))
             ui.scrollTo(context.getString(R.string.show_alarm))
             assertFalse(ui.has(context.getString(R.string.show_weather)))
-            ui.click(context.getString(R.string.paper_next_page))
+            if (!ui.has(context.getString(R.string.extra_dock_row))) ui.click(context.getString(R.string.paper_next_page))
             ui.await("Home layout chapter did not open") { ui.has(context.getString(R.string.extra_dock_row)) }
             assertFalse(ui.has(context.getString(R.string.show_weather)))
             assertFalse("Unavailable Celsius row was rendered", ui.has(context.getString(R.string.weather_celsius)))

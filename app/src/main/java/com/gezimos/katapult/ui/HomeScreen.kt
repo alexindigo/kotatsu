@@ -69,14 +69,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.positionChange
@@ -91,7 +85,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.gezimos.katapult.MainViewModel
 import com.gezimos.katapult.R
 import com.gezimos.katapult.Screen
@@ -244,7 +237,6 @@ fun HomeScreen(
                     showAlarm = viewModel.prefs.showAlarm,
                     weather = viewModel.weather,
                     weatherCelsius = viewModel.prefs.weatherCelsius,
-                    islandsActive = viewModel.prefs.homeIslands && viewModel.wallpaperBitmap == null,
                     topSpacing = if (viewModel.prefs.hideStatusBar) 32.dp else 8.dp,
                     onClockClick = {
                         val saved = viewModel.prefs.loadShortcut("clock")
@@ -384,18 +376,11 @@ fun HomeScreen(
                         ) {
                             val strokeWidth = 2.5.dp
                             val isRounded = viewModel.roundedIcons
-                            val tileShape = appIconShape(isRounded)
                             Box(
                                 modifier = Modifier
                                     .size(LocalIconSize.current)
                                     .contrastInk()
-                                    .then(
-                                        if (viewModel.prefs.homeIslands && viewModel.wallpaperBitmap == null)
-                                            Modifier
-                                                .background(LocalSurface.current, tileShape)
-                                                .border(strokeWidth, LocalInk.current, tileShape)
-                                        else Modifier.dashedDotBorder(strokeWidth = strokeWidth, isRounded = isRounded, color = LocalInk.current)
-                                    ),
+                                    .dashedDotBorder(strokeWidth = strokeWidth, isRounded = isRounded, color = LocalInk.current),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Column(
@@ -816,23 +801,11 @@ private fun ShortcutItem(
         }
         if (!viewModel.prefs.hideAppNames) {
             Spacer(Modifier.height(4.dp))
-            val islandsActive = viewModel.prefs.homeIslands && viewModel.wallpaperBitmap == null
-            val labelWidth = if (islandsActive) 110.dp - 24.dp else 110.dp
-            var lineLeft by remember { mutableFloatStateOf(0f) }
-            var lineRight by remember { mutableFloatStateOf(0f) }
             Text(
                 text = label,
                 modifier = Modifier
                     .contrastInk()
-                    .widthIn(max = labelWidth)
-                    .homeIsland(
-                        show = islandsActive,
-                        surface = LocalSurface.current,
-                        ink = LocalInk.current,
-                        hPad = 12.dp,
-                        vPad = 2.dp,
-                        bounds = { lineLeft to lineRight },
-                    ),
+                    .widthIn(max = 110.dp),
                 fontSize = 18.sp,
                 fontFamily = LatoFamily,
                 color = LocalInk.current,
@@ -840,44 +813,7 @@ private fun ShortcutItem(
                 softWrap = false,
                 overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-                onTextLayout = {
-                    lineLeft = it.getLineLeft(0)
-                    lineRight = it.getLineRight(0)
-                },
             )
         }
     }
 }
-
-internal fun Modifier.homeIsland(
-    show: Boolean,
-    surface: Color,
-    ink: Color,
-    hPad: Dp = 8.dp,
-    vPad: Dp = 7.dp,
-    bounds: (() -> Pair<Float, Float>)? = null,
-): Modifier =
-    if (!show) this else drawBehind {
-        val px = hPad.toPx()
-        val py = vPad.toPx()
-        val radius = 19.dp.toPx()
-        val stroke = 2.5.dp.toPx()
-        val corner = CornerRadius(radius, radius)
-        val bias = (size.height * 0.05f)
-            .coerceAtMost(2.dp.toPx())
-            .coerceAtMost(py - 1.dp.toPx())
-            .coerceAtLeast(0f)
-        val b = bounds?.invoke()
-        val left = if (b != null && b.second > b.first) b.first.coerceIn(0f, size.width) else 0f
-        val right = if (b != null && b.second > b.first) b.second.coerceIn(0f, size.width) else size.width
-        val topLeft = Offset(left - px, -py + bias)
-        val rectSize = Size(right - left + px * 2, size.height + py * 2)
-        drawRoundRect(color = surface, topLeft = topLeft, size = rectSize, cornerRadius = corner)
-        drawRoundRect(
-            color = ink,
-            topLeft = Offset(topLeft.x + stroke / 2, topLeft.y + stroke / 2),
-            size = Size(rectSize.width - stroke, rectSize.height - stroke),
-            cornerRadius = CornerRadius(radius - stroke / 2, radius - stroke / 2),
-            style = Stroke(width = stroke),
-        )
-    }

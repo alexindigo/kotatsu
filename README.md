@@ -24,7 +24,7 @@ Kotatsu on a Mudita Kompakt:
         </tr>
         <tr>
             <td><img src='docs/img/screenshots/kotatsu_hidden_apps.png' height='300' alt="Hidden apps page with Hide and Notify controls"></td>
-            <td><img src='docs/img/screenshots/kotatsu_home_wallpaper.png' height='300' alt="Home screen with a wallpaper and no text backgrounds"></td>
+            <td><img src='docs/img/screenshots/kotatsu_home_wallpaper.png' height='300' alt="Home screen with a wallpaper"></td>
             <td><img src='docs/img/screenshots/kotatsu_lockscreen_widgets.png' height='300' alt="Lock-screen widgets settings"></td>
             <td><img src='docs/img/screenshots/kotatsu_home_dark.png' height='300' alt="Dark home screen with battery percentage and no wallpaper"></td>
         </tr>
@@ -35,7 +35,7 @@ Kotatsu on a Mudita Kompakt:
 
 - **A simple home and app grid.** Large clock and date, Phone/SMS dock, an optional row of three shortcuts, music information and controls, battery percentage, and swipe or page-arrow navigation. Arrows stop at the ends even when swipe wrapping is on.
 - **2,174 offline icon choices.** Search Simple Icons, Tabler and Material collections, import PNG/SVG artwork, or reset an icon. Reviewed brand matches and hand-picked stock line icons apply automatically; other apps keep their original icons. Manual choices take priority. See the [icon catalogue](docs/ICON_CATALOGUE.md).
-- **A consistent e-ink look.** Rounded-square or circle app icons, round buttons and page arrows, light/dark/system themes, optional wallpaper and text backgrounds, and home-button refresh to clear ghosting.
+- **A consistent e-ink look.** Rounded-square or circle app icons, round buttons and page arrows, light/dark/system themes, an optional wallpaper with automatic black-or-white ink, and home-button refresh to clear ghosting.
 - **Setup at your pace.** Finish onboarding without sensitive grants or changing the default launcher. Sensitive access has separate choices for collecting badges, media information and usage statistics, and for notification dismissal, call acknowledgment, media controls and accessibility features.
 - **Quiet app lists.** Hide, rename and reorder apps. Settings → All Apps separates Hidden Apps from Kompakt System Apps. Stock apps omitted by Mudita's launcher, app stores, FUTO Keyboard and Mudita's Update start hidden and can be shown individually. Hidden apps stay off the lock screen unless their separate Notify box is ticked; lock-screen exclusions still take precedence.
 - **A useful lock screen.** On Kompakt, host installed Android app widgets in a configurable box over the padlock and unlock hint. Choose widget size and order. Optional experimental lock-screen notifications show per-app counts. These features need the Kotatsu Action Service.

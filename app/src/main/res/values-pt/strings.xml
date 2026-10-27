@@ -153,8 +153,6 @@
     <string name="call_sms_badges_desc">Lê o registo de chamadas e SMS diretamente para Mudita Phone &amp; SMS, que não funcionam com o listener de notificações</string>
     <string name="swipe_up_all_apps">Deslizar para todas as apps</string>
     <string name="swipe_up_all_apps_desc">Deslize para cima ou para a esquerda para todas as apps</string>
-    <string name="home_islands">Fundos de texto</string>
-    <string name="home_islands_desc">Fundos atrás do relógio, data e apps</string>
     <string name="app_gesture_direction">Direção dos gestos</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertical</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">O Kotatsu ainda não está selecionado como proteção de ecrã. Abra as definições da proteção de ecrã e escolha o Kotatsu, depois inicie-o pelo menu inicial.</string>
     <string name="screensaver_open_settings">Abrir definições da proteção de ecrã</string>
     <string name="screensaver_settings_desc">Escolha Kotatsu nas definições de proteção de ecrã do Android</string>
-    <string name="screensaver_islands">Fundos de texto da proteção de ecrã</string>
     <string name="screensaver_wallpaper">Fundo da proteção de ecrã</string>
     <string name="screensaver_wallpaper_desc">Mostrar uma imagem de fundo atrás da proteção de ecrã</string>
     <string name="section_screensaver">Proteção de ecrã (Experimental)</string>

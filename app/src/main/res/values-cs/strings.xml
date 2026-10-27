@@ -116,8 +116,6 @@
     <string name="hide_all_apps_button_desc">Nahradit tlačítko Všechny aplikace zkratkou</string>
     <string name="swipe_up_all_apps">Přejetí pro aplikace</string>
     <string name="swipe_up_all_apps_desc">Přejetím nahoru nebo doleva otevřete Aplikace</string>
-    <string name="home_islands">Pozadí textu</string>
-    <string name="home_islands_desc">Pozadí za hodinami, datem a aplikacemi</string>
     <string name="app_gesture_direction">Směr gest aplikací</string>
     <string name="gesture_horizontal">Vodorovně</string>
     <string name="gesture_vertical">Svisle</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">Kotatsu zatím není vybrán jako spořič obrazovky. Otevřete nastavení spořiče a vyberte Kotatsu, poté jej spusťte z domovské nabídky.</string>
     <string name="screensaver_open_settings">Otevřít nastavení spořiče</string>
     <string name="screensaver_settings_desc">Vybrat Kotatsu v nastavení spořiče obrazovky Androidu</string>
-    <string name="screensaver_islands">Pozadí textu spořiče</string>
     <string name="screensaver_wallpaper">Pozadí spořiče</string>
     <string name="screensaver_wallpaper_desc">Zobrazit obrázek na pozadí za spořičem</string>
     <string name="section_screensaver">Spořič obrazovky (Experimentální)</string>

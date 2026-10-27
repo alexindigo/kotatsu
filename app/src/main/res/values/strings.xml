@@ -131,8 +131,6 @@
     <string name="hide_all_apps_button_desc">Replace the All Apps button with a shortcut</string>
     <string name="swipe_up_all_apps">Swipe for All Apps</string>
     <string name="swipe_up_all_apps_desc">Swipe up or left for All Apps</string>
-    <string name="home_islands">Text backgrounds</string>
-    <string name="home_islands_desc">Islands behind the clock, date and apps</string>
     <string name="app_gesture_direction">App gesture direction</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertical</string>
@@ -241,7 +239,6 @@
     <string name="screensaver_setup_message">Kotatsu isn\'t selected as the screen saver yet. Open Screen saver settings and choose Kotatsu, then start it from the home menu.</string>
     <string name="screensaver_open_settings">Open screensaver settings</string>
     <string name="screensaver_settings_desc">Choose Kotatsu in Android\'s screen saver settings</string>
-    <string name="screensaver_islands">Screensaver Text Backgrounds</string>
     <string name="screensaver_wallpaper">Screensaver background</string>
     <string name="screensaver_wallpaper_desc">Show a background image behind the screensaver</string>
     <string name="section_screensaver">Screensaver</string>

@@ -153,8 +153,6 @@
     <string name="call_sms_badges_desc">Lit le journal d\'appels et les SMS directement pour Mudita Phone &amp; SMS, qui ne fonctionnent pas avec le listener de notifications</string>
     <string name="swipe_up_all_apps">Balayer pour toutes les apps</string>
     <string name="swipe_up_all_apps_desc">Balayez vers le haut ou la gauche pour toutes les apps</string>
-    <string name="home_islands">Fonds de texte</string>
-    <string name="home_islands_desc">Fonds derrière l\'horloge, la date et les apps</string>
     <string name="app_gesture_direction">Direction des gestes</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertical</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">Kotatsu n\'est pas encore sélectionné comme économiseur d\'écran. Ouvrez les réglages de l\'économiseur d\'écran et choisissez Kotatsu, puis lancez-le depuis le menu d\'accueil.</string>
     <string name="screensaver_open_settings">Ouvrir les réglages de l\'économiseur</string>
     <string name="screensaver_settings_desc">Choisir Kotatsu dans les paramètres d\'économiseur d\'écran d\'Android</string>
-    <string name="screensaver_islands">Fonds de texte de l\'économiseur</string>
     <string name="screensaver_wallpaper">Fond de l\'économiseur</string>
     <string name="screensaver_wallpaper_desc">Afficher une image de fond derrière l\'économiseur</string>
     <string name="section_screensaver">Économiseur d\'écran (Expérimental)</string>

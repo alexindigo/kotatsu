@@ -49,9 +49,9 @@ class ConfigImportInstrumentedTest {
             "rounded_icons", "dark_mode", "hide_status_bar", "hide_status_bar_clock", "eink_refresh_home",
             "double_tap_brightness", "infinite_scroll", "home_extra_row", "disable_music_widget",
             "show_katapult_icon", "hide_app_names", "hide_arrow_buttons", "disable_home_editing",
-            "hide_all_apps_button", "swipe_up_all_apps", "home_islands", "vertical_app_gestures",
+            "hide_all_apps_button", "swipe_up_all_apps", "vertical_app_gestures",
             "lockscreen_widget", "lockscreen_music_widget", "lockscreen_weather", "lockscreen_widget_latest_first",
-            "screensaver_enabled", "screensaver_islands", "screensaver_wallpaper", "screensaver_show_clock",
+            "screensaver_enabled", "screensaver_wallpaper", "screensaver_show_clock",
             "screensaver_show_notifications", "screensaver_double_tap_brightness", "screensaver_eink_refresh",
             "screensaver_on_power", "lockscreen_widgets_enabled")
         for (key in keys) {
@@ -72,6 +72,26 @@ class ConfigImportInstrumentedTest {
                 JSONObject.NULL, JSONArray(), JSONObject())) {
                 rejectsUnchanged(prefs, raw, config().put(key, invalid))
             }
+        }
+    }
+
+    @Test fun retiredTextBackgroundKeysAreIgnoredInOldBackupsAndNewExports() = withPrefs { prefs, raw ->
+        assertTrue(raw.edit().putBoolean("home_islands", true).putBoolean("screensaver_islands", true).commit())
+        val exported = JSONObject(prefs.exportToJson(context))
+        assertFalse(exported.has("home_islands"))
+        assertFalse(exported.has("screensaver_islands"))
+        for (oldValue in listOf(true, false, "obsolete", JSONObject.NULL)) {
+            val backup = config().put("home_islands", oldValue).put("screensaver_islands", oldValue)
+                .put("home_extra_row", true).put("show_battery", false)
+            assertNotNull(prefs.previewPolicyImport(backup.toString()))
+            assertTrue(prefs.importFromJson(backup.toString()))
+            assertTrue(prefs.homeExtraRow)
+            assertFalse(prefs.showBattery)
+            assertFalse(raw.contains("home_islands"))
+            assertFalse(raw.contains("screensaver_islands"))
+            val roundTrip = JSONObject(prefs.exportToJson(context))
+            assertFalse(roundTrip.has("home_islands"))
+            assertFalse(roundTrip.has("screensaver_islands"))
         }
     }
 

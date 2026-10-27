@@ -153,8 +153,6 @@
     <string name="call_sms_badges_desc">Leest oproeplog en SMS direct voor Mudita Phone &amp; SMS, die niet werken met de meldingslistener</string>
     <string name="swipe_up_all_apps">Vegen voor alle apps</string>
     <string name="swipe_up_all_apps_desc">Veeg omhoog of naar links voor alle apps</string>
-    <string name="home_islands">Tekstachtergronden</string>
-    <string name="home_islands_desc">Achtergronden achter klok, datum en apps</string>
     <string name="app_gesture_direction">Richting app-gebaren</string>
     <string name="gesture_horizontal">Horizontaal</string>
     <string name="gesture_vertical">Verticaal</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">Kotatsu is nog niet als schermbeveiliging geselecteerd. Open de schermbeveiligingsinstellingen en kies Kotatsu, start het daarna via het startmenu.</string>
     <string name="screensaver_open_settings">Schermbeveiligingsinstellingen openen</string>
     <string name="screensaver_settings_desc">Kies Kotatsu in Androids instellingen voor schermbeveiliging</string>
-    <string name="screensaver_islands">Schermbeveiliging-tekstachtergronden</string>
     <string name="screensaver_wallpaper">Schermbeveiligingsachtergrond</string>
     <string name="screensaver_wallpaper_desc">Een achtergrondafbeelding achter de schermbeveiliging tonen</string>
     <string name="section_screensaver">Schermbeveiliging (Experimenteel)</string>

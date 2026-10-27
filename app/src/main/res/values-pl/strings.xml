@@ -153,8 +153,6 @@
     <string name="call_sms_badges_desc">Odczytuje rejestr połączeń i SMS bezpośrednio dla Mudita Phone i SMS, które nie działają z listenerem powiadomień</string>
     <string name="swipe_up_all_apps">Przesuń, aby otworzyć aplikacje</string>
     <string name="swipe_up_all_apps_desc">Przesuń w górę lub w lewo, aby otworzyć aplikacje</string>
-    <string name="home_islands">Tła tekstu</string>
-    <string name="home_islands_desc">Tła za zegarem, datą i aplikacjami</string>
     <string name="app_gesture_direction">Kierunek gestów</string>
     <string name="gesture_horizontal">Poziomy</string>
     <string name="gesture_vertical">Pionowy</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">Kotatsu nie jest jeszcze wybrany jako wygaszacz ekranu. Otwórz ustawienia wygaszacza i wybierz Kotatsu, a następnie uruchom go z menu ekranu głównego.</string>
     <string name="screensaver_open_settings">Otwórz ustawienia wygaszacza</string>
     <string name="screensaver_settings_desc">Wybierz Kotatsu w ustawieniach wygaszacza ekranu Androida</string>
-    <string name="screensaver_islands">Tła tekstu wygaszacza</string>
     <string name="screensaver_wallpaper">Tło wygaszacza</string>
     <string name="screensaver_wallpaper_desc">Pokaż obraz tła za wygaszaczem</string>
     <string name="section_screensaver">Wygaszacz ekranu (Eksperymentalne)</string>

@@ -166,7 +166,6 @@ fun SettingsScreen(
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
     var swipeUpAllApps by remember { mutableStateOf(prefs.swipeUpAllApps) }
-    var homeIslands by remember { mutableStateOf(prefs.homeIslands) }
     var verticalAppGestures by remember { mutableStateOf(prefs.verticalAppGestures) }
     var lockscreenWidget by remember { mutableStateOf(prefs.lockscreenWidget) }
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
@@ -174,7 +173,6 @@ fun SettingsScreen(
     val widgetSettings = viewModel.lockscreenWidgets
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var lockscreenLatestFirst by remember { mutableStateOf(prefs.lockscreenWidgetLatestFirst) }
-    var screensaverIslands by remember { mutableStateOf(prefs.screensaverIslands) }
     var screensaverWallpaper by remember { mutableStateOf(prefs.screensaverWallpaper) }
     val screensaverWallpaperPath = viewModel.screensaverWallpaperPath
     var screensaverEnabled by remember { mutableStateOf(prefs.screensaverEnabled) }
@@ -276,13 +274,13 @@ fun SettingsScreen(
     )
 
     val home = homeCategory(clockFormat, dateFormat, showAlarm, showBattery, weatherSource != null, showWeather,
-        weatherCelsius, homeExtraRow, homeIslands, disableMusicWidget,
+        weatherCelsius, homeExtraRow, disableMusicWidget,
         onClock = { clockFormat = it; prefs.clockFormat = it; viewModel.updateClock() },
         onDate = { dateFormat = it; prefs.dateFormat = it; viewModel.updateClock() },
         onAlarm = { showAlarm = it; prefs.showAlarm = it }, onBattery = { showBattery = it; prefs.showBattery = it },
         onWeather = { showWeather = it; prefs.showWeather = it; viewModel.refreshWeather(force = true) },
         onCelsius = { weatherCelsius = it; prefs.weatherCelsius = it },
-        onDock = { homeExtraRow = it; prefs.homeExtraRow = it }, onBackgrounds = { homeIslands = it; prefs.homeIslands = it },
+        onDock = { homeExtraRow = it; prefs.homeExtraRow = it },
         onMusic = { disableMusicWidget = !it; prefs.disableMusicWidget = !it })
     val apps = appsCategory(isMudita, appSortMode, showKatapultIcon, hideAllAppsButton, infiniteScroll, hideArrowButtons,
         onSort = {
@@ -339,7 +337,7 @@ fun SettingsScreen(
             if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
         }, onWidgets = { widgetSettings.refresh(); navigation.push("widgets") }, onMessage = viewModel::beginLockscreenMessage)
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
-        screensaverIslands, screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
+        screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
         screensaverDoubleTapBrightness, screensaverOnPower, screensaverAppIcon, screensaverUpdateMode,
         onEnabled = { screensaverEnabled = it; prefs.screensaverEnabled = it },
         onSystem = { try { context.startActivity(Intent(Settings.ACTION_DREAM_SETTINGS)) } catch (_: Exception) {} },
@@ -726,11 +724,6 @@ fun SettingsScreen(
                         screensaverShowNotifications = v
                         prefs.screensaverShowNotifications = v
                     },
-                ),
-                Triple(
-                    stringResource(R.string.home_islands),
-                    screensaverIslands,
-                    { v: Boolean -> screensaverIslands = v; prefs.screensaverIslands = v },
                 ),
                 Triple(
                     stringResource(R.string.screensaver_eink_refresh),

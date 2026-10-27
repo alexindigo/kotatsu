@@ -24,7 +24,7 @@ class PaperIndexChaptersInstrumentedTest {
     private val context = instrumentation.targetContext
     private val expected = linkedMapOf(
         "appearance" to listOf(listOf("shape", "size", "names"), listOf("theme", "status", "clock", "mode", "refresh")),
-        "home" to listOf(listOf("clock_format", "date_format", "alarm", "battery"), listOf("weather", "celsius", "dock", "backgrounds", "music")),
+        "home" to listOf(listOf("clock_format", "date_format", "alarm", "battery"), listOf("weather", "celsius", "dock", "music")),
         "apps" to listOf(listOf("sort", "icon", "hidden", "system"), listOf("button", "infinite", "arrows")),
         "gestures" to listOf(listOf("swipe", "direction", "double_tap", "long_press")),
         "notifications" to listOf(listOf("indicators", "apps", "log", "history")),
@@ -47,15 +47,15 @@ class PaperIndexChaptersInstrumentedTest {
     private fun definitions(record: (String) -> Unit, enabled: Boolean = true, background: Boolean = false, image: Boolean = false): List<SettingsCategory> = listOf(
         appearanceCategory(true, true, 80, PrefsManager.THEME_LIGHT, false, false, false, 0, false,
             {}, {}, {}, {}, {}, {}, {}, {}),
-        homeCategory("system", "system", true, false, true, false, false, true, false, false,
-            { record(it) }, { record(it) }, {}, {}, {}, {}, {}, {}, {}),
+        homeCategory("system", "system", true, false, true, false, false, true, false,
+            { record(it) }, { record(it) }, {}, {}, {}, {}, {}, {}),
         appsCategory(true, PrefsManager.APP_SORT_MANUAL, false, false, false, false,
             { record(it.toString()) }, {}, {}, {}, {}, {}, {}),
         gesturesCategory(true, true, PrefsManager.DOUBLE_TAP_OFF, PrefsManager.HOME_LONG_PRESS_EDIT,
             {}, { record(it.toString()) }, { record(it.toString()) }, { record(it.toString()) }),
         notificationsCategory(true, true, {}, {}, {}, {}),
         lockCategory(true, true, false, true, false, false, true, 1, {}, {}, { record(it.toString()) }, {}, {}, {}, {}),
-        screensaverCategory(enabled, true, true, false, true, background, image, false, false, false, PrefsManager.SCREENSAVER_MODE_AUTO,
+        screensaverCategory(enabled, true, true, true, background, image, false, false, false, PrefsManager.SCREENSAVER_MODE_AUTO,
             {}, {}, {}, {}, {}, {}, {}, {}, { record(it.toString()) }),
         systemCategory({}, {}, {}, {}, {}, {}, {}),
         aboutCategory("0.1", {}, {}),
@@ -211,8 +211,10 @@ class PaperIndexChaptersInstrumentedTest {
                 activity.setContent { SettingsScreen(vm, activity.configExporter, activity.configImporter, activity.screensaverWallpaperPicker) }
             }
             ui.click(context.getString(R.string.section_home))
-            ui.click(context.getString(R.string.paper_next_page))
             val title = context.getString(R.string.paper_music_widget)
+            ui.await("Home chapter not ready") { ui.has(title) || ui.has(context.getString(R.string.paper_next_page)) }
+            if (!ui.has(title)) ui.click(context.getString(R.string.paper_next_page))
+            assertFalse(ui.has("Text backgrounds"))
             ui.await("Positive music state must be On for stored disable=false") { ui.checked(title) == true }
             ui.click(title)
             ui.await("Music Off must persist disable=true") { prefs.disableMusicWidget && ui.checked(title) == false }
@@ -224,6 +226,33 @@ class PaperIndexChaptersInstrumentedTest {
                 val editor = raw.edit()
                 if (previous is Boolean) editor.putBoolean("disable_music_widget", previous) else editor.remove("disable_music_widget")
                 assertTrue(editor.commit())
+            }
+        }
+    }
+
+    @Test fun screensaverCustomizationNoLongerOffersTextBackgrounds() = withActivity { activity, ui ->
+        val raw = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
+        val previous = raw.all["screensaver_enabled"]
+        try {
+            instrumentation.runOnMainSync {
+                assertTrue(raw.edit().putBoolean("screensaver_enabled", true).commit())
+                val vm = ViewModelProvider(activity)[MainViewModel::class.java]
+                vm.resolveLockscreenReEnable()
+                activity.setContent { SettingsScreen(vm, activity.configExporter, activity.configImporter, activity.screensaverWallpaperPicker) }
+            }
+            ui.click(context.getString(R.string.section_screensaver))
+            ui.click(context.getString(R.string.screensaver_customization))
+            ui.await("Screensaver customization did not open") { ui.has(context.getString(R.string.screensaver_show_clock)) }
+            assertTrue(ui.has(context.getString(R.string.screensaver_show_notifications)))
+            assertTrue(ui.has(context.getString(R.string.screensaver_eink_refresh)))
+            assertFalse(ui.has("Text backgrounds"))
+            assertFalse(ui.has("Screensaver Text Backgrounds"))
+        } finally {
+            instrumentation.runOnMainSync {
+                val editor = raw.edit()
+                if (previous is Boolean) editor.putBoolean("screensaver_enabled", previous) else editor.remove("screensaver_enabled")
+                assertTrue(editor.commit())
+                assertEquals(previous, raw.all["screensaver_enabled"])
             }
         }
     }

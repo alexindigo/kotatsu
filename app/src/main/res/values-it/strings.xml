@@ -153,8 +153,6 @@
     <string name="call_sms_badges_desc">Legge il registro chiamate e gli SMS direttamente per Mudita Telefono e SMS, che non funzionano con il listener di notifiche</string>
     <string name="swipe_up_all_apps">Scorri per tutte le app</string>
     <string name="swipe_up_all_apps_desc">Scorri su o a sinistra per tutte le app</string>
-    <string name="home_islands">Sfondi del testo</string>
-    <string name="home_islands_desc">Sfondi dietro orologio, data e app</string>
     <string name="app_gesture_direction">Direzione gesti app</string>
     <string name="gesture_horizontal">Orizzontale</string>
     <string name="gesture_vertical">Verticale</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">Kotatsu non è ancora selezionato come salvaschermo. Apri le impostazioni del salvaschermo e scegli Kotatsu, poi avvialo dal menu Home.</string>
     <string name="screensaver_open_settings">Apri impostazioni salvaschermo</string>
     <string name="screensaver_settings_desc">Scegli Kotatsu nelle impostazioni del salvaschermo di Android</string>
-    <string name="screensaver_islands">Sfondi del testo del salvaschermo</string>
     <string name="screensaver_wallpaper">Sfondo del salvaschermo</string>
     <string name="screensaver_wallpaper_desc">Mostra un\'immagine di sfondo dietro il salvaschermo</string>
     <string name="section_screensaver">Salvaschermo (Sperimentale)</string>

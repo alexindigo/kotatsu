@@ -403,10 +403,6 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_SWIPE_UP_ALL_APPS, true)
         set(value) = prefs.edit().putBoolean(KEY_SWIPE_UP_ALL_APPS, value).apply()
 
-    var homeIslands: Boolean
-        get() = boolPref(KEY_HOME_ISLANDS, false)
-        set(value) = prefs.edit().putBoolean(KEY_HOME_ISLANDS, value).apply()
-
     var verticalAppGestures: Boolean
         get() = boolPref(KEY_VERTICAL_APP_GESTURES, false)
         set(value) = prefs.edit().putBoolean(KEY_VERTICAL_APP_GESTURES, value).apply()
@@ -453,10 +449,6 @@ class PrefsManager(context: Context) {
     var screensaverEnabled: Boolean
         get() = boolPref(KEY_SCREENSAVER_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_SCREENSAVER_ENABLED, value).apply()
-
-    var screensaverIslands: Boolean
-        get() = boolPref(KEY_SCREENSAVER_ISLANDS, false)
-        set(value) = prefs.edit().putBoolean(KEY_SCREENSAVER_ISLANDS, value).apply()
 
     var screensaverWallpaper: Boolean
         get() = boolPref(KEY_SCREENSAVER_WALLPAPER, false)
@@ -608,7 +600,7 @@ class PrefsManager(context: Context) {
         json.put(CONFIG_VERSION_KEY, appVersionCode(context))
         val widgets = lockscreenWidgetStore.exportSelection()
         for ((key, value) in prefs.all) {
-            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED || key == LockscreenWidgetStore.KEY) continue
+            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED || key == LockscreenWidgetStore.KEY || key in RETIRED_KEYS) continue
             when (value) {
                 is Boolean -> json.put(key, value)
                 is Int -> json.put(key, value)
@@ -650,7 +642,7 @@ class PrefsManager(context: Context) {
         // The declared preference type is authoritative, even when a key has
         // never been stored (or an older import stored it with the wrong type).
         for (key in json.keys()) {
-            if (key in LOCAL_IMPORT_KEYS) continue
+            if (key in LOCAL_IMPORT_KEYS || key in RETIRED_KEYS) continue
             val value = json.opt(key)
             val valid = when (declaredImportDefault(key)) {
                 is Boolean -> value is Boolean
@@ -676,7 +668,7 @@ class PrefsManager(context: Context) {
             is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
         }
         for (key in json.keys()) {
-            if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY || key in LOCAL_IMPORT_KEYS) continue
+            if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY || key in LOCAL_IMPORT_KEYS || key in RETIRED_KEYS) continue
             if (key in preservedChoices) continue
             val value = json.opt(key)
             if (declaredImportDefault(key) == null && !matchesStoredType(existing[key], value)) continue
@@ -703,9 +695,9 @@ class PrefsManager(context: Context) {
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
         KEY_DISABLE_MUSIC_WIDGET, KEY_SHOW_KATAPULT_ICON, KEY_HIDE_APP_NAMES, KEY_HIDE_ARROW_BUTTONS,
-        KEY_DISABLE_HOME_EDITING, KEY_HIDE_ALL_APPS_BUTTON, KEY_SWIPE_UP_ALL_APPS, KEY_HOME_ISLANDS,
+        KEY_DISABLE_HOME_EDITING, KEY_HIDE_ALL_APPS_BUTTON, KEY_SWIPE_UP_ALL_APPS,
         KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET, KEY_LOCKSCREEN_WEATHER, KEY_LOCKSCREEN_WIDGETS_ENABLED,
-        KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED, KEY_SCREENSAVER_ISLANDS,
+        KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED,
         KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
         KEY_ICON_SIZE, KEY_THEME_MODE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
@@ -797,6 +789,9 @@ class PrefsManager(context: Context) {
         private const val CONFIG_VERSION_KEY = "_version"
         private const val CONFIG_TYPE = "katapult_config"
 
+        // Removed presentation settings are tolerated in older backups, never restored or exported.
+        private val RETIRED_KEYS = setOf("home_islands", "screensaver_islands")
+
         val HOME_SLOTS = listOf(
             "clock", "calendar", "phone", "center", "sms",
             "extra_left", "extra_center", "extra_right",
@@ -847,7 +842,6 @@ class PrefsManager(context: Context) {
         private const val KEY_HOME_LONG_PRESS = "home_long_press"
         private const val KEY_HIDE_ALL_APPS_BUTTON = "hide_all_apps_button"
         private const val KEY_SWIPE_UP_ALL_APPS = "swipe_up_all_apps"
-        private const val KEY_HOME_ISLANDS = "home_islands"
         private const val KEY_VERTICAL_APP_GESTURES = "vertical_app_gestures"
         private const val KEY_LOCKSCREEN_WIDGET = "lockscreen_widget"
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
@@ -859,7 +853,6 @@ class PrefsManager(context: Context) {
         private const val KEY_LOCKSCREEN_WIDGET_LATEST_FIRST = "lockscreen_widget_latest_first"
         private const val KEY_LOCKSCREEN_MESSAGE = "lockscreen_message"
         private const val KEY_SCREENSAVER_ENABLED = "screensaver_enabled"
-        private const val KEY_SCREENSAVER_ISLANDS = "screensaver_islands"
         private const val KEY_SCREENSAVER_WALLPAPER = "screensaver_wallpaper"
         private const val KEY_SCREENSAVER_WALLPAPER_PATH = "screensaver_wallpaper_path"
         private const val KEY_SCREENSAVER_SHOW_CLOCK = "screensaver_show_clock"

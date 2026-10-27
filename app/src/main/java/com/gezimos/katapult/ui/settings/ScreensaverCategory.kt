@@ -7,7 +7,7 @@ import com.gezimos.katapult.util.PrefsManager
 
 @Composable
 fun screensaverCategory(
-    enabled: Boolean, clock: Boolean, notifications: Boolean, backgrounds: Boolean, eink: Boolean,
+    enabled: Boolean, clock: Boolean, notifications: Boolean, eink: Boolean,
     wallpaper: Boolean, hasImage: Boolean, brightness: Boolean, power: Boolean, icon: Boolean, mode: Int,
     onEnabled: (Boolean) -> Unit, onSystem: () -> Unit, onCustomize: () -> Unit, onWallpaper: (Boolean) -> Unit,
     onImage: () -> Unit, onBrightness: (Boolean) -> Unit, onPower: (Boolean) -> Unit, onIcon: (Boolean) -> Unit,
@@ -20,7 +20,6 @@ fun screensaverCategory(
     val customization = listOfNotNull(
         stringResource(R.string.paper_group_clock).takeIf { clock },
         stringResource(R.string.paper_screensaver_notifications).takeIf { notifications },
-        stringResource(R.string.home_islands).takeIf { backgrounds },
         stringResource(R.string.screensaver_eink_refresh).takeIf { eink },
     ).joinToString(", ").ifEmpty { stringResource(R.string.double_tap_off) }
     return SettingsCategory("screensaver", stringResource(R.string.section_screensaver), listOf(

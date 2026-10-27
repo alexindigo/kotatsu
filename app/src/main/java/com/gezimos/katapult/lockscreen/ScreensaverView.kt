@@ -290,7 +290,6 @@ internal fun ScreensaverView(feed: BadgeFeed) {
                         showAlarm = prefs.showAlarm,
                         weather = clock.weather,
                         weatherCelsius = prefs.weatherCelsius,
-                        islandsActive = prefs.screensaverIslands && wallpaper == null,
                     )
                 }
                 Spacer(Modifier.weight(1f))

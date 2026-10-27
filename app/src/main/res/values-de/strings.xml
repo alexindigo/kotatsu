@@ -153,8 +153,6 @@
     <string name="call_sms_badges_desc">Liest Anrufliste und SMS direkt für Mudita Phone &amp; SMS, die nicht mit dem Benachrichtigungs-Listener funktionieren</string>
     <string name="swipe_up_all_apps">Wischen für alle Apps</string>
     <string name="swipe_up_all_apps_desc">Nach oben oder links wischen für alle Apps</string>
-    <string name="home_islands">Text-Hintergründe</string>
-    <string name="home_islands_desc">Hintergründe hinter Uhr, Datum und Apps</string>
     <string name="app_gesture_direction">App-Gestenrichtung</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertikal</string>
@@ -198,7 +196,6 @@
     <string name="screensaver_setup_message">Kotatsu ist noch nicht als Bildschirmschoner ausgewählt. Öffne die Bildschirmschoner-Einstellungen, wähle Kotatsu und starte ihn dann über das Home-Menü.</string>
     <string name="screensaver_open_settings">Bildschirmschoner-Einstellungen öffnen</string>
     <string name="screensaver_settings_desc">Kotatsu in Androids Bildschirmschoner-Einstellungen wählen</string>
-    <string name="screensaver_islands">Bildschirmschoner-Texthintergründe</string>
     <string name="screensaver_wallpaper">Bildschirmschoner-Hintergrund</string>
     <string name="screensaver_wallpaper_desc">Ein Hintergrundbild hinter dem Bildschirmschoner anzeigen</string>
     <string name="section_screensaver">Bildschirmschoner (Experimentell)</string>
