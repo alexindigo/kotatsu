@@ -47,8 +47,11 @@ class NotificationListener : NotificationListenerService() {
     }
 
     private fun eligible(): Boolean = instance === this && SensitiveAccess.notificationBadges()
-    private fun badge(sbn: StatusBarNotification): BadgeNotification = BadgeNotification(sbn.key, sbn.packageName,
-        sbn.postTime, sbn.isClearable, sbn.notification.flags and Notification.FLAG_GROUP_SUMMARY != 0)
+    private fun badge(sbn: StatusBarNotification): BadgeNotification {
+        val notification = sbn.notification
+        return BadgeNotification(sbn.key, sbn.packageName, sbn.postTime, sbn.isClearable,
+            notification.flags and Notification.FLAG_GROUP_SUMMARY != 0, number = notification.number)
+    }
 
     fun reconcile() {
         badges.reconcile()

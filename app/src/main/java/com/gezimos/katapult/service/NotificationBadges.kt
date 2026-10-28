@@ -3,7 +3,7 @@ package com.gezimos.katapult.service
 import com.gezimos.katapult.util.SourceGeneration
 
 internal data class BadgeNotification(val key: String, val packageName: String, val postedAt: Long,
-                                      val clearable: Boolean, val summary: Boolean)
+                                      val clearable: Boolean, val summary: Boolean, val number: Int = 0)
 
 /** Count-only listener state. Enumeration/cancellation are injected source operations. */
 internal class NotificationBadges(
@@ -43,7 +43,10 @@ internal class NotificationBadges(
     fun counts(): Map<String, Int> {
         reconcile()
         if (!eligible()) return emptyMap()
-        val values = state.value.orEmpty().values.groupingBy { it.packageName }.eachCount()
+        val values = state.value.orEmpty().values.groupBy { it.packageName }.mapValues { (_, notifications) ->
+            // Keep the unread total positive even if an app supplies extreme numbers.
+            notifications.sumOf { it.number.coerceAtLeast(1).toLong() }.coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+        }
         return if (eligible()) values else emptyMap()
     }
 
@@ -61,8 +64,10 @@ internal class NotificationBadges(
         val inputRevision = revision()
         val notification = read()
         val published = synchronized(lock) {
-            if (!countable(notification)) false
-            else state.publish(epoch, eligible() && inputRevision == revision(), state.value.orEmpty() + (notification.key to notification))
+            val current = state.value.orEmpty()
+            val updated = if (countable(notification)) current + (notification.key to notification)
+                else current - notification.key
+            state.publish(epoch, eligible() && inputRevision == revision(), updated)
         }
         if (published) changed()
     }
