@@ -23,7 +23,7 @@ class PaperIndexChaptersInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val expected = linkedMapOf(
-        "appearance" to listOf(listOf("shape", "size", "names"), listOf("theme", "status", "clock", "mode", "refresh")),
+        "appearance" to listOf(listOf("shape", "size", "names"), listOf("theme", "wallpaper", "status", "clock"), listOf("mode", "refresh")),
         "home" to listOf(listOf("clock_format", "date_format", "alarm", "battery"), listOf("weather", "celsius", "dock", "music")),
         "apps" to listOf(listOf("sort", "icon", "hidden", "system"), listOf("button", "infinite", "arrows")),
         "gestures" to listOf(listOf("swipe", "direction", "double_tap", "long_press")),
@@ -138,7 +138,7 @@ class PaperIndexChaptersInstrumentedTest {
                 if (page < pages.lastIndex) ui.click(context.getString(R.string.paper_next_page))
             }
         }
-        assertEquals("All twelve Value entries must be exercised", 12, opened)
+        assertEquals("All thirteen Value entries must be exercised", 13, opened)
     }
 
     @Test fun everyHelpPageReplacesItsChapterAndReturnsToItsPageNumber() = withActivity { activity, ui ->

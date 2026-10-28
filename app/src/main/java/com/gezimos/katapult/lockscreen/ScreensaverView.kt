@@ -112,10 +112,10 @@ internal fun ScreensaverView(feed: BadgeFeed) {
     val dark = prefs.darkMode
     val scope = rememberCoroutineScope()
     val contrast = remember(scope) { WallpaperContrast(scope) }
-    var wallpaperPath by remember { mutableStateOf(prefs.screensaverPicture()) }
+    var wallpaperPath by remember { mutableStateOf(prefs.screensaverPicture) }
     LaunchedEffect(wallpaperPath) {
         val bitmap = withContext(Dispatchers.IO) {
-            wallpaperPath?.let { BitmapHelper.decodeFile(it, BitmapHelper.screenMaxSide(context)) }
+            wallpaperPath.decode(context)
         }
         contrast.updateWallpaper(bitmap)
     }
@@ -150,7 +150,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         val refresh: () -> Unit = {
             main.post {
                 if (!disposed) {
-                    wallpaperPath = prefs.screensaverPicture()
+                    wallpaperPath = prefs.screensaverPicture
                     active = owner?.lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) == true
                     val want = active && prefs.screensaverEnabled && prefs.screensaverShowNotifications
                     if (want && lease == null) lease = feed.acquire(badgeOwner)
@@ -305,9 +305,6 @@ internal fun ScreensaverView(feed: BadgeFeed) {
         }
     }
 }
-
-private fun PrefsManager.screensaverPicture(): String? =
-    if (screensaverWallpaper) screensaverWallpaperPath ?: wallpaperPath else null
 
 @Composable
 private fun NotificationIsland(rows: List<SsRow>, overflow: Int) {

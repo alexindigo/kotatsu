@@ -35,7 +35,7 @@ class ScreensaverContrastInstrumentedTest {
                         .putInt("theme_mode", if (dark) 1 else 0).putBoolean("dark_mode", dark)
                         .putBoolean("hide_status_bar", false).putString("clock_format", "'10:45 AM'")
                         .putString("date_format", "'October 18, 2026'")
-                        .remove("wallpaper_path").remove("screensaver_wallpaper_path").commit()
+                        .remove("wallpaper_path").remove("wallpaper_source").remove("screensaver_wallpaper_path").commit()
                 }
                 activity = instrumentation.startActivitySync(Intent(Intent.ACTION_VIEW).apply {
                     setClassName(context.packageName, ScreensaverActivity::class.java.name)

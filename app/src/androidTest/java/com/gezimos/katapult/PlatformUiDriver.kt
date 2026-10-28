@@ -13,6 +13,7 @@ import android.accessibilityservice.AccessibilityServiceInfo
 
 /** Test-only public UI input; no adopted shell permissions or production hooks. */
 class PlatformUiDriver(instrumentation: Instrumentation) {
+    private val context = instrumentation.targetContext
     private val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
 
     private fun windows(): List<AccessibilityWindowInfo> {
@@ -162,13 +163,13 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
     }.sortedWith(compareBy({ it.second.top }, { it.second.left })).map { it.first }
 
     fun homeMenu() {
-        await("HOME is not visible") { has("Apps") }
+        await("HOME is not visible") { has(context.getString(R.string.all_apps)) }
         val root = Rect()
         focusedRoot()!!.getBoundsInScreen(root)
         // The empty side of the clock lane, using this frame's actual window bounds.
         tap(root.left + root.width() / 10f, root.top + root.height() / 3f, 750)
         // The wallpaper option is the menu entry present in every configuration.
-        await("HOME long press did not open its public menu") { has("Set Wallpaper") || has("Clear Wallpaper") }
+        await("HOME long press did not open its public menu") { has(context.getString(R.string.wallpaper)) }
     }
 
     fun swipeToHome(vertical: Boolean) {

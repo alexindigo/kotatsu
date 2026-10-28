@@ -10,3 +10,6 @@ assets/logos/delta-chat.svg, GNU General Public License v3.0) in place of the do
 
 The other default icons (calendar, radio, gallery, search, settings, sim, chromium) are Katapult's
 bundled drawables; googlechrome is from the Simple Icons catalogue (see docs/ICON_CATALOGUE.md).
+
+Built-in wallpaper (app/src/main/res/drawable-nodpi/kotatsu_wallpaper.png):
+Kotatsu's own artwork, created by Alex Indigo using ComfyUI and contributed for distribution with Kotatsu.

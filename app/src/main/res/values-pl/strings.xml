@@ -413,4 +413,9 @@
     <string name="paper_notify_app">Powiadamiaj: %1$s</string>
     <string name="paper_unavailable">Niedostępne</string>
     <string name="paper_not_applicable">Nie dotyczy</string>
+    <string name="wallpaper">Tapeta</string>
+    <string name="wallpaper_none">Brak</string>
+    <string name="wallpaper_kotatsu">Kotatsu</string>
+    <string name="wallpaper_photos">Ze zdjęć</string>
+    <string name="wallpaper_help">Użyj wbudowanego obrazu lub wybierz własne zdjęcie</string>
 </resources>

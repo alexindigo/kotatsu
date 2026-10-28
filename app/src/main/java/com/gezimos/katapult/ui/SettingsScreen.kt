@@ -80,6 +80,7 @@ import com.gezimos.katapult.ui.settings.NoticeContent
 import com.gezimos.katapult.ui.settings.PaperIndexRenderer
 import com.gezimos.katapult.ui.settings.TableOfContents
 import com.gezimos.katapult.ui.settings.appearanceCategory
+import com.gezimos.katapult.util.WallpaperSource
 import com.gezimos.katapult.ui.settings.homeCategory
 import com.gezimos.katapult.ui.settings.appsCategory
 import com.gezimos.katapult.ui.settings.gesturesCategory
@@ -121,9 +122,16 @@ fun SettingsScreen(
     screensaverWallpaperPicker: ActivityResultLauncher<String>,
     appStorePackages: AppStorePackages = rememberAppStorePackages(),
     openStoreIntent: ((Intent) -> Boolean)? = null,
+    onWallpaperPhoto: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val navigation = rememberSettingsNavigation()
+    LaunchedEffect(viewModel.settingsPageRequest) {
+        viewModel.settingsPageRequest?.let {
+            navigation.push(it)
+            viewModel.settingsPageRequest = null
+        }
+    }
     val pageStates = rememberSaveableStateHolder()
     val store = appStoreEntry(appStorePackages, openStoreIntent ?: { openAppStoreIntent(context, it) },
         { navigation.push("store") }, { if (navigation.current == "store") navigation.pop() })
@@ -271,6 +279,14 @@ fun SettingsScreen(
         },
         onEink = { einkHelperMode = it; prefs.einkHelperMode = it; (context as? MainActivity)?.setMeinkMode(it) },
         onRefreshHome = { einkRefreshOnHome = it; prefs.einkRefreshOnHome = it },
+        wallpaperSource = viewModel.wallpaperSource,
+        onWallpaper = {
+            when (WallpaperSource.valueOf(it)) {
+                WallpaperSource.NONE -> viewModel.clearWallpaper()
+                WallpaperSource.KOTATSU -> viewModel.useBuiltInWallpaper()
+                WallpaperSource.PHOTO -> onWallpaperPhoto()
+            }
+        },
     )
 
     val home = homeCategory(clockFormat, dateFormat, showAlarm, showBattery, weatherSource != null, showWeather,

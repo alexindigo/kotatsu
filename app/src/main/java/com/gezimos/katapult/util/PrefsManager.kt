@@ -508,6 +508,25 @@ class PrefsManager(context: Context) {
         get() = strPref(KEY_WALLPAPER_PATH, null)?.takeIf(::isOwnedFile)
         set(value) = prefs.edit().putString(KEY_WALLPAPER_PATH, value).apply()
 
+    val wallpaperSource: WallpaperSource
+        get() = WallpaperSource.read(strPref(KEY_WALLPAPER_SOURCE, null), wallpaperPath)
+
+    val wallpaperPicture: WallpaperPicture
+        get() = WallpaperPicture(wallpaperSource, wallpaperPath.takeIf { wallpaperSource == WallpaperSource.PHOTO })
+
+    val screensaverPicture: WallpaperPicture
+        get() = when {
+            !screensaverWallpaper -> WallpaperPicture(WallpaperSource.NONE)
+            screensaverWallpaperPath != null -> WallpaperPicture(WallpaperSource.PHOTO, screensaverWallpaperPath)
+            else -> wallpaperPicture
+        }
+
+    fun setWallpaper(source: WallpaperSource, photoPath: String? = null) {
+        require(source != WallpaperSource.PHOTO || photoPath != null)
+        prefs.edit().putString(KEY_WALLPAPER_SOURCE, source.name)
+            .putString(KEY_WALLPAPER_PATH, photoPath).apply()
+    }
+
     fun getHiddenApps(): Set<String> {
         return setPref(KEY_HIDDEN_APPS, emptySet()) ?: emptySet()
     }
@@ -612,6 +631,7 @@ class PrefsManager(context: Context) {
             }
         }
         if (widgets != null) json.put(LockscreenWidgetStore.KEY, widgets)
+        json.put(KEY_WALLPAPER_SOURCE, wallpaperSource.name)
         json.toString(2)
     }
 
@@ -703,7 +723,7 @@ class PrefsManager(context: Context) {
         KEY_ICON_SIZE, KEY_THEME_MODE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
         KEY_LAST_BRIGHTNESS, KEY_HOME_LONG_PRESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
         KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
-        KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH,
+        KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH, KEY_WALLPAPER_SOURCE,
         KEY_SCREENSAVER_WALLPAPER_PATH, KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> ""
         KEY_HIDDEN_APPS, KEY_LOCKSCREEN_WIDGET_EXCLUDED, KEY_SHOWN_DEFAULT_HIDDEN, KEY_NOTIFY_WHILE_HIDDEN -> emptySet<String>()
         else -> if (key.startsWith(KEY_RENAME_PREFIX) || key.startsWith(KEY_ICON_OVERRIDE_PREFIX) ||
@@ -721,6 +741,7 @@ class PrefsManager(context: Context) {
     }
 
     private fun isUsableString(key: String, value: String): Boolean = when (key) {
+        KEY_WALLPAPER_SOURCE -> WallpaperSource.entries.any { it.name == value }
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT -> value == "system" || runCatching {
             SimpleDateFormat(value, Locale.getDefault())
         }.isSuccess
@@ -830,6 +851,7 @@ class PrefsManager(context: Context) {
         private const val KEY_HOME_EXTRA_ROW = "home_extra_row"
         private const val KEY_DISABLE_MUSIC_WIDGET = "disable_music_widget"
         private const val KEY_WALLPAPER_PATH = "wallpaper_path"
+        private const val KEY_WALLPAPER_SOURCE = "wallpaper_source"
         private const val KEY_HIDDEN_APPS = "hidden_apps"
         private const val KEY_SHOWN_DEFAULT_HIDDEN = "shown_default_hidden_apps"
         private const val KEY_NOTIFY_WHILE_HIDDEN = "notify_while_hidden_apps"

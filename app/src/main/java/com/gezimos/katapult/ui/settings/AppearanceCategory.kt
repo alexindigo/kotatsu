@@ -5,6 +5,7 @@ import androidx.compose.ui.res.stringResource
 import com.gezimos.katapult.R
 import com.gezimos.katapult.util.EinkHelper
 import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.WallpaperSource
 
 /** The chapter owns its vocabulary and summary. Persistence and device effects are injected. */
 @Composable
@@ -15,6 +16,8 @@ fun appearanceCategory(
     onShape: (Boolean) -> Unit, onSize: (Int) -> Unit, onTheme: (Int) -> Unit,
     onHideNames: (Boolean) -> Unit, onHideStatus: (Boolean) -> Unit, onHideClock: (Boolean) -> Unit,
     onEink: (Int) -> Unit, onRefreshHome: (Boolean) -> Unit,
+    wallpaperSource: WallpaperSource = WallpaperSource.NONE,
+    onWallpaper: (String) -> Unit = {},
 ): SettingsCategory {
     val shapes = listOf(SettingsChoice("rounded", stringResource(R.string.icon_shape_rounded)),
         SettingsChoice("circle", stringResource(R.string.icon_shape_circle)))
@@ -32,6 +35,11 @@ fun appearanceCategory(
     val shape = shapes[if (rounded) 0 else 1]
     val theme = themes.firstOrNull { it.id == themeMode.toString() } ?: themes[1]
     val mode = eink.firstOrNull { it.id == einkMode.toString() } ?: eink[0]
+    val wallpapers = listOf(
+        SettingsChoice("NONE", stringResource(R.string.wallpaper_none)),
+        SettingsChoice("KOTATSU", stringResource(R.string.wallpaper_kotatsu)),
+        SettingsChoice("PHOTO", stringResource(R.string.wallpaper_photos)),
+    )
     return SettingsCategory("appearance", stringResource(R.string.section_appearance), listOf(
         SettingsGroup("icons", stringResource(R.string.paper_group_icons), listOf(
             SettingsEntry.Value("shape", stringResource(R.string.icon_shape), stringResource(R.string.paper_icon_shape_help),
@@ -44,6 +52,8 @@ fun appearanceCategory(
         SettingsGroup("screen", stringResource(R.string.paper_group_screen), listOf(
             SettingsEntry.Value("theme", stringResource(R.string.theme_mode), stringResource(R.string.theme_mode_desc),
                 theme.label, themes, { onTheme(it.toInt()) }, theme.id),
+            SettingsEntry.Value("wallpaper", stringResource(R.string.wallpaper), stringResource(R.string.wallpaper_help),
+                wallpapers.single { it.id == wallpaperSource.name }.label, wallpapers, onWallpaper, wallpaperSource.name),
             SettingsEntry.Switch("status", stringResource(R.string.hide_status_bar), stringResource(R.string.hide_status_bar_desc),
                 hideStatusBar, onHideStatus),
             SettingsEntry.Switch("clock", stringResource(R.string.hide_status_bar_clock), stringResource(R.string.hide_status_bar_clock_desc),

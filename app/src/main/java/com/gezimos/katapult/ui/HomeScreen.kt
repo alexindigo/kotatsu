@@ -437,16 +437,9 @@ fun HomeScreen(
                     viewModel.navigateTo(Screen.ALL_APPS)
                 }
             }
-            if (viewModel.wallpaperBitmap != null) {
-                BottomSheetOption(stringResource(R.string.clear_wallpaper), icon = Icons.Rounded.Wallpaper) {
-                    showMenu = false
-                    viewModel.clearWallpaper()
-                }
-            } else {
-                BottomSheetOption(stringResource(R.string.set_wallpaper), icon = Icons.Rounded.Wallpaper) {
-                    imagePicker.launch("image/*")
-                    showMenu = false
-                }
+            BottomSheetOption(stringResource(R.string.wallpaper), icon = Icons.Rounded.Wallpaper) {
+                showMenu = false
+                viewModel.openWallpaperSettings()
             }
             if (viewModel.prefs.screensaverEnabled) {
                 BottomSheetOption(stringResource(R.string.screensaver), icon = Icons.Rounded.Bedtime) {

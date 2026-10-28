@@ -44,7 +44,8 @@ fun App(
             Screen.ONBOARDING -> OnboardingScreen(viewModel)
             Screen.HOME -> HomeScreen(viewModel, imagePicker, iconPicker, onClearBadge)
             Screen.ALL_APPS -> AllAppsScreen(viewModel, iconPicker, onClearBadge)
-            Screen.SETTINGS -> SettingsScreen(viewModel, configExporter, configImporter, screensaverWallpaperPicker)
+            Screen.SETTINGS -> SettingsScreen(viewModel, configExporter, configImporter, screensaverWallpaperPicker,
+                onWallpaperPhoto = { imagePicker.launch("image/*") })
         }
         if (viewModel.screen != Screen.SETTINGS) com.gezimos.katapult.lockscreen.ActionServiceSheet(viewModel)
         if (viewModel.showReorderExit) {

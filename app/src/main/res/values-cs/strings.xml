@@ -413,4 +413,9 @@
     <string name="paper_notify_app">Oznámení: %1$s</string>
     <string name="paper_unavailable">Nedostupné</string>
     <string name="paper_not_applicable">Nelze použít</string>
+    <string name="wallpaper">Tapeta</string>
+    <string name="wallpaper_none">Žádná</string>
+    <string name="wallpaper_kotatsu">Kotatsu</string>
+    <string name="wallpaper_photos">Z fotek</string>
+    <string name="wallpaper_help">Použijte vestavěný obrázek nebo vyberte vlastní fotku</string>
 </resources>

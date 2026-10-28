@@ -112,7 +112,7 @@ class PaperIndexSettingsInstrumentedTest {
         ui.await("Root summary did not update") { ui.find { it.text?.contains(shape) == true } != null }
     }
 
-    @Test fun muditaAppearancePreservesTheApprovedThreeThenFiveComposition() = withSettings { activity, _, _, ui ->
+    @Test fun muditaAppearanceKeepsWholeGroupsWithTheWallpaperEntry() = withSettings { activity, _, _, ui ->
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         instrumentation.runOnMainSync {
@@ -128,11 +128,13 @@ class PaperIndexSettingsInstrumentedTest {
                         context.getString(R.string.paper_notice_dismiss), {}, context.getString(R.string.paper_turn_on), {}))
             }
         }
-        ui.await("Expected two pages with the full Mudita chapter") { ui.has(context.getString(R.string.paper_page, 1, 2)) }
+        ui.await("Expected three whole-group pages with the full Mudita chapter") { ui.has(context.getString(R.string.paper_page, 1, 3)) }
         ui.click(context.getString(R.string.paper_next_page))
-        ui.await("Five-row chapter lost the E-ink group") { ui.has(context.getString(R.string.eink_auto_mode)) && ui.has(context.getString(R.string.eink_refresh)) }
+        ui.await("Screen group lost its wallpaper entry") { ui.has(context.getString(R.string.wallpaper_help)) }
         assertTrue(ui.has(context.getString(R.string.hide_status_bar_clock)))
         assertTrue(ui.has(context.getString(R.string.theme_mode)))
+        ui.click(context.getString(R.string.paper_next_page))
+        ui.await("Last page lost the E-ink group") { ui.has(context.getString(R.string.eink_auto_mode)) && ui.has(context.getString(R.string.eink_refresh)) }
         assertFalse(ui.has(context.getString(R.string.paper_next_page)))
     }
 

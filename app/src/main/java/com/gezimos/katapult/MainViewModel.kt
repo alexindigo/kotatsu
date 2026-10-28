@@ -54,6 +54,8 @@ import com.gezimos.katapult.util.SensitiveChoice
 import com.gezimos.katapult.ui.IconSize
 import com.gezimos.katapult.util.AppLoader
 import com.gezimos.katapult.util.BitmapHelper
+import com.gezimos.katapult.util.WallpaperPicture
+import com.gezimos.katapult.util.WallpaperSource
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.SelfLaunch
 import com.gezimos.katapult.util.AppVisibility
@@ -128,6 +130,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         private set
     val wallpaperContrast = com.gezimos.katapult.ui.WallpaperContrast(viewModelScope)
     val wallpaperBitmap: Bitmap? get() = wallpaperContrast.wallpaper
+    var wallpaperSource by mutableStateOf(prefs.wallpaperSource)
+        private set
+    var settingsPageRequest by mutableStateOf<String?>(null)
+
+    fun openWallpaperSettings() {
+        settingsPageRequest = "choice:appearance:wallpaper"
+        navigateTo(Screen.SETTINGS)
+    }
     var screensaverWallpaperPath by mutableStateOf(prefs.screensaverWallpaperPath)
         private set
     private var wallpaperRequest = 0L
@@ -905,7 +915,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val file = File(ctx.filesDir, "wallpaper.png")
             saveWallpaperBitmap(file, request, bitmap) { temp ->
                 if (request == wallpaperRequest && temp.renameTo(file)) {
-                    prefs.wallpaperPath = file.absolutePath
+                    prefs.setWallpaper(WallpaperSource.PHOTO, file.absolutePath)
+                    wallpaperSource = prefs.wallpaperSource
                     wallpaperContrast.updateWallpaper(bitmap)
                 }
             }
@@ -915,9 +926,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun clearWallpaper() {
         ++wallpaperRequest
         val previous = prefs.wallpaperPath
-        prefs.wallpaperPath = null
+        prefs.setWallpaper(WallpaperSource.NONE)
+        wallpaperSource = prefs.wallpaperSource
         wallpaperContrast.updateWallpaper(null)
         previous?.let(prefs::deleteOwnedFileIfUnreferenced)
+    }
+
+    fun useBuiltInWallpaper() {
+        val request = ++wallpaperRequest
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val bitmap = WallpaperPicture(WallpaperSource.KOTATSU).decode(ctx) ?: return@launch
+            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (request == wallpaperRequest) {
+                    val previous = prefs.wallpaperPath
+                    prefs.setWallpaper(WallpaperSource.KOTATSU)
+                    wallpaperSource = prefs.wallpaperSource
+                    wallpaperContrast.updateWallpaper(bitmap)
+                    previous?.let(prefs::deleteOwnedFileIfUnreferenced)
+                }
+            }
+        }
     }
 
     fun setScreensaverWallpaper(context: Context, uri: Uri) {
@@ -1121,9 +1149,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadWallpaper() {
-        val path = prefs.wallpaperPath ?: return
-        if (!prefs.isOwnedFile(path)) return
-        wallpaperContrast.updateWallpaper(BitmapHelper.decodeFile(path, BitmapHelper.screenMaxSide(ctx)))
+        wallpaperSource = prefs.wallpaperSource
+        wallpaperContrast.updateWallpaper(prefs.wallpaperPicture.decode(ctx))
     }
 
     override fun onCleared() {
