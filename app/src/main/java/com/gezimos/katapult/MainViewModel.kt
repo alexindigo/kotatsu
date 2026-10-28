@@ -478,16 +478,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (orderedApps.map { it.key }.toSet() != previousKeys) shortcutRefresh++
     }
 
-    fun getAllApps(): List<AppModel> {
-        val shown = prefs.getShownDefaultHiddenApps()
-        val all = AppLoader.loadApps(ctx).filter { !it.stock || it.key in shown } +
-            ShortcutHelper.installedShortcuts(ctx, prefs)
-        return all.map { app ->
-            val customName = prefs.getAppRename(app.key)
-            if (customName != null) app.copy(label = customName) else app
-        }.sortedBy { it.label.lowercase() }
-    }
-
     fun showPage(page: Int) {
         if (page < 0 || page >= totalPages) return
         currentPage = page

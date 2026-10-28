@@ -505,11 +505,11 @@ private fun AppPickerDialog(
     onDismiss: () -> Unit,
     onSelected: (com.gezimos.katapult.model.AppModel) -> Unit,
 ) {
-    val apps = remember { viewModel.getAllApps() }
+    val apps = remember(viewModel.orderedApps) { viewModel.orderedApps.sortedBy { it.label.lowercase() } }
     val itemsPerPage = 6
-    var page by remember { mutableIntStateOf(0) }
+    var page by remember(apps) { mutableIntStateOf(0) }
     val totalPages = (apps.size + itemsPerPage - 1) / itemsPerPage
-    val pageApps = remember(page) {
+    val pageApps = remember(apps, page) {
         val start = page * itemsPerPage
         val end = minOf(start + itemsPerPage, apps.size)
         apps.subList(start, end)
