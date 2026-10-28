@@ -225,7 +225,7 @@
     <string name="lockscreen_sort">Lock screen sort</string>
     <string name="sort_latest_top">Latest on top</string>
     <string name="sort_oldest_top">Oldest on top</string>
-    <string name="lockscreen_reenable_message">Accessibility access gets turned off when the app is updated. Enable it again to keep using the features that need it.</string>
+    <string name="lockscreen_reenable_message">Kotatsu Action Service is off. Turn it on in Accessibility settings to use these features.</string>
     <string name="a11y_setup_title">Turn on Kotatsu Action Service</string>
     <string name="a11y_setup_reason">This feature runs through the Kotatsu Action Service. Android lists it under Accessibility.</string>
     <string name="a11y_setup_step_open">1. Tap Kotatsu Action Service.</string>

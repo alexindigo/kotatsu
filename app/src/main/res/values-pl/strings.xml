@@ -182,7 +182,7 @@
     <string name="lockscreen_sort">Sortowanie na ekranie blokady</string>
     <string name="sort_latest_top">Najnowsze na górze</string>
     <string name="sort_oldest_top">Najstarsze na górze</string>
-    <string name="lockscreen_reenable_message">Dostęp ułatwień dostępu jest wyłączany przy aktualizacji aplikacji. Włącz go ponownie, aby dalej korzystać z funkcji, które go wymagają.</string>
+    <string name="lockscreen_reenable_message">Kotatsu Action Service jest wyłączona. Włącz ją w ustawieniach ułatwień dostępu, aby korzystać z tych funkcji.</string>
     <string name="a11y_setup_title">Włącz Kotatsu Action Service</string>
     <string name="a11y_setup_reason">Ta funkcja działa przez Kotatsu Action Service. Android pokazuje go w Ułatwieniach dostępu.</string>
     <string name="a11y_setup_step_open">1. Dotknij Kotatsu Action Service.</string>

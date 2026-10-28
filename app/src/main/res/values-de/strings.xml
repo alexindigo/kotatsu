@@ -182,7 +182,7 @@
     <string name="lockscreen_sort">Sperrbildschirm-Sortierung</string>
     <string name="sort_latest_top">Neueste oben</string>
     <string name="sort_oldest_top">Älteste oben</string>
-    <string name="lockscreen_reenable_message">Der Bedienungshilfen-Zugriff wird beim Aktualisieren der App deaktiviert. Aktiviere ihn erneut, damit die Funktionen, die ihn benötigen, weiter funktionieren.</string>
+    <string name="lockscreen_reenable_message">Kotatsu Action Service ist ausgeschaltet. Schalte den Dienst in den Bedienungshilfen ein, um diese Funktionen zu nutzen.</string>
     <string name="a11y_setup_title">Kotatsu Action Service einschalten</string>
     <string name="a11y_setup_reason">Diese Funktion läuft über den Kotatsu Action Service. Android führt ihn unter Bedienungshilfen.</string>
     <string name="a11y_setup_step_open">1. Tippe auf Kotatsu Action Service.</string>

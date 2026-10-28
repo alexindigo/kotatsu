@@ -66,8 +66,8 @@ fun ActionServiceSetupSheet(
 }
 
 /**
- * Shows the setup sheet the view model asks for: recovery when features are selected but Android dropped the
- * service (it does on app updates), or a feature the user just turned on while the service was off.
+ * Shows the setup sheet the view model asks for: recovery when features are selected but the service is off,
+ * or a feature the user just turned on while the service was off. The current state does not tell us its cause.
  */
 @Composable
 fun ActionServiceSheet(viewModel: MainViewModel, asPage: Boolean = false, onPageDismiss: () -> Unit = {}) {

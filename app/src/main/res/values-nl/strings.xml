@@ -182,7 +182,7 @@
     <string name="lockscreen_sort">Sortering vergrendelscherm</string>
     <string name="sort_latest_top">Nieuwste bovenaan</string>
     <string name="sort_oldest_top">Oudste bovenaan</string>
-    <string name="lockscreen_reenable_message">Toegankelijkheidstoegang wordt uitgeschakeld bij het bijwerken van de app. Schakel deze opnieuw in om de functies te blijven gebruiken die deze nodig hebben.</string>
+    <string name="lockscreen_reenable_message">Kotatsu Action Service staat uit. Zet de service aan in de toegankelijkheidsinstellingen om deze functies te gebruiken.</string>
     <string name="a11y_setup_title">Kotatsu Action Service aanzetten</string>
     <string name="a11y_setup_reason">Deze functie werkt via de Kotatsu Action Service. Android toont die onder Toegankelijkheid.</string>
     <string name="a11y_setup_step_open">1. Tik op Kotatsu Action Service.</string>

@@ -187,7 +187,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (_: Exception) {}
     }
 
-    /** Remembers the asked-for switch and closes the sheet; recovery after an update asks for nothing new. */
+    /** Remembers the asked-for switch and closes the sheet; service recovery asks for nothing new. */
     internal fun beginActionServiceSetup() {
         pendingActionServiceFeature = actionServiceSetup?.feature
         actionServiceSetup = null

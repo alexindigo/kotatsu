@@ -182,7 +182,7 @@
     <string name="lockscreen_sort">Orden en pantalla de bloqueo</string>
     <string name="sort_latest_top">Más recientes arriba</string>
     <string name="sort_oldest_top">Más antiguas arriba</string>
-    <string name="lockscreen_reenable_message">El acceso de accesibilidad se desactiva al actualizar la app. Actívalo de nuevo para seguir usando las funciones que lo necesitan.</string>
+    <string name="lockscreen_reenable_message">Kotatsu Action Service está desactivado. Actívalo en los ajustes de Accesibilidad para usar estas funciones.</string>
     <string name="a11y_setup_title">Activar Kotatsu Action Service</string>
     <string name="a11y_setup_reason">Esta función funciona con Kotatsu Action Service. Android lo muestra en Accesibilidad.</string>
     <string name="a11y_setup_step_open">1. Toca Kotatsu Action Service.</string>

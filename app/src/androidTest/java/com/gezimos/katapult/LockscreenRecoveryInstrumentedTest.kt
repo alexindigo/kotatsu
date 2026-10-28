@@ -5,6 +5,7 @@ import android.app.Application
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.content.res.Configuration
 import androidx.activity.compose.setContent
 import androidx.lifecycle.ViewModelStore
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -18,6 +19,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.util.UUID
+import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class LockscreenRecoveryInstrumentedTest {
@@ -131,6 +133,7 @@ class LockscreenRecoveryInstrumentedTest {
                 model.prefs.screensaverEnabled = true
                 model.prefs.screensaverOnPower = true
                 model.prefs.doubleTapAction = PrefsManager.DOUBLE_TAP_LOCK
+                model.checkLockscreenService(true)
                 model.checkLockscreenService(false)
             }
             activity = instrumentation.startActivitySync(Intent(Intent.ACTION_MAIN).apply {
@@ -140,14 +143,17 @@ class LockscreenRecoveryInstrumentedTest {
             val current = activity
             instrumentation.runOnMainSync { current.setContent { ActionServiceSheet(model) } }
             val ui = PlatformUiDriver(instrumentation)
+            ui.await("Recovery must describe the off state without guessing its cause") {
+                ui.has(current.getString(R.string.lockscreen_reenable_message))
+            }
             val titles = listOf(R.string.lockscreen_widget, R.string.lockscreen_music_widget,
                 R.string.lockscreen_message, R.string.hide_status_bar_clock,
                 R.string.double_tap_action, R.string.screensaver_on_power)
             assertEquals(titles, model.lockscreenServiceFeatureTitles())
-            for (title in titles) ui.await("Recovery sheet did not name ${context.getString(title)}") {
-                ui.has(context.getString(title))
+            for (title in titles) ui.await("Recovery sheet did not name ${current.getString(title)}") {
+                ui.has(current.getString(title))
             }
-            ui.click(context.getString(R.string.lockscreen_reenable_disable))
+            ui.click(current.getString(R.string.lockscreen_reenable_disable))
             ui.await("Recovery off action did not reach stored features") {
                 !model.showLockscreenReEnable && !model.prefs.lockscreenMusicWidget && !model.prefs.lockscreenWidget
             }
@@ -163,6 +169,25 @@ class LockscreenRecoveryInstrumentedTest {
             }
         } finally {
             instrumentation.runOnMainSync { activity?.finish() }
+        }
+    }
+
+    @Test fun recoveryCopyStatesOnlyKnownOffStateInEveryLocale() {
+        val messages = mapOf(
+            "en" to "Kotatsu Action Service is off. Turn it on in Accessibility settings to use these features.",
+            "cs" to "Kotatsu Action Service je vypnutá. Zapněte ji v nastavení Přístupnosti, abyste mohli používat tyto funkce.",
+            "de" to "Kotatsu Action Service ist ausgeschaltet. Schalte den Dienst in den Bedienungshilfen ein, um diese Funktionen zu nutzen.",
+            "es" to "Kotatsu Action Service está desactivado. Actívalo en los ajustes de Accesibilidad para usar estas funciones.",
+            "fr" to "Kotatsu Action Service est désactivé. Activez-le dans les paramètres d’accessibilité pour utiliser ces fonctions.",
+            "it" to "Kotatsu Action Service è disattivato. Attivalo nelle impostazioni di Accessibilità per usare queste funzioni.",
+            "nl" to "Kotatsu Action Service staat uit. Zet de service aan in de toegankelijkheidsinstellingen om deze functies te gebruiken.",
+            "pl" to "Kotatsu Action Service jest wyłączona. Włącz ją w ustawieniach ułatwień dostępu, aby korzystać z tych funkcji.",
+            "pt" to "O Kotatsu Action Service está desativado. Ative-o nas definições de Acessibilidade para usar estas funcionalidades.",
+        )
+        for ((locale, message) in messages) {
+            val configuration = Configuration(context.resources.configuration).apply { setLocale(Locale.forLanguageTag(locale)) }
+            assertEquals(locale, message, context.createConfigurationContext(configuration)
+                .getString(R.string.lockscreen_reenable_message))
         }
     }
 

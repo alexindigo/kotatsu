@@ -182,7 +182,7 @@
     <string name="lockscreen_sort">Řazení na zamykací obrazovce</string>
     <string name="sort_latest_top">Nejnovější nahoře</string>
     <string name="sort_oldest_top">Nejstarší nahoře</string>
-    <string name="lockscreen_reenable_message">Přístup k usnadnění přístupu se při aktualizaci aplikace vypne. Povolte jej znovu, aby funkce, které jej potřebují, dál fungovaly.</string>
+    <string name="lockscreen_reenable_message">Kotatsu Action Service je vypnutá. Zapněte ji v nastavení Přístupnosti, abyste mohli používat tyto funkce.</string>
     <string name="a11y_setup_title">Zapnout Kotatsu Action Service</string>
     <string name="a11y_setup_reason">Tato funkce běží přes Kotatsu Action Service. Android ji uvádí v Přístupnosti.</string>
     <string name="a11y_setup_step_open">1. Klepněte na Kotatsu Action Service.</string>
