@@ -228,7 +228,7 @@ def execution_identity(root,base,args):
 def source_identity(root,base,index_path,execution=None):
     provenance=execution_identity(root,base,execution)
     build=(root/'app/build.gradle.kts').read_text();original=baseline_bytes(root,base,'app/build.gradle.kts').decode()
-    require(build==original.replace('archivesName.set("katapult-v1.6")','archivesName.set("kotatsu-v0.5")').replace('applicationId = "com.gezimos.katapult"','applicationId = "'+RELEASE_ID+'"').replace('versionCode = 7','versionCode = 12').replace('versionName = "1.6"','versionName = "0.5"'),'Build versions/dependencies/signing/optimization or namespace changed beyond identity')
+    require(build==original.replace('archivesName.set("katapult-v1.6")','archivesName.set("kotatsu-v0.5.1")').replace('applicationId = "com.gezimos.katapult"','applicationId = "'+RELEASE_ID+'"').replace('versionCode = 7','versionCode = 13').replace('versionName = "1.6"','versionName = "0.5.1"'),'Build versions/dependencies/signing/optimization or namespace changed beyond identity')
     settings=(root/'settings.gradle.kts').read_bytes()
     require(settings==baseline_bytes(root,base,'settings.gradle.kts').replace(b'rootProject.name = "Katapult"',b'rootProject.name = "Kotatsu"'),'Root settings changed beyond identity')
     baseline_manifest=ET.fromstring(baseline_bytes(root,base,'app/src/main/AndroidManifest.xml'));manifest=ET.parse(root/'app/src/main/AndroidManifest.xml').getroot()
@@ -647,7 +647,7 @@ def apk_identity(args):
     analyzer_xml=command(args.apkanalyzer,'manifest','print',apk);manifest=ET.fromstring(analyzer_xml)
     require(manifest.tag=='manifest' and manifest.get('package')==expected,'Actual compiled package mismatch')
     badging=parse_badging(command(args.aapt2,'dump','badging',apk))
-    require(badging['package']==expected and badging['versionCode']=='12' and badging['versionName']==('0.5-debug' if args.variant=='debug' else '0.5'),'Compiled APK version/ID mismatch')
+    require(badging['package']==expected and badging['versionCode']=='13' and badging['versionName']==('0.5.1-debug' if args.variant=='debug' else '0.5.1'),'Compiled APK version/ID mismatch')
     label='Kotatsu Debug' if args.variant=='debug' else 'Kotatsu'
     require(all(v==label for v in badging['labels'].values()),'Wrong compiled locale label')
     require(set(x.removeprefix('-') for x in LOCALES if x)<=set(badging['labels']),'Missing compiled existing locale labels')

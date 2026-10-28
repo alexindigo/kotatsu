@@ -11,8 +11,8 @@ android {
         applicationId = "com.alexindigo.kotatsu.weather"
         minSdk = 30
         targetSdk = 36
-        versionCode = 7
-        versionName = "0.5"
+        versionCode = 8
+        versionName = "0.5.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {

@@ -2,6 +2,19 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.5.1] — 2026-10-28
+
+### Added
+- **Built-in Kotatsu wallpaper**: choose Kotatsu or your own photo in Settings › Appearance › Wallpaper or from the Home long-press menu. None is the default.
+
+### Changed
+- **Notification badges** show the number of unread messages reported by apps such as Delta Chat, instead of counting one per chat.
+- **Kotatsu Weather** has its version aligned with the launcher; no other changes.
+
+### Fixed
+- **Home-slot picker** leaves out hidden apps. Apps already assigned to Home stay in place.
+- **Action Service recovery message** says access is off and explains how to turn it back on, without blaming an app update.
+
 ## [0.5] — 2026-10-27
 
 ### Changed
