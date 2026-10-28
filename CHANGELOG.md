@@ -2,6 +2,14 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.5] — 2026-10-27
+
+### Changed
+- **Home content** stays readable over any wallpaper: the status line, clock, date, app labels and All Apps dots take black or white ink from the picture directly under each part. Icon tiles, badges and the music widget are unchanged. Without a wallpaper, nothing changes.
+- **Screensaver clock** uses the same automatic black or white ink over its wallpaper.
+- **Text backgrounds** and **Screensaver text backgrounds** settings and their background plates are removed, replaced by automatic ink.
+- **Kotatsu Weather** has its version aligned with the launcher; no other changes.
+
 ## [0.4] — 2026-10-26
 
 ### Fixed
