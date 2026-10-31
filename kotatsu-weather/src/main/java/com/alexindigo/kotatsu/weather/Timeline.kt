@@ -39,7 +39,7 @@ fun currentLocation(latitude: Double, longitude: Double): Location {
 
 fun shortLabel(text: String): String = text.substring(0, text.offsetByCodePoints(0, minOf(8, text.codePointCount(0, text.length))))
 
-/** Most places one widget shows; four only with condensed line spacing (see [rowGapDp]). */
+/** Most places one widget shows; all rows share one deterministic layout plan. */
 const val MAX_LOCATIONS = 4
 
 data class WidgetConfig(val locations: List<Location>, val fahrenheit: Boolean = true) {
@@ -142,22 +142,3 @@ fun maxNumberWidth(markStep: Float, gap: Float): Float = (markStep - gap).coerce
  */
 fun stackedRowBottoms(count: Int, rowHeight: Float, gap: Float, height: Float): List<Float> =
     (0 until count).map { height - (count - 1 - it) * (rowHeight + gap) }
-
-/** White between lines: normal for up to three lines, condensed for four so they fit a Medium widget. */
-fun rowGapDp(count: Int): Float = if (count >= 4) 12f else 24f
-
-/** Height the stack needs: the rows and the gaps between them. */
-fun stackHeight(count: Int, rowHeight: Float, gap: Float): Float =
-    count * rowHeight + (count - 1).coerceAtLeast(0) * gap
-
-/** Largest size in [min, max] for which [fits] holds; [fits] must only turn false as the size grows. */
-fun largestFitting(max: Float, min: Float, fits: (Float) -> Boolean): Float {
-    if (fits(max)) return max
-    var lo = min
-    var hi = max
-    repeat(24) {
-        val mid = (lo + hi) / 2
-        if (fits(mid)) lo = mid else hi = mid
-    }
-    return lo
-}

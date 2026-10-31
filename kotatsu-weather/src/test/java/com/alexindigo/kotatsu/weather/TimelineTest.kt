@@ -96,13 +96,6 @@ class TimelineTest {
         // Row height 10, gap 4: the last row's bottom is the bottom edge, each row above is 14 higher.
         assertEquals(listOf(72f, 86f, 100f), stackedRowBottoms(3, 10f, 4f, 100f))
         assertEquals(listOf(100f), stackedRowBottoms(1, 10f, 4f, 100f))
-        assertEquals(38f, stackHeight(3, 10f, 4f), 0f)
-        assertEquals(10f, stackHeight(1, 10f, 4f), 0f)
-    }
-    @Test fun fourLinesUseCondensedSpacing() {
-        assertEquals(24f, rowGapDp(1), 0f)
-        assertEquals(24f, rowGapDp(3), 0f)
-        assertEquals(12f, rowGapDp(4), 0f)
     }
     @Test fun currentLocationIsRoundedToAbout100Metres() {
         val here = currentLocation(37.3841127, -122.2352488)
@@ -111,11 +104,6 @@ class TimelineTest {
         assertEquals(-122.235, here.longitude, 0.0)
         assertEquals("Current location, 37.384, -122.235", here.place)
         assertEquals(7, here.start); assertEquals(23, here.end)
-    }
-    @Test fun largestFittingSizeIsSolvedNotGuessed() {
-        assertEquals(20f, largestFitting(20f, 1f) { true }, 0f)
-        assertEquals(13.5f, largestFitting(20f, 1f) { it <= 13.5f }, .01f)
-        assertEquals(1f, largestFitting(20f, 1f) { false }, 0f)
     }
     @Test fun severityIncludesAllCodeGroups() {
         for (code in 95..99) assertEquals(Condition.THUNDERSTORM, condition(code, 90.0, true))
