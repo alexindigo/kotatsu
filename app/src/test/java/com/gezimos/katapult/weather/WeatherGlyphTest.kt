@@ -7,11 +7,10 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WeatherGlyphTest {
-    @Test fun normalizedConditionsKeepEveryHistoricalDayAndNightGlyph() {
+    @Test fun normalizedConditionsChooseEveryDayAndNightGlyph() {
         val table = mapOf(
             WeatherCondition.CLEAR to (R.drawable.ic_weather_clear_day to R.drawable.ic_weather_clear_night),
-            // D4 is not applied: Mudita's 801 still draws the clear sun/moon.
-            WeatherCondition.FEW_CLOUDS to (R.drawable.ic_weather_clear_day to R.drawable.ic_weather_clear_night),
+            WeatherCondition.FEW_CLOUDS to (R.drawable.ic_weather_partly_cloudy_day to R.drawable.ic_weather_partly_cloudy_night),
             WeatherCondition.PARTLY_CLOUDY to (R.drawable.ic_weather_partly_cloudy_day to R.drawable.ic_weather_partly_cloudy_night),
             WeatherCondition.CLOUDY to (R.drawable.ic_weather_cloudy to R.drawable.ic_weather_cloudy),
             WeatherCondition.DRIZZLE to (R.drawable.ic_weather_rainy_light to R.drawable.ic_weather_rainy_light),
