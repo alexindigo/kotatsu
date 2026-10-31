@@ -30,7 +30,11 @@ data class TimelineModel(
     val rows: List<TimelineRow>,
     val validUntil: Instant,
     val lastUpdatedAt: Instant? = null,
+    val settling: Boolean = false,
 )
+
+/** An optional host hint affects presentation only, never the forecast or its spoken meaning. */
+fun TimelineModel.forHostVisibility(visible: Boolean?): TimelineModel = copy(settling = visible == false)
 
 /** The only owner of row meaning. Rendering needs neither forecast samples nor a clock. */
 fun buildTimeline(

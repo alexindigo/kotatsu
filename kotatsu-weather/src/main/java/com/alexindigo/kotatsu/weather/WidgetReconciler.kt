@@ -9,6 +9,8 @@ import java.time.ZonedDateTime
 
 /** One transaction for every trigger: picture, deadline and independent network recovery. */
 object WidgetReconciler {
+    // Optional generic host hint; other hosts omit it and retain the normal presentation.
+    internal const val OPTION_HOST_VISIBLE = "kotatsu.host.visible"
     @Volatile internal var clock: Clock? = null
     private val published = mutableMapOf<Int, PublishedTimeline>()
 
@@ -28,8 +30,9 @@ object WidgetReconciler {
         val models = ids.toList().mapNotNull { id ->
             val config = configs.config(id) ?: return@mapNotNull null
             val snapshots = config.locations.map { forecasts.snapshot(it, config.fahrenheit, now.zone) }
-            val model = buildTimeline(config, snapshots.map { it.series }, snapshots.map { it.status }, now)
             val options = manager.getAppWidgetOptions(id)
+            val model = buildTimeline(config, snapshots.map { it.series }, snapshots.map { it.status }, now)
+                .forHostVisibility(options.getBoolean(OPTION_HOST_VISIBLE, true))
             val width = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300).coerceAtLeast(1) * density).toInt()
             val height = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112).coerceAtLeast(1) * density).toInt()
             val next = PublishedTimeline(model, width, height,

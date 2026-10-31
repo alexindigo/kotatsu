@@ -51,7 +51,7 @@ object TimelineRenderer {
             if (right <= left) emptyList() else placeNumbers(row.numbers, axis, left, right, numberGap, paint::measureText)
         }
         for ((index, row) in rows.withIndex()) {
-            paint.color = if (row.model.stale) Color.rgb(160, 160, 160) else Color.BLACK
+            paint.color = if (row.model.stale || model.settling) Color.rgb(160, 160, 160) else Color.BLACK
             paint.letterSpacing = LABEL_TRACKING_EM
             canvas.drawText(row.model.label, padding, row.baseline, paint)
             paint.letterSpacing = 0f
@@ -74,13 +74,13 @@ object TimelineRenderer {
                 Condition.CLEAR -> R.drawable.ic_weather_clear_day
             }
             context.getDrawable(resource)?.mutate()?.apply {
-                setTint(if (row.model.stale) Color.rgb(160, 160, 160) else Color.BLACK)
+                setTint(if (row.model.stale || model.settling) Color.rgb(160, 160, 160) else Color.BLACK)
                 setBounds(iconLeft.toInt(), (row.y - iconBox / 2).toInt(), (iconLeft + iconBox).toInt(), (row.y + iconBox / 2).toInt())
                 draw(canvas)
             }
         }
         // A single needle spans the stack of rows (not the empty space above it), beneath the number patches.
-        model.needleHour?.let { axis.x(it, left, right) }?.takeIf { right > left }?.let { x ->
+        model.needleHour?.takeUnless { model.settling }?.let { axis.x(it, left, right) }?.takeIf { right > left }?.let { x ->
             paint.color = Color.rgb(128, 128, 128)
             canvas.drawLine(x, rows.first().y - iconBox / 2, x, rows.last().y + iconBox / 2, paint)
         }
@@ -92,7 +92,7 @@ object TimelineRenderer {
                 val half = number.width / 2 + numberGap
                 canvas.drawRect(number.x - half, row.y - rowHeight / 2 - numberGap,
                     number.x + half, row.y + rowHeight / 2 + numberGap, paint)
-                paint.color = if (row.model.stale) Color.rgb(160, 160, 160) else Color.BLACK
+                paint.color = if (row.model.stale || model.settling) Color.rgb(160, 160, 160) else Color.BLACK
                 canvas.drawText(number.number.value.toString(), number.x - number.width / 2, row.baseline, paint)
             }
         }
