@@ -17,6 +17,19 @@ class TimelineLayoutInstrumentedTest {
     private val series = ForecastSeries((0..48).map { h -> HourSample(now.toLocalDate().atStartOfDay(now.zone)
         .toInstant().plusSeconds(h * 3600L), if (h == 13) 90.0 else 58.0, 2, null) }, now.toInstant())
 
+    @Test fun endpointStormReachesTheRenderedIconButHaloStormDoesNot() {
+        val config = WidgetConfig(listOf(Location("Home", "Fixture", 10.0, 20.0, 7, 15)))
+        fun model(storm: Int) = buildTimeline(config, listOf(series.copy(samples = series.samples.map {
+            it.copy(code = if (it.instant.atZone(now.zone).hour == storm) 99 else 0)
+        })), emptyList(), now)
+        fun picture(storm: Int) = TimelineRenderer.render(context, model(storm), 459, 149)
+        assertTrue(picture(7).sameAs(picture(12)))
+        assertTrue(picture(15).sameAs(picture(12)))
+        assertTrue(picture(6).sameAs(picture(16)))
+        assertFalse(picture(15).sameAs(picture(16)))
+        assertEquals(model(15).rows.single().numbers, model(16).rows.single().numbers)
+    }
+
     @Test fun allRowsRenderInsideTheirPlannedBoxesAtKompaktSizes() {
         val density = context.resources.displayMetrics.density
         val directory = File(context.getExternalFilesDir(null), "renders/layout").apply { mkdirs() }

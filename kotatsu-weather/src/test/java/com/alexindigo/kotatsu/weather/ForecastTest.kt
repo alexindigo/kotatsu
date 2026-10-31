@@ -106,7 +106,7 @@ class ForecastTest {
         }
     }
 
-    @Test fun conditionStillExcludesTheEndMarkAndHaloWhileNumbersUseThem() {
+    @Test fun conditionIncludesTheEndMarkButExcludesTheAveragingHalo() {
         val date = LocalDate.of(2026, 10, 17)
         val day = DayWindow.of(date, ZoneOffset.UTC)
         val row = location.copy(start = 7, end = 23)
@@ -114,8 +114,17 @@ class ForecastTest {
             if (it == date.atTime(23, 0).toInstant(ZoneOffset.UTC) || it == day.instants.last()) 99 else 0, 0.0) }
         val series = ForecastSeries(samples, Instant.EPOCH)
         assertEquals(70, temperatureNumbers(row, series, day).single { it.kind == NumberKind.END }.value)
-        assertEquals(Condition.CLEAR, spanHours(row, series, day).mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
-        assertEquals((7 until 23).toList(), spanHours(row, series, day).map { it.instant.atZone(ZoneOffset.UTC).hour })
+        assertEquals(Condition.THUNDERSTORM, spanHours(row, series, day).mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
+        assertEquals((7..23).toList(), spanHours(row, series, day).map { it.instant.atZone(ZoneOffset.UTC).hour })
+        val haloOnly = series.copy(samples = samples.map { it.copy(code = if (it.instant == day.instants.last()) 99 else 0) })
+        assertEquals(Condition.CLEAR, spanHours(row, haloOnly, day).mapNotNull { condition(it.code, it.gust, true) }.maxOrNull())
+    }
+
+    @Test fun selectedConditionHoursIncludeBothOffsetsOfRepeatedEndpointsAndNoInventedSpringHour() {
+        val autumn = DayWindow.of(LocalDate.of(2026, 11, 1), zone)
+        assertEquals(listOf(1, 1, 2, 3), autumn.conditionInstants(1, 3).sorted().map { it.atZone(zone).hour })
+        val spring = DayWindow.of(LocalDate.of(2026, 3, 8), zone)
+        assertEquals(listOf(1, 3), spring.conditionInstants(1, 3).sorted().map { it.atZone(zone).hour })
     }
 
     @Test fun usefulnessUsesDeviceMidnightAcrossDstAndRetainsBetterTemperatureCoverage() {

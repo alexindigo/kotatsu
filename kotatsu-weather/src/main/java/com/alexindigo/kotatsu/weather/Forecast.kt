@@ -69,7 +69,8 @@ class DayWindow private constructor(val date: LocalDate, val zone: ZoneId, priva
         require(mark in MARK_HOURS)
         return MarkBlock(mark, (mark - 1..mark + 1).flatMap { hours.getValue(it) })
     }
-    fun conditionInstants(start: Int, end: Int): Set<Instant> = (start until end).flatMap { hours.getValue(it) }.toSet()
+    /** The labelled interval includes both endpoint samples, without the temperature averaging halo. */
+    fun conditionInstants(start: Int, end: Int): Set<Instant> = (start..end).flatMap { hours.getValue(it) }.toSet()
 
     companion object {
         private val WALL_HOURS = MARK_HOURS.first - 1..MARK_HOURS.last + 1
