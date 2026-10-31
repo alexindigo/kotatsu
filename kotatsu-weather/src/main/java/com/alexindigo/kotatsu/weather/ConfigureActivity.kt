@@ -44,6 +44,9 @@ class ConfigureActivity : Activity() {
     private var searchGeneration = 0
     private var locating: CancellationSignal? = null
     private var afterLocationPermission: ((Boolean) -> Unit)? = null
+    private val refreshListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (editorReady && (key?.startsWith("refresh_") == true || key?.startsWith("forecast_") == true)) showRows()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,6 +124,7 @@ class ConfigureActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        getSharedPreferences("weather", 0).registerOnSharedPreferenceChangeListener(refreshListener)
         if (!editorReady || choosing) return
         if (widgetId !in WeatherRuntime.ids(this)) { finish(); return }
         if (!intent.hasExtra(AppWidgetManager.EXTRA_APPWIDGET_ID)) {
@@ -132,6 +136,11 @@ class ConfigureActivity : Activity() {
         }
         if (store.config(widgetId) == null) { showUnreadable(); return }
         showRows(); showUnits()
+    }
+
+    override fun onPause() {
+        getSharedPreferences("weather", 0).unregisterOnSharedPreferenceChangeListener(refreshListener)
+        super.onPause()
     }
 
     private fun changed(result: WeatherStore.Result) {
@@ -203,8 +212,11 @@ class ConfigureActivity : Activity() {
                 setPadding(0, dp(6), 0, dp(6))
             })
         }
+        val forecasts = ForecastStore(this)
+        val zone = WidgetReconciler.currentClock().zone
         config.locations.forEach { location ->
-            rows.addView(actionRow(location.label, "${location.place}\n${hours(location.start)} to ${hours(location.end)}") { edit(location.id) })
+            val status = WeatherPresentation.editor(this, forecasts.snapshot(location, config.fahrenheit, zone), zone)
+            rows.addView(actionRow(location.label, "${location.place}\n${hours(location.start)} to ${hours(location.end)}", status) { edit(location.id) })
         }
         val full = config.locations.size >= MAX_LOCATIONS
         add.isEnabled = !full
@@ -464,12 +476,13 @@ class ConfigureActivity : Activity() {
     private fun caption(value: String) = text(value, 14f)
 
     /** Kotatsu's settings row: bold title over a detail line, chevron on the right; the whole row is the button. */
-    private fun actionRow(title: String, detail: String, onClick: () -> Unit): View = LinearLayout(this).apply {
+    private fun actionRow(title: String, detail: String, status: String, onClick: () -> Unit): View = LinearLayout(this).apply {
         gravity = Gravity.CENTER_VERTICAL
         setPadding(0, dp(10), 0, dp(10))
         val texts = column()
         texts.addView(text(title, 18f, bold = true).apply { tag = TITLE })
         texts.addView(text(detail, 14f).apply { tag = DETAIL })
+        texts.addView(text(status, 14f))
         addView(texts, LinearLayout.LayoutParams(0, WRAP, 1f))
         addView(ImageView(context).apply { setImageResource(R.drawable.ic_chevron_right) },
             LinearLayout.LayoutParams(dp(24), dp(24)))

@@ -6,4 +6,14 @@
     <string name="place_gone">Ce lieu a été supprimé dans un autre éditeur.</string>
     <string name="places_full">Un widget affiche au maximum quatre lieux. Supprimez-en un pour en ajouter un autre.</string>
     <string name="save_failed">Modification non enregistrée. Réessayez.</string>
+    <string name="last_updated_at">Dernière mise à jour à %1$s</string>
+    <string name="not_updated_yet">Pas encore de mise à jour</string>
+    <string name="refresh_offline">Hors connexion</string>
+    <string name="refresh_server_error">Erreur du serveur %1$d</string>
+    <string name="refresh_incomplete">Prévisions incomplètes</string>
+    <string name="refresh_invalid">Prévisions illisibles</string>
+    <string name="refresh_ok">Prévisions reçues</string>
+    <string name="refresh_waiting">En attente de mise à jour</string>
+    <string name="next_try_at">Prochain essai à %1$s</string>
+    <string name="next_try_scheduled">Prochain essai lorsque Android programme une mise à jour</string>
 </resources>

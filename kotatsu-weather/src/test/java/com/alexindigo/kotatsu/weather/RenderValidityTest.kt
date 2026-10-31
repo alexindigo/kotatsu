@@ -54,6 +54,8 @@ class RenderValidityTest {
             assertEquals(reason == ReconcileReason.OPTIONS_CHANGED, shouldPublish(next, next.copy(), reason))
         }
         assertTrue(shouldPublish(next, next.copy(height = 160), ReconcileReason.UPDATE))
+        assertTrue(shouldPublish(next.copy(statusText = "Last updated at 07:10"),
+            next.copy(statusText = "Last updated at 7:10 AM"), ReconcileReason.TIME_SET))
         assertTrue(shouldPublish(next, next.copy(model = model.copy(date = model.date.plusDays(1))), ReconcileReason.DEADLINE))
     }
 }

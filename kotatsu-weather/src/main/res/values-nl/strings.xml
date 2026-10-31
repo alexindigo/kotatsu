@@ -6,4 +6,14 @@
     <string name="place_gone">Deze plaats is in een andere editor verwijderd.</string>
     <string name="places_full">Een widget toont maximaal vier plaatsen. Verwijder er een om een andere toe te voegen.</string>
     <string name="save_failed">Deze wijziging kon niet worden opgeslagen. Probeer het opnieuw.</string>
+    <string name="last_updated_at">Laatst bijgewerkt om %1$s</string>
+    <string name="not_updated_yet">Nog niet bijgewerkt</string>
+    <string name="refresh_offline">Offline</string>
+    <string name="refresh_server_error">Serverfout %1$d</string>
+    <string name="refresh_incomplete">Onvolledige verwachting</string>
+    <string name="refresh_invalid">Onleesbare verwachting</string>
+    <string name="refresh_ok">Verwachting ontvangen</string>
+    <string name="refresh_waiting">Wachten op een update</string>
+    <string name="next_try_at">Volgende poging om %1$s</string>
+    <string name="next_try_scheduled">Volgende poging wanneer Android een update plant</string>
 </resources>

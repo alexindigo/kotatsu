@@ -6,4 +6,14 @@
     <string name="place_gone">To miejsce zostało usunięte w innym edytorze.</string>
     <string name="places_full">Widżet wyświetla najwyżej cztery miejsca. Usuń jedno, aby dodać kolejne.</string>
     <string name="save_failed">Nie udało się zapisać zmiany. Spróbuj ponownie.</string>
+    <string name="last_updated_at">Ostatnia aktualizacja o %1$s</string>
+    <string name="not_updated_yet">Jeszcze nie zaktualizowano</string>
+    <string name="refresh_offline">Brak połączenia</string>
+    <string name="refresh_server_error">Błąd serwera %1$d</string>
+    <string name="refresh_incomplete">Niepełna prognoza</string>
+    <string name="refresh_invalid">Nieczytelna prognoza</string>
+    <string name="refresh_ok">Odebrano prognozę</string>
+    <string name="refresh_waiting">Oczekiwanie na aktualizację</string>
+    <string name="next_try_at">Następna próba o %1$s</string>
+    <string name="next_try_scheduled">Następna próba, gdy Android zaplanuje aktualizację</string>
 </resources>

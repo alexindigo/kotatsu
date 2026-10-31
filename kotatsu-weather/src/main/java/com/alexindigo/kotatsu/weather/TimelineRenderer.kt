@@ -31,6 +31,18 @@ object TimelineRenderer {
         val iconLeft = layout.iconLeft
         val numberGap = layout.numberGap
         val dotRadius = minOf(1f * density, rowHeight / 8)
+        model.lastUpdatedAt?.let { updated ->
+            val text = WeatherPresentation.lastUpdated(context, updated, model.zone)
+            paint.textSize = 1000f
+            paint.letterSpacing = STATUS_TRACKING_EM
+            val font = paint.fontMetrics
+            val status = planStatusText(layout, width.toFloat(), density, context.resources.displayMetrics.scaledDensity,
+                paint.measureText(text) / 1000, font.top / 1000, font.bottom / 1000)
+            paint.textSize = status.textSize
+            paint.color = Color.rgb(160, 160, 160)
+            canvas.drawText(text, padding, status.baseline, paint)
+        }
+        paint.letterSpacing = 0f
         paint.textSize = layout.textSize
         val rows = model.rows.mapIndexed { index, row ->
             RenderRow(row, layout.rowTops[index] + layout.baselineOffset, layout.rowTops[index] + rowHeight / 2)
@@ -88,7 +100,7 @@ object TimelineRenderer {
     }
 
     /** Measure at one large reference size to avoid rounded glyph bounds driving fitting or font searches. */
-    internal fun layout(context: Context, model: TimelineModel, width: Int, height: Int, reserveStatus: Boolean = false): TimelineLayout {
+    internal fun layout(context: Context, model: TimelineModel, width: Int, height: Int, reserveStatus: Boolean = true): TimelineLayout {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = context.resources.getFont(R.font.lato_regular)
             fontFeatureSettings = "tnum"
@@ -103,7 +115,8 @@ object TimelineRenderer {
         val numbers = model.rows.flatMap { it.numbers }.map { it.value.toString() } + "-99"
         val metrics = TimelineMetrics(model.rows.maxOf { trackedLabelWidth(paint, it.label) } / 1000f,
             numbers.maxOf { paint.measureText(it) } / 1000f, paint.measureText("88") / 1000f,
-            top, bottom, box.height() / 1000f, paint.measureText("No forecast") / 1000f)
+            top, bottom, box.height() / 1000f, paint.measureText("No forecast") / 1000f,
+            paint.fontMetrics.let { it.bottom - it.top } / 1000f)
         val display = context.resources.displayMetrics
         return planTimelineLayout(width.toFloat(), height.toFloat(), model.rows.size, display.density,
             display.scaledDensity, model.axis, metrics, reserveStatus)
@@ -111,6 +124,8 @@ object TimelineRenderer {
 
     /** Labels get a little tracking: Lato's default spacing reads tight at this size. Numbers keep tabular spacing. */
     private const val LABEL_TRACKING_EM = 0.05f
+    /** Small grey text needs more air; applied to the same Paint for measurement and drawing. */
+    private const val STATUS_TRACKING_EM = 0.075f
 
     private fun trackedLabelWidth(paint: Paint, label: String): Float {
         paint.letterSpacing = LABEL_TRACKING_EM

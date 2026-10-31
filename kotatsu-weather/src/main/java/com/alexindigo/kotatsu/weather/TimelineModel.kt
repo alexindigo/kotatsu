@@ -27,6 +27,7 @@ data class TimelineModel(
     val needleHour: Double?,
     val rows: List<TimelineRow>,
     val validUntil: Instant,
+    val lastUpdatedAt: Instant? = null,
 )
 
 /** The only owner of row meaning. Rendering needs neither forecast samples nor a clock. */
@@ -47,7 +48,15 @@ fun buildTimeline(
                 stale, numbers, forecast?.let { series -> spanHours(location, series, day)
                     .mapNotNull { condition(it.code, it.gust, config.fahrenheit) }.maxOrNull() } ?: Condition.CLEAR,
                 status.getOrElse(index) { RefreshStatus() })
-        }, timelineValidUntil(stored, status, now))
+        }, timelineValidUntil(stored, status, now), oldestShownUpdate(config, stored, now))
+}
+
+/** The oldest forecast actually shown: a newer success must not disguise another place's retained data. */
+fun oldestShownUpdate(config: WidgetConfig, stored: List<ForecastSeries?>, now: ZonedDateTime): Instant? {
+    val day = DayWindow.of(now.toLocalDate(), now.zone)
+    return config.locations.mapIndexedNotNull { index, place -> stored.getOrNull(index)?.takeIf {
+        temperatureNumbers(place, it, day).isNotEmpty()
+    }?.fetchedAt }.minOrNull()?.takeIf { now.toInstant() > it.plusSeconds(3600) }
 }
 
 /** Expired boundaries have already been reflected in the model; never schedule an alarm in the past. */
@@ -57,6 +66,8 @@ fun timelineValidUntil(stored: List<ForecastSeries?>, status: List<RefreshStatus
     val midnight = now.toLocalDate().plusDays(1).atStartOfDay(now.zone).toInstant()
     val candidates = mutableListOf(nextStep, midnight)
     stored.filterNotNull().forEach { series ->
+        val notice = series.fetchedAt.plusSeconds(3600).plusMillis(1)
+        candidates += notice
         val grey = series.fetchedAt.plusSeconds(12 * 3600)
         // isStale is strictly >12h, preserved from the existing presentation contract.
         candidates += if (grey.toEpochMilli() == instant.toEpochMilli()) Instant.ofEpochMilli(grey.toEpochMilli() + 1) else grey
@@ -69,7 +80,7 @@ fun timelineValidUntil(stored: List<ForecastSeries?>, status: List<RefreshStatus
 
 enum class ReconcileReason { UPDATE, OPTIONS_CHANGED, TIME_SET, TIMEZONE_CHANGED, DEADLINE, JOB_DONE, CONFIG_CHANGED, DELETED, RESTORED }
 
-data class PublishedTimeline(val model: TimelineModel, val width: Int, val height: Int)
+data class PublishedTimeline(val model: TimelineModel, val width: Int, val height: Int, val statusText: String? = null)
 
 fun shouldPublish(previous: PublishedTimeline?, next: PublishedTimeline, reason: ReconcileReason): Boolean =
     reason == ReconcileReason.OPTIONS_CHANGED || previous != next

@@ -18,7 +18,7 @@ class TimelineModelTest {
         val model = buildTimeline(WidgetConfig(listOf(home)), listOf(series), emptyList(), now)
         assertEquals(TimelineModel(now.toLocalDate(), now.zone, Axis(7, 23), 12.5, listOf(expected), now.withMinute(45).toInstant()), model)
         val old = series.copy(fetchedAt = now.toInstant().minusSeconds(13 * 3600))
-        assertEquals(model.copy(rows = listOf(expected.copy(state = RowState.STALE, stale = true))),
+        assertEquals(model.copy(rows = listOf(expected.copy(state = RowState.STALE, stale = true)), lastUpdatedAt = old.fetchedAt),
             buildTimeline(WidgetConfig(listOf(home)), listOf(old), emptyList(), now))
         assertEquals(model.copy(rows = listOf(expected.copy(state = RowState.NO_DATA, noDataReason = NoDataReason.NOT_FETCHED,
             stale = true, numbers = emptyList(), condition = Condition.CLEAR))),

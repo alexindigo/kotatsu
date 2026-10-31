@@ -6,4 +6,14 @@
     <string name="place_gone">Toto místo bylo odstraněno v jiném editoru.</string>
     <string name="places_full">Widget zobrazí nejvýše čtyři místa. Před přidáním dalšího jedno odstraňte.</string>
     <string name="save_failed">Změnu se nepodařilo uložit. Zkuste to znovu.</string>
+    <string name="last_updated_at">Naposledy aktualizováno v %1$s</string>
+    <string name="not_updated_yet">Zatím neaktualizováno</string>
+    <string name="refresh_offline">Bez připojení</string>
+    <string name="refresh_server_error">Chyba serveru %1$d</string>
+    <string name="refresh_incomplete">Neúplná předpověď</string>
+    <string name="refresh_invalid">Nečitelná předpověď</string>
+    <string name="refresh_ok">Předpověď přijata</string>
+    <string name="refresh_waiting">Čekání na aktualizaci</string>
+    <string name="next_try_at">Další pokus v %1$s</string>
+    <string name="next_try_scheduled">Další pokus, až Android naplánuje aktualizaci</string>
 </resources>

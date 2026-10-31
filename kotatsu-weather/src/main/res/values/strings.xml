@@ -6,4 +6,14 @@
     <string name="place_gone">This place was removed in another editor.</string>
     <string name="places_full">Four places is the most a widget shows. Remove one to add another.</string>
     <string name="save_failed">This change could not be saved. Try again.</string>
+    <string name="last_updated_at">Last updated at %1$s</string>
+    <string name="not_updated_yet">Not updated yet</string>
+    <string name="refresh_offline">Offline</string>
+    <string name="refresh_server_error">Server error %1$d</string>
+    <string name="refresh_incomplete">Incomplete forecast</string>
+    <string name="refresh_invalid">Unreadable forecast</string>
+    <string name="refresh_ok">Forecast received</string>
+    <string name="refresh_waiting">Waiting for an update</string>
+    <string name="next_try_at">Next try at %1$s</string>
+    <string name="next_try_scheduled">Next try when Android schedules an update</string>
 </resources>
