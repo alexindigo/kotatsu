@@ -585,8 +585,12 @@ class LockscreenWidgetService :
         try {
             // Hidden views retain their RemoteViews callback and receive provider updates.
             widgetHost.listen(true)
+            val shown = list.takeIf { onLockscreen && lockscreenBoxLayout(it.map { widget -> widget.size.heightDp },
+                LockscreenWidgetHost.availableDp(this)) != null }.orEmpty()
+            // The current observed epoch decides hints before any creation/size publication.
+            LockscreenWidgetHost.pulseVisible(this, visibility, shown)
             if (cachedWidgets != list || widgetsContent == null) {
-                removeWidgetsOverlay()
+                detachWidgetsOverlay()
                 widgetsContent?.removeAllViews()
                 widgetViews.keys.retainAll(list.toSet())
                 val themed = ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Light)
@@ -597,8 +601,7 @@ class LockscreenWidgetService :
                     setPadding(dp(8f), 0, dp(8f), dp(16f))
                     available.forEachIndexed { index, (widget, info) ->
                         val child = widgetViews.getOrPut(widget) {
-                            LockscreenWidgetHost.updateSize(this@LockscreenWidgetService, widget)
-                            widgetHost.createView(themed, widget.id, info)
+                            widgetHost.createWidgetView(themed, widget, info)
                         }
                         addView(child, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
                             dp(widget.size.heightDp.toFloat())).apply { if (index > 0) topMargin = dp(8f) })
@@ -606,13 +609,10 @@ class LockscreenWidgetService :
                 }
                 cachedWidgets = list
             }
-            if (!onLockscreen || list.isEmpty() || lockscreenBoxLayout(list.map { it.size.heightDp },
-                    LockscreenWidgetHost.availableDp(this)) == null) {
+            if (shown.isEmpty()) {
                 removeWidgetsOverlay()
                 return
             }
-            // No hold-back: the existing picture may show immediately while providers redraw.
-            LockscreenWidgetHost.pulseVisible(this, visibility, list)
             if (widgetsOverlay != null) return
             val bounds = getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
             val contentHeight = list.sumOf { dp(it.size.heightDp.toFloat()) } + dp(((list.size - 1) * 8 + 16).toFloat())
@@ -632,6 +632,12 @@ class LockscreenWidgetService :
     }
 
     private fun removeWidgetsOverlay() {
+        widgetHost.hideWidgets(this)
+        detachWidgetsOverlay()
+    }
+
+    /** A container rebuild is not a visibility transition. */
+    private fun detachWidgetsOverlay() {
         widgetsOverlay?.let {
             try { getSystemService(WindowManager::class.java).removeView(it) } catch (_: Exception) {}
         }
