@@ -16,4 +16,13 @@
     <string name="refresh_waiting">Čekání na aktualizaci</string>
     <string name="next_try_at">Další pokus v %1$s</string>
     <string name="next_try_scheduled">Další pokus, až Android naplánuje aktualizaci</string>
+    <string name="forecast_description">%1$s, od %2$s do %3$s, %4$d až %5$d stupňů, %6$s</string>
+    <string name="no_forecast">Bez předpovědi</string>
+    <string name="condition_clear">jasno</string>
+    <string name="condition_clouds">oblačno</string>
+    <string name="condition_wind">větrno</string>
+    <string name="condition_fog">mlha</string>
+    <string name="condition_rain">déšť</string>
+    <string name="condition_snow">sníh</string>
+    <string name="condition_thunderstorm">bouřka</string>
 </resources>

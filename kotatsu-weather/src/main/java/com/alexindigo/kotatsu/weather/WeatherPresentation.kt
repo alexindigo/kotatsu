@@ -13,6 +13,20 @@ object WeatherPresentation {
     fun lastUpdated(context: Context, instant: Instant, zone: ZoneId): String =
         context.getString(R.string.last_updated_at, time(context, instant, zone))
 
+    fun description(context: Context, model: TimelineModel): String = timelineDescription(model,
+        context.resources.configuration.locales[0], DateFormat.is24HourFormat(context),
+        TimelineDescriptionStrings(context.getString(R.string.forecast_description),
+            context.getString(R.string.no_forecast), context.getString(R.string.last_updated_at),
+            Condition.entries.associateWith { condition -> context.getString(when (condition) {
+                Condition.CLEAR -> R.string.condition_clear
+                Condition.CLOUDS -> R.string.condition_clouds
+                Condition.WIND -> R.string.condition_wind
+                Condition.FOG -> R.string.condition_fog
+                Condition.RAIN -> R.string.condition_rain
+                Condition.SNOW -> R.string.condition_snow
+                Condition.THUNDERSTORM -> R.string.condition_thunderstorm
+            }) }))
+
     fun editor(context: Context, snapshot: ForecastStore.Snapshot, zone: ZoneId): String {
         val updated = snapshot.series?.fetchedAt?.let { lastUpdated(context, it, zone) }
             ?: context.getString(R.string.not_updated_yet)

@@ -16,4 +16,13 @@
     <string name="refresh_waiting">Warten auf eine Aktualisierung</string>
     <string name="next_try_at">Nächster Versuch um %1$s</string>
     <string name="next_try_scheduled">Nächster Versuch, wenn Android eine Aktualisierung plant</string>
+    <string name="forecast_description">%1$s, %2$s bis %3$s, %4$d bis %5$d Grad, %6$s</string>
+    <string name="no_forecast">Keine Vorhersage</string>
+    <string name="condition_clear">klar</string>
+    <string name="condition_clouds">bewölkt</string>
+    <string name="condition_wind">windig</string>
+    <string name="condition_fog">neblig</string>
+    <string name="condition_rain">Regen</string>
+    <string name="condition_snow">Schnee</string>
+    <string name="condition_thunderstorm">Gewitter</string>
 </resources>

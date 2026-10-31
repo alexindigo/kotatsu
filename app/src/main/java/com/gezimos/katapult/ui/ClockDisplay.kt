@@ -205,7 +205,7 @@ fun ColumnScope.ClockDisplay(
 internal fun weatherIcon(condition: WeatherCondition, daytime: Boolean): ImageVector =
     ImageVector.vectorResource(weatherIconResource(condition, daytime))
 
-/** Glyph choices stay exactly as before normalization, including few clouds (Mudita 801). */
+/** Shared by Home, the screensaver and the lock-screen top line. */
 internal fun weatherIconResource(condition: WeatherCondition, daytime: Boolean): Int = when (condition) {
         WeatherCondition.THUNDER -> R.drawable.ic_weather_thunderstorm
         WeatherCondition.DRIZZLE -> R.drawable.ic_weather_rainy_light
@@ -213,9 +213,9 @@ internal fun weatherIconResource(condition: WeatherCondition, daytime: Boolean):
         WeatherCondition.RAIN -> R.drawable.ic_weather_rainy
         WeatherCondition.SNOW -> R.drawable.ic_weather_snowy
         WeatherCondition.FOG -> R.drawable.ic_weather_foggy
-        WeatherCondition.CLEAR, WeatherCondition.FEW_CLOUDS ->
+        WeatherCondition.CLEAR ->
             if (daytime) R.drawable.ic_weather_clear_day else R.drawable.ic_weather_clear_night
-        WeatherCondition.PARTLY_CLOUDY ->
+        WeatherCondition.FEW_CLOUDS, WeatherCondition.PARTLY_CLOUDY ->
             if (daytime) R.drawable.ic_weather_partly_cloudy_day
             else R.drawable.ic_weather_partly_cloudy_night
         WeatherCondition.CLOUDY -> R.drawable.ic_weather_cloudy
