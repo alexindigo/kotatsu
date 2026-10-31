@@ -33,11 +33,13 @@ object WidgetReconciler {
             val width = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300).coerceAtLeast(1) * density).toInt()
             val height = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112).coerceAtLeast(1) * density).toInt()
             val next = PublishedTimeline(model, width, height,
-                model.lastUpdatedAt?.let { WeatherPresentation.lastUpdated(context, it, model.zone) })
+                model.lastUpdatedAt?.let { WeatherPresentation.lastUpdated(context, it, model.zone) },
+                WeatherPresentation.description(context, model))
             if (shouldPublish(published[id], next, reason)) {
                 val bitmap = TimelineRenderer.render(context, model, width, height)
                 manager.updateAppWidget(id, RemoteViews(context.packageName, R.layout.widget_timeline).apply {
                     setImageViewBitmap(R.id.timeline, bitmap)
+                    setContentDescription(R.id.timeline, next.description)
                 })
                 published[id] = next
             }

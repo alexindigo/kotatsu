@@ -14,7 +14,7 @@ class TimelineModelTest {
     @Test fun fixtureModelsHaveExactlyTheOldDecisionsForFreshStaleNoDataAndFourRows() {
         val numbers = listOf(TemperatureNumber(7, 50, NumberKind.START), TemperatureNumber(23, 60, NumberKind.END),
             TemperatureNumber(15, 70, NumberKind.HIGH))
-        val expected = TimelineRow("Home", RowState.FRESH, null, false, numbers, Condition.CLOUDS, RefreshStatus())
+        val expected = TimelineRow("Home", RowState.FRESH, null, false, numbers, Condition.CLOUDS, RefreshStatus(), 7, 23)
         val model = buildTimeline(WidgetConfig(listOf(home)), listOf(series), emptyList(), now)
         assertEquals(TimelineModel(now.toLocalDate(), now.zone, Axis(7, 23), 12.5, listOf(expected), now.withMinute(45).toInstant()), model)
         val old = series.copy(fetchedAt = now.toInstant().minusSeconds(13 * 3600))

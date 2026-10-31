@@ -103,9 +103,11 @@ class WeatherGlyphInstrumentedTest {
                 if (InstrumentationRegistry.getArguments().getString("captureScreenshots") == "true") {
                     val dir = File(context.getExternalFilesDir(null), "weather-df").apply { mkdirs() }
                     for ((label, bitmap) in listOf("clear" to clear, "801" to few)) {
-                        File(dir, "$label-${if (daytime) "day" else "night"}.png").outputStream().use {
-                            assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it))
-                        }
+                        val file = File(dir, "$label-${if (daytime) "day" else "night"}.png")
+                        val copy = bitmap.copy(Bitmap.Config.ARGB_8888, false)
+                        try { file.outputStream().use { assertTrue(copy.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
+                        finally { copy.recycle() }
+                        assertTrue("Screenshot PNG must contain encoded pixels", file.length() > 0)
                     }
                 }
                 clear.recycle(); few.recycle(); partly.recycle()

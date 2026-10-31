@@ -25,6 +25,7 @@ internal class WeatherHostFixture : AutoCloseable {
     private val before = prefs.all
     private val previousFetcher = RefreshJobService.fetcher
     val latest = AtomicReference<Bitmap?>()
+    val description = AtomicReference<String?>()
     val updates = AtomicInteger()
     val manager = AppWidgetManager.getInstance(context)
     private val host = object : AppWidgetHost(context, 0x4b5752) {
@@ -32,6 +33,7 @@ internal class WeatherHostFixture : AutoCloseable {
             object : AppWidgetHostView(context) {
                 override fun updateAppWidget(remoteViews: RemoteViews?) {
                     super.updateAppWidget(remoteViews)
+                    description.set(findViewById<ImageView>(R.id.timeline)?.contentDescription?.toString())
                     (findViewById<ImageView>(R.id.timeline)?.drawable as? BitmapDrawable)?.bitmap?.let {
                         latest.set(it); updates.incrementAndGet()
                     }

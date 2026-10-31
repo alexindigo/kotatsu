@@ -18,6 +18,8 @@ data class TimelineRow(
     val numbers: List<TemperatureNumber>,
     val condition: Condition,
     val status: RefreshStatus,
+    val start: Int,
+    val end: Int,
 )
 
 data class TimelineModel(
@@ -47,7 +49,7 @@ fun buildTimeline(
                 if (forecast == null) NoDataReason.NOT_FETCHED else if (numbers.isEmpty()) NoDataReason.MISSING_HOURS else null,
                 stale, numbers, forecast?.let { series -> spanHours(location, series, day)
                     .mapNotNull { condition(it.code, it.gust, config.fahrenheit) }.maxOrNull() } ?: Condition.CLEAR,
-                status.getOrElse(index) { RefreshStatus() })
+                status.getOrElse(index) { RefreshStatus() }, location.start, location.end)
         }, timelineValidUntil(stored, status, now), oldestShownUpdate(config, stored, now))
 }
 
@@ -80,7 +82,8 @@ fun timelineValidUntil(stored: List<ForecastSeries?>, status: List<RefreshStatus
 
 enum class ReconcileReason { UPDATE, OPTIONS_CHANGED, TIME_SET, TIMEZONE_CHANGED, DEADLINE, JOB_DONE, CONFIG_CHANGED, DELETED, RESTORED }
 
-data class PublishedTimeline(val model: TimelineModel, val width: Int, val height: Int, val statusText: String? = null)
+data class PublishedTimeline(val model: TimelineModel, val width: Int, val height: Int, val statusText: String? = null,
+    val description: String = "")
 
 fun shouldPublish(previous: PublishedTimeline?, next: PublishedTimeline, reason: ReconcileReason): Boolean =
     reason == ReconcileReason.OPTIONS_CHANGED || previous != next
