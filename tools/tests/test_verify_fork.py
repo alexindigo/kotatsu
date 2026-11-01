@@ -38,7 +38,7 @@ class ArtifactSelectionTest(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.root=Path(self.temp.name)
         self.directory=self.root/'app/build/outputs/apk/debug';self.directory.mkdir(parents=True)
-        self.apk=self.directory/'kotatsu-v0.5.1-debug.apk';self.apk.write_bytes(b'fixture apk')
+        self.apk=self.directory/'kotatsu-v0.5.2-debug.apk';self.apk.write_bytes(b'fixture apk')
         self.metadata={'variantName':'debug','applicationId':verify.RELEASE_ID+'.debug','elements':[{'outputFile':self.apk.name}]}
         self.write()
     def tearDown(self):self.temp.cleanup()
@@ -69,7 +69,7 @@ class ArtifactSelectionTest(unittest.TestCase):
 
 class ToolParsingTest(unittest.TestCase):
     def test_actual_badging_shape_with_locale_labels(self):
-        text="package: name='com.alexindigo.kotatsu.debug' versionCode='13' versionName='0.5.1-debug'\napplication-label:'Kotatsu Debug'\napplication-label-de:'Kotatsu Debug'\napplication-debuggable\n"
+        text="package: name='com.alexindigo.kotatsu.debug' versionCode='14' versionName='0.5.2-debug'\napplication-label:'Kotatsu Debug'\napplication-label-de:'Kotatsu Debug'\napplication-debuggable\n"
         result=verify.parse_badging(text);self.assertTrue(result['debuggable']);self.assertEqual(result['labels']['de'],'Kotatsu Debug')
     def test_malformed_badging_fails_closed(self):
         for text in ('','package: malformed','application-label:\'Kotatsu\''):
@@ -282,7 +282,7 @@ class CompactGeometryTest(unittest.TestCase):
                     target=p.parent/path
                 self.assertTrue(target.is_file(),path)
             self.assertNotIn('Temporary inherited upstream wordmark',text)
-        self.assertIn('"softwareVersion": "0.5.1"',(root/'docs/index.html').read_text())
+        self.assertIn('"softwareVersion": "0.5.2"',(root/'docs/index.html').read_text())
 
     def test_path_parser_normalizes_actual_relative_and_implicit_commands(self):
         self.assertEqual(verify.path_geometry('M1 2h3v4l-3 0z'),verify.path_geometry('m1,2 3,0 0,4 -3,0 Z'))

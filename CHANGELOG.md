@@ -2,6 +2,20 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.5.2] — 2026-10-31
+
+### Added
+- **Kotatsu Weather update time**: when the forecast is over an hour old, “Last updated at …” appears above the rows, using the phone's 12- or 24-hour clock. The Weather editor explains why an update failed and when it will try again.
+- **Kotatsu Weather screen-reader description** includes each place's selected hours, weather and temperature range, plus the last-update time when shown.
+
+### Changed
+- **Kotatsu Weather rows** fit every place on a single line, with the font size based on the widget size and number of places.
+- **Kotatsu Weather row icons** show the worst weather over the whole selected interval, including its end hour.
+- **Kotatsu Weather after waking** shows a picture older than four hours quietly in grey, without a needle, until the fresh picture arrives.
+
+### Fixed
+- **Top weather line** shows Mudita's “few clouds” as partly cloudy instead of clear on Home, the screensaver and the lock screen.
+
 ## [0.5.1] — 2026-10-28
 
 ### Added
