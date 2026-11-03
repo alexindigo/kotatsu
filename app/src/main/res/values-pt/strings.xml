@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Mostrar o número de notificações no ecrã de bloqueio.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Nas definições de acessibilidade, ative apenas o Kotatsu Action Service, não o seu atalho. O atalho adiciona um botão de acessibilidade flutuante ao ecrã.</string>
-    <string name="lockscreen_widget_a11y_desc">Usado para a caixa e os widgets do ecrã de bloqueio, as notificações, a música e o tempo no ecrã de bloqueio, cobrir o relógio da barra de estado, bloquear o telefone e a proteção de ecrã. Desenha apenas sobre o ecrã de bloqueio e a barra de estado; não lê nada das suas apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Para widgets, notifica&#231;&#245;es, m&#250;sica, tempo e a&#231;&#245;es das margens do ecr&#227; de bloqueio, ocultar o rel&#243;gio, bloquear e a prote&#231;&#227;o de ecr&#227;. S&#243; l&#234; o ecr&#227; de bloqueio, nunca as suas apps. Repete toques e gestos verticais nas margens e abre a c&#226;mara segura.</string>
     <string name="lockscreen_widget_apps">Apps de notificações do ecrã de bloqueio</string>
     <string name="lockscreen_widget_apps_desc">Escolha que apps aparecem no widget do ecrã de bloqueio</string>
     <string name="lockscreen_message">Mensagem no ecrã de bloqueio</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Deixe o atalho do serviço desativado. Adiciona um botão flutuante a todos os ecrãs.</string>
     <string name="a11y_setup_open">Abrir definições de Acessibilidade</string>
     <string name="lockscreen_reenable_disable">Desativar estas funcionalidades</string>
-    <string name="lockscreen_readme_privacy">Esta funcionalidade desenha sobre o ecrã de bloqueio através de uma sobreposição de acessibilidade. A permissão parece assustadora, mas o Kotatsu usa-a apenas para mostrar o widget e ler o próprio ecrã de bloqueio, nunca as suas apps, para que o widget se possa ocultar quando o ecrã do PIN aparece. Nada é registado ou partilhado; o seu código aberto é a prova.</string>
+    <string name="lockscreen_readme_privacy">O Kotatsu s&#243; l&#234; o ecr&#227; de bloqueio, nunca as suas apps, para ocultar sobreposi&#231;&#245;es perante o PIN e outras janelas. Os gestos das margens podem abrir a c&#226;mara segura. Toques e gestos verticais s&#227;o repetidos no ecr&#227; de bloqueio ao soltar. Nada &#233; registado ou partilhado.</string>
     <string name="lockscreen_readme_usage">Mantenha o widget premido para o ajustar: arraste para mover, arraste a pega por baixo para redimensionar. Toque uma vez para guardar.</string>
     <string name="screensaver">Proteção de ecrã</string>
     <string name="screensaver_setup_message">O Kotatsu ainda não está selecionado como proteção de ecrã. Abra as definições da proteção de ecrã e escolha o Kotatsu, depois inicie-o pelo menu inicial.</string>
@@ -418,4 +418,14 @@
     <string name="wallpaper_kotatsu">Kotatsu</string>
     <string name="wallpaper_photos">Das fotos</string>
     <string name="wallpaper_help">Use a imagem incluída ou escolha uma foto sua</string>
+    <string name="edge_swipes">Deslizar das margens</string>
+    <string name="edge_swipes_help">Deslize da margem para dentro um ter&#231;o da largura do ecr&#227;. Toques e gestos verticais passam para o ecr&#227; de bloqueio ao soltar.</string>
+    <string name="edge_actions">A&#231;&#245;es das margens</string>
+    <string name="edge_left">Margem esquerda</string>
+    <string name="edge_right">Margem direita</string>
+    <string name="edge_camera">C&#226;mara</string>
+    <string name="edge_nothing">Nada</string>
+    <string name="edge_camera_available">Dispon&#237;vel</string>
+    <string name="edge_camera_unavailable">Indispon&#237;vel</string>
+    <string name="edge_camera_setup">Requer uma c&#226;mara segura compat&#237;vel. No Open Camera, conceda permiss&#227;o de c&#226;mara e ative Defini&#231;&#245;es > Mais controlos da c&#226;mara > Mostrar c&#226;mara quando bloqueado.</string>
 </resources>

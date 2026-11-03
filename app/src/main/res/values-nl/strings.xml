@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Toon meldingsaantallen op het vergrendelscherm.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Schakel in de toegankelijkheidsinstellingen alleen de Kotatsu Action Service zelf in, niet de sneltoets. De sneltoets zet een zwevende toegankelijkheidsknop op je scherm.</string>
-    <string name="lockscreen_widget_a11y_desc">Gebruikt voor het vak en de widgets op het vergrendelscherm, meldingen, muziek en weer op het vergrendelscherm, het bedekken van de statusbalkklok, het vergrendelen van de telefoon en de schermbeveiliging. Tekent alleen over het vergrendelscherm en de statusbalk; leest niets uit je apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Voor widgets, meldingen, muziek, weer en randacties op het vergrendelscherm, klokbedekking, vergrendelen en schermbeveiliging. Leest alleen het vergrendelscherm, nooit je apps. Speelt tikken en verticale veegbewegingen langs de randen opnieuw af en opent de beveiligde camera.</string>
     <string name="lockscreen_widget_apps">Apps voor vergrendelscherm-meldingen</string>
     <string name="lockscreen_widget_apps_desc">Kies welke apps in de vergrendelscherm-widget verschijnen</string>
     <string name="lockscreen_message">Vergrendelschermbericht</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Laat de snelkoppeling van de service uit. Die voegt een zwevende knop toe aan elk scherm.</string>
     <string name="a11y_setup_open">Toegankelijkheid openen</string>
     <string name="lockscreen_reenable_disable">Deze functies uitschakelen</string>
-    <string name="lockscreen_readme_privacy">Deze functie tekent over het vergrendelscherm via een toegankelijkheidsoverlay. De machtiging klinkt eng, maar Kotatsu gebruikt deze alleen om de widget te tonen en het vergrendelscherm zelf te lezen, nooit je apps, zodat de widget zich kan verbergen wanneer het PIN-scherm verschijnt. Er wordt niets geregistreerd of gedeeld; de open source code is het bewijs.</string>
+    <string name="lockscreen_readme_privacy">Kotatsu leest alleen het vergrendelscherm, nooit je apps, om overlays bij de pincode en andere vensters te verbergen. Randgebaren kunnen de beveiligde camera openen. Tikken en verticale veegbewegingen worden na loslaten op het vergrendelscherm afgespeeld. Er wordt niets opgeslagen of gedeeld.</string>
     <string name="lockscreen_readme_usage">Houd de widget lang ingedrukt om aan te passen: sleep om te verplaatsen, sleep de greep eronder om het formaat te wijzigen. Tik één keer om op te slaan.</string>
     <string name="screensaver">Schermbeveiliging</string>
     <string name="screensaver_setup_message">Kotatsu is nog niet als schermbeveiliging geselecteerd. Open de schermbeveiligingsinstellingen en kies Kotatsu, start het daarna via het startmenu.</string>
@@ -418,4 +418,14 @@
     <string name="wallpaper_kotatsu">Kotatsu</string>
     <string name="wallpaper_photos">Uit foto’s</string>
     <string name="wallpaper_help">Gebruik de ingebouwde afbeelding of kies een eigen foto</string>
+    <string name="edge_swipes">Vegen vanaf de randen</string>
+    <string name="edge_swipes_help">Veeg vanaf een rand een derde van de schermbreedte naar binnen. Tikken en verticale veegbewegingen gaan na loslaten naar het vergrendelscherm.</string>
+    <string name="edge_actions">Randacties</string>
+    <string name="edge_left">Linkerrand</string>
+    <string name="edge_right">Rechterrand</string>
+    <string name="edge_camera">Camera</string>
+    <string name="edge_nothing">Niets</string>
+    <string name="edge_camera_available">Beschikbaar</string>
+    <string name="edge_camera_unavailable">Niet beschikbaar</string>
+    <string name="edge_camera_setup">Vereist een geschikte beveiligde camera. Geef Open Camera cameratoegang en schakel Instellingen > Meer camerabediening > Camera tonen wanneer vergrendeld in.</string>
 </resources>

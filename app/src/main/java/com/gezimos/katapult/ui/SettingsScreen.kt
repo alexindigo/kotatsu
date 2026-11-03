@@ -86,6 +86,8 @@ import com.gezimos.katapult.ui.settings.appsCategory
 import com.gezimos.katapult.ui.settings.gesturesCategory
 import com.gezimos.katapult.ui.settings.notificationsCategory
 import com.gezimos.katapult.ui.settings.lockCategory
+import com.gezimos.katapult.ui.settings.edgeSwipesCategory
+import com.gezimos.katapult.lockscreen.SecureCamera
 import com.gezimos.katapult.ui.settings.screensaverCategory
 import com.gezimos.katapult.ui.settings.systemCategory
 import com.gezimos.katapult.ui.settings.aboutCategory
@@ -179,6 +181,12 @@ fun SettingsScreen(
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
     var lockscreenWeather by remember { mutableStateOf(prefs.lockscreenWeather) }
     val widgetSettings = viewModel.lockscreenWidgets
+    var edgeRevision by remember { mutableIntStateOf(0) }
+    DisposableEffect(prefs) {
+        val subscription = prefs.subscribeChanges { edgeRevision++ }
+        onDispose { subscription.close() }
+    }
+    val edgeStore = remember(edgeRevision) { prefs.edgeActions }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var lockscreenLatestFirst by remember { mutableStateOf(prefs.lockscreenWidgetLatestFirst) }
     var screensaverWallpaper by remember { mutableStateOf(prefs.screensaverWallpaper) }
@@ -351,7 +359,17 @@ fun SettingsScreen(
             actionServiceEnabled = serviceOn; viewModel.observeActionService(serviceOn)
             if (!requested || serviceOn) { lockscreenWeather = requested; prefs.lockscreenWeather = requested }
             if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
-        }, onWidgets = { widgetSettings.refresh(); navigation.push("widgets") }, onMessage = viewModel::beginLockscreenMessage)
+        }, onWidgets = { widgetSettings.refresh(); navigation.push("widgets") }, onMessage = viewModel::beginLockscreenMessage,
+        onEdgeSwipes = { navigation.push("edges") })
+    val edges = edgeSwipesCategory(edgeStore.enabled,
+        edgeStore.action(com.gezimos.katapult.lockscreen.ScreenEdge.LEFT),
+        edgeStore.action(com.gezimos.katapult.lockscreen.ScreenEdge.RIGHT), SecureCamera.available(context),
+        onEnabled = { requested ->
+            val serviceOn = LockscreenWidgetService.isEnabled(context)
+            viewModel.observeActionService(serviceOn)
+            if (!requested || serviceOn) edgeStore.enabled = requested
+            else viewModel.requestActionService(AccessibilityFeature.EDGE_SWIPES)
+        }, onAction = edgeStore::setAction)
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
         screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
         screensaverDoubleTapBrightness, screensaverOnPower, screensaverAppIcon, screensaverUpdateMode,
@@ -407,6 +425,13 @@ fun SettingsScreen(
                 noticeGroup = when (chapter.id) { "appearance" -> "screen"; "screensaver" -> "interaction"; else -> null },
                 onChoice = { navigation.push("choice:${chapter.id}:${it.id}") },
                 onHelp = { navigation.push("help:${chapter.id}") })
+        } else if (destination == "edges" && isMudita) {
+            PaperIndexRenderer(edges, popPage, notice = notice,
+                onChoice = { navigation.push("edge-choice:${it.id}") }, onHelp = {})
+        } else if (destination.startsWith("edge-choice:") && isMudita) {
+            val entry = edges.groups.flatMap { it.entries }.filterIsInstance<SettingsEntry.Value>()
+                .single { it.id == destination.removePrefix("edge-choice:") }
+            ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
         } else if (destination.startsWith("choice:")) {
             val (_, chapterId, entryId) = destination.split(":")
             val choice = chapters.values.single { it.id == chapterId }.groups.flatMap { it.visibleEntries }

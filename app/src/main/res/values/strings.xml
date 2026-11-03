@@ -217,7 +217,7 @@
     <string name="lockscreen_widget_desc">Show notification counts on the lock screen</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">In accessibility settings, turn on only the Kotatsu Action Service itself, not its shortcut. The shortcut adds a floating accessibility button to your screen.</string>
-    <string name="lockscreen_widget_a11y_desc">Used for the lock-screen box and its widgets, lock-screen notifications, music and weather, covering the status bar clock, locking the phone, and the screensaver. Draws only over the lock screen and status bar; reads nothing from your apps.</string>
+    <string name="lockscreen_widget_a11y_desc">Used for lock-screen widgets, notifications, music, weather and edge actions, the status bar clock cover, locking and the screensaver. Reads only the lock screen, never your apps. Performs gestures to pass edge taps and vertical swipes to the lock screen, and opens the secure camera when chosen.</string>
     <string name="lockscreen_widget_apps">Lock screen notification apps</string>
     <string name="lockscreen_widget_apps_desc">Choose which apps appear on the lock screen widget</string>
     <string name="lockscreen_message">Lock screen message</string>
@@ -233,7 +233,7 @@
     <string name="a11y_setup_step_shortcut">3. Leave Kotatsu Action Service shortcut off. It adds a floating button to every screen.</string>
     <string name="a11y_setup_open">Open Accessibility settings</string>
     <string name="lockscreen_reenable_disable">Turn off these features</string>
-    <string name="lockscreen_readme_privacy">This feature draws over the lock screen using an accessibility overlay. That permission sounds scary, but Kotatsu uses it only to display the widget and to read the lock screen itself, never your apps, so the widget can hide when the PIN screen appears. Nothing is recorded or shared; the open source code is the proof.</string>
+    <string name="lockscreen_readme_privacy">Kotatsu uses accessibility overlays and reads the lock screen, never your apps, to hide overlays over the PIN pad and other windows. Edge swipes can open the secure camera. Taps and vertical swipes on the edges are replayed to the lock screen after release. Nothing is recorded or shared.</string>
     <string name="lockscreen_readme_usage">Long-press the widget to adjust it: drag to move, drag the handle below it to resize. Tap it once to save and finish.</string>
     <string name="screensaver">Screensaver</string>
     <string name="screensaver_setup_message">Kotatsu isn\'t selected as the screen saver yet. Open Screen saver settings and choose Kotatsu, then start it from the home menu.</string>
@@ -420,4 +420,14 @@
     <string name="wallpaper_kotatsu">Kotatsu</string>
     <string name="wallpaper_photos">From photos</string>
     <string name="wallpaper_help">Use the built-in picture or choose your own photo</string>
+    <string name="edge_swipes">Edge swipes</string>
+    <string name="edge_swipes_help">Swipe inward from either edge by a third of the screen width. Taps and vertical swipes pass to the lock screen after release.</string>
+    <string name="edge_actions">Edge actions</string>
+    <string name="edge_left">Left edge</string>
+    <string name="edge_right">Right edge</string>
+    <string name="edge_camera">Camera</string>
+    <string name="edge_nothing">Nothing</string>
+    <string name="edge_camera_available">Available</string>
+    <string name="edge_camera_unavailable">Unavailable</string>
+    <string name="edge_camera_setup">Needs a compatible secure camera. In Open Camera, grant camera permission and enable Settings > More camera controls > Show camera when locked.</string>
 </resources>

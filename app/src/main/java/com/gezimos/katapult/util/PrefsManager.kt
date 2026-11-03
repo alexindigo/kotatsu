@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import com.gezimos.katapult.model.AppModel
 import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
+import com.gezimos.katapult.lockscreen.EdgeActionStore
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -22,6 +23,7 @@ class PrefsManager(context: Context) {
     private val prefs: SharedPreferences =
         context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
     val lockscreenWidgetStore by lazy { LockscreenWidgetStore(appContext, prefs) }
+    val edgeActions by lazy { EdgeActionStore(prefs) }
 
     private val changeListeners = java.util.concurrent.CopyOnWriteArrayList<(String?) -> Unit>()
     private val platformListener = SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
@@ -664,6 +666,7 @@ class PrefsManager(context: Context) {
         for (key in json.keys()) {
             if (key in LOCAL_IMPORT_KEYS || key in RETIRED_KEYS) continue
             val value = json.opt(key)
+            if (!EdgeActionStore.validImport(key, value)) return@synchronized false
             val valid = when (declaredImportDefault(key)) {
                 is Boolean -> value is Boolean
                 is Int -> value is Number && runCatching {
@@ -711,6 +714,8 @@ class PrefsManager(context: Context) {
 
     /** Types follow the defaults declared by the getters, not a device's stored values. */
     private fun declaredImportDefault(key: String): Any? = when (key) {
+        EdgeActionStore.ENABLED -> false
+        EdgeActionStore.LEFT, EdgeActionStore.RIGHT -> ""
         KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER, KEY_WEATHER_CELSIUS,
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,

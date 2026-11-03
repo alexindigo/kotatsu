@@ -228,12 +228,12 @@ class BadgeActions(
 data class AccessibilitySelection(val widget: Boolean = false, val media: Boolean = false,
     val message: Boolean = false, val clockCover: Boolean = false, val doubleTapLock: Boolean = false,
     val screensaver: Boolean = false, val powerScreensaver: Boolean = false, val weather: Boolean = false,
-    val widgets: Boolean = false)
+    val widgets: Boolean = false, val edgeSwipes: Boolean = false)
 
 data class AccessibilityDemand(val badges: Boolean, val media: Boolean, val inspectPin: Boolean,
     val clockCover: Boolean, val lockAction: Boolean, val powerEntry: Boolean)
 
-enum class AccessibilityFeature { WIDGET, MEDIA, MESSAGE, CLOCK_COVER, DOUBLE_TAP_LOCK, POWER_SCREENSAVER, WEATHER, LOCKSCREEN_WIDGETS }
+enum class AccessibilityFeature { WIDGET, MEDIA, MESSAGE, CLOCK_COVER, DOUBLE_TAP_LOCK, POWER_SCREENSAVER, WEATHER, LOCKSCREEN_WIDGETS, EDGE_SWIPES }
 
 object AccessibilityPolicy {
     fun serviceFeatures(selection: AccessibilitySelection): List<AccessibilityFeature> = buildList {
@@ -245,10 +245,15 @@ object AccessibilityPolicy {
         if (selection.screensaver && selection.powerScreensaver) add(AccessibilityFeature.POWER_SCREENSAVER)
         if (selection.weather) add(AccessibilityFeature.WEATHER)
         if (selection.widgets) add(AccessibilityFeature.LOCKSCREEN_WIDGETS)
+        if (selection.edgeSwipes) add(AccessibilityFeature.EDGE_SWIPES)
     }
 
-    fun isPinField(packageName: CharSequence?, visible: Boolean, className: CharSequence?): Boolean =
-        packageName?.toString() == "com.android.systemui" && visible && className?.contains("EditText") == true
+    fun isPinField(packageName: CharSequence?, visible: Boolean, className: CharSequence?, viewId: String? = null): Boolean =
+        packageName?.toString() == "com.android.systemui" && visible &&
+            (className?.contains("EditText") == true || className?.contains("KompaktPasswordTextView") == true ||
+                viewId in PIN_VIEW_IDS)
+
+    val PIN_VIEW_IDS = setOf("com.android.systemui:id/keyguard_pin_view", "com.android.systemui:id/pinEntry")
 
     /** System UI's lock-screen/shade container; only the window holding it is the lock screen itself. */
     const val LOCKSCREEN_PANEL_ID = "com.android.systemui:id/notification_panel"
@@ -268,7 +273,7 @@ object AccessibilityPolicy {
                launcherActive: Boolean, screensaverActive: Boolean): AccessibilityDemand = AccessibilityDemand(
         badges = eligible && lockscreenActive && selection.widget,
         media = eligible && lockscreenActive && selection.media,
-        inspectPin = eligible && lockscreenActive && (selection.widget || selection.media || selection.message || selection.weather || selection.widgets),
+        inspectPin = eligible && lockscreenActive && (selection.widget || selection.media || selection.message || selection.weather || selection.widgets || selection.edgeSwipes),
         clockCover = eligible && selection.clockCover && (launcherActive || screensaverActive),
         lockAction = eligible && ((selection.doubleTapLock && launcherActive) || (selection.screensaver && screensaverActive)),
         powerEntry = eligible && selection.screensaver && selection.powerScreensaver,

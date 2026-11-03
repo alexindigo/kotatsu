@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Zobrazit počty oznámení na zamykací obrazovce.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">V nastavení přístupnosti zapněte pouze samotnou službu Kotatsu Action Service, ne její zkratku. Zkratka přidá na obrazovku plovoucí tlačítko přístupnosti.</string>
-    <string name="lockscreen_widget_a11y_desc">Používá se pro rámeček a widgety na zamykací obrazovce, oznámení, hudbu a počasí na zamykací obrazovce, zakrytí hodin stavového řádku, zamknutí telefonu a spořič. Kreslí pouze přes zamykací obrazovku a stavový řádek; z vašich aplikací nic nečte.</string>
+    <string name="lockscreen_widget_a11y_desc">Pou&#382;&#237;v&#225; se pro widgety, ozn&#225;men&#237;, hudbu, po&#269;as&#237; a akce na okraj&#237;ch zamykac&#237; obrazovky, zakryt&#237; hodin, zamyk&#225;n&#237; a spo&#345;i&#269;. &#268;te jen zamykac&#237; obrazovku, nikdy va&#353;e aplikace. P&#345;ehr&#225;v&#225; klepnut&#237; a svisl&#225; gesta na okraj&#237;ch a otev&#237;r&#225; zabezpe&#269;en&#253; fotoapar&#225;t.</string>
     <string name="lockscreen_widget_apps">Aplikace oznámení na zamykací obrazovce</string>
     <string name="lockscreen_widget_apps_desc">Vyberte, které aplikace se zobrazí ve widgetu zamykací obrazovky</string>
     <string name="lockscreen_message">Zpráva na zamykací obrazovce</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Zkratku služby nechte vypnutou. Přidává plovoucí tlačítko na každou obrazovku.</string>
     <string name="a11y_setup_open">Otevřít nastavení Přístupnosti</string>
     <string name="lockscreen_reenable_disable">Vypnout tyto funkce</string>
-    <string name="lockscreen_readme_privacy">Tato funkce kreslí přes zamykací obrazovku pomocí překryvné vrstvy usnadnění přístupu. Oprávnění zní děsivě, ale Kotatsu jej používá pouze k zobrazení widgetu a ke čtení samotné zamykací obrazovky, nikdy vašich aplikací, aby se widget mohl skrýt, když se objeví obrazovka PIN. Nic se nenahrává ani nesdílí; důkazem je otevřený zdrojový kód.</string>
+    <string name="lockscreen_readme_privacy">Kotatsu &#269;te jen zamykac&#237; obrazovku, nikdy va&#353;e aplikace, aby skryl p&#345;ekryvn&#233; vrstvy nad PINem a jin&#253;mi okny. Gesta z okraj&#367; mohou otev&#345;&#237;t zabezpe&#269;en&#253; fotoapar&#225;t. Klepnut&#237; a svisl&#225; gesta se po zvednut&#237; prstu p&#345;ehraj&#237; na zamykac&#237; obrazovce. Nic se nezaznamen&#225;v&#225; ani nesd&#237;l&#237;.</string>
     <string name="lockscreen_readme_usage">Podržte widget pro úpravu: tažením jej přesunete, tažením úchytu pod ním změníte velikost. Jedním klepnutím uložíte.</string>
     <string name="screensaver">Spořič obrazovky</string>
     <string name="screensaver_setup_message">Kotatsu zatím není vybrán jako spořič obrazovky. Otevřete nastavení spořiče a vyberte Kotatsu, poté jej spusťte z domovské nabídky.</string>
@@ -418,4 +418,14 @@
     <string name="wallpaper_kotatsu">Kotatsu</string>
     <string name="wallpaper_photos">Z fotek</string>
     <string name="wallpaper_help">Použijte vestavěný obrázek nebo vyberte vlastní fotku</string>
+    <string name="edge_swipes">Gesta z okraj&#367;</string>
+    <string name="edge_swipes_help">T&#225;hn&#283;te z okraje dovnit&#345; o t&#345;etinu &#353;&#237;&#345;ky obrazovky. Klepnut&#237; a svisl&#225; gesta se po zvednut&#237; prstu p&#345;edaj&#237; zamykac&#237; obrazovce.</string>
+    <string name="edge_actions">Akce okraj&#367;</string>
+    <string name="edge_left">Lev&#253; okraj</string>
+    <string name="edge_right">Prav&#253; okraj</string>
+    <string name="edge_camera">Fotoapar&#225;t</string>
+    <string name="edge_nothing">Nic</string>
+    <string name="edge_camera_available">Dostupn&#253;</string>
+    <string name="edge_camera_unavailable">Nedostupn&#253;</string>
+    <string name="edge_camera_setup">Vy&#382;aduje kompatibiln&#237; zabezpe&#269;en&#253; fotoapar&#225;t. V Open Camera povolte p&#345;&#237;stup k fotoapar&#225;tu a zapn&#283;te Nastaven&#237; > Dal&#353;&#237; ovl&#225;d&#225;n&#237; fotoapar&#225;tu > Zobrazit fotoapar&#225;t p&#345;i uzam&#269;en&#237;.</string>
 </resources>

@@ -4,6 +4,21 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class AccessibilityPolicyTest {
+    @Test fun edgesDemandOnlyInspectionAndRecognizeKompaktCredentialRootsWithoutReadingText() {
+        val selection = AccessibilitySelection(edgeSwipes = true)
+        assertEquals(listOf(AccessibilityFeature.EDGE_SWIPES), AccessibilityPolicy.serviceFeatures(selection))
+        val demand = AccessibilityPolicy.demand(true, selection, true, false, false)
+        assertTrue(demand.inspectPin)
+        assertFalse(demand.badges); assertFalse(demand.media)
+        assertFalse(AccessibilityPolicy.demand(false, selection, true, false, false).inspectPin)
+        assertFalse(AccessibilityPolicy.demand(true, selection, false, false, false).inspectPin)
+        assertTrue(AccessibilityPolicy.isPinField("com.android.systemui", true, "com.android.keyguard.KompaktPasswordTextView"))
+        AccessibilityPolicy.PIN_VIEW_IDS.forEach { id ->
+            assertTrue(AccessibilityPolicy.isPinField("com.android.systemui", true, "android.widget.FrameLayout", id))
+            assertFalse(AccessibilityPolicy.isPinField("other", true, "android.widget.FrameLayout", id))
+            assertFalse(AccessibilityPolicy.isPinField("com.android.systemui", false, "android.widget.FrameLayout", id))
+        }
+    }
     @Test fun actualConsumerCoordinatorReleasesItsOwnSourcesSubscriptionsAndInspectionOnDisableAndInactivity() {
         val badgeOwners = OwnerLeases {}
         val mediaOwners = OwnerLeases {}

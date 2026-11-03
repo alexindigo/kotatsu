@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Benachrichtigungszahlen auf dem Sperrbildschirm anzeigen.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Aktiviere in den Bedienungshilfen nur den Kotatsu Action Service selbst, nicht seine Verknüpfung. Die Verknüpfung legt eine schwebende Bedienungshilfen-Schaltfläche auf den Bildschirm.</string>
-    <string name="lockscreen_widget_a11y_desc">Wird für den Sperrbildschirm-Kasten und seine Widgets, Benachrichtigungen, Musik und Wetter auf dem Sperrbildschirm, das Abdecken der Statusleisten-Uhr, das Sperren des Telefons und den Bildschirmschoner verwendet. Zeichnet nur über Sperrbildschirm und Statusleiste; liest nichts aus deinen Apps.</string>
+    <string name="lockscreen_widget_a11y_desc">F&#252;r Sperrbildschirm-Widgets, Benachrichtigungen, Musik, Wetter, Randaktionen, Uhrabdeckung, Sperren und Bildschirmschoner. Liest nur den Sperrbildschirm, nie deine Apps. Gibt Tippen und vertikale Wischgesten am Rand an den Sperrbildschirm weiter und &#246;ffnet die sichere Kamera.</string>
     <string name="lockscreen_widget_apps">Apps für Sperrbildschirm-Benachrichtigungen</string>
     <string name="lockscreen_widget_apps_desc">Wähle, welche Apps im Sperrbildschirm-Widget erscheinen</string>
     <string name="lockscreen_message">Sperrbildschirm-Nachricht</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Lass die Verknüpfung des Dienstes aus. Sie fügt jedem Bildschirm eine schwebende Schaltfläche hinzu.</string>
     <string name="a11y_setup_open">Bedienungshilfen öffnen</string>
     <string name="lockscreen_reenable_disable">Diese Funktionen ausschalten</string>
-    <string name="lockscreen_readme_privacy">Diese Funktion zeichnet über den Sperrbildschirm mittels eines Bedienungshilfen-Overlays. Die Berechtigung klingt beunruhigend, aber Kotatsu nutzt sie nur, um das Widget anzuzeigen und den Sperrbildschirm selbst zu lesen, nie deine Apps -, damit sich das Widget bei der PIN-Eingabe ausblendet. Nichts wird gespeichert oder geteilt; der offene Quellcode ist der Beweis.</string>
+    <string name="lockscreen_readme_privacy">Kotatsu liest nur den Sperrbildschirm, nie deine Apps, um Overlays bei der PIN-Eingabe und anderen Fenstern auszublenden. Randgesten k&#246;nnen die sichere Kamera &#246;ffnen. Tippen und vertikale Wischgesten werden nach dem Loslassen auf dem Sperrbildschirm wiedergegeben. Nichts wird aufgezeichnet oder geteilt.</string>
     <string name="lockscreen_readme_usage">Halte das Widget gedrückt, um es anzupassen: Ziehen zum Verschieben, am Griff darunter ziehen zum Vergrößern. Einmal tippen zum Speichern.</string>
     <string name="screensaver">Bildschirmschoner</string>
     <string name="screensaver_setup_message">Kotatsu ist noch nicht als Bildschirmschoner ausgewählt. Öffne die Bildschirmschoner-Einstellungen, wähle Kotatsu und starte ihn dann über das Home-Menü.</string>
@@ -418,4 +418,14 @@
     <string name="wallpaper_kotatsu">Kotatsu</string>
     <string name="wallpaper_photos">Aus Fotos</string>
     <string name="wallpaper_help">Das integrierte Bild verwenden oder ein eigenes Foto wählen</string>
+    <string name="edge_swipes">Wischen vom Rand</string>
+    <string name="edge_swipes_help">Wische vom Rand ein Drittel der Bildschirmbreite nach innen. Tippen und vertikale Wischgesten werden nach dem Loslassen an den Sperrbildschirm weitergegeben.</string>
+    <string name="edge_actions">Randaktionen</string>
+    <string name="edge_left">Linker Rand</string>
+    <string name="edge_right">Rechter Rand</string>
+    <string name="edge_camera">Kamera</string>
+    <string name="edge_nothing">Nichts</string>
+    <string name="edge_camera_available">Verf&#252;gbar</string>
+    <string name="edge_camera_unavailable">Nicht verf&#252;gbar</string>
+    <string name="edge_camera_setup">Ben&#246;tigt eine kompatible sichere Kamera. Erlaube Open Camera den Kamerazugriff und aktiviere Einstellungen > Weitere Kameraeinstellungen > Kamera bei gesperrtem Bildschirm anzeigen.</string>
 </resources>

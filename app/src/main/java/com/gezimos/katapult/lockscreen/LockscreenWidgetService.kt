@@ -225,13 +225,14 @@ class LockscreenWidgetService :
 
     private val badgeListener: () -> Unit = { mainHandler.post { evaluate() } }
     private lateinit var prefs: PrefsManager
+    private var edgeGestures: EdgeGestures? = null
     private val badgeOwner = Any()
     private val mediaOwner = Any()
     private val consumers = AccessibilityConsumers(
         acquireBadges = { SensitiveAccess.acquireBadges(badgeOwner) },
         acquireMedia = { SensitiveAccess.acquireMedia(mediaOwner) },
         subscriptions = ::syncSourceSubscriptions,
-        clearLockscreen = { removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); stopWidgets(); musicState.value = null },
+        clearLockscreen = { edgeGestures?.apply(false); removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); stopWidgets(); musicState.value = null },
         clearInspection = {
             mainHandler.removeCallbacks(keyguardRecheck)
             visibility.invalidate()
@@ -246,7 +247,8 @@ class LockscreenWidgetService :
         AccessibilitySelection(prefs.lockscreenWidget, prefs.lockscreenMusicWidget, !prefs.lockscreenMessage.isNullOrBlank(),
             prefs.hideStatusBarClock && !prefs.hideStatusBar && DeviceHelper.isMuditaKompakt(),
             prefs.doubleTapAction == PrefsManager.DOUBLE_TAP_LOCK, prefs.screensaverEnabled, prefs.screensaverOnPower,
-            weather = prefs.lockscreenWeather, widgets = prefs.lockscreenWidgetsEnabled),
+            weather = prefs.lockscreenWeather, widgets = prefs.lockscreenWidgetsEnabled,
+            edgeSwipes = prefs.edgeActions.enabled && DeviceHelper.isMuditaKompakt()),
         lockscreenActive, launcherForeground, screensaverForeground || ScreensaverActivity.isShowing,
     )
 
@@ -320,6 +322,13 @@ class LockscreenWidgetService :
     override fun onServiceConnected() {
         instance = this
         prefs = PrefsManager(this)
+        edgeGestures = EdgeGestures(this, mainHandler, prefs.edgeActions, ::edgeEligible,
+            { mainHandler.post { evaluate() } }, { _, action ->
+                if (edgeEligible()) when (action) {
+                    EdgeAction.CAMERA -> SecureCamera.open(this)
+                    EdgeAction.NOTHING -> Unit
+                }
+            })
         SensitiveAccess.initialize(this)
         SensitiveAccess.accessibilityConnection(true)
         policySubscription = SensitiveAccess.subscribe { mainHandler.post { syncWeatherLease(); evaluate() } }
@@ -340,14 +349,20 @@ class LockscreenWidgetService :
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        edgeGestures?.event(event)
+        // Window changes have no source package. Keep their stream intact for the
+        // replay barrier; other apps' view/content events need no inspection.
+        if (event?.eventType != AccessibilityEvent.TYPE_WINDOWS_CHANGED &&
+            event?.packageName?.toString() != "com.android.systemui") return
         if (!SensitiveAccess.accessibility() ||
             (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&
-                !prefs.lockscreenWidgetsEnabled && prefs.lockscreenMessage.isNullOrBlank())) return
+                !prefs.lockscreenWidgetsEnabled && !prefs.edgeActions.enabled && prefs.lockscreenMessage.isNullOrBlank())) return
         recheckFastUntil = SystemClock.elapsedRealtime() + KEYGUARD_BURST_MS
         evaluate()
     }
 
     override fun onInterrupt() {
+        edgeGestures?.interrupt()
         syncSourceSubscriptions(false, false)
         releaseSensitiveConsumers()
         removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeClockCover()
@@ -362,6 +377,7 @@ class LockscreenWidgetService :
     }
 
     override fun onDestroy() {
+        edgeGestures?.close(); edgeGestures = null
         if (instance === this) instance = null
         SensitiveAccess.accessibilityConnection(false)
         policySubscription?.close(); policySubscription = null
@@ -650,8 +666,8 @@ class LockscreenWidgetService :
     }
 
     /**
-     * Event delivery is limited to com.android.systemui, but findFocus can still return a
-     * node from another package; PIN inspection checks that node's package separately.
+     * View/content events are handled only for System UI; window changes also drive
+     * the replay barrier. PIN inspection checks each node's package separately.
      * Keyguard dismissal can arrive while isKeyguardLocked is still true mid-animation,
      * with no later System UI event to remove overlays. Re-check while overlays or selected
      * PIN inspection are active, so unlock and PIN occlusion are observed without new events.
@@ -737,7 +753,7 @@ class LockscreenWidgetService :
         applyClockCover(launcherForeground || screensaverForeground)
         if (!SensitiveAccess.accessibility() ||
             (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&
-                !prefs.lockscreenWidgetsEnabled && prefs.lockscreenMessage.isNullOrBlank())) {
+                !prefs.lockscreenWidgetsEnabled && !prefs.edgeActions.enabled && prefs.lockscreenMessage.isNullOrBlank())) {
             releaseSensitiveConsumers()
             syncSourceSubscriptions(false, false)
             mainHandler.removeCallbacks(keyguardRecheck)
@@ -765,6 +781,7 @@ class LockscreenWidgetService :
         applyWidgets(onLockscreen)
         applyLockscreenMessage(onLockscreen)
         applyWeather(onLockscreen)
+        edgeGestures?.apply(onLockscreen && DeviceHelper.isMuditaKompakt() && prefs.edgeActions.enabled)
         if (!onLockscreen || !prefs.lockscreenWidget) {
             removeOverlay()
             scheduleKeyguardRecheck()
@@ -798,24 +815,48 @@ class LockscreenWidgetService :
      * hides overlays. Polled instead of event-driven: re-showing the PIN doesn't re-fire focus events when its
      * field kept focus.
      */
+    private fun edgeEligible(): Boolean = prefs.edgeActions.enabled && DeviceHelper.isMuditaKompakt() &&
+        SensitiveAccess.accessibility() && getSystemService(KeyguardManager::class.java).isKeyguardLocked &&
+        getSystemService(PowerManager::class.java).isInteractive && !KatapultDreamService.isDreaming &&
+        !ScreensaverActivity.isShowing && !inCall() && visibility.recheck(true, ::lockscreenCovered)
+
     private fun lockscreenCovered(): Boolean {
         if (!SensitiveAccess.accessibility()) return true
         return AccessibilityPolicy.coveredOrUnknown {
             val focus = findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
             val pinFocused = try {
-                focus != null && AccessibilityPolicy.isPinField(focus.packageName, focus.isVisibleToUser, focus.className)
+                focus != null && AccessibilityPolicy.isPinField(focus.packageName, focus.isVisibleToUser, focus.className, focus.viewIdResourceName)
             } finally {
                 @Suppress("DEPRECATION")
                 focus?.recycle()
             }
-            val root = windows.firstOrNull { it.isActive }?.root
+            val snapshot = windows
+            // Our own overlay can hold focus. Inspect the underlying active window,
+            // never use the overlay as evidence that keyguard is bare or covered.
+            val inspected = snapshot.map { window ->
+                val ownOverlay = if (window.type != android.view.accessibility.AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY) false
+                else {
+                    val node = window.root
+                    try { node?.packageName?.toString() == packageName }
+                    finally { @Suppress("DEPRECATION") node?.recycle() }
+                }
+                LockscreenVisibility.InspectionWindow(ownOverlay, window.isActive, window.isFocused)
+            }
+            val root = LockscreenVisibility.inspectionWindow(inspected)?.let { snapshot[it].root }
             try {
-                val hasPanel = root?.findAccessibilityNodeInfosByViewId(AccessibilityPolicy.LOCKSCREEN_PANEL_ID)
-                    ?.any { it.isVisibleToUser } == true
-                AccessibilityPolicy.lockscreenCovered(root?.packageName, hasPanel, pinFocused)
+                fun visibleId(id: String): Boolean {
+                    val nodes = root?.findAccessibilityNodeInfosByViewId(id).orEmpty()
+                    return try { nodes.any { it.isVisibleToUser } }
+                    finally { @Suppress("DEPRECATION") nodes.forEach { it.recycle() } }
+                }
+                val hasPanel = visibleId(AccessibilityPolicy.LOCKSCREEN_PANEL_ID)
+                val pinVisible = AccessibilityPolicy.PIN_VIEW_IDS.any(::visibleId)
+                AccessibilityPolicy.lockscreenCovered(root?.packageName, hasPanel, pinFocused || pinVisible)
             } finally {
                 @Suppress("DEPRECATION")
                 root?.recycle()
+                @Suppress("DEPRECATION")
+                snapshot.forEach { it.recycle() }
             }
         }
     }

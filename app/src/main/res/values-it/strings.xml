@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Mostra il numero di notifiche sulla schermata di blocco.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Nelle impostazioni di accessibilità attiva solo il Kotatsu Action Service, non la sua scorciatoia. La scorciatoia aggiunge un pulsante di accessibilità fluttuante sullo schermo.</string>
-    <string name="lockscreen_widget_a11y_desc">Usato per il riquadro e i widget della schermata di blocco, le notifiche, la musica e il meteo sulla schermata di blocco, la copertura dell\'orologio della barra di stato, il blocco del telefono e il salvaschermo. Disegna solo sulla schermata di blocco e sulla barra di stato; non legge nulla dalle tue app.</string>
+    <string name="lockscreen_widget_a11y_desc">Per widget, notifiche, musica, meteo e azioni dai bordi della schermata di blocco, copertura dell\'orologio, blocco e salvaschermo. Legge solo la schermata di blocco, mai le tue app. Riproduce tocchi e gesti verticali sui bordi e apre la fotocamera sicura.</string>
     <string name="lockscreen_widget_apps">App delle notifiche sulla schermata di blocco</string>
     <string name="lockscreen_widget_apps_desc">Scegli quali app appaiono nel widget della schermata di blocco</string>
     <string name="lockscreen_message">Messaggio schermata di blocco</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Lascia disattivata la scorciatoia del servizio. Aggiunge un pulsante mobile a ogni schermata.</string>
     <string name="a11y_setup_open">Apri impostazioni di Accessibilità</string>
     <string name="lockscreen_reenable_disable">Disattiva queste funzioni</string>
-    <string name="lockscreen_readme_privacy">Questa funzione disegna sulla schermata di blocco tramite un overlay di accessibilità. Il permesso può sembrare allarmante, ma Kotatsu lo usa solo per mostrare il widget e leggere la schermata di blocco stessa, mai le tue app, così il widget può nascondersi quando appare la schermata del PIN. Nulla viene registrato o condiviso; il suo codice open source ne è la prova.</string>
+    <string name="lockscreen_readme_privacy">Kotatsu legge solo la schermata di blocco, mai le tue app, per nascondere gli overlay davanti al PIN e ad altre finestre. I gesti dai bordi possono aprire la fotocamera sicura. Tocchi e gesti verticali vengono riprodotti sulla schermata di blocco al rilascio. Nulla viene registrato o condiviso.</string>
     <string name="lockscreen_readme_usage">Tieni premuto il widget per regolarlo: trascina per spostarlo, trascina la maniglia sotto per ridimensionarlo. Tocca una volta per salvare.</string>
     <string name="screensaver">Salvaschermo</string>
     <string name="screensaver_setup_message">Kotatsu non è ancora selezionato come salvaschermo. Apri le impostazioni del salvaschermo e scegli Kotatsu, poi avvialo dal menu Home.</string>
@@ -418,4 +418,14 @@
     <string name="wallpaper_kotatsu">Kotatsu</string>
     <string name="wallpaper_photos">Dalle foto</string>
     <string name="wallpaper_help">Usa l’immagine inclusa o scegli una tua foto</string>
+    <string name="edge_swipes">Scorrimenti dai bordi</string>
+    <string name="edge_swipes_help">Scorri dal bordo verso l\'interno per un terzo della larghezza dello schermo. Tocchi e gesti verticali passano alla schermata di blocco al rilascio.</string>
+    <string name="edge_actions">Azioni dei bordi</string>
+    <string name="edge_left">Bordo sinistro</string>
+    <string name="edge_right">Bordo destro</string>
+    <string name="edge_camera">Fotocamera</string>
+    <string name="edge_nothing">Niente</string>
+    <string name="edge_camera_available">Disponibile</string>
+    <string name="edge_camera_unavailable">Non disponibile</string>
+    <string name="edge_camera_setup">Richiede una fotocamera sicura compatibile. In Open Camera, concedi il permesso per la fotocamera e attiva Impostazioni > Altri controlli fotocamera > Mostra fotocamera quando bloccato.</string>
 </resources>

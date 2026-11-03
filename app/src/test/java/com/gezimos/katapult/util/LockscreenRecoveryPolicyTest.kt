@@ -13,7 +13,7 @@ class LockscreenRecoveryPolicyTest {
         assertTrue(AccessibilityPolicy.serviceFeatures(AccessibilitySelection(screensaver = true)).isEmpty())
         assertTrue(AccessibilityPolicy.serviceFeatures(AccessibilitySelection(powerScreensaver = true)).isEmpty())
         assertEquals(AccessibilityFeature.entries.toList(), AccessibilityPolicy.serviceFeatures(
-            AccessibilitySelection(true, true, true, true, true, true, true, weather = true, widgets = true)))
+            AccessibilitySelection(true, true, true, true, true, true, true, weather = true, widgets = true, edgeSwipes = true)))
     }
 
     @Test fun widgetsAloneAreRecoverableAndInspectPinWithoutCollectingBadgesOrMedia() {

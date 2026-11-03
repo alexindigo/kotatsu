@@ -237,6 +237,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         screensaver = prefs.screensaverEnabled, powerScreensaver = prefs.screensaverOnPower,
         weather = prefs.lockscreenWeather,
         widgets = prefs.lockscreenWidgetsEnabled,
+        edgeSwipes = prefs.edgeActions.enabled,
     ))
 
     // Include stored-but-inactive switches that the off action also clears.
@@ -255,6 +256,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AccessibilityFeature.POWER_SCREENSAVER -> R.string.screensaver_on_power
             AccessibilityFeature.WEATHER -> R.string.lockscreen_weather
             AccessibilityFeature.LOCKSCREEN_WIDGETS -> R.string.lockscreen_widgets
+            AccessibilityFeature.EDGE_SWIPES -> R.string.edge_swipes
         }
     }
 
@@ -274,6 +276,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             AccessibilityFeature.POWER_SCREENSAVER -> prefs.screensaverOnPower = on
             AccessibilityFeature.WEATHER -> prefs.lockscreenWeather = on
             AccessibilityFeature.LOCKSCREEN_WIDGETS -> prefs.lockscreenWidgetsEnabled = on
+            AccessibilityFeature.EDGE_SWIPES -> prefs.edgeActions.enabled = on
         }
     }
 

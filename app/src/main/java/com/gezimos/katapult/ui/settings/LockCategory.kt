@@ -11,6 +11,7 @@ fun lockCategory(
     music: Boolean, weather: Boolean, widgetsEnabled: Boolean, widgetCount: Int,
     onNotifications: (Boolean) -> Unit, onApps: () -> Unit, onLatest: (Boolean) -> Unit,
     onMusic: (Boolean) -> Unit, onWeather: (Boolean) -> Unit, onWidgets: () -> Unit, onMessage: () -> Unit,
+    onEdgeSwipes: () -> Unit = {},
 ): SettingsCategory {
     val sorts = listOf(SettingsChoice("latest", stringResource(R.string.sort_latest_top)), SettingsChoice("oldest", stringResource(R.string.sort_oldest_top)))
     val current = sorts[if (latestFirst) 0 else 1]
@@ -19,6 +20,9 @@ fun lockCategory(
             SettingsEntry.Switch("notifications", stringResource(R.string.lockscreen_widget), stringResource(R.string.lockscreen_widget_desc), notifications, onNotifications),
             SettingsEntry.Open("apps", stringResource(R.string.lockscreen_widget_apps), stringResource(R.string.lockscreen_widget_apps_desc), onApps),
             SettingsEntry.Value("sort", stringResource(R.string.lockscreen_sort), stringResource(R.string.paper_lock_sort_help), current.label, sorts, { onLatest(it == "latest") }, current.id),
+        )),
+        SettingsGroup("edges", stringResource(R.string.edge_actions), listOf(
+            SettingsEntry.Open("edges", stringResource(R.string.edge_swipes), "", onEdgeSwipes, isMudita),
         )),
         SettingsGroup("widgets", stringResource(R.string.paper_group_widgets_message), listOf(
             SettingsEntry.Switch("music", stringResource(R.string.lockscreen_music_widget), stringResource(R.string.lockscreen_music_widget_desc), music, onMusic),

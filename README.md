@@ -84,6 +84,17 @@ On Kompakt, open launcher Settings → Lockscreen → Lock-screen widgets, enabl
 
 Back exits a nondefault launcher preview after internal navigation and dialogs are resolved. Clock and date formats can follow Android's System setting or use a chosen format. If Action Service access is lost, Kotatsu names the affected features and offers to turn them off.
 
+### Lock-screen edge swipes
+
+On Kompakt, open Settings > Lock screen > Edge swipes and enable the Kotatsu Action Service when prompted.
+Choose Camera or Nothing for each edge. Swipe inward from the screen edge by at least one third of the screen width
+to run its action. Short sideways swipes do nothing; taps and vertical swipes pass to the lock screen after release.
+The strips are absent over the PIN pad, other apps and while the screen is off.
+
+The camera action uses Android's secure camera intent. Settings reports when no compatible camera is installed.
+The camera app may need its own lock-screen option: for Open Camera, grant its camera permission, then enable
+Settings > More camera controls > Show camera when locked. Kotatsu does not unlock the phone.
+
 ## Privacy and permissions
 
 The launcher has **no Internet permission and no built-in updater**. Apps and providers opened from Kotatsu (including browsers, document providers and Mudita weather handoffs) can network independently. Android-managed backup and device transfer remain enabled. This is a launcher permission boundary, not a promise that the whole phone is offline.
@@ -99,7 +110,7 @@ Android grants and Kotatsu's Sensitive access choices are separate: a grant alon
 | 5 | `READ_CALL_LOG`, `READ_SMS` | Optional direct Phone/Messages badge counts on supported Kompakt devices |
 | 6 | `WRITE_CALL_LOG` | Separate, deliberate call acknowledgment action |
 | 7 | Usage access (`PACKAGE_USAGE_STATS`) | Optional most-recent / most-used app sorting |
-| 8 | Kotatsu Action Service (accessibility) | Optional lock-screen overlays/widgets, clock cover, locking and screensaver features |
+| 8 | Kotatsu Action Service (accessibility) | Optional lock-screen overlays/widgets, edge actions and gesture passthrough, clock cover, locking and screensaver features |
 
 Kotatsu Weather separately declares Internet and network-state access. Location access is optional for Add current location: a one-off fix while setup is open, never a background location request. Search for a place instead to avoid granting location access.
 

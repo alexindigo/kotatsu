@@ -2,6 +2,17 @@ package com.gezimos.katapult.lockscreen
 
 /** Permission to show lock-screen content comes from an observation, never from event history. */
 internal class LockscreenVisibility {
+    data class InspectionWindow(val ownOverlay: Boolean, val active: Boolean, val focused: Boolean)
+
+    companion object {
+        /** A focused own page is transparent to inspection, not to touch. Windows are in layer order. */
+        fun inspectionWindow(windows: List<InspectionWindow>): Int? {
+            val candidates = windows.indices.filterNot { windows[it].ownOverlay }
+            return candidates.firstOrNull { windows[it].active } ?: candidates.firstOrNull { windows[it].focused }
+                ?: candidates.firstOrNull()
+        }
+    }
+
     var epoch = 0L
         private set
     var observedBareAt: Long? = null
