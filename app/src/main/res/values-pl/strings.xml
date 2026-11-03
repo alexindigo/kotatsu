@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Pokazuj liczbę powiadomień na ekranie blokady.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">W ustawieniach ułatwień dostępu włącz tylko samą usługę Kotatsu Action Service, nie jej skrót. Skrót dodaje pływający przycisk ułatwień dostępu na ekranie.</string>
-    <string name="lockscreen_widget_a11y_desc">Do wid&#380;et&#243;w, powiadomie&#324;, muzyki, pogody i gest&#243;w od kraw&#281;dzi ekranu blokady, zakrywania zegara, blokowania i wygaszacza. Odczytuje tylko ekran blokady, nigdy aplikacje. Odtwarza dotkni&#281;cia i pionowe gesty przy kraw&#281;dziach oraz otwiera bezpieczny aparat.</string>
+    <string name="lockscreen_widget_a11y_desc">Do wid&#380;et&#243;w, powiadomie&#324;, muzyki, pogody, gest&#243;w od kraw&#281;dzi, zakrywania zegara, blokowania i wygaszacza. U&#322;atwienia dost&#281;pu sprawdzaj&#261; tylko ekran blokady. Odtwarza dotkni&#281;cia i pionowe gesty oraz otwiera bezpieczny aparat. Dost&#281;p do Notes odczytuje i zmienia tylko wybran&#261; list&#281; zada&#324;.</string>
     <string name="lockscreen_widget_apps">Aplikacje powiadomień na ekranie blokady</string>
     <string name="lockscreen_widget_apps_desc">Wybierz, które aplikacje pojawiają się w widżecie ekranu blokady</string>
     <string name="lockscreen_message">Wiadomość na ekranie blokady</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Zostaw skrót usługi wyłączony. Dodaje on pływający przycisk na każdym ekranie.</string>
     <string name="a11y_setup_open">Otwórz ustawienia ułatwień dostępu</string>
     <string name="lockscreen_reenable_disable">Wyłącz te funkcje</string>
-    <string name="lockscreen_readme_privacy">Kotatsu odczytuje tylko ekran blokady, nigdy aplikacje, by ukrywa&#263; nak&#322;adki przy PINie i innych oknach. Gesty od kraw&#281;dzi mog&#261; otwiera&#263; bezpieczny aparat. Dotkni&#281;cia i pionowe gesty s&#261; odtwarzane na ekranie blokady po oderwaniu palca. Nic nie jest zapisywane ani udost&#281;pniane.</string>
+    <string name="lockscreen_readme_privacy">U&#322;atwienia dost&#281;pu sprawdzaj&#261; tylko ekran blokady, by ukrywa&#263; nak&#322;adki przy PINie i innych oknach. Gesty otwieraj&#261; bezpieczny aparat lub wybran&#261; list&#281; Mudita Notes. Dost&#281;p do Notes odczytuje i zmienia tylko t&#281; list&#281;; Ustawienia pokazuj&#261; tytu&#322;y list do wyboru. Dotkni&#281;cia i pionowe gesty s&#261; odtwarzane po oderwaniu palca. Nic nie jest zapisywane ani udost&#281;pniane.</string>
     <string name="lockscreen_readme_usage">Przytrzymaj widżet, aby go dostosować: przeciągnij, aby przesunąć, przeciągnij uchwyt pod nim, aby zmienić rozmiar. Dotknij raz, aby zapisać.</string>
     <string name="screensaver">Wygaszacz ekranu</string>
     <string name="screensaver_setup_message">Kotatsu nie jest jeszcze wybrany jako wygaszacz ekranu. Otwórz ustawienia wygaszacza i wybierz Kotatsu, a następnie uruchom go z menu ekranu głównego.</string>
@@ -425,6 +425,12 @@
     <string name="edge_right">Prawa kraw&#281;d&#378;</string>
     <string name="edge_camera">Aparat</string>
     <string name="edge_nothing">Nic</string>
+    <string name="edge_task_list">Lista zada&#324;</string>
+    <string name="edge_task_untitled">Lista zada&#324; bez tytu&#322;u</string>
+    <string name="edge_task_choose">Wybierz list&#281;</string>
+    <string name="edge_task_help">Zaznaczaj zadania z jednej listy Mudita Notes bez odblokowywania. Edytor pozostawiony w Notes mo&#380;e nadpisa&#263; te zaznaczenia przy zapisie.</string>
+    <string name="edge_task_no_lists">Brak dost&#281;pnych list. Utw&#243;rz list&#281; zada&#324; w Mudita Notes i wr&#243;&#263; tutaj.</string>
+    <string name="edge_task_missing">Wybierz dost&#281;pn&#261; list&#281; w Ustawienia > Ekran blokady > %1$s.</string>
     <string name="edge_camera_available">Dost&#281;pny</string>
     <string name="edge_camera_unavailable">Niedost&#281;pny</string>
     <string name="edge_camera_setup">Wymaga zgodnego bezpiecznego aparatu. W Open Camera udziel dost&#281;pu do aparatu i w&#322;&#261;cz Ustawienia > Wi&#281;cej opcji aparatu > Poka&#380; aparat przy zablokowanym ekranie.</string>

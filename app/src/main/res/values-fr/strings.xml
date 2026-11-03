@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Afficher le nombre de notifications sur l\'écran de verrouillage.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Dans les paramètres d\'accessibilité, activez uniquement le Kotatsu Action Service, pas son raccourci. Le raccourci ajoute un bouton d\'accessibilité flottant à l\'écran.</string>
-    <string name="lockscreen_widget_a11y_desc">Pour les widgets, notifications, musique, m&#233;t&#233;o et actions depuis les bords, le masquage de l\'horloge, le verrouillage et l\'&#233;conomiseur. Ne lit que l\'&#233;cran de verrouillage, jamais vos apps. Rejoue les appuis et gestes verticaux des bords et ouvre l\'appareil photo s&#233;curis&#233;.</string>
+    <string name="lockscreen_widget_a11y_desc">Pour les widgets, notifications, musique, m&#233;t&#233;o, actions des bords, masquage de l\'horloge, verrouillage et &#233;conomiseur. L\'accessibilit&#233; examine seulement l\'&#233;cran de verrouillage. Rejoue les appuis et gestes verticaux et ouvre l\'appareil photo s&#233;curis&#233;. L\'acc&#232;s &#224; Notes lit et modifie uniquement la liste choisie.</string>
     <string name="lockscreen_widget_apps">Apps de notifications de l\'écran de verrouillage</string>
     <string name="lockscreen_widget_apps_desc">Choisissez les apps affichées dans le widget de l\'écran de verrouillage</string>
     <string name="lockscreen_message">Message sur l\'écran de verrouillage</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Laissez le raccourci du service désactivé. Il ajoute un bouton flottant à chaque écran.</string>
     <string name="a11y_setup_open">Ouvrir les paramètres d\'accessibilité</string>
     <string name="lockscreen_reenable_disable">Désactiver ces fonctions</string>
-    <string name="lockscreen_readme_privacy">Kotatsu ne lit que l\'&#233;cran de verrouillage, jamais vos apps, pour masquer ses superpositions devant le code PIN et les autres fen&#234;tres. Les gestes des bords peuvent ouvrir l\'appareil photo s&#233;curis&#233;. Les appuis et gestes verticaux sont rejou&#233;s sur l\'&#233;cran de verrouillage au rel&#226;chement. Rien n\'est enregistr&#233; ni partag&#233;.</string>
+    <string name="lockscreen_readme_privacy">L\'accessibilit&#233; examine seulement l\'&#233;cran de verrouillage pour masquer les superpositions devant le code PIN et les autres fen&#234;tres. Les gestes des bords ouvrent l\'appareil photo s&#233;curis&#233; ou la liste Mudita Notes choisie. Notes lit et modifie uniquement cette liste ; les r&#233;glages affichent les titres des listes pour la s&#233;lection. Les appuis et gestes verticaux sont rejou&#233;s au rel&#226;chement. Rien n\'est enregistr&#233; ni partag&#233;.</string>
     <string name="lockscreen_readme_usage">Appuyez longuement sur le widget pour l\'ajuster : faites-le glisser pour le déplacer, tirez la poignée en dessous pour le redimensionner. Touchez-le une fois pour enregistrer.</string>
     <string name="screensaver">Économiseur d\'écran</string>
     <string name="screensaver_setup_message">Kotatsu n\'est pas encore sélectionné comme économiseur d\'écran. Ouvrez les réglages de l\'économiseur d\'écran et choisissez Kotatsu, puis lancez-le depuis le menu d\'accueil.</string>
@@ -425,6 +425,12 @@
     <string name="edge_right">Bord droit</string>
     <string name="edge_camera">Appareil photo</string>
     <string name="edge_nothing">Rien</string>
+    <string name="edge_task_list">Liste de t&#226;ches</string>
+    <string name="edge_task_untitled">Liste de t&#226;ches sans titre</string>
+    <string name="edge_task_choose">Choisir une liste</string>
+    <string name="edge_task_help">Cochez une liste Mudita Notes sans d&#233;verrouiller. Un &#233;diteur rest&#233; ouvert dans Notes peut &#233;craser ces coches lors de l\'enregistrement.</string>
+    <string name="edge_task_no_lists">Aucune liste disponible. Cr&#233;ez une liste de t&#226;ches dans Mudita Notes, puis revenez ici.</string>
+    <string name="edge_task_missing">Choisissez une liste disponible dans R&#233;glages > &#201;cran de verrouillage > %1$s.</string>
     <string name="edge_camera_available">Disponible</string>
     <string name="edge_camera_unavailable">Indisponible</string>
     <string name="edge_camera_setup">N&#233;cessite un appareil photo s&#233;curis&#233; compatible. Dans Open Camera, autorisez la cam&#233;ra puis activez Param&#232;tres > Plus de contr&#244;les de la cam&#233;ra > Afficher la cam&#233;ra quand verrouill&#233;.</string>

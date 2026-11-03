@@ -9,6 +9,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.Modifier
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.lockscreen.EdgeAction
 import com.gezimos.katapult.lockscreen.EdgeActionStore
@@ -55,7 +58,7 @@ class EdgeActionsInstrumentedTest {
 
     @Test fun storeSurvivesRecreationExportImportAndRejectsInvalidImportsAtomically() = withStore { prefs, store ->
         assertFalse(store.enabled)
-        assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.LEFT))
+        assertEquals(EdgeAction.TASK_LIST, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
         store.enabled = true
         store.setAction(ScreenEdge.LEFT, EdgeAction.CAMERA)
@@ -78,7 +81,7 @@ class EdgeActionsInstrumentedTest {
         val old = JSONObject(backup).apply { remove(EdgeActionStore.LEFT); remove(EdgeActionStore.RIGHT); remove(EdgeActionStore.ENABLED) }
         assertTrue(prefs.importFromJson(old.toString()))
         assertFalse(store.enabled)
-        assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.LEFT))
+        assertEquals(EdgeAction.TASK_LIST, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
     }
 
@@ -96,7 +99,8 @@ class EdgeActionsInstrumentedTest {
                     val category = edgeSwipesCategory(store.enabled, store.action(ScreenEdge.LEFT), store.action(ScreenEdge.RIGHT), false,
                         { store.enabled = it; revision++ }, { edge, action -> store.setAction(edge, action); revision++ })
                     val current = choice
-                    if (current == null) PaperIndexRenderer(category, {}, onChoice = { choice = it.id }, onHelp = {})
+                    if (current == null) PaperIndexRenderer(category, {}, Modifier.statusBarsPadding().navigationBarsPadding(),
+                        onChoice = { choice = it.id }, onHelp = {})
                     else {
                         val row = category.groups.flatMap { it.entries }.filterIsInstance<SettingsEntry.Value>().single { it.id == current }
                         ChoicePage(row.title, row.choices, row.selected, row.onSelect, { choice = null })
@@ -107,14 +111,39 @@ class EdgeActionsInstrumentedTest {
             ui.click(context.getString(R.string.edge_left))
             ui.click(context.getString(R.string.edge_camera))
             ui.await("Left action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.CAMERA }
+            ui.click(context.getString(R.string.edge_left))
+            ui.click(context.getString(R.string.edge_task_list))
+            ui.await("Task list action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.TASK_LIST }
             ui.click(context.getString(R.string.edge_right))
             ui.click(context.getString(R.string.edge_nothing))
             ui.await("Right action did not persist") { store.action(ScreenEdge.RIGHT) == EdgeAction.NOTHING }
-            ui.scrollTo(context.getString(R.string.edge_camera_unavailable))
+            repeat(3) {
+                if (!ui.has(context.getString(R.string.edge_camera_unavailable)) && ui.has(context.getString(R.string.paper_next_page))) {
+                    ui.click(context.getString(R.string.paper_next_page))
+                }
+            }
+            assertTrue(ui.has(context.getString(R.string.edge_camera_unavailable)))
             assertTrue(ui.has(context.getString(R.string.edge_camera_setup)))
             val intent = SecureCamera.intent()
             assertEquals(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE, intent.action)
             assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         } finally { instrumentation.runOnMainSync { activity.finish() } }
+    }
+
+    @Test fun taskSelectionAndActionRoundTripWithoutLosingLongIdsOrExplicitNothing() = withStore { prefs, store ->
+        store.taskListId = Long.MAX_VALUE
+        store.setAction(ScreenEdge.LEFT, EdgeAction.NOTHING)
+        store.setAction(ScreenEdge.RIGHT, EdgeAction.TASK_LIST)
+        val backup = prefs.exportToJson(context)
+        store.taskListId = null
+        assertTrue(prefs.importFromJson(backup))
+        assertEquals(Long.MAX_VALUE, store.taskListId)
+        assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.LEFT))
+        assertEquals(EdgeAction.TASK_LIST, store.action(ScreenEdge.RIGHT))
+        listOf(-1, "01", "1.5", "9223372036854775808", true).forEach { invalid ->
+            assertFalse(prefs.importFromJson(JSONObject(backup).put(EdgeActionStore.TASK_LIST, invalid).toString()))
+            assertEquals(Long.MAX_VALUE, store.taskListId)
+            assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.LEFT))
+        }
     }
 }

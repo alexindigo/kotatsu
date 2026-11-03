@@ -22,6 +22,21 @@ object EdgeSwipe {
     }
 
     fun duration(milliseconds: Long): Long = milliseconds.coerceIn(80L, 1500L)
+
+    /** MOVE is only a hint. UP still makes the final decision using raw displacement. */
+    fun previewStep(edge: ScreenEdge, dx: Float, dy: Float, width: Int, slop: Float): Int {
+        if (!dx.isFinite() || !dy.isFinite() || width <= 0 || hypot(dx, dy) <= slop || abs(dx) <= abs(dy)) return 0
+        val inward = if (edge == ScreenEdge.LEFT) dx else -dx
+        return ((inward / (width / 3f)).coerceIn(0f, 1f) * 6).toInt()
+    }
+
+    fun closesPage(edge: ScreenEdge, dx: Float, dy: Float, width: Int, slop: Float): Boolean =
+        decide(if (edge == ScreenEdge.LEFT) ScreenEdge.RIGHT else ScreenEdge.LEFT, dx, dy, width, slop) == EdgeSwipeDecision.ACTION
+
+    /** Input ownership starts at slop, not at the final action distance. */
+    fun capturesPageClose(edge: ScreenEdge, dx: Float, dy: Float, slop: Float): Boolean =
+        dx.isFinite() && dy.isFinite() && hypot(dx, dy) > slop && abs(dx) > abs(dy) &&
+            if (edge == ScreenEdge.LEFT) dx < 0 else dx > 0
 }
 
 /** A nonempty platform snapshot and a removal event must agree with local detach. */

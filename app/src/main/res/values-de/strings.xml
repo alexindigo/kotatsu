@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Benachrichtigungszahlen auf dem Sperrbildschirm anzeigen.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Aktiviere in den Bedienungshilfen nur den Kotatsu Action Service selbst, nicht seine Verknüpfung. Die Verknüpfung legt eine schwebende Bedienungshilfen-Schaltfläche auf den Bildschirm.</string>
-    <string name="lockscreen_widget_a11y_desc">F&#252;r Sperrbildschirm-Widgets, Benachrichtigungen, Musik, Wetter, Randaktionen, Uhrabdeckung, Sperren und Bildschirmschoner. Liest nur den Sperrbildschirm, nie deine Apps. Gibt Tippen und vertikale Wischgesten am Rand an den Sperrbildschirm weiter und &#246;ffnet die sichere Kamera.</string>
+    <string name="lockscreen_widget_a11y_desc">F&#252;r Sperrbildschirm-Widgets, Benachrichtigungen, Musik, Wetter, Randaktionen, Uhrabdeckung, Sperren und Bildschirmschoner. Die Bedienungshilfe pr&#252;ft nur den Sperrbildschirm. Gibt Tippen und vertikale Wischgesten weiter und &#246;ffnet die sichere Kamera. Der Notes-Zugriff liest und &#228;ndert nur deine gew&#228;hlte Aufgabenliste.</string>
     <string name="lockscreen_widget_apps">Apps für Sperrbildschirm-Benachrichtigungen</string>
     <string name="lockscreen_widget_apps_desc">Wähle, welche Apps im Sperrbildschirm-Widget erscheinen</string>
     <string name="lockscreen_message">Sperrbildschirm-Nachricht</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Lass die Verknüpfung des Dienstes aus. Sie fügt jedem Bildschirm eine schwebende Schaltfläche hinzu.</string>
     <string name="a11y_setup_open">Bedienungshilfen öffnen</string>
     <string name="lockscreen_reenable_disable">Diese Funktionen ausschalten</string>
-    <string name="lockscreen_readme_privacy">Kotatsu liest nur den Sperrbildschirm, nie deine Apps, um Overlays bei der PIN-Eingabe und anderen Fenstern auszublenden. Randgesten k&#246;nnen die sichere Kamera &#246;ffnen. Tippen und vertikale Wischgesten werden nach dem Loslassen auf dem Sperrbildschirm wiedergegeben. Nichts wird aufgezeichnet oder geteilt.</string>
+    <string name="lockscreen_readme_privacy">Die Bedienungshilfe pr&#252;ft nur den Sperrbildschirm und blendet Overlays bei der PIN-Eingabe und anderen Fenstern aus. Randgesten &#246;ffnen die sichere Kamera oder deine gew&#228;hlte Mudita-Notes-Aufgabenliste. Der Notes-Zugriff liest und &#228;ndert nur diese Liste; Einstellungen zeigt Listentitel zur Auswahl. Tippen und vertikale Gesten werden nach dem Loslassen weitergegeben. Nichts wird aufgezeichnet oder geteilt.</string>
     <string name="lockscreen_readme_usage">Halte das Widget gedrückt, um es anzupassen: Ziehen zum Verschieben, am Griff darunter ziehen zum Vergrößern. Einmal tippen zum Speichern.</string>
     <string name="screensaver">Bildschirmschoner</string>
     <string name="screensaver_setup_message">Kotatsu ist noch nicht als Bildschirmschoner ausgewählt. Öffne die Bildschirmschoner-Einstellungen, wähle Kotatsu und starte ihn dann über das Home-Menü.</string>
@@ -425,6 +425,12 @@
     <string name="edge_right">Rechter Rand</string>
     <string name="edge_camera">Kamera</string>
     <string name="edge_nothing">Nichts</string>
+    <string name="edge_task_list">Aufgabenliste</string>
+    <string name="edge_task_untitled">Unbenannte Aufgabenliste</string>
+    <string name="edge_task_choose">Liste ausw&#228;hlen</string>
+    <string name="edge_task_help">Eine Mudita-Notes-Aufgabenliste ohne Entsperren abhaken. Ein in Notes offener Editor kann diese H&#228;kchen beim Speichern &#252;berschreiben.</string>
+    <string name="edge_task_no_lists">Keine Aufgabenlisten verf&#252;gbar. Erstelle eine in Mudita Notes und kehre hierher zur&#252;ck.</string>
+    <string name="edge_task_missing">W&#228;hle eine verf&#252;gbare Aufgabenliste unter Einstellungen > Sperrbildschirm > %1$s.</string>
     <string name="edge_camera_available">Verf&#252;gbar</string>
     <string name="edge_camera_unavailable">Nicht verf&#252;gbar</string>
     <string name="edge_camera_setup">Ben&#246;tigt eine kompatible sichere Kamera. Erlaube Open Camera den Kamerazugriff und aktiviere Einstellungen > Weitere Kameraeinstellungen > Kamera bei gesperrtem Bildschirm anzeigen.</string>

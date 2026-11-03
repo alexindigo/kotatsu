@@ -18,6 +18,8 @@ internal class EdgeGestures(
     private val eligible: () -> Boolean,
     private val changed: () -> Unit,
     private val runAction: (ScreenEdge, EdgeAction) -> Unit,
+    private val preview: (ScreenEdge, Int) -> Unit,
+    private val cancelPreview: () -> Unit,
 ) : AutoCloseable {
     private val wm = service.getSystemService(WindowManager::class.java)
     private val strips = mutableListOf<Pair<View, String>>()
@@ -81,22 +83,31 @@ internal class EdgeGestures(
                     x = event.rawX; y = event.rawY; started = event.eventTime
                     path = Path(); point(event, true)
                 }
-                MotionEvent.ACTION_POINTER_DOWN -> cancelled = true
-                MotionEvent.ACTION_MOVE -> if (tracking && !cancelled) point(event)
+                MotionEvent.ACTION_POINTER_DOWN -> { cancelled = true; cancelPreview() }
+                MotionEvent.ACTION_MOVE -> if (tracking && !cancelled) {
+                    point(event)
+                    if (store.enabled && store.action(edge) == EdgeAction.TASK_LIST) {
+                        preview(edge, EdgeSwipe.previewStep(edge, event.rawX - x, event.rawY - y, width,
+                            8 * service.resources.displayMetrics.density))
+                    } else cancelPreview()
+                }
                 MotionEvent.ACTION_UP -> if (tracking) {
                     tracking = false
                     if (!cancelled && eligible()) {
                         point(event)
                         when (EdgeSwipe.decide(edge, event.rawX - x, event.rawY - y, width,
                                 8 * service.resources.displayMetrics.density)) {
-                            EdgeSwipeDecision.ACTION -> runAction(edge, store.action(edge))
-                            EdgeSwipeDecision.REPLAY -> replay.begin(path, event.eventTime - started, strips.toList(), ::remove)
-                            EdgeSwipeDecision.DROP -> Unit
+                            EdgeSwipeDecision.ACTION -> {
+                                if (store.action(edge) != EdgeAction.TASK_LIST) cancelPreview()
+                                runAction(edge, store.action(edge))
+                            }
+                            EdgeSwipeDecision.REPLAY -> { cancelPreview(); replay.begin(path, event.eventTime - started, strips.toList(), ::remove) }
+                            EdgeSwipeDecision.DROP -> cancelPreview()
                         }
-                    }
+                    } else cancelPreview()
                     changed()
                 }
-                MotionEvent.ACTION_CANCEL -> { tracking = false; cancelled = true; changed() }
+                MotionEvent.ACTION_CANCEL -> { tracking = false; cancelled = true; cancelPreview(); changed() }
             }
             true
         }
@@ -105,6 +116,7 @@ internal class EdgeGestures(
     fun event(event: AccessibilityEvent?) = replay.event(event)
 
     private fun remove() {
+        cancelPreview()
         tracking = false
         val owned = strips.toList()
         strips.clear()

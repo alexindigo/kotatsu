@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Mostrar el número de notificaciones en la pantalla de bloqueo.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">En los ajustes de accesibilidad, activa solo el Kotatsu Action Service, no su atajo. El atajo añade un botón flotante de accesibilidad a la pantalla.</string>
-    <string name="lockscreen_widget_a11y_desc">Para widgets, notificaciones, m&#250;sica, tiempo y acciones desde los bordes de la pantalla de bloqueo, ocultar el reloj, bloquear y el salvapantallas. Solo lee la pantalla de bloqueo, nunca tus apps. Reproduce toques y gestos verticales de los bordes y abre la c&#225;mara segura.</string>
+    <string name="lockscreen_widget_a11y_desc">Para widgets, notificaciones, m&#250;sica, tiempo, acciones desde los bordes, ocultar el reloj, bloquear y el salvapantallas. Accesibilidad solo examina la pantalla de bloqueo. Reproduce toques y gestos verticales y abre la c&#225;mara segura. El acceso a Notes solo lee y actualiza la lista de tareas elegida.</string>
     <string name="lockscreen_widget_apps">Apps de notificaciones en pantalla de bloqueo</string>
     <string name="lockscreen_widget_apps_desc">Elige qué apps aparecen en el widget de la pantalla de bloqueo</string>
     <string name="lockscreen_message">Mensaje en pantalla de bloqueo</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Deja desactivado el acceso directo del servicio. Añade un botón flotante a todas las pantallas.</string>
     <string name="a11y_setup_open">Abrir ajustes de Accesibilidad</string>
     <string name="lockscreen_reenable_disable">Desactivar estas funciones</string>
-    <string name="lockscreen_readme_privacy">Kotatsu solo lee la pantalla de bloqueo, nunca tus apps, para ocultar sus superposiciones ante el PIN y otras ventanas. Los gestos desde los bordes pueden abrir la c&#225;mara segura. Los toques y gestos verticales se reproducen en la pantalla de bloqueo al soltar. No registra ni comparte nada.</string>
+    <string name="lockscreen_readme_privacy">Accesibilidad solo examina la pantalla de bloqueo para ocultar superposiciones ante el PIN y otras ventanas. Los gestos desde los bordes abren la c&#225;mara segura o la lista elegida de Mudita Notes. El acceso a Notes solo lee y actualiza esa lista; Ajustes muestra los t&#237;tulos de listas para elegir. Los toques y gestos verticales se reproducen al soltar. No registra ni comparte nada.</string>
     <string name="lockscreen_readme_usage">Mantén pulsado el widget para ajustarlo: arrastra para moverlo y arrastra el tirador inferior para cambiar su tamaño. Toca una vez para guardar.</string>
     <string name="screensaver">Salvapantallas</string>
     <string name="screensaver_setup_message">Kotatsu aún no está seleccionado como salvapantallas. Abre los ajustes de salvapantallas y elige Kotatsu; luego inícialo desde el menú de inicio.</string>
@@ -425,6 +425,12 @@
     <string name="edge_right">Borde derecho</string>
     <string name="edge_camera">C&#225;mara</string>
     <string name="edge_nothing">Nada</string>
+    <string name="edge_task_list">Lista de tareas</string>
+    <string name="edge_task_untitled">Lista de tareas sin t&#237;tulo</string>
+    <string name="edge_task_choose">Elegir una lista</string>
+    <string name="edge_task_help">Marca y desmarca una lista de Mudita Notes sin desbloquear. Un editor abierto en Notes puede sobrescribir estas marcas al guardar.</string>
+    <string name="edge_task_no_lists">No hay listas disponibles. Crea una lista de tareas en Mudita Notes y vuelve aqu&#237;.</string>
+    <string name="edge_task_missing">Elige una lista disponible en Ajustes > Pantalla de bloqueo > %1$s.</string>
     <string name="edge_camera_available">Disponible</string>
     <string name="edge_camera_unavailable">No disponible</string>
     <string name="edge_camera_setup">Requiere una c&#225;mara segura compatible. En Open Camera, concede permiso de c&#225;mara y activa Ajustes > M&#225;s controles de c&#225;mara > Mostrar c&#225;mara al estar bloqueado.</string>

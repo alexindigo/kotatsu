@@ -715,7 +715,7 @@ class PrefsManager(context: Context) {
     /** Types follow the defaults declared by the getters, not a device's stored values. */
     private fun declaredImportDefault(key: String): Any? = when (key) {
         EdgeActionStore.ENABLED -> false
-        EdgeActionStore.LEFT, EdgeActionStore.RIGHT -> ""
+        EdgeActionStore.LEFT, EdgeActionStore.RIGHT, EdgeActionStore.TASK_LIST -> ""
         KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER, KEY_WEATHER_CELSIUS,
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,

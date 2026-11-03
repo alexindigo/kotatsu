@@ -87,13 +87,22 @@ Back exits a nondefault launcher preview after internal navigation and dialogs a
 ### Lock-screen edge swipes
 
 On Kompakt, open Settings > Lock screen > Edge swipes and enable the Kotatsu Action Service when prompted.
-Choose Camera or Nothing for each edge. Swipe inward from the screen edge by at least one third of the screen width
+Choose Task list, Camera or Nothing for each edge. The defaults are Task list on the left and Camera on the right.
+Swipe inward from the screen edge by at least one third of the screen width
 to run its action. Short sideways swipes do nothing; taps and vertical swipes pass to the lock screen after release.
 The strips are absent over the PIN pad, other apps and while the screen is off.
 
 The camera action uses Android's secure camera intent. Settings reports when no compatible camera is installed.
 The camera app may need its own lock-screen option: for Open Camera, grant its camera permission, then enable
 Settings > More camera controls > Show camera when locked. Kotatsu does not unlock the phone.
+
+Choose one Mudita Notes task list in the Edge swipes page. The lock-screen page lets you check and uncheck items,
+with a six-step slide-in preview. Back or a swipe toward its opening edge by one third of the screen width closes it.
+It also closes on screen-off, unlock, PIN entry or another app covering the lock screen. A missing or unreadable list
+points back to Settings. Only the selected list is read or changed; the picker reads task-list titles only.
+Each toggle conditionally updates the list and re-reads its persisted state, including after a concurrent edit.
+An editor left open in Mudita Notes can still overwrite these checks when saved; its main list may not refresh
+immediately after an external check. Kotatsu does not edit text, add tasks or open other notes from the lock screen.
 
 ## Privacy and permissions
 
@@ -111,6 +120,7 @@ Android grants and Kotatsu's Sensitive access choices are separate: a grant alon
 | 6 | `WRITE_CALL_LOG` | Separate, deliberate call acknowledgment action |
 | 7 | Usage access (`PACKAGE_USAGE_STATS`) | Optional most-recent / most-used app sorting |
 | 8 | Kotatsu Action Service (accessibility) | Optional lock-screen overlays/widgets, edge actions and gesture passthrough, clock cover, locking and screensaver features |
+| 9 | Mudita `READ_NOTES`, `WRITE_NOTES` | List task-list titles in Settings; read and check/uncheck only the selected task list on the lock screen |
 
 Kotatsu Weather separately declares Internet and network-state access. Location access is optional for Add current location: a one-off fix while setup is open, never a background location request. Search for a place instead to avoid granting location access.
 
