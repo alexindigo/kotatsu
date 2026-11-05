@@ -1,6 +1,7 @@
 package com.gezimos.katapult.ui.settings
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -34,6 +35,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -58,9 +60,7 @@ private fun Modifier.inkFocus(): Modifier {
 fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root: Boolean = false,
     external: Boolean = false) {
     val ink = LocalInk.current
-    Layout(modifier = modifier.fillMaxWidth(), content = {
-        Text(title, fontFamily = LatoFamily, fontSize = if (root) 21.sp else 18.sp,
-            lineHeight = if (root) 25.5.sp else 21.75.sp, fontWeight = FontWeight.Bold, color = ink)
+    IndexTracks(modifier, title = { IndexName(title, root) }, value = {
         Row(horizontalArrangement = Arrangement.spacedBy(7.5.dp)) {
             Text(value, fontFamily = LatoFamily, fontSize = if (root) 14.sp else 18.sp,
                 lineHeight = if (root) 17.25.sp else 21.75.sp,
@@ -69,6 +69,22 @@ fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root:
             if (external) Text("↗", fontFamily = LatoFamily, fontSize = 18.75.sp,
                 fontWeight = FontWeight.Bold, color = ink, modifier = Modifier.alignByBaseline())
         }
+    })
+}
+
+@Composable
+private fun IndexName(title: String, root: Boolean = false) {
+    Text(title, fontFamily = LatoFamily, fontSize = if (root) 21.sp else 18.sp,
+        lineHeight = if (root) 25.5.sp else 21.75.sp, fontWeight = FontWeight.Bold, color = LocalInk.current)
+}
+
+/** The name owns the leader baseline; text values align to it. */
+@Composable
+private fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit) {
+    val ink = LocalInk.current
+    Layout(modifier = modifier.fillMaxWidth(), content = {
+        title()
+        value()
         Canvas(Modifier) {
             drawLine(ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
                 strokeWidth = size.height, cap = StrokeCap.Round,
@@ -85,10 +101,12 @@ fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root:
         val valueY = baseline - valuePlaceable[FirstBaseline]
         val leader = children[2].measure(Constraints.fixed(
             (width - titlePlaceable.width - valuePlaceable.width - 2 * gap).coerceAtLeast(0), 1.5.dp.roundToPx()))
-        layout(width, max(titleY + titlePlaceable.height, valueY + valuePlaceable.height)) {
+        val height = max(titleY + titlePlaceable.height, valueY + valuePlaceable.height)
+        layout(width, height) {
             titlePlaceable.placeRelative(0, titleY)
             valuePlaceable.placeRelative(width - valuePlaceable.width, valueY)
-            leader.placeRelative(titlePlaceable.width + gap, baseline - leader.height / 2)
+            leader.placeRelative(titlePlaceable.width + gap,
+                titleY + titlePlaceable[FirstBaseline] - leader.height / 2)
         }
     }
 }
@@ -119,17 +137,44 @@ private fun Chevron(next: Boolean, modifier: Modifier = Modifier) {
 @Composable
 fun ChapterHeader(title: String, help: SettingsHelp?, onBack: () -> Unit, onHelp: () -> Unit) {
     val back = stringResource(R.string.paper_back)
-    Row(Modifier.fillMaxWidth().heightIn(min = 57.dp).padding(start = 6.dp, end = 12.dp, top = 9.dp),
+    PageHeader(title, leading = { HeaderAction(back, onBack) { Chevron(false) } },
+        trailing = if (help == null) null else {
+            { HeaderAction(help.label, onHelp) {
+                Text("?", fontFamily = LatoFamily, fontSize = 22.5.sp, fontWeight = FontWeight.Bold, color = LocalInk.current)
+            } }
+        })
+}
+
+/** One heading structure: owners inject navigation and action content, never their identity. */
+@Composable
+internal fun PageHeader(title: String, leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 57.dp)
+        .padding(start = if (leading == null) 16.dp else 6.dp, end = 12.dp, top = 9.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(48.dp).semantics { contentDescription = back }
-            .inkFocus().clickable(role = Role.Button, onClickLabel = back, onClick = onBack),
-            contentAlignment = Alignment.Center) { Chevron(false) }
+        leading?.invoke()
         Text(title, fontFamily = LatoFamily, fontSize = 26.sp, lineHeight = 31.5.sp,
-            fontWeight = FontWeight.Bold, color = LocalInk.current, modifier = Modifier.weight(1f).semantics { heading() })
-        if (help != null) Box(Modifier.size(48.dp).inkFocus().clickable(role = Role.Button, onClick = onHelp)
-            .semantics { contentDescription = help.label }, contentAlignment = Alignment.Center) {
-            Text("?", fontFamily = LatoFamily, fontSize = 22.5.sp, fontWeight = FontWeight.Bold, color = LocalInk.current)
-        }
+            fontWeight = FontWeight.Bold, color = LocalInk.current, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f).semantics { heading() })
+        trailing?.invoke()
+    }
+}
+
+@Composable
+internal fun HeaderAction(label: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+    Box(Modifier.size(48.dp).semantics { contentDescription = label }
+        .inkFocus().clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
+        contentAlignment = Alignment.Center) { content() }
+}
+
+@Composable
+internal fun CloseMark() {
+    val ink = LocalInk.current
+    Canvas(Modifier.size(18.dp)) {
+        drawLine(ink, Offset(size.width * .2f, size.height * .2f),
+            Offset(size.width * .8f, size.height * .8f), 2.25.dp.toPx())
+        drawLine(ink, Offset(size.width * .8f, size.height * .2f),
+            Offset(size.width * .2f, size.height * .8f), 2.25.dp.toPx())
     }
 }
 
@@ -364,10 +409,12 @@ fun TableOfContents(title: String, entries: List<SettingsEntry>, notice: NoticeC
 /** One full-height page frame for chapters, management, choices and editors. Insets belong to its owner. */
 @Composable
 internal fun PageFrame(title: String, onBack: () -> Unit, modifier: Modifier = Modifier,
-    help: SettingsHelp? = null, onHelp: () -> Unit = {}, content: @Composable () -> Unit) {
-    BackHandler(onBack = onBack)
+    help: SettingsHelp? = null, onHelp: () -> Unit = {},
+    heading: @Composable () -> Unit = { ChapterHeader(title, help, onBack, onHelp) }, content: @Composable () -> Unit) {
+    // Native overlay windows can own device Back without an Activity dispatcher.
+    if (LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onBack)
     Column(modifier.fillMaxSize().background(LocalSurface.current)) {
-        ChapterHeader(title, help, onBack, onHelp)
+        heading()
         Box(Modifier.weight(1f).fillMaxWidth()) { content() }
     }
 }
@@ -384,25 +431,27 @@ fun SettingsPage(title: String, onDismiss: () -> Unit, imePadding: Boolean = fal
 /** Allocate complete list rows from measured page capacity; the pager never belongs to scrolling content. */
 @Composable
 internal fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
+    swipePaging: Boolean = true,
+    heading: @Composable () -> Unit = { ChapterHeader(title, null, onDismiss, {}) },
     header: @Composable () -> Unit, row: @Composable (T) -> Unit) {
-    PageFrame(title, onDismiss) {
-        PagedContent(header = header) { items.forEach { item -> row(item) } }
+    PageFrame(title, onDismiss, heading = heading) {
+        PagedContent(header = header, swipePaging = swipePaging) { items.forEach { item -> row(item) } }
     }
 }
 
 @Composable
-private fun PagedContent(header: @Composable () -> Unit, content: @Composable () -> Unit) {
+private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = true, content: @Composable () -> Unit) {
     var page by rememberSaveable { mutableIntStateOf(0) }
     var count by remember { mutableIntStateOf(1) }
     var drag by remember { mutableFloatStateOf(0f) }
     val scroll = rememberScrollState()
     val renderedCount = count
-    SubcomposeLayout(Modifier.fillMaxSize().pointerInput(page, count) {
+    SubcomposeLayout(Modifier.fillMaxSize().then(if (swipePaging) Modifier.pointerInput(page, count) {
             detectHorizontalDragGestures(
                 onDragStart = { drag = 0f }, onDragEnd = {
                     if (abs(drag) > 80) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
                 }, onHorizontalDrag = { _, amount -> drag += amount })
-        }) { constraints ->
+        } else Modifier)) { constraints ->
             val width = constraints.maxWidth
             val loose = Constraints(maxWidth = width)
             val inset = 16.dp.roundToPx()
@@ -461,16 +510,23 @@ fun ChoicePage(title: String, choices: List<SettingsChoice>, selected: String,
     }
 }
 
+/** One label and a symmetric control slot, shared by choices and checkboxes. */
+@Composable
+private fun OptionRow(label: String, bold: Boolean, action: Modifier, control: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus().then(action),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, color = LocalInk.current,
+            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { control() }
+    }
+}
+
 /** Shared by pure choices and mixed menus which also contain ordinary actions. */
 @Composable
 fun ChoiceOption(label: String, selected: Boolean, onSelect: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus()
-        .selectable(selected, role = Role.RadioButton, onClick = onSelect),
-        verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = LocalInk.current, modifier = Modifier.weight(1f))
-        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { if (selected) CheckMark() }
+    OptionRow(label, selected, Modifier.selectable(selected, role = Role.RadioButton, onClick = onSelect)) {
+        if (selected) CheckMark()
     }
 }
 
@@ -482,12 +538,8 @@ fun SheetText(text: String) {
 
 @Composable
 fun CheckboxOption(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus()
-        .toggleable(checked, role = Role.Checkbox, onValueChange = onToggle),
-        verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
-            fontWeight = FontWeight.Bold, color = LocalInk.current, modifier = Modifier.weight(1f))
-        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { IndexCheckbox(checked, true) }
+    OptionRow(label, true, Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = onToggle)) {
+        IndexCheckbox(checked, true)
     }
 }
 

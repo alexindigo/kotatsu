@@ -426,6 +426,10 @@
     <string name="edge_camera">Camera</string>
     <string name="edge_nothing">Niets</string>
     <string name="edge_task_list">Takenlijst</string>
+    <string name="edge_task_close">Takenlijst sluiten</string>
+    <string name="edge_task_scroll_up">Omhoog scrollen</string>
+    <string name="edge_task_scroll_down">Omlaag scrollen</string>
+    <string name="edge_task_scroll">Takenlijst scrollen</string>
     <string name="edge_task_untitled">Naamloze takenlijst</string>
     <string name="edge_task_choose">Kies een lijst</string>
     <string name="edge_task_help">Vink een Mudita Notes-takenlijst aan of uit zonder te ontgrendelen. Een open editor in Notes kan deze vinkjes bij het opslaan overschrijven.</string>

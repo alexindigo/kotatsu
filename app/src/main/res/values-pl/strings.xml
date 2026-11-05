@@ -426,6 +426,10 @@
     <string name="edge_camera">Aparat</string>
     <string name="edge_nothing">Nic</string>
     <string name="edge_task_list">Lista zada&#324;</string>
+    <string name="edge_task_close">Zamknij list&#281; zada&#324;</string>
+    <string name="edge_task_scroll_up">Przewi&#324; w g&#243;r&#281;</string>
+    <string name="edge_task_scroll_down">Przewi&#324; w d&#243;&#322;</string>
+    <string name="edge_task_scroll">Przewi&#324; list&#281; zada&#324;</string>
     <string name="edge_task_untitled">Lista zada&#324; bez tytu&#322;u</string>
     <string name="edge_task_choose">Wybierz list&#281;</string>
     <string name="edge_task_help">Zaznaczaj zadania z jednej listy Mudita Notes bez odblokowywania. Edytor pozostawiony w Notes mo&#380;e nadpisa&#263; te zaznaczenia przy zapisie.</string>

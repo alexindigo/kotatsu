@@ -426,6 +426,10 @@
     <string name="edge_camera">Kamera</string>
     <string name="edge_nothing">Nichts</string>
     <string name="edge_task_list">Aufgabenliste</string>
+    <string name="edge_task_close">Aufgabenliste schlie&#223;en</string>
+    <string name="edge_task_scroll_up">Nach oben scrollen</string>
+    <string name="edge_task_scroll_down">Nach unten scrollen</string>
+    <string name="edge_task_scroll">Aufgabenliste scrollen</string>
     <string name="edge_task_untitled">Unbenannte Aufgabenliste</string>
     <string name="edge_task_choose">Liste ausw&#228;hlen</string>
     <string name="edge_task_help">Eine Mudita-Notes-Aufgabenliste ohne Entsperren abhaken. Ein in Notes offener Editor kann diese H&#228;kchen beim Speichern &#252;berschreiben.</string>

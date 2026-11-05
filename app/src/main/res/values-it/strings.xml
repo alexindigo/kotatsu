@@ -426,6 +426,10 @@
     <string name="edge_camera">Fotocamera</string>
     <string name="edge_nothing">Niente</string>
     <string name="edge_task_list">Lista di attivit&#224;</string>
+    <string name="edge_task_close">Chiudi lista di attivit&#224;</string>
+    <string name="edge_task_scroll_up">Scorri verso l\'alto</string>
+    <string name="edge_task_scroll_down">Scorri verso il basso</string>
+    <string name="edge_task_scroll">Scorri la lista di attivit&#224;</string>
     <string name="edge_task_untitled">Lista di attivit&#224; senza titolo</string>
     <string name="edge_task_choose">Scegli una lista</string>
     <string name="edge_task_help">Spunta una lista Mudita Notes senza sbloccare. Un editor lasciato aperto in Notes pu&#242; sovrascrivere le spunte al salvataggio.</string>

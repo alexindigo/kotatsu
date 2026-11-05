@@ -426,6 +426,10 @@
     <string name="edge_camera">C&#225;mara</string>
     <string name="edge_nothing">Nada</string>
     <string name="edge_task_list">Lista de tareas</string>
+    <string name="edge_task_close">Cerrar lista de tareas</string>
+    <string name="edge_task_scroll_up">Desplazar hacia arriba</string>
+    <string name="edge_task_scroll_down">Desplazar hacia abajo</string>
+    <string name="edge_task_scroll">Desplazar lista de tareas</string>
     <string name="edge_task_untitled">Lista de tareas sin t&#237;tulo</string>
     <string name="edge_task_choose">Elegir una lista</string>
     <string name="edge_task_help">Marca y desmarca una lista de Mudita Notes sin desbloquear. Un editor abierto en Notes puede sobrescribir estas marcas al guardar.</string>

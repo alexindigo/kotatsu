@@ -1,5 +1,8 @@
-Copyright (c) 2010-2014, Łukasz Dziedzic (dziedzic@typoland.com),
+Copyright (c) 2010-2015, Łukasz Dziedzic (dziedzic@typoland.com),
 with Reserved Font Name "Lato".
+
+Lato Medium is an unmodified font from the publisher's Lato 2 OFL distribution:
+https://www.latofonts.com/files/Lato2OFL.zip
 
 This Font Software is licensed under the SIL Open Font License, Version 1.1.
 This license is copied below, and is also available with a FAQ at:

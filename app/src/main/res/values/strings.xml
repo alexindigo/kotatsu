@@ -428,6 +428,10 @@
     <string name="edge_camera">Camera</string>
     <string name="edge_nothing">Nothing</string>
     <string name="edge_task_list">Task list</string>
+    <string name="edge_task_close">Close task list</string>
+    <string name="edge_task_scroll_up">Scroll up</string>
+    <string name="edge_task_scroll_down">Scroll down</string>
+    <string name="edge_task_scroll">Scroll task list</string>
     <string name="edge_task_untitled">Untitled task list</string>
     <string name="edge_task_choose">Choose a list</string>
     <string name="edge_task_help">Check and uncheck one Mudita Notes task list without unlocking. An editor left open in Notes can overwrite these checks when saved.</string>

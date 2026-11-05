@@ -426,6 +426,10 @@
     <string name="edge_camera">Fotoapar&#225;t</string>
     <string name="edge_nothing">Nic</string>
     <string name="edge_task_list">Seznam &#250;kol&#367;</string>
+    <string name="edge_task_close">Zav&#345;&#237;t seznam &#250;kol&#367;</string>
+    <string name="edge_task_scroll_up">Posunout nahoru</string>
+    <string name="edge_task_scroll_down">Posunout dol&#367;</string>
+    <string name="edge_task_scroll">Posunout seznam &#250;kol&#367;</string>
     <string name="edge_task_untitled">Seznam &#250;kol&#367; bez n&#225;zvu</string>
     <string name="edge_task_choose">Vybrat seznam</string>
     <string name="edge_task_help">Za&#353;krt&#225;vejte seznam Mudita Notes bez odemknut&#237;. Otev&#345;en&#253; editor v Notes m&#367;&#382;e p&#345;i ulo&#382;en&#237; tato za&#353;krtnut&#237; p&#345;epsat.</string>

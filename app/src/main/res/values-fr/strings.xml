@@ -426,6 +426,10 @@
     <string name="edge_camera">Appareil photo</string>
     <string name="edge_nothing">Rien</string>
     <string name="edge_task_list">Liste de t&#226;ches</string>
+    <string name="edge_task_close">Fermer la liste de t&#226;ches</string>
+    <string name="edge_task_scroll_up">Faire d&#233;filer vers le haut</string>
+    <string name="edge_task_scroll_down">Faire d&#233;filer vers le bas</string>
+    <string name="edge_task_scroll">Faire d&#233;filer la liste de t&#226;ches</string>
     <string name="edge_task_untitled">Liste de t&#226;ches sans titre</string>
     <string name="edge_task_choose">Choisir une liste</string>
     <string name="edge_task_help">Cochez une liste Mudita Notes sans d&#233;verrouiller. Un &#233;diteur rest&#233; ouvert dans Notes peut &#233;craser ces coches lors de l\'enregistrement.</string>

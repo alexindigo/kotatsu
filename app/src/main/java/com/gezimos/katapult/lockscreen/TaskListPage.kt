@@ -3,7 +3,6 @@ package com.gezimos.katapult.lockscreen
 import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
-import android.graphics.Typeface
 import android.os.Handler
 import android.view.Gravity
 import android.view.KeyEvent
@@ -11,13 +10,21 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
-import androidx.core.content.res.ResourcesCompat
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.ViewModelStoreOwner
@@ -31,25 +38,18 @@ import com.gezimos.katapult.notes.TaskListSnapshot
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.NoIndication
-import com.gezimos.katapult.ui.settings.CheckboxOption
+import com.gezimos.katapult.ui.settings.PageHeader
+import com.gezimos.katapult.ui.settings.HeaderAction
+import com.gezimos.katapult.ui.settings.CloseMark
+import com.gezimos.katapult.ui.settings.PageFrame
+import com.gezimos.katapult.ui.settings.SheetText
 
 /** Presentation only. Children receive callbacks; no gesture or provider policy lives in this view. */
 internal class TaskListView(context: Context, private val back: () -> Unit, private val toggle: (Int) -> Unit,
-                            private val captureSwipe: (Float, Float) -> Boolean,
-                            private val closeSwipe: (Float, Float) -> Boolean) : FrameLayout(context) {
-    private fun dp(n: Int) = (n * resources.displayMetrics.density).toInt()
-    private val font = ResourcesCompat.getFont(context, R.font.lato_regular)
-    private val title = TextView(context).apply {
-        textSize = 26f; typeface = Typeface.create(font, Typeface.BOLD); setTextColor(Color.BLACK)
-    }
-    private val rows = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
-    private val paper = LinearLayout(context).apply {
-        orientation = LinearLayout.VERTICAL; setBackgroundColor(Color.WHITE)
-        setPadding(dp(16), dp(36), dp(16), dp(16))
-    }
-    private data class Row(val view: ComposeView, val state: androidx.compose.runtime.MutableState<Boolean>)
-    private var labels: List<String>? = null
-    private var controls = emptyList<Row>()
+                             private val captureSwipe: (Float, Float) -> Boolean,
+                             private val closeSwipe: (Float, Float) -> Boolean) : FrameLayout(context) {
+    private val data = mutableStateOf<TaskListSnapshot?>(null)
+    private val paper = ComposeView(context)
     private var x = 0f
     private var y = 0f
     private var swiping = false
@@ -57,58 +57,38 @@ internal class TaskListView(context: Context, private val back: () -> Unit, priv
 
     init {
         isFocusableInTouchMode = true
-        val heading = LinearLayout(context).apply { gravity = Gravity.CENTER_VERTICAL }
-        heading.addView(TextView(context).apply {
-            text = "<"; textSize = 26f; setTextColor(Color.BLACK); typeface = font
-            gravity = Gravity.CENTER; contentDescription = context.getString(R.string.paper_back)
-            background = android.graphics.drawable.StateListDrawable().apply {
-                addState(intArrayOf(android.R.attr.state_focused), android.graphics.drawable.GradientDrawable().apply {
-                    setColor(Color.WHITE); setStroke(dp(2), Color.BLACK)
-                })
-            }
-            isFocusable = true; setOnClickListener { back() }
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
-        heading.addView(title, LinearLayout.LayoutParams(0, -2, 1f))
-        paper.addView(heading, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(24) })
-        paper.addView(rows)
-        addView(ScrollView(context).apply {
-            isFillViewport = true; isSmoothScrollingEnabled = false; overScrollMode = View.OVER_SCROLL_NEVER
-            addView(paper)
-        }, LayoutParams(-1, -1))
-        render(null)
-    }
-
-    fun render(data: TaskListSnapshot?) {
-        val items = data?.items
-        val heading = data?.title?.ifBlank { context.getString(R.string.edge_task_untitled) }
-            ?: context.getString(R.string.edge_task_list)
-        if (title.text.toString() != heading) title.text = heading
-        val next = items?.map { it.text }
-        if (next != labels || (items == null && rows.childCount == 0)) {
-            controls.forEach { it.view.disposeComposition() }
-            rows.removeAllViews(); labels = next
-            controls = items?.mapIndexed { index, item ->
-                val checked = mutableStateOf(item.checked)
-                val row = ComposeView(context).apply {
-                    minimumHeight = dp(60)
-                    setContent {
-                        CompositionLocalProvider(LocalInk provides androidx.compose.ui.graphics.Color.Black,
-                            LocalSurface provides androidx.compose.ui.graphics.Color.White,
-                            androidx.compose.foundation.LocalIndication provides NoIndication) {
-                            CheckboxOption(item.text, checked.value) { toggle(index) }
+        paper.setContent {
+            CompositionLocalProvider(LocalInk provides androidx.compose.ui.graphics.Color.Black,
+                LocalSurface provides androidx.compose.ui.graphics.Color.White,
+                androidx.compose.foundation.LocalIndication provides NoIndication) {
+                // The window covers the bars; their insets remain structural spacers, as in Settings.
+                Box(Modifier.fillMaxSize().background(LocalSurface.current)
+                    .statusBarsPadding().navigationBarsPadding()) {
+                    val snapshot = data.value
+                    val items = snapshot?.items
+                    val title = snapshot?.title?.ifBlank { stringResource(R.string.edge_task_untitled) }
+                        ?: stringResource(R.string.edge_task_list)
+                    PageFrame(title, back, heading = {
+                            PageHeader(title, trailing = {
+                                HeaderAction(stringResource(R.string.edge_task_close), back) { CloseMark() }
+                            })
+                        }) {
+                        Column(Modifier.fillMaxSize()) {
+                            Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
+                            if (items == null) Box(Modifier.padding(horizontal = 16.dp)) {
+                                SheetText(stringResource(R.string.edge_task_missing, stringResource(R.string.edge_swipes)))
+                            } else NotesTaskList(items, toggle)
                         }
                     }
                 }
-                rows.addView(row, LinearLayout.LayoutParams(-1, -2))
-                Row(row, checked)
-            }.orEmpty()
-            if (items == null) rows.addView(TextView(context).apply {
-                text = context.getString(R.string.edge_task_missing, context.getString(R.string.edge_swipes))
-                textSize = 18f; typeface = font; setTextColor(Color.BLACK)
-            })
+            }
         }
+        addView(paper, LayoutParams(-1, -1))
+    }
+
+    fun render(data: TaskListSnapshot?) {
         // Mandatory even when content is unchanged: native/consumer state never implies write success.
-        items?.forEachIndexed { i, item -> controls[i].state.value = item.checked }
+        this.data.value = data
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -145,7 +125,7 @@ internal class TaskListView(context: Context, private val back: () -> Unit, priv
 
     override fun onTouchEvent(event: MotionEvent): Boolean = true
 
-    fun dispose() { controls.forEach { it.view.disposeComposition() } }
+    fun dispose() = paper.disposeComposition()
 }
 
 /** Owns only the page window and its read session. EdgeGestures owns preview timing and final-UP routing. */
@@ -200,6 +180,7 @@ internal class TaskListPage(private val context: Context, private val handler: H
     }
 
     fun settle(from: ScreenEdge) {
+        if (opened) return
         if (!create(from)) return
         val root = view ?: return
         val p = params ?: return
@@ -207,10 +188,17 @@ internal class TaskListPage(private val context: Context, private val handler: H
         p.flags = p.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv() and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
         try { wm.updateViewLayout(root, p) } catch (_: RuntimeException) { hide(); return }
         opened = true; root.requestFocus()
-        clean.run()
+        flashOnOpen()
+        changed()
+    }
+
+    /** Clear the previous keyguard clock once on entry; scrolling never requests an inversion. */
+    private fun flashOnOpen() {
+        if (!opened) return
+        val root = view ?: return
+        handler.removeCallbacks(clean); clean.run()
         flash = View(context).apply { setBackgroundColor(Color.BLACK) }.also { root.addView(it, FrameLayout.LayoutParams(-1, -1)) }
         handler.postDelayed(clean, 80)
-        changed()
     }
 
     fun cancelPreview() { if (!opened) hide() }
