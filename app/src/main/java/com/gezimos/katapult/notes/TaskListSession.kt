@@ -35,14 +35,21 @@ class TaskListSession(private val notes: NotesPort, private val id: Long?,
         }
     }
 
-    fun toggle(index: Int) {
-        val old = snapshot ?: return
+    fun toggle(task: TaskToggle) {
         if (writing || closed) return
         writing = true
         scope.launch {
             try {
                 lane.withLock {
-                    val result = withContext(Dispatchers.IO) { toggleTask(notes, old, index, System.currentTimeMillis()) }
+                    // A queued observer read can advance the session before this command gets the
+                    // lane. Never reinterpret an old row index using that newer snapshot.
+                    if (task.rendered != snapshot) {
+                        if (!closed) changed(snapshot)
+                        return@withLock
+                    }
+                    val result = withContext(Dispatchers.IO) {
+                        toggleTask(notes, task.rendered, task.index, System.currentTimeMillis())
+                    }
                     if (!closed) { snapshot = result.persisted; changed(result.persisted) }
                 }
             } finally { writing = false }

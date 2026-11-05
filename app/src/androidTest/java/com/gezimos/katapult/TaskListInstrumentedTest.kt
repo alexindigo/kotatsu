@@ -600,7 +600,7 @@ class TaskListInstrumentedTest {
         fun drag(x: Float, from: Float, to: Float) = dragScreen(x, from, to)
         try {
             instrumentation.runOnMainSync {
-                page = TaskListView(activity, {}, { toggled = it },
+                page = TaskListView(activity, {}, { toggled = it.index },
                     { dx, dy -> com.gezimos.katapult.lockscreen.EdgeSwipe.capturesPageClose(
                         com.gezimos.katapult.lockscreen.ScreenEdge.LEFT, dx, dy, 8 * context.resources.displayMetrics.density) },
                     { dx, dy -> com.gezimos.katapult.lockscreen.EdgeSwipe.closesPage(

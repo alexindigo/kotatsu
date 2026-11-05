@@ -35,6 +35,7 @@ import com.gezimos.katapult.R
 import com.gezimos.katapult.notes.NotesPort
 import com.gezimos.katapult.notes.TaskListSession
 import com.gezimos.katapult.notes.TaskListSnapshot
+import com.gezimos.katapult.notes.TaskToggle
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.NoIndication
@@ -45,7 +46,7 @@ import com.gezimos.katapult.ui.settings.PageFrame
 import com.gezimos.katapult.ui.settings.SheetText
 
 /** Presentation only. Children receive callbacks; no gesture or provider policy lives in this view. */
-internal class TaskListView(context: Context, private val back: () -> Unit, private val toggle: (Int) -> Unit,
+internal class TaskListView(context: Context, private val back: () -> Unit, private val toggle: (TaskToggle) -> Unit,
                              private val captureSwipe: (Float, Float) -> Boolean,
                              private val closeSwipe: (Float, Float) -> Boolean) : FrameLayout(context) {
     private val data = mutableStateOf<TaskListSnapshot?>(null)
@@ -75,9 +76,9 @@ internal class TaskListView(context: Context, private val back: () -> Unit, priv
                         }) {
                         Column(Modifier.fillMaxSize()) {
                             Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
-                            if (items == null) Box(Modifier.padding(horizontal = 16.dp)) {
+                            if (snapshot == null || items == null) Box(Modifier.padding(horizontal = 16.dp)) {
                                 SheetText(stringResource(R.string.edge_task_missing, stringResource(R.string.edge_swipes)))
-                            } else NotesTaskList(items, toggle)
+                            } else NotesTaskList(snapshot, toggle)
                         }
                     }
                 }

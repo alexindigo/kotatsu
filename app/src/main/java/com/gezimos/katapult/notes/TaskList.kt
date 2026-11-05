@@ -6,6 +6,9 @@ data class TaskListSnapshot(val id: Long, val title: String, val content: String
 }
 data class TaskListChoice(val id: Long, val title: String)
 
+/** An item index is meaningful only within the immutable snapshot that supplied its row. */
+data class TaskToggle(val rendered: TaskListSnapshot, val index: Int)
+
 /** Strict, Android-independent codec. Bad content is unavailable, never an empty writable list. */
 object TaskListJson {
     fun encode(items: List<TaskItem>): String = items.joinToString(",", "[", "]") {

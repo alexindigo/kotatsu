@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.R
 import com.gezimos.katapult.notes.TaskItem
+import com.gezimos.katapult.notes.TaskListSnapshot
+import com.gezimos.katapult.notes.TaskToggle
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.NoIndication
@@ -63,7 +65,8 @@ private fun Modifier.notesFocus(interactions: MutableInteractionSource): Modifie
 
 /** Presentation and scroll ownership only. The consumer supplies authoritative state and commands. */
 @Composable
-internal fun NotesTaskList(items: List<TaskItem>, onToggle: (Int) -> Unit) {
+internal fun NotesTaskList(snapshot: TaskListSnapshot, onToggle: (TaskToggle) -> Unit) {
+    val items = remember(snapshot.content) { snapshot.items } ?: return
     val scroll = rememberScrollState()
     // Measure the wide content independently of the rail. A rail must never create its own
     // overflow or remain stuck after a shorter document arrives. The visible body owns scrolling.
@@ -77,7 +80,13 @@ internal fun NotesTaskList(items: List<TaskItem>, onToggle: (Int) -> Unit) {
         val railWidth = if (overflow) 56.dp.roundToPx() else 0
         val body = subcompose("body") {
             Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(bottom = 16.dp)) {
-                items.forEachIndexed { index, item -> NotesTaskRow(item, overflow) { onToggle(index) } }
+                // Replacing a revision cancels its in-flight row presses rather than retargeting
+                // their UP to another item. The scrolling container keeps its position.
+                key(snapshot) {
+                    items.forEachIndexed { index, item ->
+                        NotesTaskRow(item, overflow) { onToggle(TaskToggle(snapshot, index)) }
+                    }
+                }
             }
         }.single().measure(Constraints.fixed((constraints.maxWidth - railWidth).coerceAtLeast(1), constraints.maxHeight))
         val rail = if (overflow) subcompose("rail") {
