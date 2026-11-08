@@ -101,6 +101,18 @@ class WallpaperFilesInstrumentedTest {
     private fun path(model: MainViewModel, screensaver: Boolean): String? =
         if (screensaver) model.prefs.screensaverWallpaperPath else model.prefs.wallpaperPath
 
+    private fun awaitPublished(model: MainViewModel, screensaver: Boolean, color: Int) {
+        await("Save did not reach the wallpaper consumer") {
+            var published = false
+            instrumentation.runOnMainSync {
+                val selected = path(model, screensaver)
+                published = selected != null && if (screensaver) model.screensaverWallpaperPath == selected
+                    else model.wallpaperBitmap?.getPixel(12, 12) == color
+            }
+            published
+        }
+    }
+
     @Test fun homeSuccessReachesBitmapConsumer() = success(false)
     @Test fun screensaverSuccessPublishesObservableSettingsState() = success(true)
 
@@ -141,8 +153,10 @@ class WallpaperFilesInstrumentedTest {
 
     private fun success(screensaver: Boolean) = withModel { model, root ->
         val source = png(File(root, "source.png"), Color.BLUE)
-        save(model, context, Uri.fromFile(source), screensaver)
-        await("Save did not reach wallpaper preference") { path(model, screensaver) != null }
+        val jobs = save(model, context, Uri.fromFile(source), screensaver)
+        awaitPublished(model, screensaver, Color.BLUE)
+        // File cleanup belongs to the whole save, not just its Main publication.
+        kotlinx.coroutines.runBlocking { kotlinx.coroutines.withTimeout(15000) { jobs.forEach { it.join() } } }
         if (screensaver) {
             val observed = MainViewModel::class.java.getMethod("getScreensaverWallpaperPath").invoke(model)
             assertEquals(path(model, true), observed)
@@ -184,7 +198,7 @@ class WallpaperFilesInstrumentedTest {
             assertTrue(entered.await(15, TimeUnit.SECONDS))
             if (clear) clear(model, screensaver) else {
                 save(model, context, Uri.fromFile(blue), screensaver)
-                await("New pick did not publish") { path(model, screensaver) != null }
+                awaitPublished(model, screensaver, Color.BLUE)
             }
             release.countDown()
             assertTrue(completed.await(15, TimeUnit.SECONDS))
