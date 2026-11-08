@@ -35,6 +35,12 @@ class ConfigureActivity : Activity() {
     private var editing: PlaceEdit? = null
     private var editDialog: AlertDialog? = null
     private lateinit var rows: LinearLayout
+    private val locationRows = mutableMapOf<String, View>()
+    private val emptyRow by lazy {
+        text("No places yet. Each place you add gets its own line on the widget.", 14f).apply {
+            setPadding(0, dp(6), 0, dp(6))
+        }
+    }
     private lateinit var add: TextView
     private lateinit var addNote: TextView
     private lateinit var units: View
@@ -206,17 +212,25 @@ class ConfigureActivity : Activity() {
 
     private fun showRows() {
         val config = store.config(widgetId) ?: run { showUnreadable(); return }
-        rows.removeAllViews()
+        // Refresh completion can arrive between DOWN and UP. A place owns its row for as long
+        // as its ID remains in the configuration; rebinding data must not cancel native input.
+        val ids = config.locations.mapTo(HashSet()) { it.id }
+        (locationRows.keys - ids).forEach { id -> rows.removeView(locationRows.remove(id)) }
         if (config.locations.isEmpty()) {
-            rows.addView(text("No places yet. Each place you add gets its own line on the widget.", 14f).apply {
-                setPadding(0, dp(6), 0, dp(6))
-            })
-        }
+            if (emptyRow.parent == null) rows.addView(emptyRow)
+        } else rows.removeView(emptyRow)
         val forecasts = ForecastStore(this)
         val zone = WidgetReconciler.currentClock().zone
-        config.locations.forEach { location ->
+        config.locations.forEachIndexed { index, location ->
             val status = WeatherPresentation.editor(this, forecasts.snapshot(location, config.fahrenheit, zone), zone)
-            rows.addView(actionRow(location.label, "${location.place}\n${hours(location.start)} to ${hours(location.end)}", status) { edit(location.id) })
+            val row = locationRows.getOrPut(location.id) { actionRow("", "", "") { edit(location.id) } }
+            row.findViewWithTag<TextView>(TITLE).text = location.label
+            setRowDetail(row, "${location.place}\n${hours(location.start)} to ${hours(location.end)}")
+            row.findViewWithTag<TextView>(STATUS).text = status
+            if (rows.indexOfChild(row) != index) {
+                rows.removeView(row)
+                rows.addView(row, index)
+            }
         }
         val full = config.locations.size >= MAX_LOCATIONS
         add.isEnabled = !full
@@ -482,7 +496,7 @@ class ConfigureActivity : Activity() {
         val texts = column()
         texts.addView(text(title, 18f, bold = true).apply { tag = TITLE })
         texts.addView(text(detail, 14f).apply { tag = DETAIL })
-        texts.addView(text(status, 14f))
+        texts.addView(text(status, 14f).apply { tag = STATUS })
         addView(texts, LinearLayout.LayoutParams(0, WRAP, 1f))
         addView(ImageView(context).apply { setImageResource(R.drawable.ic_chevron_right) },
             LinearLayout.LayoutParams(dp(24), dp(24)))
@@ -533,6 +547,7 @@ class ConfigureActivity : Activity() {
         val QUIET = Color.rgb(160, 160, 160)
         const val TITLE = "title"
         const val DETAIL = "detail"
+        const val STATUS = "status"
         const val PILL = "pill"
     }
 }

@@ -40,9 +40,41 @@ class EditorPersistenceInstrumentedTest {
             older = open(id)
             // A second editor adds after the first opened, through the real Current location UI.
             newer = open(id)
-            addCurrentThroughUi()
-            tapControl(withText("Here"))
+            val active = checkNotNull(newer)
+            addCurrentThroughUi(active)
+            val current = store.config(id)!!.locations.single { it.label == "Here" }
+            val clock = WidgetReconciler.currentClock()
+            val now = clock.instant()
+            val start = now.atZone(clock.zone).toLocalDate().atStartOfDay(clock.zone).toInstant()
+            val forecast = Parsed.Valid(ForecastSeries((0..72).map { hour ->
+                HourSample(start.plusSeconds(hour * 3600L), 58.0, 2, null)
+            }, now))
+            var accepted: ForecastStore.Result? = null
+            var failureWritten = false
+            var rowsRetained = false
+            var statusRebound = false
+            // A real refresh can finish between native DOWN and UP. Publishing both forecast and
+            // failure facts must rebind the existing rows, not remove the pressed input target.
+            tapDuringRefresh(active, withText("Here")) {
+                val beforeFirst = find(active.window.decorView, "First")
+                val beforeHere = find(active.window.decorView, "Here")
+                val forecasts = ForecastStore(context)
+                val fahrenheit = store.config(id)!!.fahrenheit
+                accepted = forecasts.accept(current, fahrenheit, forecast, now, clock.zone)
+                failureWritten = forecasts.recordFailure(current, fahrenheit, RefreshOutcome.HTTP(503), now, clock.zone)
+                rowsRetained = beforeFirst != null && beforeHere != null &&
+                    beforeFirst === find(active.window.decorView, "First") &&
+                    beforeHere === find(active.window.decorView, "Here")
+                val status = WeatherPresentation.editor(context, forecasts.snapshot(current, fahrenheit, clock.zone), clock.zone)
+                statusRebound = find(active.window.decorView, status) != null &&
+                    status.contains(context.getString(R.string.refresh_server_error, 503)) &&
+                    status.contains(WeatherPresentation.lastUpdated(context, now, clock.zone))
+            }
+            assertEquals(ForecastStore.Result.ACCEPTED, accepted)
+            assertTrue("Failure status was persisted during the press", failureWritten)
             inDialog(isAssignableFrom(EditText::class.java)).perform(replaceText("Second"))
+            assertTrue("Refreshes retain both existing location rows", rowsRetained)
+            assertTrue("The retained row shows the new forecast and failure status", statusRebound)
             tapControl(withText("Save"), dialog = true)
             instrumentation.runOnMainSync {
                 find(newer!!.window.decorView, "Done")!!.performClick()
@@ -122,8 +154,14 @@ class EditorPersistenceInstrumentedTest {
                 editor = monitor.waitForActivityWithTimeout(10_000) as? ConfigureActivity
                 assertNotNull(editor)
                 inDialog(isAssignableFrom(EditText::class.java)).check(androidx.test.espresso.assertion.ViewAssertions.matches(withText("Edited")))
+                var restoredTitle: TextView? = null
+                instrumentation.runOnMainSync { restoredTitle = find(editor!!.window.decorView, "First") }
                 tapControl(withText("Save"), dialog = true)
                 assertEquals(listOf("Edited", "Second"), store.config(id)!!.locations.map { it.label })
+                instrumentation.runOnMainSync {
+                    assertNotNull(restoredTitle)
+                    assertSame("Editing rebinds the existing place row", restoredTitle, find(editor!!.window.decorView, "Edited"))
+                }
                 // Back closes without a whole-config save, and the change is already durable.
                 instrumentation.runOnMainSync { editor!!.onBackPressed() }
                 assertEquals(listOf("Edited", "Second"), WeatherStore(context).config(id)!!.locations.map { it.label })
@@ -156,6 +194,60 @@ class EditorPersistenceInstrumentedTest {
             host.deleteAppWidgetId(id); store.delete(id)
             instrumentation.uiAutomation.dropShellPermissionIdentity()
             WeatherRuntime.cancel(context)
+        }
+    }
+
+    @Test fun emptyEditorAddsRebindsRemovesAndAddsRowsThroughUi() {
+        val host = AppWidgetHost(context, 0x4B54)
+        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+        val id = host.allocateAppWidgetId()
+        var editor: ConfigureActivity? = null
+        val empty = "No places yet. Each place you add gets its own line on the widget."
+        try {
+            assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
+            seed(id, WidgetConfig(emptyList()))
+            val active = open(id)
+            editor = active
+            instrumentation.runOnMainSync {
+                assertNotNull(find(active.window.decorView, empty))
+                assertFalse(find(active.window.decorView, "Done")!!.isEnabled)
+            }
+            addCurrentThroughUi(active)
+            var originalTitle: TextView? = null
+            instrumentation.runOnMainSync {
+                originalTitle = find(active.window.decorView, "Here")
+                assertNotNull(originalTitle)
+                assertNull(find(active.window.decorView, empty))
+                assertTrue(find(active.window.decorView, "Done")!!.isEnabled)
+            }
+            val fahrenheit = store.config(id)!!.fahrenheit
+            tapControl(withText("Temperature"), decor = active.window.decorView)
+            assertEquals(!fahrenheit, store.config(id)!!.fahrenheit)
+            instrumentation.runOnMainSync {
+                assertSame("Unit changes rebind the existing place row", originalTitle, find(active.window.decorView, "Here"))
+            }
+            tapControl(withText("Here"), decor = active.window.decorView)
+            tapControl(withContentDescription("Remove location"), dialog = true)
+            assertTrue(store.config(id)!!.locations.isEmpty())
+            instrumentation.runOnMainSync {
+                assertNull(find(active.window.decorView, "Here"))
+                assertNotNull(find(active.window.decorView, empty))
+                assertFalse(find(active.window.decorView, "Done")!!.isEnabled)
+            }
+            addCurrentThroughUi(active)
+            assertEquals(listOf("Here"), store.config(id)!!.locations.map { it.label })
+            instrumentation.runOnMainSync {
+                assertNotNull(find(active.window.decorView, "Here"))
+                assertNotSame("A removed location's view is not reused for a new ID", originalTitle, find(active.window.decorView, "Here"))
+                assertNull(find(active.window.decorView, empty))
+                assertTrue(find(active.window.decorView, "Done")!!.isEnabled)
+            }
+        } finally {
+            instrumentation.runOnMainSync { editor?.finish() }
+            host.deleteAppWidgetId(id); store.delete(id)
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            WeatherRuntime.cancel(context)
+            shell("cmd location providers remove-test-provider gps")
         }
     }
 
@@ -228,6 +320,28 @@ class EditorPersistenceInstrumentedTest {
         instrumentation.waitForIdleSync()
     }
 
+    /** Force the refresh/input interleaving without sleeps, retries or changing the native gesture. */
+    private fun tapDuringRefresh(activity: ConfigureActivity, matcher: org.hamcrest.Matcher<View>, refresh: () -> Unit) {
+        lateinit var callback: android.view.Window.Callback
+        var refreshed = false
+        instrumentation.runOnMainSync {
+            callback = activity.window.callback
+            activity.window.callback = object : android.view.Window.Callback by callback {
+                override fun dispatchTouchEvent(event: android.view.MotionEvent): Boolean {
+                    val handled = callback.dispatchTouchEvent(event)
+                    if (!refreshed && event.action == android.view.MotionEvent.ACTION_DOWN) {
+                        refreshed = true
+                        refresh()
+                    }
+                    return handled
+                }
+            }
+        }
+        try { tapControl(matcher, decor = activity.window.decorView) }
+        finally { instrumentation.runOnMainSync { activity.window.callback = callback } }
+        assertTrue("The real editor received DOWN before the refresh", refreshed)
+    }
+
     /** AOSP reports the same class to ActivityMonitor at both create and resume. A hit is neither
      * a fresh route nor input readiness: match the requested editor identity and its focused window. */
     private fun awaitFocusedEditor(monitor: android.app.Instrumentation.ActivityMonitor,
@@ -264,7 +378,7 @@ class EditorPersistenceInstrumentedTest {
     private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
 
-    private fun addCurrentThroughUi() {
+    private fun addCurrentThroughUi(activity: ConfigureActivity) {
         instrumentation.uiAutomation.grantRuntimePermission(context.packageName, android.Manifest.permission.ACCESS_FINE_LOCATION)
         instrumentation.uiAutomation.grantRuntimePermission(context.packageName, android.Manifest.permission.ACCESS_COARSE_LOCATION)
         shell("cmd location set-location-enabled true")
@@ -274,7 +388,20 @@ class EditorPersistenceInstrumentedTest {
         shell("cmd location providers set-test-provider-location gps --location 30,40 --accuracy 5")
         tapControl(withText("Add location"))
         tapControl(withText("Add current location"), dialog = true)
-        instrumentation.waitForIdleSync()
+        // Location completion dismisses the search dialog asynchronously. Main idle is neither
+        // that completion nor the editor's laid-out input window regaining focus.
+        val end = android.os.SystemClock.uptimeMillis() + 10_000
+        while (android.os.SystemClock.uptimeMillis() < end) {
+            var ready = false
+            instrumentation.runOnMainSync {
+                val decor = activity.window.decorView
+                val here = find(decor, "Here")
+                ready = decor.isAttachedToWindow && decor.hasWindowFocus() && !decor.isLayoutRequested &&
+                    here != null && here.isShown && !here.isLayoutRequested && here.width > 0 && here.height > 0
+            }
+            if (ready) return
+        }
+        throw AssertionError("The editor did not regain its focused window with the new current-location row")
     }
 
     private fun find(view: View, value: String): TextView? {
