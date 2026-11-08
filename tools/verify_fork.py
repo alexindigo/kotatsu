@@ -21,12 +21,12 @@ import source_receipt
 BASELINE='c6601b8128089db8ad28cdcc1f57361575066d5f'
 RELEASE_ID='com.alexindigo.kotatsu'
 NAMESPACE='com.gezimos.katapult'
-RELEASE_VERSION='0.6'
+RELEASE_VERSION='0.6.1'
 # One inventory for source, metadata, compiled identities and release receipts.
 RELEASE_APPS={
-    'app':{'applicationId':RELEASE_ID,'namespace':NAMESPACE,'versionCode':15,'label':'Kotatsu','debugVersionSuffix':'-debug'},
-    'kotatsu-weather':{'applicationId':RELEASE_ID+'.weather','namespace':RELEASE_ID+'.weather','versionCode':10,'label':'Kotatsu Weather','debugVersionSuffix':''},
-    'kotatsu-notes':{'applicationId':RELEASE_ID+'.notes','namespace':RELEASE_ID+'.notes','versionCode':9,'label':'Kotatsu Notes','debugVersionSuffix':''},
+    'app':{'applicationId':RELEASE_ID,'namespace':NAMESPACE,'versionCode':16,'label':'Kotatsu','debugVersionSuffix':'-debug'},
+    'kotatsu-weather':{'applicationId':RELEASE_ID+'.weather','namespace':RELEASE_ID+'.weather','versionCode':11,'label':'Kotatsu Weather','debugVersionSuffix':''},
+    'kotatsu-notes':{'applicationId':RELEASE_ID+'.notes','namespace':RELEASE_ID+'.notes','versionCode':10,'label':'Kotatsu Notes','debugVersionSuffix':''},
 }
 ANDROID='{http://schemas.android.com/apk/res/android}'
 LOCALES=('', '-cs','-de','-es','-fr','-it','-nl','-pl','-pt')
@@ -262,7 +262,7 @@ def source_identity(root,base,index_path,execution=None):
     provenance=execution_identity(root,base,execution)
     release_apps=source_release_identities(root)
     build=(root/'app/build.gradle.kts').read_text();original=baseline_bytes(root,base,'app/build.gradle.kts').decode()
-    require(build==original.replace('archivesName.set("katapult-v1.6")','archivesName.set("kotatsu-v0.6")').replace('applicationId = "com.gezimos.katapult"','applicationId = "'+RELEASE_ID+'"').replace('versionCode = 7','versionCode = 15').replace('versionName = "1.6"','versionName = "0.6"'),'Build versions/dependencies/signing/optimization or namespace changed beyond identity')
+    require(build==original.replace('archivesName.set("katapult-v1.6")','archivesName.set("kotatsu-v0.6.1")').replace('applicationId = "com.gezimos.katapult"','applicationId = "'+RELEASE_ID+'"').replace('versionCode = 7','versionCode = 16').replace('versionName = "1.6"','versionName = "0.6.1"'),'Build versions/dependencies/signing/optimization or namespace changed beyond identity')
     settings=(root/'settings.gradle.kts').read_bytes()
     require(settings==baseline_bytes(root,base,'settings.gradle.kts').replace(b'rootProject.name = "Katapult"',b'rootProject.name = "Kotatsu"'),'Root settings changed beyond identity')
     baseline_manifest=ET.fromstring(baseline_bytes(root,base,'app/src/main/AndroidManifest.xml'));manifest=ET.parse(root/'app/src/main/AndroidManifest.xml').getroot()
@@ -739,7 +739,7 @@ def apk_identity(args):
     analyzer_xml=command(args.apkanalyzer,'manifest','print',apk);manifest=ET.fromstring(analyzer_xml)
     require(manifest.tag=='manifest' and manifest.get('package')==expected,'Actual compiled package mismatch')
     badging=parse_badging(command(args.aapt2,'dump','badging',apk))
-    require(badging['package']==expected and badging['versionCode']=='15' and badging['versionName']==('0.6-debug' if args.variant=='debug' else '0.6'),'Compiled APK version/ID mismatch')
+    require(badging['package']==expected and badging['versionCode']=='16' and badging['versionName']==('0.6.1-debug' if args.variant=='debug' else '0.6.1'),'Compiled APK version/ID mismatch')
     label='Kotatsu Debug' if args.variant=='debug' else 'Kotatsu'
     require(all(v==label for v in badging['labels'].values()),'Wrong compiled locale label')
     require(set(x.removeprefix('-') for x in LOCALES if x)<=set(badging['labels']),'Missing compiled existing locale labels')

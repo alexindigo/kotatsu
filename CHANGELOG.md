@@ -2,6 +2,14 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.6.1] — 2026-11-08
+
+### Fixed
+- **Empty quotes notes** are skipped in the lock-screen widget slot instead of leaving an empty widget on screen.
+
+### Added
+- **Kotatsu Notes task-list widget** also reads Mudita Notes text notes. Bullet lines become checkboxes and other lines become headings; checking an item writes a check mark into the note.
+
 ## [0.6] — 2026-11-08
 
 ### Added
