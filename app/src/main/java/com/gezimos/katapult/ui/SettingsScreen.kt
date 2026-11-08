@@ -378,7 +378,7 @@ fun SettingsScreen(
         }, onAction = edgeStore::setAction,
         taskListTitle = taskLists.choices?.firstOrNull { it.id == edgeStore.taskListId }?.title
             ?.ifBlank { context.getString(R.string.edge_task_untitled) },
-        onTaskList = { navigation.push("task-list-picker") })
+        onTaskList = { navigation.push("task-list-picker") }, onSideScreen = { navigation.push("side-screen") })
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
         screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
         screensaverDoubleTapBrightness, screensaverOnPower, screensaverAppIcon, screensaverUpdateMode,
@@ -519,6 +519,41 @@ fun SettingsScreen(
             onPick = { provider -> (context as? MainActivity)?.addLockscreenWidget(provider.info) },
             onDismiss = popPage,
         )
+    }
+
+    if (destination == "side-screen") {
+        com.gezimos.katapult.ui.settings.SideScreenSettingsPage(widgetSettings.screens.first(), widgetSettings.screenName(),
+            widgetSettings::slotLabel, { navigation.push("side-name") }, { navigation.push("side-layout") },
+            widgetSettings::layoutScreen, { cell -> navigation.push("side-slot:$cell") }, popPage)
+    }
+    if (destination == "side-name") {
+        var draft by androidx.compose.runtime.saveable.rememberSaveable(stateSaver = androidx.compose.ui.text.input.TextFieldValue.Saver) {
+            mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(widgetSettings.screenName()))
+        }
+        LockscreenMessageSheet(draft, { draft = it }, popPage, { widgetSettings.nameScreen(it); popPage() },
+            title = stringResource(R.string.side_name))
+    }
+    if (destination == "side-layout") {
+        val entry = com.gezimos.katapult.ui.settings.sideLayoutEntry(widgetSettings.screens.first().layout, widgetSettings::layoutScreen)
+        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
+    }
+    if (destination.startsWith("side-slot:")) {
+        val cell = destination.removePrefix("side-slot:").toInt()
+        val id = widgetSettings.screens.first().slots[cell]
+        SettingsPage(stringResource(if (widgetSettings.screens.first().layout == com.gezimos.katapult.lockscreen.SideLayout.FULL) R.string.side_widget
+            else if (cell == 0) R.string.side_top else R.string.side_bottom), popPage) {
+            SheetAction(stringResource(R.string.side_choose_widget)) { navigation.push("side-providers:$cell") }
+            val info = id?.let { android.appwidget.AppWidgetManager.getInstance(context).getAppWidgetInfo(it) }
+            if (info?.configure != null && info.widgetFeatures and android.appwidget.AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0) {
+                SheetAction(stringResource(R.string.lockscreen_widgets_edit)) { (context as? MainActivity)?.editLockscreenWidget(id, cell) }
+            }
+            if (id != null) SheetAction(stringResource(R.string.lockscreen_widgets_remove)) { widgetSettings.removeSlot(cell); popPage() }
+        }
+    }
+    if (destination.startsWith("side-providers:")) {
+        val cell = destination.removePrefix("side-providers:").toInt()
+        WidgetProviderSheet(remember { widgetSettings.providers() },
+            { provider -> (context as? MainActivity)?.addLockscreenWidget(provider.info, cell) }, popPage)
     }
 
     val messageDraft = viewModel.lockscreenMessageDraft
@@ -1027,10 +1062,11 @@ private fun LockscreenMessageSheet(
     onValueChange: (androidx.compose.ui.text.input.TextFieldValue) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    title: String = stringResource(R.string.lockscreen_message),
 ) {
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
-    SettingsPage(stringResource(R.string.lockscreen_message), onDismiss, imePadding = true) {
+    SettingsPage(title, onDismiss, imePadding = true) {
         BasicTextField(
             value = textFieldValue,
             onValueChange = onValueChange,

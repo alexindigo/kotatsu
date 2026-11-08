@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Side screen</string>
+    <string name="side_screen_help">Show widgets on a screen opened from an edge</string>
+    <string name="side_name">Screen name</string>
+    <string name="side_layout">Layout</string>
+    <string name="side_layout_help">One widget, or two stacked</string>
+    <string name="side_choose">Choose</string>
+    <string name="side_full">Full</string>
+    <string name="side_split">Split</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Top widget</string>
+    <string name="side_bottom">Bottom widget</string>
+    <string name="side_choose_widget">Choose a widget</string>
+    <string name="side_empty">Choose a widget in Side screen settings</string>
+    <string name="side_close">Close side screen</string>
+    <string name="side_unlock">Unlock to open widget app</string>
+</resources>

@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Pantalla lateral</string>
+    <string name="side_screen_help">Mostrar widgets en una pantalla abierta desde un borde</string>
+    <string name="side_name">Nombre de pantalla</string>
+    <string name="side_layout">Distribución</string>
+    <string name="side_layout_help">Un widget, o dos apilados</string>
+    <string name="side_choose">Elegir</string>
+    <string name="side_full">Completa</string>
+    <string name="side_split">Dividida</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Widget superior</string>
+    <string name="side_bottom">Widget inferior</string>
+    <string name="side_choose_widget">Elegir un widget</string>
+    <string name="side_empty">Elige un widget en los ajustes de Pantalla lateral</string>
+    <string name="side_close">Cerrar pantalla lateral</string>
+    <string name="side_unlock">Desbloquea para abrir la app del widget</string>
+</resources>

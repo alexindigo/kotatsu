@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Boční obrazovka</string>
+    <string name="side_screen_help">Zobrazit widgety na obrazovce otevřené od okraje</string>
+    <string name="side_name">Název obrazovky</string>
+    <string name="side_layout">Rozložení</string>
+    <string name="side_layout_help">Jeden widget, nebo dva nad sebou</string>
+    <string name="side_choose">Vybrat</string>
+    <string name="side_full">Celá</string>
+    <string name="side_split">Rozdělená</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Horní widget</string>
+    <string name="side_bottom">Dolní widget</string>
+    <string name="side_choose_widget">Vybrat widget</string>
+    <string name="side_empty">Vyberte widget v nastavení boční obrazovky</string>
+    <string name="side_close">Zavřít boční obrazovku</string>
+    <string name="side_unlock">Odemkněte pro otevření aplikace widgetu</string>
+</resources>

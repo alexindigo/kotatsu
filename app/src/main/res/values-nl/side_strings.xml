@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Zijscherm</string>
+    <string name="side_screen_help">Toon widgets op een scherm dat vanaf de rand opent</string>
+    <string name="side_name">Schermnaam</string>
+    <string name="side_layout">Indeling</string>
+    <string name="side_layout_help">E&#233;n widget, of twee onder elkaar</string>
+    <string name="side_choose">Kiezen</string>
+    <string name="side_full">Volledig</string>
+    <string name="side_split">Gedeeld</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Bovenste widget</string>
+    <string name="side_bottom">Onderste widget</string>
+    <string name="side_choose_widget">Widget kiezen</string>
+    <string name="side_empty">Kies een widget in de zijscherminstellingen</string>
+    <string name="side_close">Zijscherm sluiten</string>
+    <string name="side_unlock">Ontgrendel om de widget-app te openen</string>
+</resources>

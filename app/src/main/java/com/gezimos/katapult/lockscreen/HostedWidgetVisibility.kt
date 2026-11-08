@@ -14,6 +14,7 @@ internal class HostedWidgetVisibility {
     }
 
     fun hide(): List<LockscreenWidget> = transition(emptyList(), emptySet())
+    fun reconcileShown(shown: List<LockscreenWidget>): List<LockscreenWidget> = transition(shown, emptySet())
     fun clear() = states.clear()
 
     private fun transition(shown: List<LockscreenWidget>, pulse: Set<Int>): List<LockscreenWidget> {

@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Seitenbildschirm</string>
+    <string name="side_screen_help">Widgets auf einem vom Rand geöffneten Bildschirm anzeigen</string>
+    <string name="side_name">Bildschirmname</string>
+    <string name="side_layout">Aufteilung</string>
+    <string name="side_layout_help">Ein Widget oder zwei untereinander</string>
+    <string name="side_choose">W&#228;hlen</string>
+    <string name="side_full">Ganz</string>
+    <string name="side_split">Geteilt</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Oberes Widget</string>
+    <string name="side_bottom">Unteres Widget</string>
+    <string name="side_choose_widget">Widget auswählen</string>
+    <string name="side_empty">Ein Widget in den Seitenbildschirm-Einstellungen auswählen</string>
+    <string name="side_close">Seitenbildschirm schließen</string>
+    <string name="side_unlock">Zum Öffnen der Widget-App entsperren</string>
+</resources>

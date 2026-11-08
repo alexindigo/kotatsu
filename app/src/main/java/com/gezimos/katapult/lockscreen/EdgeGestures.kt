@@ -86,7 +86,7 @@ internal class EdgeGestures(
                 MotionEvent.ACTION_POINTER_DOWN -> { cancelled = true; cancelPreview() }
                 MotionEvent.ACTION_MOVE -> if (tracking && !cancelled) {
                     point(event)
-                    if (store.enabled && store.action(edge) == EdgeAction.TASK_LIST) {
+                    if (store.enabled && store.action(edge) in setOf(EdgeAction.TASK_LIST, EdgeAction.SIDE_SCREEN)) {
                         preview(edge, EdgeSwipe.previewStep(edge, event.rawX - x, event.rawY - y, width,
                             8 * service.resources.displayMetrics.density))
                     } else cancelPreview()
@@ -98,7 +98,7 @@ internal class EdgeGestures(
                         when (EdgeSwipe.decide(edge, event.rawX - x, event.rawY - y, width,
                                 8 * service.resources.displayMetrics.density)) {
                             EdgeSwipeDecision.ACTION -> {
-                                if (store.action(edge) != EdgeAction.TASK_LIST) cancelPreview()
+                                if (store.action(edge) !in setOf(EdgeAction.TASK_LIST, EdgeAction.SIDE_SCREEN)) cancelPreview()
                                 runAction(edge, store.action(edge))
                             }
                             EdgeSwipeDecision.REPLAY -> { cancelPreview(); replay.begin(path, event.eventTime - started, strips.toList(), ::remove) }

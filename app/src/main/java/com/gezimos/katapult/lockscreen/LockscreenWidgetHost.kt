@@ -16,14 +16,25 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
     internal var pictureClock: () -> Long = SystemClock::elapsedRealtime
     private val views = mutableMapOf<Int, UnpaddedHostView>()
     private val visibility = HostedWidgetVisibility()
+    enum class Surface { BOX, SIDE }
+    private val listeners = mutableSetOf<Surface>()
+    private val surfaces = mutableMapOf<Surface, List<LockscreenWidget>>()
+    private data class SideSize(val width: Int, val height: Int)
+    private val sideSizes = mutableMapOf<Int, SideSize>()
 
     fun listen(enabled: Boolean) {
-        if (listening == enabled) return
-        if (enabled) startListening() else stopListening()
-        listening = enabled
+        listen(Surface.BOX, enabled)
     }
 
-    fun releaseViews() { clearViews(); views.clear(); visibility.clear() }
+    internal fun listen(surface: Surface, enabled: Boolean) {
+        if (enabled) listeners.add(surface) else listeners.remove(surface)
+        val wanted = listeners.isNotEmpty()
+        if (listening == wanted) return
+        if (wanted) startListening() else stopListening()
+        listening = wanted
+    }
+
+    fun releaseViews() { clearViews(); views.clear(); visibility.clear(); surfaces.clear(); sideSizes.clear() }
 
     internal fun createWidgetView(context: Context, widget: LockscreenWidget, info: AppWidgetProviderInfo): AppWidgetHostView {
         updateSize(context, widget)
@@ -32,7 +43,17 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
 
     /** Before detaching the box, classify all subsequent callbacks as hidden, then notify providers. */
     internal fun hideWidgets(context: Context) {
-        publishVisibility(context, visibility.hide())
+        showSurface(context, Surface.BOX, emptyList())
+    }
+
+    internal fun showSurface(context: Context, surface: Surface, widgets: List<LockscreenWidget>) {
+        surfaces[surface] = widgets
+        publishVisibility(context, visibility.reconcileShown(surfaces.values.flatten()))
+    }
+
+    internal fun sideSize(context: Context, id: Int, width: Int, height: Int) {
+        val size = SideSize(width.coerceAtLeast(1), height.coerceAtLeast(1))
+        if (sideSizes.put(id, size) != size) updateSize(context, LockscreenWidget(id, LockscreenWidgetSize.L))
     }
 
     private fun publishVisibility(context: Context, changed: List<LockscreenWidget>) {
@@ -65,23 +86,29 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
 
         /** Optional generic host hint. Providers may ignore it; absent means unspecified. */
         internal const val OPTION_HOST_VISIBLE = "kotatsu.host.visible"
+        internal const val OPTION_HOST_TITLE = "kotatsu.host.title"
 
         fun updateSize(context: Context, widget: LockscreenWidget) {
             val density = context.resources.displayMetrics.density
-            val width = (context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds.width() / density).toInt() - 16
+            val host = get(context)
+            val side = host.sideSizes[widget.id]
+            val width = side?.width ?: ((context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds.width() / density).toInt() - 16)
+            val height = side?.height ?: widget.size.heightDp
             AppWidgetManager.getInstance(context).updateAppWidgetOptions(widget.id, Bundle().apply {
                 putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width)
                 putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width)
-                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, widget.size.heightDp)
-                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, widget.size.heightDp)
-                putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, height)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height)
+                putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, if (side != null) AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN else AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD)
+                putBoolean(OPTION_HOST_TITLE, side != null)
                 get(context).visibility.hint(widget.id)?.let { putBoolean(OPTION_HOST_VISIBLE, it) }
             })
         }
 
         internal fun pulseVisible(context: Context, visibility: LockscreenVisibility, shown: List<LockscreenWidget>) {
             val host = get(context)
-            host.publishVisibility(context, host.visibility.reconcile(visibility, shown))
+            host.surfaces[Surface.BOX] = shown
+            host.publishVisibility(context, host.visibility.reconcile(visibility, host.surfaces.values.flatten()))
         }
     }
 }

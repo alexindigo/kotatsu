@@ -19,11 +19,11 @@ class MainActivity : ComponentActivity() {
 
     val viewModel: MainViewModel by viewModels()
 
-    fun addLockscreenWidget(info: android.appwidget.AppWidgetProviderInfo) {
-        viewModel.lockscreenWidgets.add(info, widgetBind::launch, ::configureWidget)
+    fun addLockscreenWidget(info: android.appwidget.AppWidgetProviderInfo, cell: Int? = null) {
+        viewModel.lockscreenWidgets.add(info, widgetBind::launch, ::configureWidget, cell)
     }
 
-    fun editLockscreenWidget(id: Int) { viewModel.lockscreenWidgets.edit(id, ::configureWidget) }
+    fun editLockscreenWidget(id: Int, cell: Int? = null) { viewModel.lockscreenWidgets.edit(id, ::configureWidget, cell) }
 
     private fun configureWidget(id: Int) {
         try {

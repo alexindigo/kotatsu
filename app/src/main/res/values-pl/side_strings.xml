@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Ekran boczny</string>
+    <string name="side_screen_help">Pokaż widżety na ekranie otwieranym od krawędzi</string>
+    <string name="side_name">Nazwa ekranu</string>
+    <string name="side_layout">Układ</string>
+    <string name="side_layout_help">Jeden wid&#380;et lub dwa jeden nad drugim</string>
+    <string name="side_choose">Wybierz</string>
+    <string name="side_full">Pełny</string>
+    <string name="side_split">Podzielony</string>
+    <string name="side_widget">Widżet</string>
+    <string name="side_top">Górny widżet</string>
+    <string name="side_bottom">Dolny widżet</string>
+    <string name="side_choose_widget">Wybierz widżet</string>
+    <string name="side_empty">Wybierz widżet w ustawieniach ekranu bocznego</string>
+    <string name="side_close">Zamknij ekran boczny</string>
+    <string name="side_unlock">Odblokuj, aby otworzyć aplikację widżetu</string>
+</resources>

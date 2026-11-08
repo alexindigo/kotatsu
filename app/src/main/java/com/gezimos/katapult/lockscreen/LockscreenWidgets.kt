@@ -44,7 +44,7 @@ object LockscreenWidgetList {
         LockscreenWidget(number.toInt(), size)
     }.distinctBy { it.id }
 
-    private class Reader(private val text: String) {
+    internal class Reader(private val text: String) {
         private var index = 0
         private fun space() { while (index < text.length && text[index].isWhitespace()) index++ }
         private fun take(c: Char) { space(); require(index < text.length && text[index++] == c) }

@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <application>
+        <provider android:name="androidx.startup.InitializationProvider" tools:node="remove" />
+        <receiver android:name="com.gezimos.katapult.SideTestWidget" android:exported="true" android:label="Side test list">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/side_test_widget" />
+        </receiver>
+        <activity android:name="com.gezimos.katapult.SideTestConfigure" android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+        <activity android:name="com.gezimos.katapult.SideTestTarget" android:exported="true" android:taskAffinity="side.fixture"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
         <provider android:name="com.gezimos.katapult.weather.SleepingWeatherProvider"
             android:authorities="com.alexindigo.kotatsu.debug.test.sleepingweather"
             android:exported="true" android:process=":sleeping_weather" />

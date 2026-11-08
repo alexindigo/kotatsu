@@ -15,6 +15,50 @@ class LockscreenWidgetStore(context: Context, private val prefs: SharedPreferenc
     // All instances for this backing store (including PrefsManager import) share this monitor.
     fun read(): List<LockscreenWidget> = synchronized(prefs) { current() }
 
+    fun screens(): List<SideScreen> = synchronized(prefs) {
+        val stored = decodeScreens()
+        val boxIds = current().map { it.id }.toSet()
+        val next = stored.map { screen -> screen.copy(slots = screen.slots.map { id ->
+            id?.takeIf { it !in boxIds && bound(it) }
+        }) }
+        if (stored != next) {
+            check(writeScreens(next) == Result.APPLIED) { "Could not reconcile side screens" }
+            // Commit can synchronously notify another owner operation, just like the box read.
+            decodeScreens()
+        } else next
+    }
+
+    fun nameScreen(name: String): Result = editScreen { it.copy(name = name.trim()) }
+    fun layoutScreen(layout: SideLayout): Result = editScreen { it.copy(layout = layout) }
+
+    fun placeAfterConfigure(cell: Int, id: Int): Result = synchronized(prefs) {
+        if (cell !in 0..1 || !bound(id) || current().any { it.id == id }) return@synchronized Result.INVALID
+        val list = screens()
+        if (list.any { screen -> id in screen.slots }) return@synchronized Result.INVALID
+        val old = list.first().slots[cell]
+        val next = list.first().copy(slots = list.first().slots.mapIndexed { index, value -> if (index == cell) id else value })
+        val result = writeScreens(listOf(next) + list.drop(1))
+        if (result == Result.APPLIED && old != null) discardPending(old)
+        result
+    }
+
+    fun removePlacement(cell: Int): Result = synchronized(prefs) {
+        if (cell !in 0..1) return@synchronized Result.INVALID
+        val old = screens().first().slots[cell]
+        val result = editScreen { screen -> screen.copy(slots = screen.slots.mapIndexed { index, id -> if (index == cell) null else id }) }
+        if (result == Result.APPLIED && old != null) discardPending(old)
+        result
+    }
+
+    private fun editScreen(edit: (SideScreen) -> SideScreen): Result = synchronized(prefs) {
+        val list = screens()
+        writeScreens(listOf(edit(list.first())) + list.drop(1))
+    }
+    private fun decodeScreens(): List<SideScreen> = SideScreenList.decode(prefs.all[SCREENS] as? String ?: "[]")
+        .ifEmpty { listOf(SideScreen()) }
+    private fun writeScreens(list: List<SideScreen>): Result =
+        if (prefs.edit().putString(SCREENS, SideScreenList.encode(list)).commit()) Result.APPLIED else Result.WRITE_FAILED
+
     fun canAdd(size: LockscreenWidgetSize): Result {
         val available = LockscreenWidgetHost.availableDp(context)
         return synchronized(prefs) {
@@ -28,6 +72,7 @@ class LockscreenWidgetStore(context: Context, private val prefs: SharedPreferenc
             val snapshot = snapshot()
             val list = snapshot.selected
             if (!bound(widget.id)) return@synchronized unchanged(snapshot, Result.UNBOUND)
+            if (widget.id in sideIds()) return@synchronized unchanged(snapshot, Result.INVALID)
             if (list.any { it.id == widget.id }) return@synchronized unchanged(snapshot, Result.APPLIED)
             val next = list + widget
             if (!fits(next, available)) return@synchronized unchanged(snapshot, Result.NO_ROOM)
@@ -64,13 +109,14 @@ class LockscreenWidgetStore(context: Context, private val prefs: SharedPreferenc
         val snapshot = snapshot()
         val list = snapshot.selected
         if (list.none { it.id == id }) return@synchronized unchanged(snapshot, Result.MISSING)
-        host.deleteAppWidgetId(id)
-        write(list.filterNot { it.id == id })
+        val result = write(list.filterNot { it.id == id })
+        if (result == Result.APPLIED) discardPending(id)
+        result
     }
 
     /** Cancel only an unpublished allocation, never a widget already published by another holder. */
     fun discardPending(id: Int) = synchronized(prefs) {
-        if (current().none { it.id == id } && id in host.appWidgetIds) host.deleteAppWidgetId(id)
+        if (current().none { it.id == id } && decodeScreens().none { id in it.slots } && id in host.appWidgetIds) host.deleteAppWidgetId(id)
     }
 
     /** Explicit restore/import replacement; ordinary Settings operations cannot supply a list. */
@@ -118,18 +164,25 @@ class LockscreenWidgetStore(context: Context, private val prefs: SharedPreferenc
     private fun reconciled(stored: List<LockscreenWidget>): List<LockscreenWidget> {
         if (stored.isEmpty()) return stored
         val owned = host.appWidgetIds.toSet()
-        val selected = stored.filter { it.id in owned && manager.getAppWidgetInfo(it.id) != null }
-        val retained = selected.map { it.id }.toSet()
+        val reserved = sideIds()
+        val selected = stored.filter { it.id !in reserved && it.id in owned && manager.getAppWidgetInfo(it.id) != null }
+        val retained = selected.map { it.id }.toSet() + reserved
         stored.filter { it.id in owned && it.id !in retained }.forEach { host.deleteAppWidgetId(it.id) }
         return selected
     }
 
     private fun bound(id: Int) = id in host.appWidgetIds && manager.getAppWidgetInfo(id) != null
+    // Dormant cells are still owned. One ID must never have two native callback/view owners.
+    private fun sideIds(): Set<Int> = decodeScreens().flatMap { it.slots.filterNotNull() }.toSet()
     private fun fits(list: List<LockscreenWidget>, available: Int) = lockscreenBoxLayout(list.map { it.size.heightDp }, available) != null
     private fun write(list: List<LockscreenWidget>): Result {
         check(list.all { it.id > 0 } && list.map { it.id }.distinct().size == list.size)
+        check(list.none { it.id in sideIds() })
         return if (prefs.edit().putString(KEY, LockscreenWidgetList.encode(list)).commit()) Result.APPLIED else Result.WRITE_FAILED
     }
 
-    companion object { const val KEY = "lockscreen_widgets" }
+    companion object {
+        const val KEY = "lockscreen_widgets"
+        const val SCREENS = "lockscreen_side_screens"
+    }
 }

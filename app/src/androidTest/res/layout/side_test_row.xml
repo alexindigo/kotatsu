@@ -1,0 +1,3 @@
+<TextView xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/fixture_text"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:minHeight="64dp"
+    android:gravity="center_vertical" android:textSize="23sp" android:padding="8dp" android:textColor="#000000" />

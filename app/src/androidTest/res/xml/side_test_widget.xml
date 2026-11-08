@@ -1,0 +1,4 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="100dp" android:minHeight="100dp" android:initialLayout="@layout/side_test_widget"
+    android:configure="com.gezimos.katapult.SideTestConfigure" android:widgetCategory="home_screen|keyguard"
+    android:widgetFeatures="reconfigurable" android:updatePeriodMillis="0" />

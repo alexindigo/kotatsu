@@ -24,7 +24,9 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         private set
     var rows by mutableStateOf(emptyList<WidgetSettingsRow>())
         private set
-    private data class Pending(val widget: LockscreenWidget, val editing: Boolean)
+    var screens by mutableStateOf(listOf(SideScreen()))
+        private set
+    private data class Pending(val widget: LockscreenWidget, val editing: Boolean, val cell: Int? = null)
     private var pending: Pending? = null
     private val subscription = prefs.subscribeLockscreenWidgetChanges(::refresh)
 
@@ -32,6 +34,7 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
 
     fun refresh() {
         enabled = prefs.lockscreenWidgetsEnabled
+        screens = store.screens()
         rows = widgets().map { widget ->
             val info = manager.getAppWidgetInfo(widget.id)
             WidgetSettingsRow(widget, info?.loadLabel(context.packageManager) ?: context.getString(R.string.lockscreen_widgets_unavailable),
@@ -40,6 +43,13 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
     }
 
     private fun widgets() = store.read()
+    fun screenName(screen: SideScreen = screens.first()): String = sideScreenName(context, screen)
+    fun slotLabel(cell: Int): String = screens.first().slots[cell]?.let {
+        manager.getAppWidgetInfo(it)?.loadLabel(context.packageManager)
+    } ?: context.getString(R.string.side_choose)
+    fun nameScreen(name: String) { applied(store.nameScreen(name)) }
+    fun layoutScreen(layout: SideLayout) { applied(store.layoutScreen(layout)) }
+    fun removeSlot(cell: Int) { applied(store.removePlacement(cell)) }
     /** "Messaging (SMS)" — the app is named only when the widget's own name doesn't already say it. */
     private fun label(info: AppWidgetProviderInfo): String {
         val pm = context.packageManager
@@ -86,14 +96,15 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         catch (_: Exception) { failed() }
     }
 
-    fun add(info: AppWidgetProviderInfo, bind: (Intent) -> Unit, configure: (Int) -> Unit) {
+    fun add(info: AppWidgetProviderInfo, bind: (Intent) -> Unit, configure: (Int) -> Unit, cell: Int? = null) {
         if (pending != null) return
         val size = defaultLockscreenWidgetSize(info.minHeight / context.resources.displayMetrics.density)
         try {
-            if (!applied(store.canAdd(size))) return
+            if (cell == null && !applied(store.canAdd(size))) return
+            if (cell != null && cell !in 0 until screens.first().layout.cells) return
             val id = host.allocateAppWidgetId()
             check(id > 0)
-            pending = Pending(LockscreenWidget(id, size), false)
+            pending = Pending(LockscreenWidget(id, size), false, cell)
             if (manager.bindAppWidgetIdIfAllowed(id, info.provider)) bound(true, configure)
             else bind(Intent(AppWidgetManager.ACTION_APPWIDGET_BIND).apply {
                 putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
@@ -107,16 +118,23 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         if (!ok) { cancel(); return }
         try {
             val info = manager.getAppWidgetInfo(request.widget.id) ?: error("Provider unavailable")
-            LockscreenWidgetHost.updateSize(context, request.widget)
+            if (request.cell != null) {
+                val bounds = context.getSystemService(android.view.WindowManager::class.java).maximumWindowMetrics.bounds
+                val density = context.resources.displayMetrics.density
+                host.sideSize(context, request.widget.id, (bounds.width() / density).toInt(),
+                    ((bounds.height() / density - 112) / screens.first().layout.cells).toInt())
+            } else LockscreenWidgetHost.updateSize(context, request.widget)
             if (info.configure != null) configure(request.widget.id) else configured(true)
         } catch (_: Exception) { cancel(); failed() }
     }
 
-    fun edit(id: Int, configure: (Int) -> Unit) {
+    fun edit(id: Int, configure: (Int) -> Unit, cell: Int? = null) {
         if (pending != null) return
         refresh()
-        val row = rows.firstOrNull { it.widget.id == id && it.canEdit } ?: return
-        pending = Pending(row.widget, true)
+        val widget = if (cell == null) rows.firstOrNull { it.widget.id == id && it.canEdit }?.widget
+            else screens.first().slots.getOrNull(cell)?.takeIf { it == id && manager.getAppWidgetInfo(id)?.configure != null }
+                ?.let { LockscreenWidget(it, LockscreenWidgetSize.L) }
+        pending = Pending(widget ?: return, true, cell)
         try { configure(id) } catch (_: Exception) { cancel(); failed() }
     }
 
@@ -126,7 +144,8 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         try {
             check(manager.getAppWidgetInfo(request.widget.id) != null)
             if (!request.editing) {
-                if (!applied(store.addAfterConfigure(request.widget))) { cancel(); return }
+                val result = request.cell?.let { store.placeAfterConfigure(it, request.widget.id) } ?: store.addAfterConfigure(request.widget)
+                if (!applied(result)) { cancel(); return }
             }
             pending = null
             refresh()
@@ -146,13 +165,15 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
             state.putInt("widget_pending_id", it.widget.id)
             state.putString("widget_pending_size", it.widget.size.name)
             state.putBoolean("widget_pending_edit", it.editing)
+            it.cell?.let { cell -> state.putInt("widget_pending_cell", cell) }
         }
     }
 
     fun restoreState(state: Bundle?) {
         if (pending != null || state == null || !state.containsKey("widget_pending_id")) return
         val size = LockscreenWidgetSize.entries.firstOrNull { it.name == state.getString("widget_pending_size") } ?: return
-        pending = Pending(LockscreenWidget(state.getInt("widget_pending_id"), size), state.getBoolean("widget_pending_edit"))
+        pending = Pending(LockscreenWidget(state.getInt("widget_pending_id"), size), state.getBoolean("widget_pending_edit"),
+            state.takeIf { it.containsKey("widget_pending_cell") }?.getInt("widget_pending_cell"))
     }
 
     override fun close() { subscription.close(); cancel() }

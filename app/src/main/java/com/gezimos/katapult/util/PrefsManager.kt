@@ -63,7 +63,7 @@ class PrefsManager(context: Context) {
     /** Widget state must not take its transaction lock for unrelated preference notifications
      * (e.g. an icon commit whose caller is still waiting for a Main-thread interaction). */
     fun subscribeLockscreenWidgetChanges(changed: () -> Unit): AutoCloseable = subscribeChanges { key ->
-        if (key == null || key == LockscreenWidgetStore.KEY || key == KEY_LOCKSCREEN_WIDGETS_ENABLED) changed()
+        if (key == null || key == LockscreenWidgetStore.KEY || key == LockscreenWidgetStore.SCREENS || key == KEY_LOCKSCREEN_WIDGETS_ENABLED) changed()
     }
 
     data class PolicyImportPreview(val localChoices: Map<String, Boolean>, val incomingChoices: Map<String, Boolean>) {
@@ -911,6 +911,6 @@ class PrefsManager(context: Context) {
         private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
 
         private const val KEY_NOTICE_ACTION_SERVICE_DISMISSED = "notice_action_service_dismissed"
-        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, LockscreenWidgetStore.KEY, KEY_NOTICE_ACTION_SERVICE_DISMISSED)
+        private val LOCAL_IMPORT_KEYS = setOf(KEY_ONBOARDING_COMPLETE, KEY_DEFAULTS_SEEDED, KEY_PENDING_ICON_TARGET, LockscreenWidgetStore.KEY, LockscreenWidgetStore.SCREENS, KEY_NOTICE_ACTION_SERVICE_DISMISSED)
     }
 }

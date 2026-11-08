@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Écran latéral</string>
+    <string name="side_screen_help">Afficher des widgets sur un écran ouvert depuis un bord</string>
+    <string name="side_name">Nom de l\'écran</string>
+    <string name="side_layout">Disposition</string>
+    <string name="side_layout_help">Un widget, ou deux l\'un au-dessus de l\'autre</string>
+    <string name="side_choose">Choisir</string>
+    <string name="side_full">Plein</string>
+    <string name="side_split">Partagé</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Widget du haut</string>
+    <string name="side_bottom">Widget du bas</string>
+    <string name="side_choose_widget">Choisir un widget</string>
+    <string name="side_empty">Choisissez un widget dans les réglages de l\'écran latéral</string>
+    <string name="side_close">Fermer l\'écran latéral</string>
+    <string name="side_unlock">Déverrouillez pour ouvrir l\'application du widget</string>
+</resources>

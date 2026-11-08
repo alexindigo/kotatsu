@@ -1,0 +1,17 @@
+<resources>
+    <string name="side_screen">Ecrã lateral</string>
+    <string name="side_screen_help">Mostrar widgets num ecrã aberto a partir da margem</string>
+    <string name="side_name">Nome do ecrã</string>
+    <string name="side_layout">Disposição</string>
+    <string name="side_layout_help">Um widget, ou dois empilhados</string>
+    <string name="side_choose">Escolher</string>
+    <string name="side_full">Inteiro</string>
+    <string name="side_split">Dividido</string>
+    <string name="side_widget">Widget</string>
+    <string name="side_top">Widget superior</string>
+    <string name="side_bottom">Widget inferior</string>
+    <string name="side_choose_widget">Escolher widget</string>
+    <string name="side_empty">Escolha um widget nas definições do ecrã lateral</string>
+    <string name="side_close">Fechar ecrã lateral</string>
+    <string name="side_unlock">Desbloqueie para abrir a aplicação do widget</string>
+</resources>

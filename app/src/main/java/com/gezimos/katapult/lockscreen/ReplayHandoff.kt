@@ -28,7 +28,7 @@ internal class ReplayHandoff(
         lateinit var timeout: Runnable
     }
     private var pending: Pending? = null
-    private val delivery = ReplayDelivery(AndroidServiceInfoPort(service)) {
+    private val delivery = ReplayDelivery(AndroidEventDelivery(service)) {
         Log.e(TAG, "Could not restore narrow event delivery; replay disabled until reconnect", it)
     }
     val busy get() = delivery.busy
@@ -112,36 +112,6 @@ internal class ReplayHandoff(
         pending?.let { handler.removeCallbacks(it.timeout) }
         pending = null
         delivery.cancel()
-    }
-
-    /** The only Android adapter that changes service info. Always copy all unrelated properties. */
-    private class AndroidServiceInfoPort(private val service: AccessibilityService) : ReplayServiceInfoPort<AccessibilityServiceInfo> {
-        override fun currentInfo(): AccessibilityServiceInfo = copy(service.serviceInfo)
-
-        override fun staticInfo(): AccessibilityServiceInfo = currentInfo().apply {
-            service.resources.getXml(R.xml.lockscreen_widget_service).use { xml ->
-                while (xml.eventType != XmlPullParser.START_TAG) xml.next()
-                val namespace = "http://schemas.android.com/apk/res/android"
-                packageNames = xml.getAttributeValue(namespace, "packageNames")?.split(',')?.toTypedArray()
-                notificationTimeout = xml.getAttributeIntValue(namespace, "notificationTimeout", 0).toLong()
-            }
-        }
-
-        override fun widened(info: AccessibilityServiceInfo): AccessibilityServiceInfo = copy(info).apply {
-            packageNames = null
-            notificationTimeout = 0L
-        }
-
-        override fun apply(info: AccessibilityServiceInfo) { service.serviceInfo = copy(info) }
-
-        private fun copy(info: AccessibilityServiceInfo): AccessibilityServiceInfo {
-            val parcel = Parcel.obtain()
-            return try {
-                info.writeToParcel(parcel, 0)
-                parcel.setDataPosition(0)
-                AccessibilityServiceInfo.CREATOR.createFromParcel(parcel)
-            } finally { parcel.recycle() }
-        }
     }
 
     companion object { private const val TAG = "ReplayHandoff" }

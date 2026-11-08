@@ -7,7 +7,7 @@ import android.provider.MediaStore
 
 /** Stable IDs, never ordinals: another action can be added without migrating edge selections. */
 enum class EdgeAction(val id: String) {
-    TASK_LIST("task_list"), CAMERA("camera"), NOTHING("nothing");
+    TASK_LIST("task_list"), SIDE_SCREEN("side_screen"), CAMERA("camera"), NOTHING("nothing");
 
     companion object {
         fun fromId(id: String?): EdgeAction? = entries.firstOrNull { it.id == id }
