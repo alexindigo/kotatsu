@@ -1,0 +1,67 @@
+package com.alexindigo.kotatsu.notes
+
+import android.app.PendingIntent
+import android.appwidget.AppWidgetManager
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.util.TypedValue
+import android.view.View
+import android.widget.RemoteViews
+import kotlin.math.floor
+
+object NotesWidgetViews {
+    const val HOST_TITLE = "kotatsu.host.title"
+    const val TICK = "com.alexindigo.kotatsu.notes.TICK"
+    const val TOKEN = "rendered"
+    const val INDEX = "index"
+
+    fun message(context: Context, text: Int) = RemoteViews(context.packageName, R.layout.widget_notes).apply {
+        setViewVisibility(R.id.heading, View.GONE)
+        setViewVisibility(R.id.tasks, View.GONE)
+        setTextViewText(R.id.message, context.getString(text))
+        setViewVisibility(R.id.message, View.VISIBLE)
+    }
+
+    @android.annotation.TargetApi(31)
+    fun list(context: Context, widgetId: Int, rendered: RenderedList, hostTitle: Boolean): RemoteViews {
+        val template = PendingIntent.getBroadcast(context, widgetId,
+            Intent(context, NotesWidgetProvider::class.java).setAction(TICK)
+                .setData(Uri.parse("kotatsu-notes://widget/$widgetId"))
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
+        val items = RemoteViews.RemoteCollectionItems.Builder().setHasStableIds(false).setViewTypeCount(1)
+        rendered.snapshot.items!!.forEachIndexed { index, item ->
+            val command = Intent().putExtra(TOKEN, rendered.token).putExtra(INDEX, index)
+            items.addItem(index.toLong(), RemoteViews(context.packageName, R.layout.widget_task).apply {
+                setTextViewText(R.id.task_text, item.text)
+                setContentDescription(R.id.task_check, item.text)
+                setCompoundButtonChecked(R.id.task_check, item.checked)
+                setOnCheckedChangeResponse(R.id.task_check, RemoteViews.RemoteResponse.fromFillInIntent(command))
+                setOnClickFillInIntent(R.id.task_row, command)
+                val last = index == rendered.snapshot.items!!.lastIndex
+                // Apply both states: collection rows can be recycled across an insertion/deletion.
+                setViewPadding(R.id.task_content, 0, 0, 0,
+                    if (last) 0 else context.resources.getDimensionPixelSize(R.dimen.task_row_padding))
+                setViewPadding(R.id.task_text, 0, 0, (8 * context.resources.displayMetrics.density + .5f).toInt(),
+                    if (last) 0 else context.resources.getDimensionPixelSize(R.dimen.task_button_padding))
+                setViewVisibility(R.id.task_gap, if (last) View.GONE else View.VISIBLE)
+                setViewLayoutHeight(R.id.task_check, if (last) context.resources.getDimension(R.dimen.task_button_size)
+                    else android.view.ViewGroup.LayoutParams.WRAP_CONTENT.toFloat(), TypedValue.COMPLEX_UNIT_PX)
+            })
+        }
+        return RemoteViews(context.packageName, R.layout.widget_notes).apply {
+            setTextViewText(R.id.heading, rendered.snapshot.title.ifBlank { context.getString(R.string.untitled_list) })
+            setViewVisibility(R.id.heading, if (hostTitle) View.GONE else View.VISIBLE)
+            setViewVisibility(R.id.message, View.GONE)
+            setViewVisibility(R.id.tasks, View.VISIBLE)
+            // Exclude the vector artwork's transparent 2-of-24-unit border from
+            // the collection's outer edges. Native scrolling and clipping own it.
+            val opticalBorder = floor(context.resources.getDimension(R.dimen.task_button_size) * 2 / 24).toInt()
+            setViewPadding(R.id.tasks, 0, -opticalBorder, 0, -opticalBorder)
+            setPendingIntentTemplate(R.id.tasks, template)
+            setRemoteAdapter(R.id.tasks, items.build())
+        }
+    }
+}

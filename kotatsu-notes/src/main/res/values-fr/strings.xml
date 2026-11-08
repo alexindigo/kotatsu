@@ -1,0 +1,11 @@
+<resources>
+    <string name="widget_label">Liste de t&#226;ches</string>
+    <string name="widget_description">Une liste de t&#226;ches Mudita Notes. Cochez les t&#226;ches sans d&#233;verrouiller.</string>
+    <string name="choose_list">Choisir une liste de t&#226;ches</string>
+    <string name="unlock_once">D&#233;verrouillez une fois apr&#232;s le red&#233;marrage</string>
+    <string name="untitled_list">Liste sans titre</string>
+    <string name="choose_widget">Choisir un widget</string>
+    <string name="no_lists">Aucune liste de t&#226;ches disponible. Cr&#233;ez une liste dans Mudita Notes, puis revenez ici.</string>
+    <string name="add_widget_help">Dans Kotatsu, ouvrez Param&#232;tres, &#201;cran de verrouillage, puis Widgets de verrouillage. Ajoutez Kotatsu Notes. Ses param&#232;tres seront ensuite accessibles ici.</string>
+    <string name="save_failed">Impossible d\'enregistrer la liste de t&#226;ches. R&#233;essayez.</string>
+</resources>

@@ -1,0 +1,4 @@
+<!-- The widget is enabled only on API 31+. Keep the default resource safe on API 30. -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/choose_list"
+    style="@style/NotesWidgetMessage" android:textSize="18sp" />

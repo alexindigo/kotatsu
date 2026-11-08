@@ -1,0 +1,26 @@
+<resources>
+    <!-- RemoteViews inflates in a restricted context in other apps, where @font is
+         ignored. Kompakt's named lato-mudita family is the exact upstream Lato Medium
+         used by Notes (also registered as weight 400). Keep all widget text on that
+         system-family contract; bundled fonts remain for our own configure activity. -->
+    <style name="NotesWidgetText">
+        <item name="android:fontFamily">lato-mudita</item>
+        <item name="android:textStyle">normal</item>
+        <item name="android:textFontWeight">500</item>
+        <item name="android:textColor">#000000</item>
+    </style>
+    <style name="NotesWidgetHeading" parent="NotesWidgetText">
+        <item name="android:textStyle">bold</item>
+        <item name="android:textFontWeight">700</item>
+    </style>
+    <!-- The empty CheckBox text and the label share first-baseline metrics. The
+         horizontal row can align that baseline even when the label wraps. -->
+    <style name="NotesWidgetTask" parent="NotesWidgetText">
+        <item name="android:textSize">23sp</item>
+        <item name="android:lineHeight">28sp</item>
+        <item name="android:includeFontPadding">false</item>
+    </style>
+    <style name="NotesWidgetMessage" parent="NotesWidgetText">
+        <item name="android:textFontWeight">400</item>
+    </style>
+</resources>

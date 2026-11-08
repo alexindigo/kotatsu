@@ -1,0 +1,11 @@
+<resources>
+    <string name="widget_label">Lista zada&#324;</string>
+    <string name="widget_description">Lista zada&#324; z Mudita Notes. Odhaczaj zadania bez odblokowywania.</string>
+    <string name="choose_list">Wybierz list&#281; zada&#324;</string>
+    <string name="unlock_once">Odblokuj raz po ponownym uruchomieniu</string>
+    <string name="untitled_list">Lista bez tytu&#322;u</string>
+    <string name="choose_widget">Wybierz wid&#380;et</string>
+    <string name="no_lists">Brak dost&#281;pnych list zada&#324;. Utw&#243;rz list&#281; w Mudita Notes i wr&#243;&#263; tutaj.</string>
+    <string name="add_widget_help">W Kotatsu otw&#243;rz Ustawienia, Ekran blokady i Wid&#380;ety ekranu blokady. Dodaj Kotatsu Notes. Potem tutaj otworzysz ustawienia wid&#380;etu.</string>
+    <string name="save_failed">Nie mo&#380;na zapisa&#263; listy zada&#324;. Spr&#243;buj ponownie.</string>
+</resources>

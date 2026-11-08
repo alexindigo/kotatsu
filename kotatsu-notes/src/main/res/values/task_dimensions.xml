@@ -1,0 +1,5 @@
+<resources>
+    <dimen name="task_row_padding">1dp</dimen>
+    <dimen name="task_button_padding">10dp</dimen>
+    <dimen name="task_button_size">28dp</dimen>
+</resources>

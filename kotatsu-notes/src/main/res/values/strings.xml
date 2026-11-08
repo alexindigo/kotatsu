@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name" translatable="false">Kotatsu Notes</string>
+    <string name="widget_label">Task list</string>
+    <string name="widget_description">A Mudita Notes task list. Check off tasks without unlocking.</string>
+    <string name="choose_list">Choose a task list</string>
+    <string name="unlock_once">Unlock once after restart</string>
+    <string name="untitled_list">Untitled list</string>
+    <string name="choose_widget">Choose a widget</string>
+    <string name="no_lists">No task lists available. Create a task list in Mudita Notes, then return here.</string>
+    <string name="add_widget_help">In Kotatsu, open Settings, then Lock screen, then Lock-screen widgets. Add the Kotatsu Notes widget. Its settings open from here afterwards.</string>
+    <string name="save_failed">Could not save the task list. Try again.</string>
+</resources>

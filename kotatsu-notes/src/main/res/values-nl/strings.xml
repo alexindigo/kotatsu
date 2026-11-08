@@ -1,0 +1,11 @@
+<resources>
+    <string name="widget_label">Takenlijst</string>
+    <string name="widget_description">Een takenlijst uit Mudita Notes. Vink taken af zonder te ontgrendelen.</string>
+    <string name="choose_list">Kies een takenlijst</string>
+    <string name="unlock_once">Ontgrendel eenmaal na het herstarten</string>
+    <string name="untitled_list">Naamloze lijst</string>
+    <string name="choose_widget">Kies een widget</string>
+    <string name="no_lists">Geen takenlijsten beschikbaar. Maak een takenlijst in Mudita Notes en kom hier terug.</string>
+    <string name="add_widget_help">Open in Kotatsu Instellingen, Vergrendelscherm en Vergrendelschermwidgets. Voeg Kotatsu Notes toe. Daarna opent u hier de instellingen van de widget.</string>
+    <string name="save_failed">Kan de takenlijst niet opslaan. Probeer het opnieuw.</string>
+</resources>

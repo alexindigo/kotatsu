@@ -1,0 +1,11 @@
+<resources>
+    <string name="widget_label">Seznam &#250;kol&#367;</string>
+    <string name="widget_description">Seznam &#250;kol&#367; z Mudita Notes. Od&#353;krt&#225;vejte &#250;koly bez odemknut&#237;.</string>
+    <string name="choose_list">Vyberte seznam &#250;kol&#367;</string>
+    <string name="unlock_once">Po restartu jednou odemkn&#283;te</string>
+    <string name="untitled_list">Seznam bez n&#225;zvu</string>
+    <string name="choose_widget">Vyberte widget</string>
+    <string name="no_lists">Nejsou dostupn&#233; seznamy &#250;kol&#367;. Vytvo&#345;te seznam v Mudita Notes a vra&#357;te se sem.</string>
+    <string name="add_widget_help">V Kotatsu otev&#345;ete Nastaven&#237;, Zamykac&#237; obrazovka a Widgety zamykac&#237; obrazovky. P&#345;idejte widget Kotatsu Notes. Pot&#233; zde otev&#345;ete jeho nastaven&#237;.</string>
+    <string name="save_failed">Seznam &#250;kol&#367; se nepoda&#345;ilo ulo&#382;it. Zkuste to znovu.</string>
+</resources>

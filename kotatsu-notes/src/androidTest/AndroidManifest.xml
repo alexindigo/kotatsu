@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
+    <application>
+        <activity android:name="com.alexindigo.kotatsu.notes.NotesCrossPackageHostActivity" android:exported="true"
+            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+        <!-- The standalone counterpart has no access to the target APK's Kotlin runtime. -->
+        <provider android:name="androidx.startup.InitializationProvider" tools:node="remove" />
+        <!-- Only the emulator's test APK owns this authority. Never installed on staging. -->
+        <provider android:name="com.alexindigo.kotatsu.notes.FakeNotesProvider"
+            android:authorities="com.mudita.notes" android:exported="true" />
+    </application>
+</manifest>

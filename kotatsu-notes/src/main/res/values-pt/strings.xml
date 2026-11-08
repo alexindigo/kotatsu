@@ -1,0 +1,11 @@
+<resources>
+    <string name="widget_label">Lista de tarefas</string>
+    <string name="widget_description">Uma lista de tarefas do Mudita Notes. Marque tarefas sem desbloquear.</string>
+    <string name="choose_list">Escolha uma lista de tarefas</string>
+    <string name="unlock_once">Desbloqueie uma vez ap&#243;s reiniciar</string>
+    <string name="untitled_list">Lista sem t&#237;tulo</string>
+    <string name="choose_widget">Escolha um widget</string>
+    <string name="no_lists">N&#227;o h&#225; listas de tarefas dispon&#237;veis. Crie uma lista no Mudita Notes e volte aqui.</string>
+    <string name="add_widget_help">No Kotatsu, abra Defini&#231;&#245;es, Ecr&#227; de bloqueio e Widgets do ecr&#227; de bloqueio. Adicione Kotatsu Notes. Depois pode abrir aqui as defini&#231;&#245;es do widget.</string>
+    <string name="save_failed">N&#227;o foi poss&#237;vel guardar a lista de tarefas. Tente novamente.</string>
+</resources>

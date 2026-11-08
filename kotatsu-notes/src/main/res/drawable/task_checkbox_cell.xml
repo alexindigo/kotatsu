@@ -1,0 +1,7 @@
+<!-- Keep the original cell size and horizontal inset. Its vertical space belongs
+     below the drawing, between rows; the last row uses only the drawing height. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:insetLeft="@dimen/task_button_padding" android:insetRight="@dimen/task_button_padding"
+    android:insetBottom="@dimen/task_button_padding">
+    <inset android:drawable="@drawable/task_checkbox" android:insetBottom="@dimen/task_button_padding" />
+</inset>
