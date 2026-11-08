@@ -7,5 +7,5 @@
     <string name="choose_widget">Kies een widget</string>
     <string name="no_lists">Geen takenlijsten beschikbaar. Maak een takenlijst in Mudita Notes en kom hier terug.</string>
     <string name="add_widget_help">Open in Kotatsu Instellingen, Vergrendelscherm en Vergrendelschermwidgets. Voeg Kotatsu Notes toe. Daarna opent u hier de instellingen van de widget.</string>
-    <string name="save_failed">Kan de takenlijst niet opslaan. Probeer het opnieuw.</string>
+    <string name="save_failed">Kan de instelling niet opslaan. Probeer het opnieuw.</string>
 </resources>

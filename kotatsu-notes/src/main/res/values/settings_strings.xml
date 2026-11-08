@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_task">Task list</string>
+    <string name="settings_note">Note</string>
+    <string name="settings_choose">Choose</string>
+    <string name="settings_changes">Changes</string>
+    <string name="settings_task_help">For the lock-screen side screen. Turning Off removes placed task-list widgets.</string>
+    <string name="settings_quote_help">For the lock-screen widget slot. Turning Off removes placed quote widgets.</string>
+    <string name="settings_notes_unavailable">Mudita Notes is unavailable or Notes permission is missing.</string>
+    <string name="settings_loading">Reading note titles...</string>
+</resources>

@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_task">Aufgabenliste</string>
+    <string name="settings_note">Notiz</string>
+    <string name="settings_choose">Auswählen</string>
+    <string name="settings_changes">Wechsel</string>
+    <string name="settings_task_help">Für die Seitenansicht des Sperrbildschirms. Ausschalten entfernt platzierte Aufgaben-Widgets.</string>
+    <string name="settings_quote_help">Für den Widget-Platz auf dem Sperrbildschirm. Ausschalten entfernt platzierte Zitat-Widgets.</string>
+    <string name="settings_notes_unavailable">Mudita Notes ist nicht verfügbar oder die Notizberechtigung fehlt.</string>
+    <string name="settings_loading">Notiztitel werden gelesen...</string>
+</resources>

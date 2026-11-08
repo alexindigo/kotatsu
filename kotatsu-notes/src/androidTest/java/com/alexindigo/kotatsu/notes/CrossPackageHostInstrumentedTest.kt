@@ -41,7 +41,7 @@ class CrossPackageHostInstrumentedTest {
             }
             await("Quote host must bind") { fixture("host-stats").getString("hostState") == "bound" }
             id = fixture("host-stats").getInt("hostId")
-            NotesRuntime.enqueue { QuoteStore(context).save(id, QuoteConfig(7)); QuoteRuntime.refresh(context) }.get()
+            NotesRuntime.enqueue { QuoteStore(context).save(QuoteConfig(7)); QuoteRuntime.refresh(context) }.get()
             await("Quote must reach the other UID") { fixture("host-stats").getString("quote") == "First quote" }
             val observed = fixture("host-stats")
             assertNotEquals(context.applicationInfo.uid, observed.getInt("hostUid"))
@@ -83,7 +83,7 @@ class CrossPackageHostInstrumentedTest {
             assertEquals(testPackage, bound.getString("hostPackage"))
             assertNotEquals("This must cross a UID boundary", context.applicationInfo.uid, bound.getInt("hostUid"))
             NotesRuntime.enqueue {
-                check(NotesStore(context).select(widgetId, 4))
+                check(NotesStore(context).select(4))
                 NotesRuntime.refresh(context, intArrayOf(widgetId))
             }.get()
             await("Published collection must reach the other APK") { fixture("host-stats").getString("task") == "Milk" }

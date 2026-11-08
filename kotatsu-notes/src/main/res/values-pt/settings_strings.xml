@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_task">Lista de tarefas</string>
+    <string name="settings_note">Nota</string>
+    <string name="settings_choose">Escolher</string>
+    <string name="settings_changes">Mudanças</string>
+    <string name="settings_task_help">Para a página lateral do ecrã de bloqueio. Desligar remove os widgets de tarefas colocados.</string>
+    <string name="settings_quote_help">Para o espaço de widgets do ecrã de bloqueio. Desligar remove os widgets de citações colocados.</string>
+    <string name="settings_notes_unavailable">O Mudita Notes está indisponível ou falta a permissão de notas.</string>
+    <string name="settings_loading">A ler títulos de notas...</string>
+</resources>

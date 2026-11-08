@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -39,10 +40,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures { compose = true }
 }
 
 dependencies {
     implementation(project(":paper-ui"))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
     constraints {
         // Align Kotlin's existing transitive annotations with the instrumentation APK.
         // AGP's consistent resolution otherwise pins tests to stdlib's older 13.0.

@@ -42,7 +42,7 @@ class NotesWidgetProvider : AppWidgetProvider() {
     }
     override fun onRestored(context: Context, oldWidgetIds: IntArray, newWidgetIds: IntArray) {
         val store = NotesStore(context)
-        oldWidgetIds.zip(newWidgetIds).forEach { (old, new) -> store.restore(old, new) }
+        oldWidgetIds.forEach { store.delete(it, NotesRuntime.unlocked(context)) }
         NotesRuntime.refresh(context, newWidgetIds)
     }
 }

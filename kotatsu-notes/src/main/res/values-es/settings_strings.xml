@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_task">Lista de tareas</string>
+    <string name="settings_note">Nota</string>
+    <string name="settings_choose">Elegir</string>
+    <string name="settings_changes">Cambios</string>
+    <string name="settings_task_help">Para la pantalla lateral del bloqueo. Desactivar elimina los widgets de tareas colocados.</string>
+    <string name="settings_quote_help">Para el espacio de widgets del bloqueo. Desactivar elimina los widgets de citas colocados.</string>
+    <string name="settings_notes_unavailable">Mudita Notes no está disponible o falta el permiso de notas.</string>
+    <string name="settings_loading">Leyendo títulos de notas...</string>
+</resources>

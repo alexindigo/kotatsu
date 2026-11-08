@@ -56,7 +56,7 @@ class QuoteWidgetInstrumentedTest {
         }
         fun text(): String { var value = ""; main { value = view.findViewById<TextView>(R.id.quote_text)?.text?.toString().orEmpty() }; return value }
         fun author(): String { var value = ""; main { value = authorLineViews(view).joinToString("") { it.text.toString() } }; return value }
-        fun save(config: QuoteConfig) = NotesRuntime.enqueue { QuoteStore(context).save(id, config); QuoteRuntime.refresh(context) }.get()
+        fun save(config: QuoteConfig) = NotesRuntime.enqueue { QuoteStore(context).save(config); QuoteRuntime.refresh(context) }.get()
         fun options(token: Long, visible: Boolean = true) = manager.updateAppWidgetOptions(id, Bundle().apply {
             putLong(QuoteRuntime.HOST_WAKE, token); putBoolean("kotatsu.host.visible", visible)
         })
@@ -313,34 +313,23 @@ class QuoteWidgetInstrumentedTest {
         Host().use { f ->
             assertEquals(listOf(TaskListChoice(7, "Kotatsu quotes")), MuditaNotes(context.contentResolver).textChoices())
             assertTrue(fixture("stats").getBoolean("textTitlesOnly"))
-            NotesRuntime.enqueue { QuoteStore(context).delete(f.id); QuoteRuntime.refresh(context) }.get()
+            NotesRuntime.enqueue {
+                context.createDeviceProtectedStorageContext().getSharedPreferences("quote-widgets", 0).edit().clear().commit()
+                QuoteRuntime.refresh(context)
+            }.get()
             val activity = instrumentation.startActivitySync(Intent(context, QuoteConfigureActivity::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, f.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as QuoteConfigureActivity
-            fun click(label: String) {
-                var target: TextView? = null
-                await("Configure row: $label") {
-                    main { fun visit(view: View) {
-                        if (view is TextView && view.text.toString() == label) target = view
-                        if (view is ViewGroup) for (i in 0 until view.childCount) visit(view.getChildAt(i))
-                    }; visit(activity.window.decorView) }
-                    target != null && target!!.height > 0
-                }
-                main {
-                    assertTrue("Every action retains a 48dp target after single-line setup",
-                        target!!.height >= (48 * context.resources.displayMetrics.density + .5f).toInt())
-                    target!!.performClick()
-                }
-            }
+            val ui = NotesSettingsUi(instrumentation)
+            fun click(label: String) = ui.click(label)
             try {
-                click(context.getString(R.string.choose_note)); click("Kotatsu quotes")
-                await("Picker choice must persist and render") { QuoteStore(context).config(f.id)?.noteId == 7L && f.text() == "First quote" }
-                click(context.getString(R.string.quote_frequency_value, context.getString(R.string.quote_daily)))
+                click(context.getString(R.string.settings_note)); click("Kotatsu quotes")
+                await("Picker choice must persist and render") { QuoteStore(context).config()?.noteId == 7L && f.text() == "First quote" }
+                click(context.getString(R.string.settings_changes))
                 click(context.getString(R.string.quote_on_wake))
-                await("Frequency must persist") { QuoteStore(context).config(f.id)?.frequency == QuoteFrequency.WAKE }
-                click(context.getString(R.string.quote_order_value, context.getString(R.string.quote_rotation)))
+                await("Frequency must persist") { QuoteStore(context).config()?.frequency == QuoteFrequency.WAKE }
+                click(context.getString(R.string.quote_order))
                 click(context.getString(R.string.quote_shuffle))
-                await("Order must persist") { QuoteStore(context).config(f.id)?.order == QuoteOrder.SHUFFLE }
-                click(context.getString(R.string.quote_done))
+                await("Order must persist") { QuoteStore(context).config()?.order == QuoteOrder.SHUFFLE }
             } finally { main { activity.finish() } }
             val keys = listOf(R.string.quote_label, R.string.quote_description, R.string.choose_note, R.string.choose_quotes,
                 R.string.no_text_notes, R.string.untitled_note, R.string.quote_frequency, R.string.quote_order,

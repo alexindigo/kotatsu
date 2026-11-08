@@ -50,9 +50,4 @@ class RenderedListTest {
         assertEquals(selected.keys, affectedWidgets(selected, null))
         assertEquals(emptySet<Int>(), affectedWidgets(selected, emptySet()))
     }
-    @Test fun iconRoutingDependsOnLiveWidgetCountAndSortsChoices() {
-        assertEquals(SettingsTarget.NoWidget, settingsTarget(intArrayOf()))
-        assertEquals(SettingsTarget.One(8), settingsTarget(intArrayOf(8)))
-        assertEquals(SettingsTarget.Choose(listOf(3, 8)), settingsTarget(intArrayOf(8, 3)))
-    }
 }

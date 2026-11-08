@@ -7,5 +7,5 @@
     <string name="choose_widget">Vyberte widget</string>
     <string name="no_lists">Nejsou dostupn&#233; seznamy &#250;kol&#367;. Vytvo&#345;te seznam v Mudita Notes a vra&#357;te se sem.</string>
     <string name="add_widget_help">V Kotatsu otev&#345;ete Nastaven&#237;, Zamykac&#237; obrazovka a Widgety zamykac&#237; obrazovky. P&#345;idejte widget Kotatsu Notes. Pot&#233; zde otev&#345;ete jeho nastaven&#237;.</string>
-    <string name="save_failed">Seznam &#250;kol&#367; se nepoda&#345;ilo ulo&#382;it. Zkuste to znovu.</string>
+    <string name="save_failed">Nastavení se nepodařilo uložit. Zkuste to znovu.</string>
 </resources>

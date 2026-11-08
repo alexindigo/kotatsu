@@ -7,5 +7,5 @@
     <string name="choose_widget">Widget ausw&#228;hlen</string>
     <string name="no_lists">Keine Aufgabenlisten verf&#252;gbar. Erstellen Sie eine Liste in Mudita Notes und kehren Sie hierher zur&#252;ck.</string>
     <string name="add_widget_help">&#214;ffnen Sie in Kotatsu Einstellungen, Sperrbildschirm und Sperrbildschirm-Widgets. F&#252;gen Sie Kotatsu Notes hinzu. Danach &#246;ffnen Sie hier die Einstellungen des Widgets.</string>
-    <string name="save_failed">Aufgabenliste konnte nicht gespeichert werden. Versuchen Sie es erneut.</string>
+    <string name="save_failed">Einstellung konnte nicht gespeichert werden. Versuchen Sie es erneut.</string>
 </resources>

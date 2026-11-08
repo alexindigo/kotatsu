@@ -30,7 +30,7 @@ object QuoteRuntime {
             if (id !in live) continue
             val options = manager.getAppWidgetOptions(id)
             val wake = store.consume(id, if (options.containsKey(HOST_WAKE)) options.getLong(HOST_WAKE) else null)
-            val config = store.config(id)
+            val config = store.config()
             val entries = if (config != null && NotesRuntime.unlocked(context)) runCatching {
                 notes(context).readText(config.noteId)?.content?.let(::parseQuotes)
             }.getOrNull().orEmpty() else emptyList()
@@ -42,7 +42,7 @@ object QuoteRuntime {
                 else QuoteWidgetViews.quote(context, quote, width, height))
         }
         // A single non-wakeup RTC alarm also changes a quote when the screen stays on past a boundary.
-        val next = live.mapNotNull { store.config(it)?.let { config -> nextQuoteBoundary(config.frequency, now) } }.minOrNull()
+        val next = if (live.isEmpty()) null else store.config()?.let { nextQuoteBoundary(it.frequency, now) }
         val alarms = context.getSystemService(AlarmManager::class.java)
         if (next == null) alarms.cancel(alarm(context))
         else alarms.setWindow(AlarmManager.RTC, next.toEpochMilli(), 60_000, alarm(context))
@@ -51,6 +51,6 @@ object QuoteRuntime {
 
     fun changed(context: Context, changedIds: Set<Long>?) {
         val store = QuoteStore(context)
-        refresh(context, ids(context).filter { changedIds == null || store.config(it)?.noteId in changedIds }.toIntArray())
+        if (changedIds == null || store.config()?.noteId in changedIds) refresh(context)
     }
 }

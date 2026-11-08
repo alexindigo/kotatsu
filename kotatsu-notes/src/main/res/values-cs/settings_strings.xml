@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgety</string>
+    <string name="settings_task">Seznam úkolů</string>
+    <string name="settings_note">Poznámka</string>
+    <string name="settings_choose">Vybrat</string>
+    <string name="settings_changes">Změny</string>
+    <string name="settings_task_help">Pro boční obrazovku zamčené obrazovky. Vypnutí odebere umístěné widgety úkolů.</string>
+    <string name="settings_quote_help">Pro místo widgetu na zamčené obrazovce. Vypnutí odebere umístěné widgety citátů.</string>
+    <string name="settings_notes_unavailable">Mudita Notes není k dispozici nebo chybí oprávnění k poznámkám.</string>
+    <string name="settings_loading">Načítání názvů poznámek...</string>
+</resources>

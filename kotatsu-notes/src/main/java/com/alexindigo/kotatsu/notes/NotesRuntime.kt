@@ -34,7 +34,7 @@ object NotesRuntime {
                 manager.updateAppWidget(id, NotesWidgetViews.message(context, R.string.unlock_once))
                 continue
             }
-            val snapshot = try { store.selected(id)?.let(notes(context)::read) } catch (_: RuntimeException) { null }
+            val snapshot = try { store.selected()?.let(notes(context)::read) } catch (_: RuntimeException) { null }
             publish(context, id, snapshot)
         }
         arm(context)
@@ -44,7 +44,7 @@ object NotesRuntime {
         if (id !in ids(context)) return
         val store = NotesStore(context)
         val manager = AppWidgetManager.getInstance(context)
-        val views = if (snapshot == null || snapshot.id != store.selected(id) || snapshot.items == null || Build.VERSION.SDK_INT < 31) {
+        val views = if (snapshot == null || snapshot.id != store.selected() || snapshot.items == null || Build.VERSION.SDK_INT < 31) {
             store.forget(id)
             NotesWidgetViews.message(context, R.string.choose_list)
         } else NotesWidgetViews.list(context, id, store.remember(id, snapshot),
@@ -56,10 +56,9 @@ object NotesRuntime {
         if (widgetId !in ids(context)) return
         if (!unlocked(context)) { refresh(context, intArrayOf(widgetId)); return }
         val store = NotesStore(context)
-        val result = tickRenderedList(notes(context), store.selected(widgetId), store.rendered(widgetId), tick, System.currentTimeMillis())
+        val result = tickRenderedList(notes(context), store.selected(), store.rendered(widgetId), tick, System.currentTimeMillis())
         // Reconcile all widgets of that list from read-back, not the optimistic CheckBox state.
-        val selected = store.selected(widgetId)
-        for (id in ids(context)) if (id == widgetId || selected != null && store.selected(id) == selected) {
+        for (id in ids(context)) {
             publish(context, id, result.persisted)
         }
         arm(context)
@@ -67,7 +66,7 @@ object NotesRuntime {
 
     fun changed(context: Context, changedIds: Set<Long>?) {
         val store = NotesStore(context)
-        refresh(context, affectedWidgets(ids(context).associateWith(store::selected), changedIds).toIntArray())
+        refresh(context, affectedWidgets(ids(context).associateWith { store.selected() }, changedIds).toIntArray())
         QuoteRuntime.changed(context, changedIds)
     }
 

@@ -7,5 +7,5 @@
     <string name="choose_widget">Scegli un widget</string>
     <string name="no_lists">Nessun elenco disponibile. Crea un elenco di attivit&#224; in Mudita Notes, poi torna qui.</string>
     <string name="add_widget_help">In Kotatsu, apri Impostazioni, Schermata di blocco e Widget della schermata di blocco. Aggiungi Kotatsu Notes. In seguito potrai aprire qui le sue impostazioni.</string>
-    <string name="save_failed">Impossibile salvare l\'elenco di attivit&#224;. Riprova.</string>
+    <string name="save_failed">Impossibile salvare l\'impostazione. Riprova.</string>
 </resources>

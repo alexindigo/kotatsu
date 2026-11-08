@@ -7,5 +7,5 @@
     <string name="choose_widget">Elija un widget</string>
     <string name="no_lists">No hay listas de tareas disponibles. Cree una lista en Mudita Notes y vuelva aqu&#237;.</string>
     <string name="add_widget_help">En Kotatsu, abra Ajustes, Pantalla de bloqueo y Widgets de la pantalla de bloqueo. A&#241;ada Kotatsu Notes. Despu&#233;s podr&#225; abrir aqu&#237; sus ajustes.</string>
-    <string name="save_failed">No se pudo guardar la lista de tareas. Int&#233;ntelo de nuevo.</string>
+    <string name="save_failed">No se pudo guardar el ajuste. Inténtelo de nuevo.</string>
 </resources>

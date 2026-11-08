@@ -8,5 +8,5 @@
     <string name="choose_widget">Choose a widget</string>
     <string name="no_lists">No task lists available. Create a task list in Mudita Notes, then return here.</string>
     <string name="add_widget_help">In Kotatsu, open Settings, then Lock screen, then Lock-screen widgets. Add the Kotatsu Notes widget. Its settings open from here afterwards.</string>
-    <string name="save_failed">Could not save the task list. Try again.</string>
+    <string name="save_failed">Could not save the setting. Try again.</string>
 </resources>

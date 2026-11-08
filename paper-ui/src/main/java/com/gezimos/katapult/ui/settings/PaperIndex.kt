@@ -406,13 +406,22 @@ fun TableOfContents(title: String, entries: List<SettingsEntry>, notice: NoticeC
     }
 }
 
+private val LocalBookOwnsDeviceBack = staticCompositionLocalOf { false }
+
+/** A book installs one stable device-Back callback; its pages use the same callback for their header. */
+@Composable
+fun SettingsBackOwner(onBack: () -> Unit, content: @Composable () -> Unit) {
+    BackHandler(onBack = onBack)
+    CompositionLocalProvider(LocalBookOwnsDeviceBack provides true, content = content)
+}
+
 /** One full-height page frame for chapters, management, choices and editors. Insets belong to its owner. */
 @Composable
 fun PageFrame(title: String, onBack: () -> Unit, modifier: Modifier = Modifier,
     help: SettingsHelp? = null, onHelp: () -> Unit = {},
     heading: @Composable () -> Unit = { ChapterHeader(title, help, onBack, onHelp) }, content: @Composable () -> Unit) {
     // Native overlay windows can own device Back without an Activity dispatcher.
-    if (LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onBack)
+    if (!LocalBookOwnsDeviceBack.current && LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onBack)
     Column(modifier.fillMaxSize().background(LocalSurface.current)) {
         heading()
         Box(Modifier.weight(1f).fillMaxWidth()) { content() }

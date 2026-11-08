@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widżety</string>
+    <string name="settings_task">Lista zadań</string>
+    <string name="settings_note">Notatka</string>
+    <string name="settings_choose">Wybierz</string>
+    <string name="settings_changes">Zmiany</string>
+    <string name="settings_task_help">Dla bocznej strony ekranu blokady. Wyłączenie usuwa umieszczone widżety zadań.</string>
+    <string name="settings_quote_help">Dla pola widżetu na ekranie blokady. Wyłączenie usuwa umieszczone widżety cytatów.</string>
+    <string name="settings_notes_unavailable">Mudita Notes jest niedostępne lub brakuje uprawnienia do notatek.</string>
+    <string name="settings_loading">Odczytywanie tytułów notatek...</string>
+</resources>

@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_task">Takenlijst</string>
+    <string name="settings_note">Notitie</string>
+    <string name="settings_choose">Kiezen</string>
+    <string name="settings_changes">Wisselen</string>
+    <string name="settings_task_help">Voor het zijscherm van het vergrendelscherm. Uitschakelen verwijdert geplaatste takenwidgets.</string>
+    <string name="settings_quote_help">Voor het widgetvak van het vergrendelscherm. Uitschakelen verwijdert geplaatste citaatwidgets.</string>
+    <string name="settings_notes_unavailable">Mudita Notes is niet beschikbaar of de notitiemachtiging ontbreekt.</string>
+    <string name="settings_loading">Notitietitels lezen...</string>
+</resources>

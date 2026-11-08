@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widgets</string>
+    <string name="settings_task">Liste de tâches</string>
+    <string name="settings_note">Note</string>
+    <string name="settings_choose">Choisir</string>
+    <string name="settings_changes">Changements</string>
+    <string name="settings_task_help">Pour la page latérale de verrouillage. La désactivation supprime les widgets de tâches placés.</string>
+    <string name="settings_quote_help">Pour la zone de widgets du verrouillage. La désactivation supprime les widgets de citations placés.</string>
+    <string name="settings_notes_unavailable">Mudita Notes est indisponible ou la permission des notes est manquante.</string>
+    <string name="settings_loading">Lecture des titres des notes...</string>
+</resources>

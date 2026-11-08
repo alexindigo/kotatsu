@@ -10,10 +10,9 @@ class NotesStore(context: Context) {
     private val app = context.applicationContext
     private fun renderings() = app.getSharedPreferences("notes-renderings", 0)
 
-    fun selected(id: Int): Long? = if (selections.contains("widget_$id"))
-        selections.getLong("widget_$id", -1).takeIf { it >= 0 } else null
+    fun selected(): Long? = selections.getLong("task_note", -1).takeIf { it >= 0 }
 
-    fun select(id: Int, noteId: Long): Boolean = noteId >= 0 && selections.edit().putLong("widget_$id", noteId).commit()
+    fun select(noteId: Long): Boolean = noteId >= 0 && selections.edit().putLong("task_note", noteId).commit()
 
     fun rendered(id: Int): RenderedList? = runCatching {
         val json = JSONObject(renderings().getString("widget_$id", null) ?: return null)
@@ -34,8 +33,6 @@ class NotesStore(context: Context) {
 
     fun forget(id: Int) { check(renderings().edit().remove("widget_$id").commit()) }
     fun delete(id: Int, unlocked: Boolean) {
-        check(selections.edit().remove("widget_$id").commit())
         if (unlocked) forget(id)
     }
-    fun restore(old: Int, new: Int) { selected(old)?.let { check(select(new, it)) }; delete(old, false) }
 }

@@ -1,0 +1,11 @@
+<resources>
+    <string name="settings_widgets">Widget</string>
+    <string name="settings_task">Elenco attività</string>
+    <string name="settings_note">Nota</string>
+    <string name="settings_choose">Scegli</string>
+    <string name="settings_changes">Cambiamenti</string>
+    <string name="settings_task_help">Per la pagina laterale del blocco schermo. Disattivando si rimuovono i widget attività posizionati.</string>
+    <string name="settings_quote_help">Per lo spazio widget del blocco schermo. Disattivando si rimuovono i widget citazione posizionati.</string>
+    <string name="settings_notes_unavailable">Mudita Notes non è disponibile o manca il permesso per le note.</string>
+    <string name="settings_loading">Lettura dei titoli delle note...</string>
+</resources>

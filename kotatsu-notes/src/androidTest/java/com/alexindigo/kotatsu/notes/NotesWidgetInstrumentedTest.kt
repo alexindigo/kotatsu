@@ -64,6 +64,7 @@ class NotesWidgetInstrumentedTest {
         init {
             fixture("reset")
             instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+            host.deleteHost()
             id = host.allocateAppWidgetId()
             assertTrue(manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, NotesWidgetProvider::class.java)))
             onMain {
@@ -71,7 +72,7 @@ class NotesWidgetInstrumentedTest {
                 activity.container.addView(view, ViewGroup.LayoutParams(-1, -1))
                 host.startListening()
             }
-            NotesRuntime.enqueue { check(NotesStore(context).select(id, 4)); NotesRuntime.refresh(context) }.get()
+            NotesRuntime.enqueue { check(NotesStore(context).select(4)); NotesRuntime.refresh(context) }.get()
             await("Rows must reach actual widget host") { checkText("Milk") != null }
         }
         fun checkText(label: String): CheckBox? {
@@ -343,24 +344,18 @@ class NotesWidgetInstrumentedTest {
 
     @Test fun configureActivitySavesItsChosenListAndPublishesItToTheHost() {
         Host().use { f ->
-            NotesRuntime.enqueue { NotesStore(context).delete(f.id, true); NotesRuntime.refresh(context) }.get()
+            NotesRuntime.enqueue {
+                context.createDeviceProtectedStorageContext().getSharedPreferences("notes-selection", 0).edit().clear().commit()
+                NotesRuntime.refresh(context)
+            }.get()
             val activity = instrumentation.startActivitySync(Intent(context, ConfigureActivity::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, f.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as ConfigureActivity
-            var choice: TextView? = null
             try {
-                await("Picker choice must render") {
-                    onMain {
-                        fun visit(v: View) {
-                            if (v is TextView && v.text.toString() == "Kotatsu long list") choice = v
-                            if (v is ViewGroup) for (i in 0 until v.childCount) visit(v.getChildAt(i))
-                        }
-                        visit(activity.window.decorView)
-                    }
-                    choice != null
-                }
-                onMain { choice!!.performClick() }
+                val ui = NotesSettingsUi(instrumentation)
+                ui.click(context.getString(R.string.settings_note))
+                ui.click("Kotatsu long list")
                 await("Chosen list must persist and render in host") {
-                    NotesStore(context).selected(f.id) == 4L && f.checkText("Milk") != null
+                    NotesStore(context).selected() == 4L && f.checkText("Milk") != null
                 }
                 assertTrue(fixture("stats").getBoolean("titlesOnly"))
             } finally { onMain { activity.finish() } }
