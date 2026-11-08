@@ -87,6 +87,7 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
         /** Optional generic host hint. Providers may ignore it; absent means unspecified. */
         internal const val OPTION_HOST_VISIBLE = "kotatsu.host.visible"
         internal const val OPTION_HOST_TITLE = "kotatsu.host.title"
+        internal const val OPTION_HOST_WAKE = "kotatsu.host.wake"
 
         fun updateSize(context: Context, widget: LockscreenWidget) {
             val density = context.resources.displayMetrics.density
@@ -101,6 +102,7 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
                 putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height)
                 putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, if (side != null) AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN else AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD)
                 putBoolean(OPTION_HOST_TITLE, side != null)
+                putLong(OPTION_HOST_WAKE, HostedWidgetWake(context).current())
                 get(context).visibility.hint(widget.id)?.let { putBoolean(OPTION_HOST_VISIBLE, it) }
             })
         }

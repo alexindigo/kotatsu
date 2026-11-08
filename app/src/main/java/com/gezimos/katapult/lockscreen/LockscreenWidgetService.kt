@@ -299,6 +299,7 @@ class LockscreenWidgetService :
                     maybeStartScreensaver()
                 }
                 Intent.ACTION_SCREEN_ON -> {
+                    HostedWidgetWake(this@LockscreenWidgetService).begin()
                     visibility.beginEpoch()
                     syncWeatherLease()
                     weatherFeed.refresh(force = true)
