@@ -39,7 +39,7 @@ measured Android density or a portable sizing API.
 | 3 | Chapter entry name / value | 18 sp Bold | 24 px, 29 px line |
 | 4 | Help / summary / group | 14 sp; Regular help/summary, Bold group | 18.667 px, 22–26 px line |
 | 5 | Index row / minimum target | ≥48 dp | 64 px row; 64×64 px independent target |
-| 6 | Chapter row | ≥67.5 dp; permissions ≥63 dp; grow for text | ≥90 px; permissions ≥84 px |
+| 6 | Chapter row | With help: >=67.5 dp; without help: >=48 dp with normal entry spacing; permissions >=63 dp; grow for text | With help: >=90 px; without help: >=64 px with normal entry spacing; permissions >=84 px |
 | 7 | Visibility row / control cells | 57 dp row; ≥48 dp cells | 76 px row; separate 64×64 px cells |
 | 8 | Horizontal content inset | About 16 dp | 21 px |
 | 9 | Leader | 1.5 dp dotted ink; flexible length | 2 px stroke, ≥12 px visible length; 10 px name gap |
@@ -53,6 +53,12 @@ drawing inside a full-row control, not a separate small target. Spacing may
 grow for localized or enlarged text; do not shrink type or targets to preserve
 a screenshot's row count. Align names, leaders and values structurally on a
 shared baseline, not with hand-tuned offsets or strings of period characters.
+
+User decision (2026-11-07): "Too much space between each line." Help-less chapter
+entries use the index-row minimum instead of reserving a missing help line.
+Their existing 9 dp vertical padding stays inside the row target; groups retain
+their normal spacing. Entries with help keep their current sizing. Pagination
+uses the measured rows rather than reserving the taller minimum for every entry.
 
 ## Components
 

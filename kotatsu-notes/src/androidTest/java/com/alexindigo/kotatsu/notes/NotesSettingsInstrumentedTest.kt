@@ -6,6 +6,11 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProviderInfo
 import android.content.ComponentName
 import android.content.Intent
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
@@ -35,19 +40,15 @@ class NotesSettingsInstrumentedTest {
         val root = open(NotesEntryActivity::class.java)
         try {
             ui.await(text(R.string.settings_widgets))
-            ui.capture(root, "root-1")
-            val next = context.getString(com.gezimos.katapult.paper.R.string.paper_next_page)
-            if (ui.has(next)) {
-                ui.click(next)
-                ui.await(text(R.string.settings_changes))
-                ui.capture(root, "root-2")
-                ui.click(text(R.string.settings_changes))
-                ui.awaitPage(text(R.string.settings_changes))
-                ui.back()
-                ui.awaitPage(text(R.string.app_name))
-                ui.await(context.getString(com.gezimos.katapult.paper.R.string.paper_page, 2, 2))
-                ui.await(text(R.string.settings_changes))
+            ui.await(text(R.string.settings_changes))
+            ui.await(text(R.string.quote_order))
+            assertFalse("Six settings fit one reference page", ui.has(context.getString(com.gezimos.katapult.paper.R.string.paper_next_page)))
+            for (label in listOf(R.string.settings_note, R.string.settings_changes, R.string.quote_order)) {
+                val bounds = android.graphics.Rect().also { ui.find(text(label), actionable = true)!!.getBoundsInScreen(it) }
+                assertEquals("Help-less settings keep the shared 48dp row and normal padding",
+                    48f * context.resources.displayMetrics.density, bounds.height().toFloat(), 1f)
             }
+            ui.capture(root, "root-1")
         } finally { close(root) }
         val task = open(ConfigureActivity::class.java)
         try {
@@ -94,7 +95,15 @@ class NotesSettingsInstrumentedTest {
 
     @Test fun realDeviceBackReturnsFromEveryChoiceToItsOwningPagerPageThenLeaves() {
         reset()
-        val activity = open(NotesEntryActivity::class.java)
+        val activity = open(NotesEntryActivity::class.java) as NotesEntryActivity
+        // Keep multi-page Back coverage even though the reference viewport now fits one page.
+        main {
+            val owner = NotesSettingsOwner(activity)
+            owner.refresh()
+            activity.setContent {
+                Box(Modifier.requiredSize(360.dp, 420.dp)) { NotesSettingsBook(owner, null, activity::finish) }
+            }
+        }
         val page = com.gezimos.katapult.paper.R.string.paper_page
         fun returnFrom(label: Int, parentPage: Int) {
             ui.click(text(label))

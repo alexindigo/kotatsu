@@ -220,7 +220,7 @@ fun Notice(content: NoticeContent) {
 
 @Composable
 fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
-    minimumHeight: androidx.compose.ui.unit.Dp = 67.5.dp) {
+    minimumHeight: androidx.compose.ui.unit.Dp = if (entry.help.isEmpty()) 48.dp else 67.5.dp) {
     val on = stringResource(R.string.paper_on)
     val off = stringResource(R.string.paper_off)
     val open = stringResource(R.string.paper_open)
