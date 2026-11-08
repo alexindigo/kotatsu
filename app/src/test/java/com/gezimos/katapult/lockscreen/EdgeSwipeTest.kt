@@ -4,6 +4,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EdgeSwipeTest {
+    @Test fun onlyDownInsideTheSharedStripSelectsAnEdge() {
+        assertEquals(ScreenEdge.LEFT, EdgeSwipe.startingEdge(0f, 480, 16f))
+        assertEquals(ScreenEdge.LEFT, EdgeSwipe.startingEdge(15.99f, 480, 16f))
+        assertNull(EdgeSwipe.startingEdge(16f, 480, 16f))
+        assertNull(EdgeSwipe.startingEdge(463.99f, 480, 16f))
+        assertEquals(ScreenEdge.RIGHT, EdgeSwipe.startingEdge(464f, 480, 16f))
+        assertEquals(ScreenEdge.RIGHT, EdgeSwipe.startingEdge(479.99f, 480, 16f))
+        assertNull(EdgeSwipe.startingEdge(480f, 480, 16f))
+        assertNull(EdgeSwipe.startingEdge(-1f, 480, 16f))
+        assertNull(EdgeSwipe.startingEdge(Float.NaN, 480, 16f))
+    }
     @Test fun finalDisplacementDecisionTableIsSymmetricInclusiveAndIndependentOfSpeed() {
         ScreenEdge.entries.forEach { edge ->
             val inward = if (edge == ScreenEdge.LEFT) 1 else -1

@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">Depuis les photos</string>
     <string name="wallpaper_help">Utilisez l’image intégrée ou choisissez votre propre photo</string>
     <string name="edge_swipes">Balayages depuis les bords</string>
-    <string name="edge_swipes_help">Balayez vers l\'int&#233;rieur depuis un bord sur un tiers de la largeur de l\'&#233;cran. Les appuis et gestes verticaux sont transmis &#224; l\'&#233;cran de verrouillage au rel&#226;chement.</string>
+    <string name="edge_home_enabled">Activer sur l\'accueil</string>
+    <string name="edge_home_help">Utiliser aussi ces actions de bord sur l\'accueil</string>
+    <string name="edge_swipes_help">S\'applique &#224; l\'&#233;cran de verrouillage et &#224; l\'accueil. Balayez vers l\'int&#233;rieur depuis un bord sur un tiers de la largeur de l\'&#233;cran. Sur l\'&#233;cran de verrouillage, les appuis et gestes verticaux sont transmis au rel&#226;chement.</string>
     <string name="edge_actions">Actions des bords</string>
     <string name="edge_left">Bord gauche</string>
     <string name="edge_right">Bord droit</string>

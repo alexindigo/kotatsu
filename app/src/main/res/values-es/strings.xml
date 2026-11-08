@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">De fotos</string>
     <string name="wallpaper_help">Usa la imagen incluida o elige tu propia foto</string>
     <string name="edge_swipes">Deslizar desde los bordes</string>
-    <string name="edge_swipes_help">Desliza hacia dentro desde un borde un tercio del ancho de la pantalla. Los toques y gestos verticales pasan a la pantalla de bloqueo al soltar.</string>
+    <string name="edge_home_enabled">Activar en Inicio</string>
+    <string name="edge_home_help">Usar estas acciones de borde tambi&#233;n en Inicio</string>
+    <string name="edge_swipes_help">Se aplica a la pantalla de bloqueo y a Inicio. Desliza hacia dentro desde un borde un tercio del ancho de la pantalla. En la pantalla de bloqueo, los toques y gestos verticales se transmiten al soltar.</string>
     <string name="edge_actions">Acciones de los bordes</string>
     <string name="edge_left">Borde izquierdo</string>
     <string name="edge_right">Borde derecho</string>

@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
@@ -89,6 +90,11 @@ import com.gezimos.katapult.MainViewModel
 import com.gezimos.katapult.R
 import com.gezimos.katapult.Screen
 import com.gezimos.katapult.lockscreen.LockscreenWidgetService
+import com.gezimos.katapult.lockscreen.EdgeAction
+import com.gezimos.katapult.lockscreen.EdgeSwipe
+import com.gezimos.katapult.lockscreen.EdgeSwipeDecision
+import com.gezimos.katapult.lockscreen.ScreenEdge
+import com.gezimos.katapult.lockscreen.HomeSideScreen
 import com.gezimos.katapult.model.AppModel
 import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.util.DeviceHelper
@@ -110,6 +116,11 @@ fun HomeScreen(
     var showMenu by remember { mutableStateOf(false) }
     var pickerSlot by remember { mutableStateOf<String?>(null) }
     val policyRefresh = viewModel.policyRefresh
+    var sideEdge by remember { mutableStateOf<ScreenEdge?>(null) }
+    sideEdge?.let { edge ->
+        HomeSideScreen(viewModel.prefs.lockscreenWidgetStore.screens().first(), edge) { sideEdge = null }
+        return
+    }
 
     val slotAsApp: (String) -> AppModel? = { slot ->
         val pkg = viewModel.getShortcutPackage(slot)
@@ -150,12 +161,24 @@ fun HomeScreen(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var swipeClaimed = false
+                    val edges = viewModel.prefs.edgeActions
+                    val edge = if (edges.enabled && edges.homeEnabled) EdgeSwipe.startingEdge(down.position.x, size.width,
+                        EdgeSwipe.STRIP_DP.dp.toPx()) else null
+                    var displacement = androidx.compose.ui.geometry.Offset.Zero
+                    val slop = EdgeSwipe.SLOP_DP.dp.toPx()
                     var swipeAcc = 0f
                     var pinchStart = 0f
                     var pinch = false
                     var pinchFired = false
                     while (true) {
-                        val event = awaitPointerEvent()
+                        val event = awaitPointerEvent(if (edge != null) PointerEventPass.Initial else PointerEventPass.Main)
+                        event.changes.firstOrNull { it.id == down.id }?.let { change ->
+                            displacement = change.position - down.position
+                            if (edge != null && !pinch &&
+                                EdgeSwipe.decide(edge, displacement.x, displacement.y, size.width, slop) != EdgeSwipeDecision.REPLAY) {
+                                change.consume()
+                            }
+                        }
                         val pressed = event.changes.filter { it.pressed }
                         if (pressed.isEmpty()) break
                         if (pressed.size >= 2) {
@@ -184,7 +207,16 @@ fun HomeScreen(
                             }
                         }
                     }
-                    if (!pinch && viewModel.prefs.swipeUpAllApps && swipeAcc < -100f) {
+                    val decision = edge?.let { EdgeSwipe.decide(it, displacement.x, displacement.y, size.width, slop) }
+                    if (!pinch && edge != null && decision == EdgeSwipeDecision.ACTION && edges.enabled && edges.homeEnabled) {
+                        when (edges.action(edge)) {
+                            EdgeAction.SIDE_SCREEN -> sideEdge = edge
+                            EdgeAction.CAMERA -> viewModel.launchIntent(context,
+                                Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA))
+                            EdgeAction.NOTHING -> Unit
+                        }
+                    } else if (!pinch && (edge == null || decision == EdgeSwipeDecision.REPLAY) &&
+                        viewModel.prefs.swipeUpAllApps && swipeAcc < -100f) {
                         viewModel.navigateTo(Screen.ALL_APPS)
                     }
                 }

@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">Z fotek</string>
     <string name="wallpaper_help">Použijte vestavěný obrázek nebo vyberte vlastní fotku</string>
     <string name="edge_swipes">Gesta z okraj&#367;</string>
-    <string name="edge_swipes_help">T&#225;hn&#283;te z okraje dovnit&#345; o t&#345;etinu &#353;&#237;&#345;ky obrazovky. Klepnut&#237; a svisl&#225; gesta se po zvednut&#237; prstu p&#345;edaj&#237; zamykac&#237; obrazovce.</string>
+    <string name="edge_home_enabled">Povolit na domovsk&#233; obrazovce</string>
+    <string name="edge_home_help">Pou&#382;&#237;vat tyto akce i na domovsk&#233; obrazovce</string>
+    <string name="edge_swipes_help">Plat&#237; pro zamykac&#237; i domovskou obrazovku. T&#225;hn&#283;te z okraje dovnit&#345; o t&#345;etinu &#353;&#237;&#345;ky obrazovky. Na zamykac&#237; obrazovce se klepnut&#237; a svisl&#225; gesta p&#345;edaj&#237; po zvednut&#237; prstu.</string>
     <string name="edge_actions">Akce okraj&#367;</string>
     <string name="edge_left">Lev&#253; okraj</string>
     <string name="edge_right">Prav&#253; okraj</string>

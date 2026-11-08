@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">Ze zdjęć</string>
     <string name="wallpaper_help">Użyj wbudowanego obrazu lub wybierz własne zdjęcie</string>
     <string name="edge_swipes">Gesty od kraw&#281;dzi</string>
-    <string name="edge_swipes_help">Przesu&#324; od kraw&#281;dzi do &#347;rodka o jedn&#261; trzeci&#261; szeroko&#347;ci ekranu. Dotkni&#281;cia i pionowe gesty trafiaj&#261; na ekran blokady po oderwaniu palca.</string>
+    <string name="edge_home_enabled">W&#322;&#261;cz na ekranie g&#322;&#243;wnym</string>
+    <string name="edge_home_help">U&#380;ywaj tych akcji tak&#380;e na ekranie g&#322;&#243;wnym</string>
+    <string name="edge_swipes_help">Dzia&#322;a na ekranie blokady i ekranie g&#322;&#243;wnym. Przesu&#324; od kraw&#281;dzi do &#347;rodka o jedn&#261; trzeci&#261; szeroko&#347;ci ekranu. Na ekranie blokady dotkni&#281;cia i pionowe gesty s&#261; przekazywane po oderwaniu palca.</string>
     <string name="edge_actions">Dzia&#322;ania kraw&#281;dzi</string>
     <string name="edge_left">Lewa kraw&#281;d&#378;</string>
     <string name="edge_right">Prawa kraw&#281;d&#378;</string>

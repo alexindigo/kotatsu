@@ -58,29 +58,39 @@ class EdgeActionsInstrumentedTest {
 
     @Test fun storeSurvivesRecreationExportImportAndRejectsInvalidImportsAtomically() = withStore { prefs, store ->
         assertFalse(store.enabled)
+        assertTrue(store.homeEnabled)
         assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
         store.enabled = true
+        store.homeEnabled = false
         store.setAction(ScreenEdge.LEFT, EdgeAction.CAMERA)
         store.setAction(ScreenEdge.RIGHT, EdgeAction.NOTHING)
         val backup = prefs.exportToJson(context)
         assertEquals("camera", JSONObject(backup).getString(EdgeActionStore.LEFT))
+        assertFalse(JSONObject(backup).getBoolean(EdgeActionStore.HOME_ENABLED))
         store.setAction(ScreenEdge.LEFT, EdgeAction.NOTHING)
         store.enabled = false
+        store.homeEnabled = true
         assertTrue(prefs.importFromJson(backup))
         assertTrue(store.enabled)
+        assertFalse(store.homeEnabled)
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.RIGHT))
-        listOf(EdgeActionStore.LEFT to "bogus", EdgeActionStore.RIGHT to 1, EdgeActionStore.ENABLED to "true").forEach { (key, value) ->
+        listOf(EdgeActionStore.LEFT to "bogus", EdgeActionStore.RIGHT to 1, EdgeActionStore.ENABLED to "true",
+            EdgeActionStore.HOME_ENABLED to "false", EdgeActionStore.HOME_ENABLED to 0).forEach { (key, value) ->
             val bad = JSONObject(backup).put(key, value).put(EdgeActionStore.ENABLED, false)
             if (key == EdgeActionStore.ENABLED) bad.put(key, value)
             assertFalse(prefs.importFromJson(bad.toString()))
             assertTrue(store.enabled)
+            assertFalse(store.homeEnabled)
             assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.LEFT))
         }
-        val old = JSONObject(backup).apply { remove(EdgeActionStore.LEFT); remove(EdgeActionStore.RIGHT); remove(EdgeActionStore.ENABLED) }
+        val old = JSONObject(backup).apply {
+            remove(EdgeActionStore.LEFT); remove(EdgeActionStore.RIGHT); remove(EdgeActionStore.ENABLED); remove(EdgeActionStore.HOME_ENABLED)
+        }
         assertTrue(prefs.importFromJson(old.toString()))
         assertFalse(store.enabled)
+        assertTrue(store.homeEnabled)
         assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
     }
@@ -96,8 +106,8 @@ class EdgeActionsInstrumentedTest {
                     var revision by remember { mutableIntStateOf(0) }
                     var choice by remember { mutableStateOf<String?>(null) }
                     @Suppress("UNUSED_VARIABLE") val observed = revision
-                    val category = edgeSwipesCategory(store.enabled, store.action(ScreenEdge.LEFT), store.action(ScreenEdge.RIGHT), false,
-                        { store.enabled = it; revision++ }, { edge, action -> store.setAction(edge, action); revision++ })
+                    val category = edgeSwipesCategory(store.enabled, store.homeEnabled, store.action(ScreenEdge.LEFT), store.action(ScreenEdge.RIGHT), false,
+                        { store.enabled = it; revision++ }, { store.homeEnabled = it; revision++ }, { edge, action -> store.setAction(edge, action); revision++ })
                     val current = choice
                     if (current == null) PaperIndexRenderer(category, {}, Modifier.statusBarsPadding().navigationBarsPadding(),
                         onChoice = { choice = it.id }, onHelp = {})
@@ -108,23 +118,34 @@ class EdgeActionsInstrumentedTest {
                 }
             }
             val ui = PlatformUiDriver(instrumentation)
+            ui.await("Edge settings did not render") { ui.has(context.getString(R.string.edge_home_enabled)) }
+            fun reveal(label: String) {
+                // Whole groups move between measured pages; a choice return can recreate page one.
+                instrumentation.waitForIdleSync()
+                repeat(12) {
+                    if (ui.has(label)) return
+                    assertTrue("No settings page contains $label", ui.has(context.getString(R.string.paper_next_page)))
+                    ui.click(context.getString(R.string.paper_next_page))
+                    instrumentation.waitForIdleSync()
+                }
+                fail("Settings pages did not reveal $label")
+            }
+            reveal(context.getString(R.string.edge_left))
             ui.click(context.getString(R.string.edge_left))
             listOf(R.string.side_screen, R.string.edge_camera, R.string.edge_nothing).forEach {
                 assertTrue(ui.has(context.getString(it)))
             }
             ui.click(context.getString(R.string.edge_camera))
             ui.await("Left action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.CAMERA }
+            reveal(context.getString(R.string.edge_left))
             ui.click(context.getString(R.string.edge_left))
             ui.click(context.getString(R.string.side_screen))
             ui.await("Side screen action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.SIDE_SCREEN }
+            reveal(context.getString(R.string.edge_right))
             ui.click(context.getString(R.string.edge_right))
             ui.click(context.getString(R.string.edge_nothing))
             ui.await("Right action did not persist") { store.action(ScreenEdge.RIGHT) == EdgeAction.NOTHING }
-            repeat(3) {
-                if (!ui.has(context.getString(R.string.edge_camera_unavailable)) && ui.has(context.getString(R.string.paper_next_page))) {
-                    ui.click(context.getString(R.string.paper_next_page))
-                }
-            }
+            reveal(context.getString(R.string.edge_camera_unavailable))
             assertTrue(ui.has(context.getString(R.string.edge_camera_unavailable)))
             assertTrue(ui.has(context.getString(R.string.edge_camera_setup)))
             val intent = SecureCamera.intent()

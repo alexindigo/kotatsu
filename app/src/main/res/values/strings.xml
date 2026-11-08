@@ -419,7 +419,9 @@
     <string name="wallpaper_photos">From photos</string>
     <string name="wallpaper_help">Use the built-in picture or choose your own photo</string>
     <string name="edge_swipes">Edge swipes</string>
-    <string name="edge_swipes_help">Swipe inward from either edge by a third of the screen width. Taps and vertical swipes pass to the lock screen after release.</string>
+    <string name="edge_home_enabled">Enable on home screen</string>
+    <string name="edge_home_help">Use these edge actions on Home too</string>
+    <string name="edge_swipes_help">Applies to the lock screen and Home. Swipe inward from either edge by a third of the screen width. On the lock screen, taps and vertical swipes pass through after release.</string>
     <string name="edge_actions">Edge actions</string>
     <string name="edge_left">Left edge</string>
     <string name="edge_right">Right edge</string>

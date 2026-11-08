@@ -9,6 +9,16 @@ data class ReplayPoint(val x: Float, val y: Float)
 
 /** Raw final displacement owns the decision; clipped replay coordinates never feed it. */
 object EdgeSwipe {
+    const val STRIP_DP = 16
+    const val SLOP_DP = 8
+
+    fun startingEdge(x: Float, width: Int, strip: Float): ScreenEdge? = when {
+        !x.isFinite() || width <= 0 || x < 0 || x >= width -> null
+        x < strip -> ScreenEdge.LEFT
+        x >= width - strip -> ScreenEdge.RIGHT
+        else -> null
+    }
+
     fun decide(edge: ScreenEdge, dx: Float, dy: Float, width: Int, slop: Float): EdgeSwipeDecision {
         if (!dx.isFinite() || !dy.isFinite() || width <= 0) return EdgeSwipeDecision.DROP
         if (hypot(dx, dy) <= slop || abs(dx) <= abs(dy)) return EdgeSwipeDecision.REPLAY

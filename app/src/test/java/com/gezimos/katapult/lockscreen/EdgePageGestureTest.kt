@@ -4,6 +4,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EdgePageGestureTest {
+    @Test fun homeChoiceImportAcceptsOnlyBooleans() {
+        assertTrue(EdgeActionStore.validImport(EdgeActionStore.HOME_ENABLED, true))
+        assertTrue(EdgeActionStore.validImport(EdgeActionStore.HOME_ENABLED, false))
+        listOf(null, 0, 1, "true", "false", "").forEach {
+            assertFalse(EdgeActionStore.validImport(EdgeActionStore.HOME_ENABLED, it))
+        }
+    }
+
     @Test fun sixStepPreviewUsesTheSameInclusiveLineOnBothEdges() {
         ScreenEdge.entries.forEach { edge ->
             val sign = if (edge == ScreenEdge.LEFT) 1 else -1

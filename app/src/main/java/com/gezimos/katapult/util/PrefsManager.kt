@@ -725,6 +725,7 @@ class PrefsManager(context: Context) {
     /** Types follow the defaults declared by the getters, not a device's stored values. */
     private fun declaredImportDefault(key: String): Any? = when (key) {
         EdgeActionStore.ENABLED -> false
+        EdgeActionStore.HOME_ENABLED -> true
         EdgeActionStore.LEFT, EdgeActionStore.RIGHT -> ""
         KEY_WIDGET_ROTATION -> WidgetRotation.WAKE.name
         KEY_WIDGET_SWIPE -> true

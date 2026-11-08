@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">Dalle foto</string>
     <string name="wallpaper_help">Usa l’immagine inclusa o scegli una tua foto</string>
     <string name="edge_swipes">Scorrimenti dai bordi</string>
-    <string name="edge_swipes_help">Scorri dal bordo verso l\'interno per un terzo della larghezza dello schermo. Tocchi e gesti verticali passano alla schermata di blocco al rilascio.</string>
+    <string name="edge_home_enabled">Attiva nella Home</string>
+    <string name="edge_home_help">Usa queste azioni dai bordi anche nella Home</string>
+    <string name="edge_swipes_help">Si applica alla schermata di blocco e alla Home. Scorri dal bordo verso l\'interno per un terzo della larghezza dello schermo. Nella schermata di blocco, tocchi e gesti verticali vengono trasmessi al rilascio.</string>
     <string name="edge_actions">Azioni dei bordi</string>
     <string name="edge_left">Bordo sinistro</string>
     <string name="edge_right">Bordo destro</string>

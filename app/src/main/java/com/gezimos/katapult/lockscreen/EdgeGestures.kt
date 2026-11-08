@@ -47,7 +47,7 @@ internal class EdgeGestures(
         val bounds = wm.maximumWindowMetrics.bounds
         val id = service.resources.getIdentifier("status_bar_height", "dimen", "android")
         val top = if (id > 0) service.resources.getDimensionPixelSize(id) else (24 * service.resources.displayMetrics.density).toInt()
-        val edgeInset = if (store.enabled) (16 * service.resources.displayMetrics.density).toInt().coerceAtLeast(1) else 0
+        val edgeInset = if (store.enabled) (EdgeSwipe.STRIP_DP * service.resources.displayMetrics.density).toInt().coerceAtLeast(1) else 0
         val next = Geometry(bounds.width(), bounds.height(), top, store.enabled, slot?.let(::Rect))
         if (strips.isNotEmpty() && geometry == next) return
         remove()
@@ -127,7 +127,7 @@ internal class EdgeGestures(
                     point(event)
                     if (store.enabled && store.action(edge) == EdgeAction.SIDE_SCREEN) {
                         preview(edge, EdgeSwipe.previewStep(edge, event.rawX - x, event.rawY - y, width,
-                            8 * service.resources.displayMetrics.density))
+                            EdgeSwipe.SLOP_DP * service.resources.displayMetrics.density))
                     } else cancelPreview()
                 }
                 MotionEvent.ACTION_UP -> if (tracking) {
@@ -135,7 +135,7 @@ internal class EdgeGestures(
                     if (!cancelled && eligible()) {
                         point(event)
                         when (EdgeSwipe.decide(edge, event.rawX - x, event.rawY - y, width,
-                                8 * service.resources.displayMetrics.density)) {
+                                EdgeSwipe.SLOP_DP * service.resources.displayMetrics.density)) {
                             EdgeSwipeDecision.ACTION -> {
                                 if (store.action(edge) != EdgeAction.SIDE_SCREEN) cancelPreview()
                                 runAction(edge, store.action(edge))

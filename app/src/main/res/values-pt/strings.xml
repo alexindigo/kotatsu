@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">Das fotos</string>
     <string name="wallpaper_help">Use a imagem incluída ou escolha uma foto sua</string>
     <string name="edge_swipes">Deslizar das margens</string>
-    <string name="edge_swipes_help">Deslize da margem para dentro um ter&#231;o da largura do ecr&#227;. Toques e gestos verticais passam para o ecr&#227; de bloqueio ao soltar.</string>
+    <string name="edge_home_enabled">Ativar no ecr&#227; inicial</string>
+    <string name="edge_home_help">Usar estas a&#231;&#245;es das margens tamb&#233;m no ecr&#227; inicial</string>
+    <string name="edge_swipes_help">Aplica-se ao ecr&#227; de bloqueio e ao ecr&#227; inicial. Deslize da margem para dentro um ter&#231;o da largura do ecr&#227;. No ecr&#227; de bloqueio, os toques e gestos verticais s&#227;o transmitidos ao soltar.</string>
     <string name="edge_actions">A&#231;&#245;es das margens</string>
     <string name="edge_left">Margem esquerda</string>
     <string name="edge_right">Margem direita</string>

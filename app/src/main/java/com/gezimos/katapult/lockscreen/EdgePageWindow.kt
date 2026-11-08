@@ -36,8 +36,8 @@ internal class EdgePageWindow(private val context: Context, private val handler:
         edge = from
         return try {
             val root = content(::hide,
-                { dx, dy -> EdgeSwipe.capturesPageClose(edge, dx, dy, 8 * context.resources.displayMetrics.density) },
-                { dx, dy -> EdgeSwipe.closesPage(edge, dx, dy, wm.maximumWindowMetrics.bounds.width(), 8 * context.resources.displayMetrics.density) })
+                { dx, dy -> EdgeSwipe.capturesPageClose(edge, dx, dy, EdgeSwipe.SLOP_DP * context.resources.displayMetrics.density) },
+                { dx, dy -> EdgeSwipe.closesPage(edge, dx, dy, wm.maximumWindowMetrics.bounds.width(), EdgeSwipe.SLOP_DP * context.resources.displayMetrics.density) })
             // Own the content before any fallible setup/attachment, so hide always releases it.
             view = root
             root.setViewTreeLifecycleOwner(context as LifecycleOwner)

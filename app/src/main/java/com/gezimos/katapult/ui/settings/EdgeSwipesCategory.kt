@@ -7,8 +7,8 @@ import com.gezimos.katapult.lockscreen.EdgeAction
 import com.gezimos.katapult.lockscreen.ScreenEdge
 
 @Composable
-fun edgeSwipesCategory(enabled: Boolean, left: EdgeAction, right: EdgeAction, cameraAvailable: Boolean,
-                        onEnabled: (Boolean) -> Unit, onAction: (ScreenEdge, EdgeAction) -> Unit,
+fun edgeSwipesCategory(enabled: Boolean, homeEnabled: Boolean, left: EdgeAction, right: EdgeAction, cameraAvailable: Boolean,
+                        onEnabled: (Boolean) -> Unit, onHomeEnabled: (Boolean) -> Unit, onAction: (ScreenEdge, EdgeAction) -> Unit,
                         onSideScreen: () -> Unit = {}): SettingsCategory {
     val choices = EdgeAction.entries.map { SettingsChoice(it.id, stringResource(when (it) {
         EdgeAction.CAMERA -> R.string.edge_camera
@@ -18,6 +18,7 @@ fun edgeSwipesCategory(enabled: Boolean, left: EdgeAction, right: EdgeAction, ca
     return SettingsCategory("edges", stringResource(R.string.edge_swipes), listOf(
         SettingsGroup("swipes", "", listOf(
             SettingsEntry.Switch("enabled", stringResource(R.string.edge_swipes), stringResource(R.string.edge_swipes_help), enabled, onEnabled),
+            SettingsEntry.Switch("home-enabled", stringResource(R.string.edge_home_enabled), stringResource(R.string.edge_home_help), homeEnabled, onHomeEnabled),
         )),
         SettingsGroup("actions", stringResource(R.string.edge_actions), ScreenEdge.entries.map { edge ->
             val action = if (edge == ScreenEdge.LEFT) left else right

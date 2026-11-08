@@ -89,15 +89,18 @@ On Kompakt, open launcher Settings → Lockscreen → Lock-screen widgets, enabl
 
 Back exits a nondefault launcher preview after internal navigation and dialogs are resolved. Clock and date formats can follow Android's System setting or use a chosen format. If Action Service access is lost, Kotatsu names the affected features and offers to turn them off.
 
-### Lock-screen edge swipes
+### Edge swipes on the lock screen and Home
 
 On Kompakt, open Settings > Lock screen > Edge swipes and enable the Kotatsu Action Service when prompted.
 Choose Side screen, Camera or Nothing for each edge. The defaults are Side screen on the left and Camera on the right.
+These same settings also apply on Home, without requiring the Action Service there.
+Enable on home screen is On by default; turn it Off to keep edge actions only on the lock screen.
 Swipe inward from the screen edge by at least one third of the screen width
 to run its action. Short sideways swipes do nothing; taps and vertical swipes pass to the lock screen after release.
 The strips are absent over the PIN pad, other apps and while the screen is off.
 
-The camera action uses Android's secure camera intent. Settings reports when no compatible camera is installed.
+On Home, Camera opens the normal still-image camera and widget apps open directly without an unlock step.
+On the lock screen, the camera action uses Android's secure camera intent. Settings reports when no compatible secure camera is installed.
 The camera app may need its own lock-screen option: for Open Camera, grant its camera permission, then enable
 Settings > More camera controls > Show camera when locked. Kotatsu does not unlock the phone.
 

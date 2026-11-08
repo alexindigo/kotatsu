@@ -417,7 +417,9 @@
     <string name="wallpaper_photos">Uit foto’s</string>
     <string name="wallpaper_help">Gebruik de ingebouwde afbeelding of kies een eigen foto</string>
     <string name="edge_swipes">Vegen vanaf de randen</string>
-    <string name="edge_swipes_help">Veeg vanaf een rand een derde van de schermbreedte naar binnen. Tikken en verticale veegbewegingen gaan na loslaten naar het vergrendelscherm.</string>
+    <string name="edge_home_enabled">Inschakelen op startscherm</string>
+    <string name="edge_home_help">Gebruik deze randacties ook op het startscherm</string>
+    <string name="edge_swipes_help">Geldt voor het vergrendelscherm en het startscherm. Veeg vanaf een rand een derde van de schermbreedte naar binnen. Op het vergrendelscherm worden tikken en verticale veegbewegingen na loslaten doorgegeven.</string>
     <string name="edge_actions">Randacties</string>
     <string name="edge_left">Linkerrand</string>
     <string name="edge_right">Rechterrand</string>

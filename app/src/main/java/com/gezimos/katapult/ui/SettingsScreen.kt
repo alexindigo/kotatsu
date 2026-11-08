@@ -363,7 +363,7 @@ fun SettingsScreen(
             if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.WEATHER)
         }, onWidgets = { widgetSettings.refresh(); navigation.push("widgets") }, onMessage = viewModel::beginLockscreenMessage,
         onEdgeSwipes = { navigation.push("edges") })
-    val edges = edgeSwipesCategory(edgeStore.enabled,
+    val edges = edgeSwipesCategory(edgeStore.enabled, edgeStore.homeEnabled,
         edgeStore.action(com.gezimos.katapult.lockscreen.ScreenEdge.LEFT),
         edgeStore.action(com.gezimos.katapult.lockscreen.ScreenEdge.RIGHT), SecureCamera.available(context),
         onEnabled = { requested ->
@@ -371,7 +371,7 @@ fun SettingsScreen(
             viewModel.observeActionService(serviceOn)
             if (!requested || serviceOn) edgeStore.enabled = requested
             else viewModel.requestActionService(AccessibilityFeature.EDGE_SWIPES)
-        }, onAction = edgeStore::setAction,
+        }, onHomeEnabled = { edgeStore.homeEnabled = it }, onAction = edgeStore::setAction,
         onSideScreen = { navigation.push("side-screen") })
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
         screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,

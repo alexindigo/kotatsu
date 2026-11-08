@@ -19,6 +19,10 @@ class EdgeActionStore(private val prefs: SharedPreferences) {
         get() = synchronized(prefs) { prefs.all[ENABLED] as? Boolean ?: false }
         set(value) { synchronized(prefs) { prefs.edit().putBoolean(ENABLED, value).apply() } }
 
+    var homeEnabled: Boolean
+        get() = synchronized(prefs) { prefs.all[HOME_ENABLED] as? Boolean ?: true }
+        set(value) { synchronized(prefs) { prefs.edit().putBoolean(HOME_ENABLED, value).apply() } }
+
     fun action(edge: ScreenEdge): EdgeAction = synchronized(prefs) {
         EdgeAction.fromId(prefs.all[key(edge)] as? String) ?: defaultAction(edge)
     }
@@ -29,12 +33,13 @@ class EdgeActionStore(private val prefs: SharedPreferences) {
 
     companion object {
         const val ENABLED = "lockscreen_edge_swipes"
+        const val HOME_ENABLED = "home_edge_swipes"
         const val LEFT = "lockscreen_left_edge_action"
         const val RIGHT = "lockscreen_right_edge_action"
         fun key(edge: ScreenEdge) = if (edge == ScreenEdge.LEFT) LEFT else RIGHT
         fun defaultAction(edge: ScreenEdge) = if (edge == ScreenEdge.LEFT) EdgeAction.SIDE_SCREEN else EdgeAction.CAMERA
         fun validImport(key: String, value: Any?): Boolean = when (key) {
-            ENABLED -> value is Boolean
+            ENABLED, HOME_ENABLED -> value is Boolean
             LEFT, RIGHT -> value is String && EdgeAction.fromId(value) != null
             else -> true
         }
