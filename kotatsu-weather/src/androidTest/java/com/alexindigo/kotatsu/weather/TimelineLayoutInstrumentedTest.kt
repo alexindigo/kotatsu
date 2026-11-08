@@ -17,6 +17,23 @@ class TimelineLayoutInstrumentedTest {
     private val series = ForecastSeries((0..48).map { h -> HourSample(now.toLocalDate().atStartOfDay(now.zone)
         .toInstant().plusSeconds(h * 3600L), if (h == 13) 90.0 else 58.0, 2, null) }, now.toInstant())
 
+    @Test fun outerMarginsBelongToTheHostInEverySize() {
+        val density = context.resources.displayMetrics.density
+        val config = WidgetConfig(listOf("Palo Alt", "Portola").map { Location(it, it, 10.0, 20.0) })
+        val model = buildTimeline(config, List(2) { series }, emptyList(), now).copy(needleHour = null)
+        for (heightDp in listOf(64, 112, 160)) {
+            val width = (328 * density).toInt()
+            val height = (heightDp * density).toInt()
+            val plan = TimelineRenderer.layout(context, model, width, height)
+            assertEquals(0f, plan.padding, 0f)
+            assertEquals(height.toFloat(), plan.rowTops.last() + plan.rowHeight, .001f)
+            val bitmap = TimelineRenderer.render(context, model, width, height)
+            val last = (height - 1 downTo 0).first { y -> (0 until width).any { x -> Color.red(bitmap.getPixel(x, y)) < 128 } } + 1
+            assertEquals("No provider-owned bottom band at $heightDp", height.toFloat(), last.toFloat(), 1f)
+            bitmap.recycle()
+        }
+    }
+
     @Test fun endpointStormReachesTheRenderedIconButHaloStormDoesNot() {
         val config = WidgetConfig(listOf(Location("Home", "Fixture", 10.0, 20.0, 7, 15)))
         fun model(storm: Int) = buildTimeline(config, listOf(series.copy(samples = series.samples.map {
@@ -43,7 +60,8 @@ class TimelineLayoutInstrumentedTest {
             val bitmap = TimelineRenderer.render(context, model, width, height)
             for (y in 0 until height) for (x in 0 until width) if (bitmap.getPixel(x, y) != Color.WHITE) {
                 assertTrue("Ink outside rows: $heightDp/$count/$missing at $x,$y", plan.rowTops.any { y >= it - 1 && y <= it + plan.rowHeight + 1 })
-                assertTrue("Ink at horizontal edge", x > 0 && x < width - 1)
+                // Ink may meet the allocation's edges: only the host supplies outer margins.
+                assertTrue("Ink left of planned label lane", x >= plan.padding)
             }
             plan.rowTops.forEach { top ->
                 assertTrue("Missing label $heightDp/$count/$top", (top.toInt()..(top + plan.rowHeight).toInt()).any { y ->

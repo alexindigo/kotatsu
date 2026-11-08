@@ -35,8 +35,9 @@ fun planTimelineLayout(
     axis: Axis, metrics: TimelineMetrics, reserveStatus: Boolean = false,
 ): TimelineLayout {
     require(width > 0 && height > 0 && count in 1..MAX_LOCATIONS && density > 0 && scaledDensity > 0)
-    val padding = minOf(8f * density, width / 32)
-    val bottomInset = minOf(16f * density, height / 10)
+    // The host owns outer margins; interior row/caption spacing stays in this planner.
+    val padding = 0f
+    val bottomInset = 0f
     val topInset = minOf(2f * density, height / 32)
     val statusLineHeight = if (reserveStatus) minOf(16f * density, height / 5) else 0f
     // Reserve using the intended caption size even when a long translation needs a smaller width-capped font.
@@ -65,7 +66,9 @@ fun planTimelineLayout(
     val iconSize = icon * size
     val iconLeft = width - padding - iconSize
     return TimelineLayout(size, rowHeight, pitch, tops,
-        (rowHeight - (metrics.bottom - metrics.top) * size) / 2 - metrics.top * size,
+        // The row's text ink shares its bottom boundary, rather than carrying half
+        // the difference between a square icon allocation and the glyph height.
+        rowHeight - metrics.bottom * size,
         padding + metrics.labelWidth * size + columnGap + metrics.numberWidth * size / 2,
         iconLeft - columnGap - metrics.numberWidth * size / 2,
         padding, iconSize, iconLeft, numberGap, tops.first() - statusHeight, statusHeight, statusGap)

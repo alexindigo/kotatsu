@@ -12,10 +12,12 @@ class TimelineLayoutTest {
                 val plan = planTimelineLayout(344 * density, height * density, count, density, density,
                     Axis(7, 23), metrics, slot)
                 assertEquals(count, plan.rowTops.size)
+                assertEquals(0f, plan.padding, 0f)
+                assertEquals(height * density, plan.rowTops.last() + plan.rowHeight, .001f)
                 assertTrue("font $height/$count/$slot", plan.textSize / density >= 6f)
                 assertTrue(plan.textSize / density <= 20f)
                 assertTrue(plan.statusTop >= 0)
-                assertTrue(plan.rowTops.last() + plan.rowHeight <= height * density)
+                // Equality above includes sub-pixel Float cancellation; pixels are checked natively.
                 assertTrue(plan.left < plan.right)
                 assertTrue(metrics.neighbourWidth * plan.textSize + plan.numberGap <=
                     (plan.right - plan.left) * MARK_EVERY_HOURS / 16 + .001f)

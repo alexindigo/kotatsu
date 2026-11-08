@@ -122,6 +122,19 @@ class WeatherStatusInstrumentedTest {
                     val height = (heightDp * density).toInt()
                     val plan = TimelineRenderer.layout(localized, old, width, height)
                     assertEquals(plan, TimelineRenderer.layout(localized, fresh, width, height))
+                    // The host supplies the outside margin. Prove complete caption ink fits
+                    // the offered lane instead of requiring an obsolete internal white band.
+                    val caption = WeatherPresentation.lastUpdated(localized, updated, now.zone)
+                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply {
+                        typeface = localized.resources.getFont(R.font.lato_regular)
+                        fontFeatureSettings = "tnum"; letterSpacing = .075f; textSize = 1000f
+                    }
+                    val font = paint.fontMetrics
+                    paint.textSize = planStatusText(plan, width.toFloat(), density, localized.resources.displayMetrics.scaledDensity,
+                        paint.measureText(caption) / 1000f, font.top / 1000f, font.bottom / 1000f).textSize
+                    val ink = android.graphics.Rect().also { paint.getTextBounds(caption, 0, caption.length, it) }
+                    assertTrue("Complete caption starts inside lane", plan.padding + ink.left >= -1f)
+                    assertTrue("Complete caption ends inside lane", plan.padding + ink.right <= width + 1f)
                     val shown = TimelineRenderer.render(localized, old, width, height)
                     val hidden = TimelineRenderer.render(localized, fresh, width, height)
                     var statusInk = 0
@@ -135,7 +148,6 @@ class WeatherStatusInstrumentedTest {
                                 lastStatusY = maxOf(lastStatusY, y)
                                 assertTrue("Status outside lane $language/$use24/$heightDp/$count x=$x y=$y lane=${plan.statusTop}..${plan.statusTop + plan.statusHeight}",
                                     y >= plan.statusTop - 1 && y < plan.statusTop + plan.statusHeight)
-                                assertTrue("Status at edge", x > 0 && x < width - 1)
                                 assertNotEquals(Color.BLACK, shown.getPixel(x, y))
                             }
                         }
