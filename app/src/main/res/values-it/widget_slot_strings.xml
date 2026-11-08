@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">Rotazione</string>
+    <string name="widget_rotation_help">Mostra un widget alla volta, nell\'ordine della lista</string>
+    <string name="widget_rotation_wake">A ogni risveglio</string>
+    <string name="widget_rotation_30s">Schermo acceso, ogni 30 s</string>
+    <string name="widget_rotation_1m">Schermo acceso, ogni 1 min</string>
+    <string name="widget_rotation_5m">Schermo acceso, ogni 5 min</string>
+    <string name="widget_rotation_15m">Schermo acceso, ogni 15 min</string>
+    <string name="widget_rotation_value_30s">Ogni 30 s</string>
+    <string name="widget_rotation_value_1m">Ogni 1 min</string>
+    <string name="widget_rotation_value_5m">Ogni 5 min</string>
+    <string name="widget_rotation_value_15m">Ogni 15 min</string>
+    <string name="widget_swipe">Scorri per cambiare</string>
+    <string name="widget_swipe_help">Scorri a sinistra o a destra nell\'area del widget per cambiarlo</string>
+</resources>

@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">Rota&#231;&#227;o</string>
+    <string name="widget_rotation_help">Mostrar um widget de cada vez, pela ordem da lista</string>
+    <string name="widget_rotation_wake">Ao despertar</string>
+    <string name="widget_rotation_30s">Ecr&#227; ligado, a cada 30 s</string>
+    <string name="widget_rotation_1m">Ecr&#227; ligado, a cada 1 min</string>
+    <string name="widget_rotation_5m">Ecr&#227; ligado, a cada 5 min</string>
+    <string name="widget_rotation_15m">Ecr&#227; ligado, a cada 15 min</string>
+    <string name="widget_rotation_value_30s">A cada 30 s</string>
+    <string name="widget_rotation_value_1m">A cada 1 min</string>
+    <string name="widget_rotation_value_5m">A cada 5 min</string>
+    <string name="widget_rotation_value_15m">A cada 15 min</string>
+    <string name="widget_swipe">Deslizar para mudar</string>
+    <string name="widget_swipe_help">Deslize para a esquerda ou direita na &#225;rea do widget para mudar</string>
+</resources>

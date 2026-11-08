@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">St&#345;&#237;d&#225;n&#237;</string>
+    <string name="widget_rotation_help">Jeden widget po druh&#233;m, v po&#345;ad&#237; seznamu</string>
+    <string name="widget_rotation_wake">P&#345;i probuzen&#237;</string>
+    <string name="widget_rotation_30s">P&#345;i zapnut&#237;, po 30 s</string>
+    <string name="widget_rotation_1m">P&#345;i zapnut&#237;, po 1 min</string>
+    <string name="widget_rotation_5m">P&#345;i zapnut&#237;, po 5 min</string>
+    <string name="widget_rotation_15m">P&#345;i zapnut&#237;, po 15 min</string>
+    <string name="widget_rotation_value_30s">Po 30 s</string>
+    <string name="widget_rotation_value_1m">Po 1 min</string>
+    <string name="widget_rotation_value_5m">Po 5 min</string>
+    <string name="widget_rotation_value_15m">Po 15 min</string>
+    <string name="widget_swipe">St&#345;&#237;dat tahem</string>
+    <string name="widget_swipe_help">Tahem vlevo nebo vpravo v oblasti widgetu zm&#283;n&#237;te widget</string>
+</resources>

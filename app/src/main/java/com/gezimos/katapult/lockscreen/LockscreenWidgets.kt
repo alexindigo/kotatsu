@@ -3,14 +3,13 @@ package com.gezimos.katapult.lockscreen
 enum class LockscreenWidgetSize(val heightDp: Int) { S(64), M(112), L(160) }
 data class LockscreenWidget(val id: Int, val size: LockscreenWidgetSize)
 
-// Measured on the staging Kompakt, 480x800 pixels, 2026-10-14.
-const val WIDGETS_MEASURED_DATE_BOTTOM_PX = 268
-const val WIDGETS_MEASURED_PADLOCK_TOP_PX = 687
+// Full stock date TextClock bounds on the staging Kompakt: [81,234..400,271).
+// Reserve the view, not an ink edge that can cut off another date's descenders.
+const val WIDGETS_MEASURED_DATE_BOTTOM_PX = 271
 
 fun lockscreenBoxLayout(sizesDp: List<Int>, availableDp: Int): List<Int>? {
     if (sizesDp.any { it <= 0 }) return null
-    val total = sizesDp.sumOf { it.toLong() } + (sizesDp.size - 1).coerceAtLeast(0) * 8L + 16
-    return sizesDp.takeIf { total <= availableDp }
+    return sizesDp.takeIf { (it.maxOrNull() ?: 0) <= availableDp }
 }
 
 fun defaultLockscreenWidgetSize(minHeightDp: Float): LockscreenWidgetSize =

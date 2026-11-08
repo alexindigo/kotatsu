@@ -3,7 +3,6 @@ package com.gezimos.katapult.lockscreen
 import android.accessibilityservice.AccessibilityService
 import android.app.KeyguardManager
 import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetHostView
 import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
@@ -209,10 +208,8 @@ class LockscreenWidgetService :
     private var clockCover: View? = null
     private var messageOverlay: View? = null
     private var weatherOverlay: ComposeView? = null
-    private var widgetsOverlay: LinearLayout? = null
-    private var widgetsContent: LinearLayout? = null
-    private var cachedWidgets: List<LockscreenWidget> = emptyList()
-    private val widgetViews = mutableMapOf<LockscreenWidget, AppWidgetHostView>()
+    private var widgetsOverlay: FrameLayout? = null
+    private var widgetsContent: LockscreenWidgetSlot? = null
     private val widgetHost get() = LockscreenWidgetHost.get(this)
     private val weatherFeed by lazy { WeatherFeed.get(this) }
     private var weatherLease: AutoCloseable? = null
@@ -295,11 +292,13 @@ class LockscreenWidgetService :
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
+                    widgetsContent?.hide()
                     visibility.invalidate()
                     maybeStartScreensaver()
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     HostedWidgetWake(this@LockscreenWidgetService).begin()
+                    widgetsContent?.rotation?.wake()
                     visibility.beginEpoch()
                     syncWeatherLease()
                     weatherFeed.refresh(force = true)
@@ -331,7 +330,7 @@ class LockscreenWidgetService :
             SideScreenView(this, prefs.lockscreenWidgetStore.screens().first(), back, capture, close,
                 { widgetLaunch?.dispatched() }, { widgetLaunch?.pageVisible(it) })
         }
-        edgeGestures = EdgeGestures(this, mainHandler, prefs.edgeActions, ::edgeEligible,
+        edgeGestures = EdgeGestures(this, mainHandler, prefs.edgeActions, ::lockscreenInputEligible,
             { mainHandler.post { evaluate() } }, { edge, action ->
                 if (edgeEligible()) when (action) {
                     EdgeAction.SIDE_SCREEN -> sidePage?.settle(edge)
@@ -343,7 +342,7 @@ class LockscreenWidgetService :
                     EdgeAction.SIDE_SCREEN -> sidePage?.preview(edge, step)
                     else -> Unit
                 }
-            }, { sidePage?.cancelPreview() })
+            }, { sidePage?.cancelPreview() }, { delta -> widgetsContent?.rotation?.swipe(delta) })
         SensitiveAccess.initialize(this)
         SensitiveAccess.accessibilityConnection(true)
         policySubscription = SensitiveAccess.subscribe { mainHandler.post { syncWeatherLease(); evaluate() } }
@@ -409,7 +408,6 @@ class LockscreenWidgetService :
         removeMusicOverlay()
         removeMessageOverlay()
         stopWidgets()
-        widgetViews.clear()
         widgetsContent = null
         widgetHost.releaseViews()
         lifecycleRegistry.currentState = Lifecycle.State.DESTROYED
@@ -616,59 +614,42 @@ class LockscreenWidgetService :
             return
         }
         val manager = AppWidgetManager.getInstance(this)
-        val available = selected.mapNotNull { widget -> manager.getAppWidgetInfo(widget.id)?.let { widget to it } }
-        val list = available.map { it.first }
+        val list = selected.filter { manager.getAppWidgetInfo(it.id) != null }
         try {
-            // Hidden views retain their RemoteViews callback and receive provider updates.
-            widgetHost.listen(true)
-            val shown = list.takeIf { onLockscreen && lockscreenBoxLayout(it.map { widget -> widget.size.heightDp },
-                LockscreenWidgetHost.availableDp(this)) != null }.orEmpty()
-            // The current observed epoch decides hints before any creation/size publication.
-            LockscreenWidgetHost.pulseVisible(this, visibility, shown)
-            if (cachedWidgets != list || widgetsContent == null) {
-                detachWidgetsOverlay()
-                widgetsContent?.removeAllViews()
-                widgetViews.keys.retainAll(list.toSet())
-                val themed = ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Light)
-                widgetsContent = LinearLayout(themed).apply {
-                    orientation = LinearLayout.VERTICAL
-                    gravity = Gravity.BOTTOM
-                    setBackgroundColor(Color.WHITE)
-                    setPadding(dp(8f), 0, dp(8f), dp(16f))
-                    available.forEachIndexed { index, (widget, info) ->
-                        val child = widgetViews.getOrPut(widget) {
-                            widgetHost.createWidgetView(themed, widget, info)
-                        }
-                        addView(child, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
-                            dp(widget.size.heightDp.toFloat())).apply { if (index > 0) topMargin = dp(8f) })
-                    }
-                }
-                cachedWidgets = list
-            }
-            if (shown.isEmpty()) {
+            val slot = widgetsContent ?: LockscreenWidgetSlot(
+                ContextThemeWrapper(this, android.R.style.Theme_DeviceDefault_Light), mainHandler,
+                { mainHandler.post { evaluate() } },
+            ).also { widgetsContent = it }
+            val shown = onLockscreen && list.isNotEmpty() && lockscreenBoxLayout(list.map { it.size.heightDp },
+                LockscreenWidgetHost.availableDp(this)) != null
+            slot.show(list, prefs.widgetRotation, shown, visibility)
+            if (!shown) {
                 removeWidgetsOverlay()
                 return
             }
             if (widgetsOverlay != null) return
             val bounds = getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
-            val contentHeight = list.sumOf { dp(it.size.heightDp.toFloat()) } + dp(((list.size - 1) * 8 + 16).toFloat())
-            val coverHeight = bounds.height() - (WIDGETS_MEASURED_PADLOCK_TOP_PX - dp(8f))
+            val geometry = LockscreenWidgetBoxGeometry.from(bounds, resources.displayMetrics.density)
+            val paper = LockscreenWidgetBox(this, slot, geometry)
             val params = WindowManager.LayoutParams().apply {
                 type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
-                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 format = PixelFormat.OPAQUE
                 width = WindowManager.LayoutParams.MATCH_PARENT
-                height = maxOf(contentHeight, coverHeight)
-                gravity = Gravity.BOTTOM
+                height = geometry.paper.height()
+                gravity = Gravity.TOP
+                y = geometry.paper.top
+                setFitInsetsTypes(0)
                 setTitle("Kotatsu lock-screen widgets")
             }
-            getSystemService(WindowManager::class.java).addView(widgetsContent, params)
-            widgetsOverlay = widgetsContent
+            widgetsOverlay = paper
+            getSystemService(WindowManager::class.java).addView(paper, params)
         } catch (_: Exception) { stopWidgets() }
     }
 
     private fun removeWidgetsOverlay() {
-        widgetHost.hideWidgets(this)
+        widgetsContent?.hide()
         detachWidgetsOverlay()
     }
 
@@ -676,13 +657,14 @@ class LockscreenWidgetService :
     private fun detachWidgetsOverlay() {
         widgetsOverlay?.let {
             try { getSystemService(WindowManager::class.java).removeView(it) } catch (_: Exception) {}
+            it.removeAllViews()
         }
         widgetsOverlay = null
     }
 
     private fun stopWidgets() {
         removeWidgetsOverlay()
-        try { widgetHost.listen(false) } catch (_: Exception) {}
+        try { widgetsContent?.stop() } catch (_: Exception) {}
     }
 
     /**
@@ -808,7 +790,11 @@ class LockscreenWidgetService :
         applyWidgets(onLockscreen)
         applyLockscreenMessage(onLockscreen)
         applyWeather(onLockscreen)
-        edgeGestures?.apply(onLockscreen && DeviceHelper.isMuditaKompakt() && prefs.edgeActions.enabled)
+        val slotArea = if (widgetsOverlay != null && prefs.widgetSwipeToSwitch && prefs.lockscreenWidgetStore.read().size >= 2)
+            LockscreenWidgetBoxGeometry.from(getSystemService(WindowManager::class.java).currentWindowMetrics.bounds,
+                resources.displayMetrics.density).content
+            else null
+        edgeGestures?.apply(onLockscreen && DeviceHelper.isMuditaKompakt(), slotArea)
         if (!onLockscreen || !prefs.lockscreenWidget) {
             removeOverlay()
             scheduleKeyguardRecheck()
@@ -842,7 +828,9 @@ class LockscreenWidgetService :
      * hides overlays. Polled instead of event-driven: re-showing the PIN doesn't re-fire focus events when its
      * field kept focus.
      */
-    private fun edgeEligible(): Boolean = prefs.edgeActions.enabled && DeviceHelper.isMuditaKompakt() &&
+    private fun edgeEligible(): Boolean = prefs.edgeActions.enabled && lockscreenInputEligible()
+
+    private fun lockscreenInputEligible(): Boolean = DeviceHelper.isMuditaKompakt() &&
         SensitiveAccess.accessibility() && getSystemService(KeyguardManager::class.java).isKeyguardLocked &&
         getSystemService(PowerManager::class.java).isInteractive && !KatapultDreamService.isDreaming &&
         !ScreensaverActivity.isShowing && !inCall() && visibility.recheck(true, ::lockscreenCovered)

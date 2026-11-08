@@ -5,26 +5,25 @@ import org.junit.Test
 
 class LockscreenWidgetsTest {
     @Test fun exactFitKeepsRequestedHeights() {
-        assertEquals(listOf(64, 112), lockscreenBoxLayout(listOf(64, 112), 200))
+        assertEquals(listOf(64, 112), lockscreenBoxLayout(listOf(64, 112), 112))
     }
 
     @Test fun refusesInsteadOfShrinking() {
-        assertNull(lockscreenBoxLayout(listOf(64, 112), 199))
-        assertNull(lockscreenBoxLayout(listOf(160, 160, 160), 400))
+        assertNull(lockscreenBoxLayout(listOf(64, 112), 111))
+        assertNull(lockscreenBoxLayout(listOf(160, 160, 160), 159))
     }
 
-    @Test fun includesOnlyInterWidgetGapsAndBottomPadding() {
-        assertEquals(listOf(64), lockscreenBoxLayout(listOf(64), 80))
-        assertNull(lockscreenBoxLayout(listOf(64), 79))
-        assertEquals(listOf(64, 64, 64), lockscreenBoxLayout(listOf(64, 64, 64), 224))
-        assertNull(lockscreenBoxLayout(listOf(64, 64, 64), 223))
+    @Test fun slotListDoesNotReserveStackGapsOrAccumulateHeights() {
+        assertEquals(listOf(64), lockscreenBoxLayout(listOf(64), 64))
+        assertNull(lockscreenBoxLayout(listOf(64), 63))
+        assertEquals(List(100) { 160 }, lockscreenBoxLayout(List(100) { 160 }, 160))
     }
 
     @Test fun emptyAndInvalidHeightsAreBounded() {
         assertEquals(emptyList<Int>(), lockscreenBoxLayout(emptyList(), 16))
         assertNull(lockscreenBoxLayout(listOf(0), 100))
         assertNull(lockscreenBoxLayout(listOf(-1), 100))
-        assertNull(lockscreenBoxLayout(listOf(Int.MAX_VALUE, Int.MAX_VALUE), Int.MAX_VALUE))
+        assertEquals(listOf(Int.MAX_VALUE, Int.MAX_VALUE), lockscreenBoxLayout(listOf(Int.MAX_VALUE, Int.MAX_VALUE), Int.MAX_VALUE))
     }
 
     @Test fun providerMinimumSelectsSmallestSufficientSizeOrLarge() {

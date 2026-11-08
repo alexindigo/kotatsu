@@ -81,7 +81,8 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
 
         fun availableDp(context: Context): Int {
             val bounds = context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds
-            return ((bounds.height() - WIDGETS_MEASURED_DATE_BOTTOM_PX) / context.resources.displayMetrics.density - 8).toInt()
+            val density = context.resources.displayMetrics.density
+            return (LockscreenWidgetBoxGeometry.from(bounds, density).content.height() / density).toInt()
         }
 
         /** Optional generic host hint. Providers may ignore it; absent means unspecified. */
@@ -93,7 +94,8 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
             val density = context.resources.displayMetrics.density
             val host = get(context)
             val side = host.sideSizes[widget.id]
-            val width = side?.width ?: ((context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds.width() / density).toInt() - 16)
+            val width = side?.width ?: (LockscreenWidgetBoxGeometry.from(
+                context.getSystemService(WindowManager::class.java).currentWindowMetrics.bounds, density).content.width() / density).toInt()
             val height = side?.height ?: widget.size.heightDp
             AppWidgetManager.getInstance(context).updateAppWidgetOptions(widget.id, Bundle().apply {
                 putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width)
@@ -102,15 +104,20 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
                 putInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, height)
                 putInt(AppWidgetManager.OPTION_APPWIDGET_HOST_CATEGORY, if (side != null) AppWidgetProviderInfo.WIDGET_CATEGORY_HOME_SCREEN else AppWidgetProviderInfo.WIDGET_CATEGORY_KEYGUARD)
                 putBoolean(OPTION_HOST_TITLE, side != null)
-                putLong(OPTION_HOST_WAKE, HostedWidgetWake(context).current())
-                get(context).visibility.hint(widget.id)?.let { putBoolean(OPTION_HOST_VISIBLE, it) }
+                val visible = host.visibility.hint(widget.id)
+                // Options are merged by AppWidgetManager. A hide/resize keeps the last shown wake identity.
+                if (visible != false) putLong(OPTION_HOST_WAKE, HostedWidgetWake(context).current())
+                visible?.let { putBoolean(OPTION_HOST_VISIBLE, it) }
             })
         }
 
-        internal fun pulseVisible(context: Context, visibility: LockscreenVisibility, shown: List<LockscreenWidget>) {
+        internal fun pulseVisible(context: Context, visibility: LockscreenVisibility, shown: List<LockscreenWidget>,
+                                  selected: List<LockscreenWidget> = shown) {
             val host = get(context)
             host.surfaces[Surface.BOX] = shown
-            host.publishVisibility(context, host.visibility.reconcile(visibility, host.surfaces.values.flatten()))
+            val hidden = host.visibility.includeHidden(selected)
+            host.publishVisibility(context, (host.visibility.reconcile(visibility, host.surfaces.values.flatten()) + hidden)
+                .distinctBy { it.id })
         }
     }
 }

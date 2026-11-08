@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">Wechsel</string>
+    <string name="widget_rotation_help">Je ein Widget in der Reihenfolge der Liste anzeigen</string>
+    <string name="widget_rotation_wake">Beim Aufwecken</string>
+    <string name="widget_rotation_30s">Im Wachzustand alle 30 s</string>
+    <string name="widget_rotation_1m">Im Wachzustand jede 1 Min.</string>
+    <string name="widget_rotation_5m">Im Wachzustand alle 5 Min.</string>
+    <string name="widget_rotation_15m">Im Wachzustand alle 15 Min.</string>
+    <string name="widget_rotation_value_30s">Alle 30 s</string>
+    <string name="widget_rotation_value_1m">Jede 1 Min.</string>
+    <string name="widget_rotation_value_5m">Alle 5 Min.</string>
+    <string name="widget_rotation_value_15m">Alle 15 Min.</string>
+    <string name="widget_swipe">Wischen zum Wechseln</string>
+    <string name="widget_swipe_help">Im Widgetbereich nach links oder rechts wischen, um Widgets zu wechseln</string>
+</resources>

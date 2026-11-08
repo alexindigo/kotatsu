@@ -8,6 +8,10 @@ internal class HostedWidgetVisibility {
     // Never-shown widgets have no visibility transition to announce.
     fun hint(id: Int): Boolean? = states[id]?.visible
 
+    fun includeHidden(selected: List<LockscreenWidget>): List<LockscreenWidget> = selected.filter {
+        if (it.id in states) false else { states[it.id] = State(it, false); true }
+    }
+
     fun reconcile(visibility: LockscreenVisibility, selected: List<LockscreenWidget>): List<LockscreenWidget> {
         val shown = selected.takeIf { visibility.visible }.orEmpty()
         return transition(shown, visibility.widgetsToPulse(shown.map { it.id }).toSet())

@@ -62,7 +62,7 @@ class LockscreenWidgetStore(context: Context, private val prefs: SharedPreferenc
     fun canAdd(size: LockscreenWidgetSize): Result {
         val available = LockscreenWidgetHost.availableDp(context)
         return synchronized(prefs) {
-            if (lockscreenBoxLayout(current().map { it.size.heightDp } + size.heightDp, available) != null) Result.APPLIED else Result.NO_ROOM
+            if (lockscreenBoxLayout(listOf(size.heightDp), available) != null) Result.APPLIED else Result.NO_ROOM
         }
     }
 

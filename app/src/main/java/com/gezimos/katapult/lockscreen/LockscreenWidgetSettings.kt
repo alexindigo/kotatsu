@@ -22,6 +22,10 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
     private val store = prefs.lockscreenWidgetStore
     var enabled by mutableStateOf(prefs.lockscreenWidgetsEnabled)
         private set
+    var rotation by mutableStateOf(prefs.widgetRotation)
+        private set
+    var swipeToSwitch by mutableStateOf(prefs.widgetSwipeToSwitch)
+        private set
     var rows by mutableStateOf(emptyList<WidgetSettingsRow>())
         private set
     var screens by mutableStateOf(listOf(SideScreen()))
@@ -34,6 +38,8 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
 
     fun refresh() {
         enabled = prefs.lockscreenWidgetsEnabled
+        rotation = prefs.widgetRotation
+        swipeToSwitch = prefs.widgetSwipeToSwitch
         screens = store.screens()
         rows = widgets().map { widget ->
             val info = manager.getAppWidgetInfo(widget.id)
@@ -43,6 +49,8 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
     }
 
     private fun widgets() = store.read()
+    fun rotation(value: WidgetRotation) { prefs.widgetRotation = value; refresh() }
+    fun swipeToSwitch(value: Boolean) { prefs.widgetSwipeToSwitch = value; refresh() }
     fun screenName(screen: SideScreen = screens.first()): String = sideScreenName(context, screen)
     fun slotLabel(cell: Int): String = screens.first().slots[cell]?.let {
         manager.getAppWidgetInfo(it)?.loadLabel(context.packageManager)

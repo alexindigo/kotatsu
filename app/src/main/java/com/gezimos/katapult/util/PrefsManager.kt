@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import com.gezimos.katapult.model.AppModel
 import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
 import com.gezimos.katapult.lockscreen.EdgeActionStore
+import com.gezimos.katapult.lockscreen.WidgetRotation
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -63,7 +64,8 @@ class PrefsManager(context: Context) {
     /** Widget state must not take its transaction lock for unrelated preference notifications
      * (e.g. an icon commit whose caller is still waiting for a Main-thread interaction). */
     fun subscribeLockscreenWidgetChanges(changed: () -> Unit): AutoCloseable = subscribeChanges { key ->
-        if (key == null || key == LockscreenWidgetStore.KEY || key == LockscreenWidgetStore.SCREENS || key == KEY_LOCKSCREEN_WIDGETS_ENABLED) changed()
+        if (key == null || key == LockscreenWidgetStore.KEY || key == LockscreenWidgetStore.SCREENS || key == KEY_LOCKSCREEN_WIDGETS_ENABLED ||
+            key == KEY_WIDGET_ROTATION || key == KEY_WIDGET_SWIPE) changed()
     }
 
     data class PolicyImportPreview(val localChoices: Map<String, Boolean>, val incomingChoices: Map<String, Boolean>) {
@@ -429,6 +431,14 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_LOCKSCREEN_WIDGETS_ENABLED, false)
         set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WIDGETS_ENABLED, value).apply()
 
+    var widgetRotation: WidgetRotation
+        get() = WidgetRotation.fromId(strPref(KEY_WIDGET_ROTATION, WidgetRotation.WAKE.name))
+        set(value) = prefs.edit().putString(KEY_WIDGET_ROTATION, value.name).apply()
+
+    var widgetSwipeToSwitch: Boolean
+        get() = boolPref(KEY_WIDGET_SWIPE, true)
+        set(value) = prefs.edit().putBoolean(KEY_WIDGET_SWIPE, value).apply()
+
     val lockscreenWidgets: String
         get() = lockscreenWidgetStore.exportSelection() ?: "[]"
 
@@ -716,6 +726,8 @@ class PrefsManager(context: Context) {
     private fun declaredImportDefault(key: String): Any? = when (key) {
         EdgeActionStore.ENABLED -> false
         EdgeActionStore.LEFT, EdgeActionStore.RIGHT -> ""
+        KEY_WIDGET_ROTATION -> WidgetRotation.WAKE.name
+        KEY_WIDGET_SWIPE -> true
         KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER, KEY_WEATHER_CELSIUS,
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
@@ -746,6 +758,7 @@ class PrefsManager(context: Context) {
     }
 
     private fun isUsableString(key: String, value: String): Boolean = when (key) {
+        KEY_WIDGET_ROTATION -> WidgetRotation.entries.any { it.name == value }
         KEY_WALLPAPER_SOURCE -> WallpaperSource.entries.any { it.name == value }
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT -> value == "system" || runCatching {
             SimpleDateFormat(value, Locale.getDefault())
@@ -874,6 +887,8 @@ class PrefsManager(context: Context) {
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
         private const val KEY_LOCKSCREEN_WEATHER = "lockscreen_weather"
         private const val KEY_LOCKSCREEN_WIDGETS_ENABLED = "lockscreen_widgets_enabled"
+        private const val KEY_WIDGET_ROTATION = "lockscreen_widget_rotation"
+        private const val KEY_WIDGET_SWIPE = "lockscreen_widget_swipe"
         private const val KEY_LOCKSCREEN_WIDGET_Y = "lockscreen_widget_y"
         private const val KEY_LOCKSCREEN_WIDGET_ROWS = "lockscreen_widget_rows"
         private const val KEY_LOCKSCREEN_WIDGET_EXCLUDED = "lockscreen_widget_excluded"

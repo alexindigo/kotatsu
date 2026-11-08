@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">Afwisseling</string>
+    <string name="widget_rotation_help">Toon &#233;&#233;n widget tegelijk, in lijstvolgorde</string>
+    <string name="widget_rotation_wake">Bij elk ontwaken</string>
+    <string name="widget_rotation_30s">Scherm aan, elke 30 s</string>
+    <string name="widget_rotation_1m">Scherm aan, elke 1 min</string>
+    <string name="widget_rotation_5m">Scherm aan, elke 5 min</string>
+    <string name="widget_rotation_15m">Scherm aan, elke 15 min</string>
+    <string name="widget_rotation_value_30s">Elke 30 s</string>
+    <string name="widget_rotation_value_1m">Elke 1 min</string>
+    <string name="widget_rotation_value_5m">Elke 5 min</string>
+    <string name="widget_rotation_value_15m">Elke 15 min</string>
+    <string name="widget_swipe">Vegen om te wisselen</string>
+    <string name="widget_swipe_help">Veeg naar links of rechts in het widgetgebied om te wisselen</string>
+</resources>

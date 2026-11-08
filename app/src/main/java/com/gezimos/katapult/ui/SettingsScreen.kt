@@ -478,6 +478,10 @@ fun SettingsScreen(
                 { on ->
                     widgetSettings.requestEnabled(on) { viewModel.requestActionService(AccessibilityFeature.LOCKSCREEN_WIDGETS) }
                 }))
+            Entry(com.gezimos.katapult.ui.settings.widgetRotationEntry(widgetSettings.rotation, widgetSettings::rotation),
+                onChoice = { navigation.push("widget-rotation") })
+            Entry(SettingsEntry.Switch("widget-swipe", stringResource(R.string.widget_swipe),
+                stringResource(R.string.widget_swipe_help), widgetSettings.swipeToSwitch, widgetSettings::swipeToSwitch))
             widgetSettings.rows.forEach { row ->
                 Entry(SettingsEntry.Open(row.widget.id.toString(), row.label,
                     stringResource(R.string.paper_widget_manage_help), { navigation.push("widget:${row.widget.id}") },
@@ -500,6 +504,10 @@ fun SettingsScreen(
             onRemove = { widgetSettings.remove(row.widget.id) },
             onDismiss = popPage,
         )
+    }
+    if (destination == "widget-rotation") {
+        val entry = com.gezimos.katapult.ui.settings.widgetRotationEntry(widgetSettings.rotation, widgetSettings::rotation)
+        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
     }
     if (destination == "providers") {
         val providers = remember { widgetSettings.providers() }

@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">Rotation</string>
+    <string name="widget_rotation_help">Afficher un widget &#224; la fois, dans l\'ordre de la liste</string>
+    <string name="widget_rotation_wake">&#192; chaque r&#233;veil</string>
+    <string name="widget_rotation_30s">&#201;cran allum&#233;, toutes les 30 s</string>
+    <string name="widget_rotation_1m">&#201;cran allum&#233;, chaque 1 min</string>
+    <string name="widget_rotation_5m">&#201;cran allum&#233;, toutes les 5 min</string>
+    <string name="widget_rotation_15m">&#201;cran allum&#233;, toutes les 15 min</string>
+    <string name="widget_rotation_value_30s">Toutes les 30 s</string>
+    <string name="widget_rotation_value_1m">Chaque 1 min</string>
+    <string name="widget_rotation_value_5m">Toutes les 5 min</string>
+    <string name="widget_rotation_value_15m">Toutes les 15 min</string>
+    <string name="widget_swipe">Changer par balayage</string>
+    <string name="widget_swipe_help">Balayer vers la gauche ou la droite dans la zone du widget pour en changer</string>
+</resources>

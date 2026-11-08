@@ -1,0 +1,15 @@
+<resources>
+    <string name="widget_rotation">Rotacja</string>
+    <string name="widget_rotation_help">Pokazuj jeden wid&#380;et naraz, w kolejno&#347;ci listy</string>
+    <string name="widget_rotation_wake">Przy wybudzeniu</string>
+    <string name="widget_rotation_30s">Ekran w&#322;&#261;czony, co 30 s</string>
+    <string name="widget_rotation_1m">Ekran w&#322;&#261;czony, co 1 min</string>
+    <string name="widget_rotation_5m">Ekran w&#322;&#261;czony, co 5 min</string>
+    <string name="widget_rotation_15m">Ekran w&#322;&#261;czony, co 15 min</string>
+    <string name="widget_rotation_value_30s">Co 30 s</string>
+    <string name="widget_rotation_value_1m">Co 1 min</string>
+    <string name="widget_rotation_value_5m">Co 5 min</string>
+    <string name="widget_rotation_value_15m">Co 15 min</string>
+    <string name="widget_swipe">Zmieniaj gestem</string>
+    <string name="widget_swipe_help">Przesu&#324; w lewo lub w prawo w obszarze wid&#380;etu, aby go zmieni&#263;</string>
+</resources>
