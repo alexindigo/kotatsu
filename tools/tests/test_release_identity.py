@@ -14,8 +14,8 @@ verify=importlib.util.module_from_spec(spec);spec.loader.exec_module(verify)
 spec=importlib.util.spec_from_file_location('prepare_release',Path(__file__).parents[1]/'prepare_release.py')
 prepare=importlib.util.module_from_spec(spec);spec.loader.exec_module(prepare)
 
-APPS={'app':('com.alexindigo.kotatsu',14,'Kotatsu'),
-      'kotatsu-weather':('com.alexindigo.kotatsu.weather',9,'Kotatsu Weather'),
+APPS={'app':('com.alexindigo.kotatsu',15,'Kotatsu'),
+       'kotatsu-weather':('com.alexindigo.kotatsu.weather',10,'Kotatsu Weather'),
       'kotatsu-notes':('com.alexindigo.kotatsu.notes',9,'Kotatsu Notes')}
 
 
@@ -33,10 +33,10 @@ class ReleaseIdentityTest(unittest.TestCase):
             shutil.copyfile(repo/module/'src/main/res/values/strings.xml',source/'strings.xml')
             directory=self.root/module/'build/outputs/apk/release';directory.mkdir(parents=True)
             (directory/'fixture.apk').write_bytes((module+' release bytes').encode())
-            self.metadata[module]={'variantName':'release','applicationId':package,'elements':[{'outputFile':'fixture.apk','versionCode':code,'versionName':'0.5.2'}]}
+            self.metadata[module]={'variantName':'release','applicationId':package,'elements':[{'outputFile':'fixture.apk','versionCode':code,'versionName':'0.6'}]}
             self.write_metadata(module)
             self.packages[module]=package;self.certs[module]='a'*64
-            self.badging[module]=f"package: name='{package}' versionCode='{code}' versionName='0.5.2'\napplication-label:'{label}'\n"
+            self.badging[module]=f"package: name='{package}' versionCode='{code}' versionName='0.6'\napplication-label:'{label}'\n"
         self.provenance={'head':'a'*40,'headTree':'b'*40,'sourceReceiptSha256':'c'*64}
 
     def write_metadata(self,module):
@@ -61,7 +61,7 @@ class ReleaseIdentityTest(unittest.TestCase):
         self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
         for module in APPS:
             path=self.root/module/'build.gradle.kts';original=path.read_text()
-            for old,new in (('versionName = "0.5.2"','versionName = "stale"'),
+            for old,new in (('versionName = "0.6"','versionName = "stale"'),
                             ('versionCode = '+str(APPS[module][1]),'versionCode = 1'),
                             ('applicationId = "'+APPS[module][0]+'"','applicationId = "other.app"')):
                 with self.subTest(module=module,field=old):
@@ -93,7 +93,7 @@ class ReleaseIdentityTest(unittest.TestCase):
             original=copy.deepcopy(self.metadata[module]);badging=self.badging[module]
             with self.subTest(module=module):
                 self.metadata[module]['elements'][0]['versionName']='0.5.1';self.write_metadata(module)
-                self.badging[module]=badging.replace('0.5.2','0.5.1')
+                self.badging[module]=badging.replace('0.6','0.5.1')
                 with self.assertRaisesRegex(verify.VerificationError,'metadata version'):self.check()
                 self.metadata[module]=original;self.write_metadata(module)
                 with self.assertRaisesRegex(verify.VerificationError,'Compiled APK version'):self.check()
@@ -103,7 +103,7 @@ class ReleaseIdentityTest(unittest.TestCase):
     def test_companion_package_label_and_debuggability_are_checked(self):
         for module in ('kotatsu-weather','kotatsu-notes'):
             original=self.badging[module]
-            for bad in (original.replace(APPS[module][2],'Wrong label'),original+'application-debuggable\n',original.replace("versionCode='9'","versionCode='1'")):
+            for bad in (original.replace(APPS[module][2],'Wrong label'),original+'application-debuggable\n',original.replace("versionCode='"+str(APPS[module][1])+"'","versionCode='1'")):
                 self.badging[module]=bad
                 with self.subTest(module=module),self.assertRaises(verify.VerificationError):self.check()
             self.badging[module]=original
@@ -128,7 +128,7 @@ class ReleaseIdentityTest(unittest.TestCase):
         for module,(package,code,label) in APPS.items():
             directory=self.root/module/'build/outputs/apk/release'
             directory.rename(directory.parent/'debug')
-            version='0.5.2-debug' if module=='app' else '0.5.2'
+            version='0.6-debug' if module=='app' else '0.6'
             if module=='app':label+=' Debug'
             self.packages[module]=package+'.debug'
             self.badging[module]=f"package: name='{package}.debug' versionCode='{code}' versionName='{version}'\napplication-label:'{label}'\napplication-debuggable\n"
@@ -137,9 +137,9 @@ class ReleaseIdentityTest(unittest.TestCase):
             (directory.parent/'debug/output-metadata.json').write_text(json.dumps(metadata))
         report=self.check()
         self.assertTrue(report['signaturesVerified'])
-        self.assertEqual(report['apps']['app']['versionName'],'0.5.2-debug')
-        self.assertEqual(report['apps']['kotatsu-weather']['versionName'],'0.5.2')
-        self.assertEqual(report['apps']['kotatsu-notes']['versionName'],'0.5.2')
+        self.assertEqual(report['apps']['app']['versionName'],'0.6-debug')
+        self.assertEqual(report['apps']['kotatsu-weather']['versionName'],'0.6')
+        self.assertEqual(report['apps']['kotatsu-notes']['versionName'],'0.6')
 
     def test_missing_or_duplicate_companion_apk_prevents_complete_set_report(self):
         for module in ('kotatsu-weather','kotatsu-notes'):
@@ -152,17 +152,17 @@ class ReleaseIdentityTest(unittest.TestCase):
 
     def test_publication_names_are_complete_and_copy_exact_metadata_selected_bytes(self):
         output=self.root/'published'
-        prepare.prepare(self.root,'v0.5.2',output)
-        self.assertEqual({p.name for p in output.iterdir()},{'kotatsu-v0.5.2.apk','kotatsu-weather-v0.5.2.apk','kotatsu-notes-v0.5.2.apk'})
+        prepare.prepare(self.root,'v0.6',output)
+        self.assertEqual({p.name for p in output.iterdir()},{'kotatsu-v0.6.apk','kotatsu-weather-v0.6.apk','kotatsu-notes-v0.6.apk'})
         for module in APPS:
-            name=('kotatsu' if module=='app' else module)+'-v0.5.2.apk'
+            name=('kotatsu' if module=='app' else module)+'-v0.6.apk'
             self.assertEqual((output/name).read_bytes(),(module+' release bytes').encode())
 
     def test_wrong_tag_or_incomplete_set_creates_no_publication(self):
         output=self.root/'published'
-        with self.assertRaisesRegex(prepare.VerificationError,'tag'):prepare.prepare(self.root,'v0.6',output)
+        with self.assertRaisesRegex(prepare.VerificationError,'tag'):prepare.prepare(self.root,'v0.5.2',output)
         self.metadata['kotatsu-notes']['elements'][0]['versionCode']=1;self.write_metadata('kotatsu-notes')
-        with self.assertRaisesRegex(prepare.VerificationError,'metadata version'):prepare.prepare(self.root,'v0.5.2',output)
+        with self.assertRaisesRegex(prepare.VerificationError,'metadata version'):prepare.prepare(self.root,'v0.6',output)
         self.assertFalse(output.exists())
 
 

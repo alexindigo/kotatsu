@@ -2,6 +2,22 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.6] — 2026-11-08
+
+### Added
+- **Lock-screen edge swipes** open the side screen from the left and the secure camera from the right by default. Choose Side screen, Camera or Nothing for each edge. Setup explains how to allow Open Camera while locked.
+- **Side screen** hosts one Full widget or a Split top/bottom pair, with a screen name and a scroll rail for lists. Widgets that open apps ask for the phone's PIN first.
+- **Kotatsu Notes** is a separate, optional app with a Mudita Notes task-list widget. Choose a list, then check and uncheck its items while locked.
+- **Quote of the day** shows quotes from a Mudita Notes text note in the lock-screen widget slot. Choose daily, hourly or on-wake changes, with sequential, shuffled or random order.
+- **Kotatsu Notes settings** bring task-list and quote choices together, with separate switches for the two widget kinds.
+
+### Changed
+- **Lock-screen widgets** share a single slot. Rotate on each wake or every 30 seconds, 1, 5 or 15 minutes while awake, or swipe to switch. Settings shows each widget as a card with its controls.
+- **Kotatsu Weather margins** are left to the host, so the widget fits the lock-screen slot and side screen without extra outer padding.
+
+### Fixed
+- **Kotatsu Weather editor** keeps its rows in place during forecast refreshes, so taps on its controls are no longer lost.
+
 ## [0.5.2] — 2026-10-31
 
 ### Added

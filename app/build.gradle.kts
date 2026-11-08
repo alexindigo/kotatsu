@@ -4,7 +4,7 @@ plugins {
 }
 
 base {
-    archivesName.set("kotatsu-v0.5.2")
+    archivesName.set("kotatsu-v0.6")
 }
 
 android {
@@ -19,8 +19,8 @@ android {
         applicationId = "com.alexindigo.kotatsu"
         minSdk = 30
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.5.2"
+        versionCode = 15
+        versionName = "0.6"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
