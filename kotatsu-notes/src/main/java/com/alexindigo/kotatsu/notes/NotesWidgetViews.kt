@@ -26,13 +26,32 @@ object NotesWidgetViews {
 
     @android.annotation.TargetApi(31)
     fun list(context: Context, widgetId: Int, rendered: RenderedList, hostTitle: Boolean): RemoteViews {
+        // The vector's transparent 2-of-24-unit border and the cell drawable's own
+        // padding define its visible left edge. Headings and collection clipping
+        // share that geometry, rather than a copied screenshot offset.
+        val opticalBorder = floor(context.resources.getDimension(R.dimen.task_button_size) * 2 / 24).toInt()
+        val cellPadding = android.graphics.Rect().also { context.getDrawable(R.drawable.task_checkbox_cell)!!.getPadding(it) }
+        val headingStart = context.resources.getDimensionPixelSize(R.dimen.task_row_start) + cellPadding.left + opticalBorder
         val template = PendingIntent.getBroadcast(context, widgetId,
             Intent(context, NotesWidgetProvider::class.java).setAction(TICK)
                 .setData(Uri.parse("kotatsu-notes://widget/$widgetId"))
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
-        val items = RemoteViews.RemoteCollectionItems.Builder().setHasStableIds(false).setViewTypeCount(1)
+        val items = RemoteViews.RemoteCollectionItems.Builder().setHasStableIds(false).setViewTypeCount(3)
         rendered.snapshot.items!!.forEachIndexed { index, item ->
+            if (item.kind != TaskRowKind.ITEM) {
+                items.addItem(index.toLong(), RemoteViews(context.packageName,
+                    if (item.kind == TaskRowKind.HEADING) R.layout.widget_task_heading else R.layout.widget_task_section_gap).apply {
+                    if (item.kind == TaskRowKind.HEADING) {
+                        setTextViewText(R.id.task_heading, item.text)
+                        setViewPadding(R.id.task_heading, headingStart,
+                            context.resources.getDimensionPixelSize(R.dimen.task_button_padding),
+                            (24 * context.resources.displayMetrics.density + .5f).toInt(),
+                            context.resources.getDimensionPixelSize(R.dimen.task_button_padding))
+                    }
+                })
+                return@forEachIndexed
+            }
             val command = Intent().putExtra(TOKEN, rendered.token).putExtra(INDEX, index)
             items.addItem(index.toLong(), RemoteViews(context.packageName, R.layout.widget_task).apply {
                 setTextViewText(R.id.task_text, item.text)
@@ -58,7 +77,6 @@ object NotesWidgetViews {
             setViewVisibility(R.id.tasks, View.VISIBLE)
             // Exclude the vector artwork's transparent 2-of-24-unit border from
             // the collection's outer edges. Native scrolling and clipping own it.
-            val opticalBorder = floor(context.resources.getDimension(R.dimen.task_button_size) * 2 / 24).toInt()
             setViewPadding(R.id.tasks, 0, -opticalBorder, 0, -opticalBorder)
             setPendingIntentTemplate(R.id.tasks, template)
             setRemoteAdapter(R.id.tasks, items.build())

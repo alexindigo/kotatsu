@@ -18,6 +18,9 @@ public class FakeNotesProvider extends ContentProvider {
     private boolean titlesOnly;
     private String quoteContent;
     private boolean textTitlesOnly;
+    private String shoppingContent;
+    private long shoppingUpdatedAt;
+    public static final String SHOPPING = "Farmers market\n\n\t\u25e6\tPotato 5-6\n\t\u25e6\tSome seasonally fruits\n\t\u25e6\tAvocado 3\n\n\nJapanses store\n\t\u25e6\tJapanese eggplant 3 if they sell\n\t\u25e6\tPersimmon 5-6\n\t\u25e6\tNatto 2";
 
     @Override public boolean onCreate() { return true; }
     @Override public String getType(Uri uri) { return "vnd.android.cursor.dir/notes"; }
@@ -28,6 +31,17 @@ public class FakeNotesProvider extends ContentProvider {
             String[] args, String order) {
         require(COLLECTION.equals(uri));
         boolean choosing = Arrays.equals(projection, new String[]{"id", "title"});
+        if (selection.contains("IN")) {
+            require(choosing ? "note_type IN (?, ?)".equals(selection) : "id = ? AND note_type IN (?, ?)".equals(selection));
+            require(Arrays.equals(args, choosing ? new String[]{"CHECKLIST", "TEXT"} : new String[]{args[0], "CHECKLIST", "TEXT"}));
+            require(choosing || Arrays.equals(projection, new String[]{"id", "title", "content", "updated_at", "note_type"}));
+            if (choosing) { require("updated_at DESC, id ASC".equals(order)); titlesOnly = true; }
+            MatrixCursor result = new MatrixCursor(projection);
+            if (content != null && (choosing || "4".equals(args[0]))) result.addRow(choosing ? new Object[]{4L, title} : new Object[]{4L, title, content, updatedAt, "CHECKLIST"});
+            if (quoteContent != null && (choosing || "7".equals(args[0]))) result.addRow(choosing ? new Object[]{7L, "Kotatsu quotes"} : new Object[]{7L, "Kotatsu quotes", quoteContent, 100L, "TEXT"});
+            if (shoppingContent != null && (choosing || "8".equals(args[0]))) result.addRow(choosing ? new Object[]{8L, "Kotatsu shopping test"} : new Object[]{8L, "Kotatsu shopping test", shoppingContent, shoppingUpdatedAt, "TEXT"});
+            return result;
+        }
         boolean text = args != null && "TEXT".equals(args[args.length - 1]);
         if (text) {
             if (choosing) {
@@ -74,6 +88,11 @@ public class FakeNotesProvider extends ContentProvider {
         require("id = ? AND note_type = ? AND content = ? AND updated_at = ?".equals(selection));
         require(values.keySet().equals(new HashSet<>(Arrays.asList("content", "updated_at"))));
         writes++;
+        if (shoppingContent != null && Arrays.equals(args, new String[]{"8", "TEXT", shoppingContent, Long.toString(shoppingUpdatedAt)})) {
+            shoppingContent = values.getAsString("content"); shoppingUpdatedAt = values.getAsLong("updated_at");
+            getContext().getContentResolver().notifyChange(Uri.withAppendedPath(COLLECTION, "8"), null);
+            return 1;
+        }
         if (content == null || !Arrays.equals(args, new String[]{"4", "CHECKLIST", content, Long.toString(updatedAt)})) return 0;
         content = values.getAsString("content");
         updatedAt = values.getAsLong("updated_at");
@@ -86,6 +105,7 @@ public class FakeNotesProvider extends ContentProvider {
             case "host-capture": return NotesCrossPackageHostActivity.capture();
             case "host-close": NotesCrossPackageHostActivity.closeHost(); return new Bundle();
             case "reset":
+                shoppingContent = null; shoppingUpdatedAt = 100;
                 quoteContent = "First quote\nFirst author\n\nSecond quote\n\nThird quote\nThird author"; textTitlesOnly = false;
                 writes = 0; titlesOnly = false; title = "Kotatsu long list"; updatedAt = 100;
                 content = "[{\"text\":\"Milk\",\"checked\":false},{\"text\":\"Ask the pharmacist about the allergy tablets for the weekend trip\",\"checked\":false}]";
@@ -113,6 +133,9 @@ public class FakeNotesProvider extends ContentProvider {
                 getContext().getContentResolver().notifyChange(COLLECTION, null);
                 break;
             case "stats": break;
+            case "shopping":
+                shoppingContent = SHOPPING; shoppingUpdatedAt = 100;
+                break;
             case "quote-edit":
                 quoteContent = arg;
                 getContext().getContentResolver().notifyChange(Uri.withAppendedPath(COLLECTION, "7"), null);
@@ -123,6 +146,7 @@ public class FakeNotesProvider extends ContentProvider {
         Bundle result = new Bundle();
         result.putInt("writes", writes); result.putBoolean("titlesOnly", titlesOnly); result.putString("content", content);
         result.putBoolean("textTitlesOnly", textTitlesOnly); result.putString("quoteContent", quoteContent);
+        result.putString("shoppingContent", shoppingContent);
         return result;
     }
     @Override public Uri insert(Uri uri, ContentValues values) { throw new UnsupportedOperationException(); }

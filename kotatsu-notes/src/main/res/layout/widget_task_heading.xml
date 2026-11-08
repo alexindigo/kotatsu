@@ -1,0 +1,7 @@
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/task_heading" android:layout_width="match_parent" android:layout_height="wrap_content"
+    style="@style/NotesWidgetHeading" android:textSize="23sp" android:lineHeight="28sp"
+    android:includeFontPadding="false" android:singleLine="true" android:ellipsize="end"
+    android:paddingStart="@dimen/task_row_start" android:paddingEnd="24dp"
+    android:paddingTop="@dimen/task_button_padding" android:paddingBottom="@dimen/task_button_padding"
+    android:accessibilityHeading="true" android:background="#FFFFFF" />

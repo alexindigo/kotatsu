@@ -105,6 +105,16 @@ class NotesWidgetInstrumentedTest {
                 rowIsBound &&
                 NotesStore(context).rendered(id)?.snapshot?.items?.firstOrNull()?.checked == checked
         }
+        fun textTickReachedHost(content: String, checked: Boolean): Boolean {
+            var rebound = false
+            onMain {
+                val list = view.findViewById<ListView>(R.id.tasks)
+                rebound = view.received > clickedAt && view.laidOut == view.received && !list.isLayoutRequested &&
+                    checkText("Potato 5-6")?.isChecked == checked
+            }
+            return rebound && fixture("stats").getString("shoppingContent") == content &&
+                NotesStore(context).rendered(id)?.snapshot?.items?.get(2)?.checked == checked
+        }
         fun heading(): String? {
             var title: String? = null
             onMain { view.findViewById<TextView>(R.id.heading)?.let {
@@ -207,7 +217,7 @@ class NotesWidgetInstrumentedTest {
 
     @Test fun pickerQueriesTitlesOnlyAndEveryLocaleHasItsOwnCopy() {
         fixture("reset")
-        assertEquals(listOf(TaskListChoice(4, "Kotatsu long list")), MuditaNotes(context.contentResolver).choices())
+        assertEquals(listOf(TaskListChoice(4, "Kotatsu long list"), TaskListChoice(7, "Kotatsu quotes")), MuditaNotes(context.contentResolver).choices())
         assertTrue(fixture("stats").getBoolean("titlesOnly"))
         val keys = listOf(R.string.widget_label, R.string.widget_description, R.string.choose_list, R.string.unlock_once, R.string.untitled_list,
             R.string.choose_widget, R.string.no_lists, R.string.add_widget_help, R.string.save_failed)
@@ -259,6 +269,56 @@ class NotesWidgetInstrumentedTest {
             java.io.File(dir, "widget-notes.png").outputStream().use {
                 assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
             }
+            bitmap.recycle()
+        }
+    }
+
+    @Test fun textNoteHeadingsGapsAndToggleReachTheRenderedHost() {
+        Host().use { f ->
+            fixture("shopping")
+            assertTrue(MuditaNotes(context.contentResolver).choices()!!.contains(TaskListChoice(8, "Kotatsu shopping test")))
+            NotesRuntime.enqueue { check(NotesStore(context).select(8)); NotesRuntime.refresh(context) }.get()
+            await("Text shopping rows must bind") { f.checkText("Potato 5-6") != null }
+            onMain {
+                val list = f.view.findViewById<ListView>(R.id.tasks)
+                assertEquals(10, list.count)
+                val heading = list.getChildAt(0).findViewById<TextView>(R.id.task_heading)
+                val check = f.checkText("Potato 5-6")!!
+                assertEquals("Farmers market", heading.text.toString())
+                assertEquals(700, heading.typeface.weight)
+                assertEquals(23 * context.resources.displayMetrics.scaledDensity, heading.textSize, 1f)
+                assertEquals(1, heading.maxLines)
+                assertNull(list.getChildAt(0).findViewById<CheckBox>(R.id.task_check))
+                val h = IntArray(2).also(heading::getLocationOnScreen)
+                val c = IntArray(2).also(check::getLocationOnScreen)
+                val drawing = android.graphics.Bitmap.createBitmap(check.width, check.height, android.graphics.Bitmap.Config.ARGB_8888)
+                val canvas = android.graphics.Canvas(drawing).apply { drawColor(android.graphics.Color.WHITE) }
+                check.draw(canvas)
+                val inkLeft = (0 until drawing.width).first { x -> (0 until drawing.height).any { y ->
+                    android.graphics.Color.red(drawing.getPixel(x, y)) < 128
+                } }
+                drawing.recycle()
+                assertEquals("Section title starts at visible checkbox drawing", (c[0] + inkLeft).toFloat(),
+                    (h[0] + heading.totalPaddingLeft).toFloat(), 1f)
+                val gap = list.getChildAt(1).height
+                assertEquals(context.resources.getDimensionPixelSize(R.dimen.task_section_gap), gap)
+                fun textTop(view: TextView) = IntArray(2).also(view::getLocationOnScreen)[1] + view.totalPaddingTop
+                val afterBlank = textTop(list.getChildAt(2).findViewById(R.id.task_text)) - textTop(heading)
+                val direct = textTop(list.getChildAt(7).findViewById(R.id.task_text)) -
+                    textTop(list.getChildAt(6).findViewById(R.id.task_heading))
+                assertEquals("Only the source blank line adds section space", gap.toFloat(), (afterBlank - direct).toFloat(), 1f)
+            }
+            f.click("Potato 5-6")
+            await("Text marker and authoritative row must agree") {
+                f.textTickReachedHost(FakeNotesProvider.SHOPPING.replaceFirst("\u25e6", "\u2713"), true)
+            }
+            f.click("Potato 5-6")
+            await("Untick restores original source") {
+                f.textTickReachedHost(FakeNotesProvider.SHOPPING, false)
+            }
+            val dir = java.io.File(context.getExternalFilesDir(null), "notes-renders").apply { mkdirs() }
+            val bitmap = capture(f.activity)
+            java.io.File(dir, "shopping-widget.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
             bitmap.recycle()
         }
     }

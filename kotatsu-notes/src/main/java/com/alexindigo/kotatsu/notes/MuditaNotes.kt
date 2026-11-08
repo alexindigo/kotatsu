@@ -11,7 +11,10 @@ interface TextNotesPort {
 }
 
 class MuditaNotes(private val resolver: ContentResolver) : NotesPort, TextNotesPort {
-    override fun choices(): List<TaskListChoice>? = choices(TYPE)
+    override fun choices(): List<TaskListChoice>? = resolver.query(URI, arrayOf("id", "title"),
+        "note_type IN (?, ?)", arrayOf(TYPE, "TEXT"), "updated_at DESC, id ASC")?.use { cursor ->
+        buildList { while (cursor.moveToNext()) add(TaskListChoice(cursor.getLong(0), cursor.getString(1).orEmpty())) }
+    }
     override fun textChoices(): List<TaskListChoice>? = choices("TEXT")
     private fun choices(type: String): List<TaskListChoice>? = resolver.query(URI, arrayOf("id", "title"),
         "note_type = ?", arrayOf(type), "updated_at DESC, id ASC")?.use { cursor ->
@@ -29,10 +32,10 @@ class MuditaNotes(private val resolver: ContentResolver) : NotesPort, TextNotesP
 
     override fun read(id: Long): TaskListSnapshot? {
         if (id < 0) return null
-        return resolver.query(URI, arrayOf("id", "title", "content", "updated_at"),
-            "id = ? AND note_type = ?", arrayOf(id.toString(), TYPE), null)?.use { cursor ->
+        return resolver.query(URI, arrayOf("id", "title", "content", "updated_at", "note_type"),
+            "id = ? AND note_type IN (?, ?)", arrayOf(id.toString(), TYPE, "TEXT"), null)?.use { cursor ->
             if (!cursor.moveToFirst()) null else TaskListSnapshot(cursor.getLong(0), cursor.getString(1).orEmpty(),
-                cursor.getString(2), cursor.getLong(3)).takeIf { it.id == id && it.items != null }
+                cursor.getString(2), cursor.getLong(3), cursor.getString(4)).takeIf { it.id == id && it.items != null }
         }
     }
 
@@ -40,7 +43,7 @@ class MuditaNotes(private val resolver: ContentResolver) : NotesPort, TextNotesP
         resolver.update(URI, ContentValues().apply {
             put("content", content); put("updated_at", updatedAt)
         }, "id = ? AND note_type = ? AND content = ? AND updated_at = ?",
-            arrayOf(old.id.toString(), TYPE, old.content, old.updatedAt.toString()))
+            arrayOf(old.id.toString(), old.noteType, old.content, old.updatedAt.toString()))
 
     companion object {
         val URI: Uri = Uri.parse("content://com.mudita.notes/notes")

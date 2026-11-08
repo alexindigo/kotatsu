@@ -7,6 +7,7 @@ data class WidgetTick(val token: String, val index: Int, val checked: Boolean? =
 fun acceptsTick(selected: Long?, rendered: RenderedList?, tick: WidgetTick): Boolean {
     if (rendered == null || rendered.token != tick.token || selected != rendered.snapshot.id) return false
     val item = rendered.snapshot.items?.getOrNull(tick.index) ?: return false
+    if (item.kind != TaskRowKind.ITEM) return false
     return tick.checked == null || tick.checked != item.checked
 }
 

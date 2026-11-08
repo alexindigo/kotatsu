@@ -17,7 +17,7 @@ class NotesStore(context: Context) {
     fun rendered(id: Int): RenderedList? = runCatching {
         val json = JSONObject(renderings().getString("widget_$id", null) ?: return null)
         RenderedList(json.getString("token"), TaskListSnapshot(json.getLong("id"), json.getString("title"),
-            json.getString("content"), json.getLong("updated_at"))).takeIf { it.snapshot.items != null }
+            json.getString("content"), json.getLong("updated_at"), json.optString("note_type", "CHECKLIST"))).takeIf { it.snapshot.items != null }
     }.getOrNull()
 
     fun remember(id: Int, snapshot: TaskListSnapshot): RenderedList {
@@ -27,6 +27,7 @@ class NotesStore(context: Context) {
         check(renderings().edit().putString("widget_$id", JSONObject().apply {
             put("token", rendered.token); put("id", snapshot.id); put("title", snapshot.title)
             put("content", snapshot.content); put("updated_at", snapshot.updatedAt)
+            put("note_type", snapshot.noteType)
         }.toString()).commit()) { "Could not retain rendered snapshot" }
         return rendered
     }

@@ -1,8 +1,20 @@
 package com.alexindigo.kotatsu.notes
 
-data class TaskItem(val text: String, val checked: Boolean)
-data class TaskListSnapshot(val id: Long, val title: String, val content: String, val updatedAt: Long) {
-    val items: List<TaskItem>? get() = TaskListJson.decode(content)
+enum class TaskRowKind { ITEM, HEADING, GAP }
+data class TaskItem(val text: String, val checked: Boolean, val kind: TaskRowKind = TaskRowKind.ITEM)
+data class TaskListSnapshot(val id: Long, val title: String, val content: String, val updatedAt: Long,
+                            val noteType: String = "CHECKLIST") {
+    val items: List<TaskItem>? get() = when (noteType) {
+        "CHECKLIST" -> TaskListJson.decode(content)
+        "TEXT" -> TextTaskList.rows(content).map { it.item }
+        else -> null
+    }
+
+    fun toggled(index: Int): String? {
+        val item = items?.getOrNull(index)?.takeIf { it.kind == TaskRowKind.ITEM } ?: return null
+        return if (noteType == "TEXT") TextTaskList.toggle(content, index) else
+            TaskListJson.encode(items!!.mapIndexed { i, row -> if (i == index) item.copy(checked = !item.checked) else row })
+    }
 }
 data class TaskListChoice(val id: Long, val title: String)
 
@@ -104,11 +116,10 @@ data class TaskToggleResult(val outcome: TaskWrite, val persisted: TaskListSnaps
 
 /** A stale index is never applied to a newer document. Read-back, not row count, owns the displayed state. */
 fun toggleTask(notes: NotesPort, old: TaskListSnapshot, index: Int, now: Long): TaskToggleResult {
-    val items = old.items
-    val outcome = if (items == null || index !in items.indices || old.updatedAt == Long.MAX_VALUE) TaskWrite.FAILED else try {
-        val next = items.mapIndexed { i, item -> if (i == index) item.copy(checked = !item.checked) else item }
+    val next = old.toggled(index)
+    val outcome = if (next == null || old.updatedAt == Long.MAX_VALUE) TaskWrite.FAILED else try {
         // A backward clock must not let check/uncheck recreate an older CAS version (ABA).
-        when (notes.compareAndSet(old, TaskListJson.encode(next), maxOf(now, old.updatedAt + 1))) {
+        when (notes.compareAndSet(old, next, maxOf(now, old.updatedAt + 1))) {
             1 -> TaskWrite.ACCEPTED
             0 -> TaskWrite.STALE
             else -> TaskWrite.FAILED
