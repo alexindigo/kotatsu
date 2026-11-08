@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Zobrazit počty oznámení na zamykací obrazovce.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">V nastavení přístupnosti zapněte pouze samotnou službu Kotatsu Action Service, ne její zkratku. Zkratka přidá na obrazovku plovoucí tlačítko přístupnosti.</string>
-    <string name="lockscreen_widget_a11y_desc">Pro widgety, ozn&#225;men&#237;, hudbu, po&#269;as&#237;, akce z okraj&#367;, zakryt&#237; hodin, zamyk&#225;n&#237; a spo&#345;i&#269;. Zp&#345;&#237;stupn&#283;n&#237; kontroluje jen zamykac&#237; obrazovku. P&#345;ehr&#225;v&#225; klepnut&#237; a svisl&#225; gesta a otev&#237;r&#225; zabezpe&#269;en&#253; fotoapar&#225;t. P&#345;&#237;stup k Notes &#269;te a m&#283;n&#237; jen vybran&#253; seznam &#250;kol&#367;.</string>
+    <string name="lockscreen_widget_a11y_desc">Pro widgety, ozn&#225;men&#237;, hudbu, po&#269;as&#237;, akce z okraj&#367;, zakryt&#237; hodin, zamyk&#225;n&#237; a spo&#345;i&#269;. Zp&#345;&#237;stupn&#283;n&#237; kontroluje jen zamykac&#237; obrazovku. P&#345;ehr&#225;v&#225; klepnut&#237; a svisl&#225; gesta a otev&#237;r&#225; bo&#269;n&#237; obrazovku nebo zabezpe&#269;en&#253; fotoapar&#225;t.</string>
     <string name="lockscreen_widget_apps">Aplikace oznámení na zamykací obrazovce</string>
     <string name="lockscreen_widget_apps_desc">Vyberte, které aplikace se zobrazí ve widgetu zamykací obrazovky</string>
     <string name="lockscreen_message">Zpráva na zamykací obrazovce</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Zkratku služby nechte vypnutou. Přidává plovoucí tlačítko na každou obrazovku.</string>
     <string name="a11y_setup_open">Otevřít nastavení Přístupnosti</string>
     <string name="lockscreen_reenable_disable">Vypnout tyto funkce</string>
-    <string name="lockscreen_readme_privacy">Zp&#345;&#237;stupn&#283;n&#237; kontroluje jen zamykac&#237; obrazovku a skr&#253;v&#225; vrstvy nad PINem a jin&#253;mi okny. Gesta otev&#237;raj&#237; zabezpe&#269;en&#253; fotoapar&#225;t nebo vybran&#253; seznam Mudita Notes. P&#345;&#237;stup k Notes &#269;te a m&#283;n&#237; jen tento seznam; Nastaven&#237; nab&#237;z&#237; n&#225;zvy seznam&#367; k v&#253;b&#283;ru. Klepnut&#237; a svisl&#225; gesta se p&#345;ehraj&#237; po zvednut&#237; prstu. Nic se nezaznamen&#225;v&#225; ani nesd&#237;l&#237;.</string>
+    <string name="lockscreen_readme_privacy">Zp&#345;&#237;stupn&#283;n&#237; kontroluje jen zamykac&#237; obrazovku a skr&#253;v&#225; vrstvy nad PINem a jin&#253;mi okny. Gesta otev&#237;raj&#237; bo&#269;n&#237; obrazovku nebo zabezpe&#269;en&#253; fotoapar&#225;t. Obsah a opr&#225;vn&#283;n&#237; widget&#367; spravuj&#237; jejich aplikace. Klepnut&#237; a svisl&#225; gesta se p&#345;ehraj&#237; po zvednut&#237; prstu. Nic se nezaznamen&#225;v&#225; ani nesd&#237;l&#237;.</string>
     <string name="lockscreen_readme_usage">Podržte widget pro úpravu: tažením jej přesunete, tažením úchytu pod ním změníte velikost. Jedním klepnutím uložíte.</string>
     <string name="screensaver">Spořič obrazovky</string>
     <string name="screensaver_setup_message">Kotatsu zatím není vybrán jako spořič obrazovky. Otevřete nastavení spořiče a vyberte Kotatsu, poté jej spusťte z domovské nabídky.</string>
@@ -425,16 +425,9 @@
     <string name="edge_right">Prav&#253; okraj</string>
     <string name="edge_camera">Fotoapar&#225;t</string>
     <string name="edge_nothing">Nic</string>
-    <string name="edge_task_list">Seznam &#250;kol&#367;</string>
-    <string name="edge_task_close">Zav&#345;&#237;t seznam &#250;kol&#367;</string>
     <string name="edge_task_scroll_up">Posunout nahoru</string>
     <string name="edge_task_scroll_down">Posunout dol&#367;</string>
     <string name="edge_task_scroll">Posunout seznam &#250;kol&#367;</string>
-    <string name="edge_task_untitled">Seznam &#250;kol&#367; bez n&#225;zvu</string>
-    <string name="edge_task_choose">Vybrat seznam</string>
-    <string name="edge_task_help">Za&#353;krt&#225;vejte seznam Mudita Notes bez odemknut&#237;. Otev&#345;en&#253; editor v Notes m&#367;&#382;e p&#345;i ulo&#382;en&#237; tato za&#353;krtnut&#237; p&#345;epsat.</string>
-    <string name="edge_task_no_lists">Nejsou dostupn&#233; seznamy. Vytvo&#345;te seznam &#250;kol&#367; v Mudita Notes a vra&#357;te se sem.</string>
-    <string name="edge_task_missing">Vyberte dostupn&#253; seznam v Nastaven&#237; > Zamykac&#237; obrazovka > %1$s.</string>
     <string name="edge_camera_available">Dostupn&#253;</string>
     <string name="edge_camera_unavailable">Nedostupn&#253;</string>
     <string name="edge_camera_setup">Vy&#382;aduje kompatibiln&#237; zabezpe&#269;en&#253; fotoapar&#225;t. V Open Camera povolte p&#345;&#237;stup k fotoapar&#225;tu a zapn&#283;te Nastaven&#237; > Dal&#353;&#237; ovl&#225;d&#225;n&#237; fotoapar&#225;tu > Zobrazit fotoapar&#225;t p&#345;i uzam&#269;en&#237;.</string>

@@ -39,6 +39,8 @@ Kotatsu on a Mudita Kompakt:
 - **Setup at your pace.** Finish onboarding without sensitive grants or changing the default launcher. Sensitive access has separate choices for collecting badges, media information and usage statistics, and for notification dismissal, call acknowledgment, media controls and accessibility features.
 - **Quiet app lists.** Hide, rename and reorder apps. Settings → All Apps separates Hidden Apps from Kompakt System Apps. Stock apps omitted by Mudita's launcher, app stores, FUTO Keyboard and Mudita's Update start hidden and can be shown individually. Hidden apps stay off the lock screen unless their separate Notify box is ticked; lock-screen exclusions still take precedence.
 - **A useful lock screen.** On Kompakt, host installed Android app widgets in a configurable box over the padlock and unlock hint. Choose widget size and order. Optional experimental lock-screen notifications show per-app counts. These features need the Kotatsu Action Service.
+- **A side screen for widgets.** Swipe in from an edge to open a named screen, with one Full widget or a Split top/bottom pair. A scroll rail appears beside scrollable lists.
+- **Optional Notes widget.** Kotatsu Notes supplies a Mudita Notes task list you can check without unlocking. The launcher hosts the widget; Kotatsu Notes reads and saves the list.
 - **Optional Weather widget.** Every place fits on one line, with an icon for the whole selected interval and an update time when the forecast is over an hour old.
 - **Changes you can review.** Reordering asks Save, Discard or Cancel on an unsaved exit. Settings import validates the file before replacing settings and asks before changing sensitive-access choices; failed icon or wallpaper replacements keep the saved choice.
 - **Optional screensaver (experimental).** Shows the home clock, date, alarm, battery and up to four notification rows. Select Kotatsu in Android's Screen saver settings; start it from the home long-press menu or with a two-finger long-press. The power button exits.
@@ -87,7 +89,7 @@ Back exits a nondefault launcher preview after internal navigation and dialogs a
 ### Lock-screen edge swipes
 
 On Kompakt, open Settings > Lock screen > Edge swipes and enable the Kotatsu Action Service when prompted.
-Choose Task list, Camera or Nothing for each edge. The defaults are Task list on the left and Camera on the right.
+Choose Side screen, Camera or Nothing for each edge. The defaults are Side screen on the left and Camera on the right.
 Swipe inward from the screen edge by at least one third of the screen width
 to run its action. Short sideways swipes do nothing; taps and vertical swipes pass to the lock screen after release.
 The strips are absent over the PIN pad, other apps and while the screen is off.
@@ -96,13 +98,24 @@ The camera action uses Android's secure camera intent. Settings reports when no 
 The camera app may need its own lock-screen option: for Open Camera, grant its camera permission, then enable
 Settings > More camera controls > Show camera when locked. Kotatsu does not unlock the phone.
 
-Choose one Mudita Notes task list in the Edge swipes page. The lock-screen page lets you check and uncheck items,
-with a six-step slide-in preview. Back or a swipe toward its opening edge by one third of the screen width closes it.
-It also closes on screen-off, unlock, PIN entry or another app covering the lock screen. A missing or unreadable list
-points back to Settings. Only the selected list is read or changed; the picker reads task-list titles only.
-Each toggle conditionally updates the list and re-reads its persisted state, including after a concurrent edit.
+Open Side screen in the Edge swipes page to choose its widgets, screen name and layout: Full for one widget,
+or Split for a top/bottom pair. The name defaults to the widget's name. Each scrollable list has its own rail,
+with arrows and a draggable thumb. The screen opens with a six-step slide-in preview. Close it with the top-bar
+close button, Back or a swipe toward its opening edge by one third of the screen width. It also closes on
+screen-off, unlock, PIN entry or another app covering the lock screen. A widget that opens an app asks for
+the phone's normal unlock first.
+
+### Kotatsu Notes
+
+Kotatsu Notes is a separate, optional app. Add its Task list widget to the side screen and choose one Mudita Notes
+task list in the widget's setup page. Check and uncheck items while locked; long items wrap, and the side screen's
+rail scrolls the list. Kotatsu Notes reads only task-list titles for the picker and the selected list for the widget.
+Each toggle conditionally updates the list and re-reads its persisted state; a stale displayed list is refreshed
+without writing its old checks. Unlock once after a restart to make the list available.
+
 An editor left open in Mudita Notes can still overwrite these checks when saved; its main list may not refresh
-immediately after an external check. Kotatsu does not edit text, add tasks or open other notes from the lock screen.
+immediately after an external check. Kotatsu Notes does not edit text or add tasks. Kotatsu itself no longer reads
+Mudita Notes.
 
 ## Privacy and permissions
 
@@ -120,9 +133,12 @@ Android grants and Kotatsu's Sensitive access choices are separate: a grant alon
 | 6 | `WRITE_CALL_LOG` | Separate, deliberate call acknowledgment action |
 | 7 | Usage access (`PACKAGE_USAGE_STATS`) | Optional most-recent / most-used app sorting |
 | 8 | Kotatsu Action Service (accessibility) | Optional lock-screen overlays/widgets, edge actions and gesture passthrough, clock cover, locking and screensaver features |
-| 9 | Mudita `READ_NOTES`, `WRITE_NOTES` | List task-list titles in Settings; read and check/uncheck only the selected task list on the lock screen |
 
 Kotatsu Weather separately declares Internet and network-state access. Location access is optional for Add current location: a one-off fix while setup is open, never a background location request. Search for a place instead to avoid granting location access.
+
+Kotatsu Notes separately declares Mudita `READ_NOTES` and `WRITE_NOTES` to list task-list titles and read and
+check/uncheck the selected list. The launcher declares neither Notes permission. Kotatsu Notes has no Internet
+permission.
 
 ## Build from source
 
@@ -131,10 +147,10 @@ Use JDK 21 and the Android SDK for compile SDK 36.1. The Gradle wrapper supplies
 ```sh
 git clone https://github.com/alexindigo/kotatsu.git
 cd kotatsu
-./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug
+./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug :kotatsu-notes:assembleDebug
 ```
 
-Debug APKs are written under `app/build/outputs/apk/debug/` and `kotatsu-weather/build/outputs/apk/debug/`. Release builds use `:app:assembleRelease :kotatsu-weather:assembleRelease` with `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` set for your own signing key. A self-signed build cannot replace an installed release signed with a different key.
+Debug APKs are written under each app's `build/outputs/apk/debug/`: `app/`, `kotatsu-weather/` and `kotatsu-notes/`. Release builds use `:app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease` with `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` set for your own signing key. A self-signed build cannot replace an installed release signed with a different key.
 
 ## Troubleshooting
 

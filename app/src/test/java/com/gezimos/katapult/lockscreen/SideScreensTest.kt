@@ -35,9 +35,9 @@ class SideScreensTest {
         val start = listRail(24, 0, 7, 0, 85, 680, 85, 625)!!
         assertEquals(0, start.position)
     }
-    @Test fun newActionDoesNotChangeTheExistingDefaults() {
+    @Test fun sideScreenIsTheLeftDefaultAndCameraIsTheRightDefault() {
         assertEquals(EdgeAction.SIDE_SCREEN, EdgeAction.fromId("side_screen"))
-        assertEquals(EdgeAction.TASK_LIST, EdgeActionStore.defaultAction(ScreenEdge.LEFT))
+        assertEquals(EdgeAction.SIDE_SCREEN, EdgeActionStore.defaultAction(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, EdgeActionStore.defaultAction(ScreenEdge.RIGHT))
     }
 }

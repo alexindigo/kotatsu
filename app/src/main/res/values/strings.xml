@@ -217,7 +217,7 @@
     <string name="lockscreen_widget_desc">Show notification counts on the lock screen</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">In accessibility settings, turn on only the Kotatsu Action Service itself, not its shortcut. The shortcut adds a floating accessibility button to your screen.</string>
-    <string name="lockscreen_widget_a11y_desc">Used for lock-screen widgets, notifications, music, weather and edge actions, the status bar clock cover, locking and the screensaver. Accessibility inspects only the lock screen. Performs gestures to pass edge taps and vertical swipes to the lock screen, and opens the secure camera when chosen. Notes access reads and updates only your chosen task list.</string>
+    <string name="lockscreen_widget_a11y_desc">Used for lock-screen widgets, notifications, music, weather and edge actions, the status bar clock cover, locking and the screensaver. Accessibility inspects only the lock screen. Performs gestures to pass edge taps and vertical swipes to the lock screen, and opens the side screen or secure camera when chosen.</string>
     <string name="lockscreen_widget_apps">Lock screen notification apps</string>
     <string name="lockscreen_widget_apps_desc">Choose which apps appear on the lock screen widget</string>
     <string name="lockscreen_message">Lock screen message</string>
@@ -233,7 +233,7 @@
     <string name="a11y_setup_step_shortcut">3. Leave Kotatsu Action Service shortcut off. It adds a floating button to every screen.</string>
     <string name="a11y_setup_open">Open Accessibility settings</string>
     <string name="lockscreen_reenable_disable">Turn off these features</string>
-    <string name="lockscreen_readme_privacy">Accessibility inspects only the lock screen to hide overlays over the PIN pad and other windows. Edge swipes can open the secure camera or your chosen Mudita Notes task list. Notes access reads and updates only that list; Settings lists task-list titles for selection. Taps and vertical swipes pass to the lock screen after release. Nothing is recorded or shared.</string>
+    <string name="lockscreen_readme_privacy">Accessibility inspects only the lock screen to hide overlays over the PIN pad and other windows. Edge swipes can open the side screen or secure camera. Widget apps own their content and permissions. Taps and vertical swipes pass to the lock screen after release. Nothing is recorded or shared.</string>
     <string name="lockscreen_readme_usage">Long-press the widget to adjust it: drag to move, drag the handle below it to resize. Tap it once to save and finish.</string>
     <string name="screensaver">Screensaver</string>
     <string name="screensaver_setup_message">Kotatsu isn\'t selected as the screen saver yet. Open Screen saver settings and choose Kotatsu, then start it from the home menu.</string>
@@ -427,16 +427,9 @@
     <string name="edge_right">Right edge</string>
     <string name="edge_camera">Camera</string>
     <string name="edge_nothing">Nothing</string>
-    <string name="edge_task_list">Task list</string>
-    <string name="edge_task_close">Close task list</string>
     <string name="edge_task_scroll_up">Scroll up</string>
     <string name="edge_task_scroll_down">Scroll down</string>
     <string name="edge_task_scroll">Scroll task list</string>
-    <string name="edge_task_untitled">Untitled task list</string>
-    <string name="edge_task_choose">Choose a list</string>
-    <string name="edge_task_help">Check and uncheck one Mudita Notes task list without unlocking. An editor left open in Notes can overwrite these checks when saved.</string>
-    <string name="edge_task_no_lists">No task lists available. Create a task list in Mudita Notes, then return here.</string>
-    <string name="edge_task_missing">Choose an available task list in Settings > Lock screen > %1$s.</string>
     <string name="edge_camera_available">Available</string>
     <string name="edge_camera_unavailable">Unavailable</string>
     <string name="edge_camera_setup">Needs a compatible secure camera. In Open Camera, grant camera permission and enable Settings > More camera controls > Show camera when locked.</string>

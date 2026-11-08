@@ -174,7 +174,7 @@
     <string name="lockscreen_widget_desc">Mostrar o número de notificações no ecrã de bloqueio.</string>
     <string name="a11y_service_label">Kotatsu Action Service</string>
     <string name="a11y_shortcut_warning">Nas definições de acessibilidade, ative apenas o Kotatsu Action Service, não o seu atalho. O atalho adiciona um botão de acessibilidade flutuante ao ecrã.</string>
-    <string name="lockscreen_widget_a11y_desc">Para widgets, notifica&#231;&#245;es, m&#250;sica, tempo, a&#231;&#245;es das margens, ocultar o rel&#243;gio, bloquear e prote&#231;&#227;o de ecr&#227;. A acessibilidade examina apenas o ecr&#227; de bloqueio. Repete toques e gestos verticais e abre a c&#226;mara segura. O acesso ao Notes l&#234; e atualiza apenas a lista escolhida.</string>
+    <string name="lockscreen_widget_a11y_desc">Para widgets, notifica&#231;&#245;es, m&#250;sica, tempo, a&#231;&#245;es das margens, ocultar o rel&#243;gio, bloquear e prote&#231;&#227;o de ecr&#227;. A acessibilidade examina apenas o ecr&#227; de bloqueio. Repete toques e gestos verticais e abre o ecr&#227; lateral ou a c&#226;mara segura.</string>
     <string name="lockscreen_widget_apps">Apps de notificações do ecrã de bloqueio</string>
     <string name="lockscreen_widget_apps_desc">Escolha que apps aparecem no widget do ecrã de bloqueio</string>
     <string name="lockscreen_message">Mensagem no ecrã de bloqueio</string>
@@ -190,7 +190,7 @@
     <string name="a11y_setup_step_shortcut">3. Deixe o atalho do serviço desativado. Adiciona um botão flutuante a todos os ecrãs.</string>
     <string name="a11y_setup_open">Abrir definições de Acessibilidade</string>
     <string name="lockscreen_reenable_disable">Desativar estas funcionalidades</string>
-    <string name="lockscreen_readme_privacy">A acessibilidade examina apenas o ecr&#227; de bloqueio para ocultar sobreposi&#231;&#245;es perante o PIN e outras janelas. Os gestos abrem a c&#226;mara segura ou a lista escolhida do Mudita Notes. O acesso ao Notes l&#234; e atualiza apenas essa lista; as Defini&#231;&#245;es mostram t&#237;tulos de listas para escolher. Toques e gestos verticais s&#227;o repetidos ao soltar. Nada &#233; registado ou partilhado.</string>
+    <string name="lockscreen_readme_privacy">A acessibilidade examina apenas o ecr&#227; de bloqueio para ocultar sobreposi&#231;&#245;es perante o PIN e outras janelas. Os gestos abrem o ecr&#227; lateral ou a c&#226;mara segura. As apps dos widgets gerem o seu conte&#250;do e as suas permiss&#245;es. Toques e gestos verticais s&#227;o repetidos ao soltar. Nada &#233; registado ou partilhado.</string>
     <string name="lockscreen_readme_usage">Mantenha o widget premido para o ajustar: arraste para mover, arraste a pega por baixo para redimensionar. Toque uma vez para guardar.</string>
     <string name="screensaver">Proteção de ecrã</string>
     <string name="screensaver_setup_message">O Kotatsu ainda não está selecionado como proteção de ecrã. Abra as definições da proteção de ecrã e escolha o Kotatsu, depois inicie-o pelo menu inicial.</string>
@@ -425,16 +425,9 @@
     <string name="edge_right">Margem direita</string>
     <string name="edge_camera">C&#226;mara</string>
     <string name="edge_nothing">Nada</string>
-    <string name="edge_task_list">Lista de tarefas</string>
-    <string name="edge_task_close">Fechar lista de tarefas</string>
     <string name="edge_task_scroll_up">Deslocar para cima</string>
     <string name="edge_task_scroll_down">Deslocar para baixo</string>
     <string name="edge_task_scroll">Deslocar lista de tarefas</string>
-    <string name="edge_task_untitled">Lista de tarefas sem t&#237;tulo</string>
-    <string name="edge_task_choose">Escolher uma lista</string>
-    <string name="edge_task_help">Marque uma lista do Mudita Notes sem desbloquear. Um editor aberto no Notes pode substituir estas marcas ao guardar.</string>
-    <string name="edge_task_no_lists">Sem listas dispon&#237;veis. Crie uma lista de tarefas no Mudita Notes e volte aqui.</string>
-    <string name="edge_task_missing">Escolha uma lista dispon&#237;vel em Defini&#231;&#245;es > Ecr&#227; de bloqueio > %1$s.</string>
     <string name="edge_camera_available">Dispon&#237;vel</string>
     <string name="edge_camera_unavailable">Indispon&#237;vel</string>
     <string name="edge_camera_setup">Requer uma c&#226;mara segura compat&#237;vel. No Open Camera, conceda permiss&#227;o de c&#226;mara e ative Defini&#231;&#245;es > Mais controlos da c&#226;mara > Mostrar c&#226;mara quando bloqueado.</string>

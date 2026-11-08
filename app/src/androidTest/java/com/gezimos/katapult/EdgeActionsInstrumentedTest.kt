@@ -58,7 +58,7 @@ class EdgeActionsInstrumentedTest {
 
     @Test fun storeSurvivesRecreationExportImportAndRejectsInvalidImportsAtomically() = withStore { prefs, store ->
         assertFalse(store.enabled)
-        assertEquals(EdgeAction.TASK_LIST, store.action(ScreenEdge.LEFT))
+        assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
         store.enabled = true
         store.setAction(ScreenEdge.LEFT, EdgeAction.CAMERA)
@@ -81,7 +81,7 @@ class EdgeActionsInstrumentedTest {
         val old = JSONObject(backup).apply { remove(EdgeActionStore.LEFT); remove(EdgeActionStore.RIGHT); remove(EdgeActionStore.ENABLED) }
         assertTrue(prefs.importFromJson(old.toString()))
         assertFalse(store.enabled)
-        assertEquals(EdgeAction.TASK_LIST, store.action(ScreenEdge.LEFT))
+        assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
     }
 
@@ -109,11 +109,14 @@ class EdgeActionsInstrumentedTest {
             }
             val ui = PlatformUiDriver(instrumentation)
             ui.click(context.getString(R.string.edge_left))
+            listOf(R.string.side_screen, R.string.edge_camera, R.string.edge_nothing).forEach {
+                assertTrue(ui.has(context.getString(it)))
+            }
             ui.click(context.getString(R.string.edge_camera))
             ui.await("Left action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.CAMERA }
             ui.click(context.getString(R.string.edge_left))
-            ui.click(context.getString(R.string.edge_task_list))
-            ui.await("Task list action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.TASK_LIST }
+            ui.click(context.getString(R.string.side_screen))
+            ui.await("Side screen action did not persist") { store.action(ScreenEdge.LEFT) == EdgeAction.SIDE_SCREEN }
             ui.click(context.getString(R.string.edge_right))
             ui.click(context.getString(R.string.edge_nothing))
             ui.await("Right action did not persist") { store.action(ScreenEdge.RIGHT) == EdgeAction.NOTHING }
@@ -130,20 +133,44 @@ class EdgeActionsInstrumentedTest {
         } finally { instrumentation.runOnMainSync { activity.finish() } }
     }
 
-    @Test fun taskSelectionAndActionRoundTripWithoutLosingLongIdsOrExplicitNothing() = withStore { prefs, store ->
-        store.taskListId = Long.MAX_VALUE
+    @Test fun sideScreenAndExplicitNothingRoundTripOnEitherEdge() = withStore { prefs, store ->
         store.setAction(ScreenEdge.LEFT, EdgeAction.NOTHING)
-        store.setAction(ScreenEdge.RIGHT, EdgeAction.TASK_LIST)
+        store.setAction(ScreenEdge.RIGHT, EdgeAction.SIDE_SCREEN)
         val backup = prefs.exportToJson(context)
-        store.taskListId = null
+        store.setAction(ScreenEdge.LEFT, EdgeAction.CAMERA)
+        store.setAction(ScreenEdge.RIGHT, EdgeAction.NOTHING)
         assertTrue(prefs.importFromJson(backup))
-        assertEquals(Long.MAX_VALUE, store.taskListId)
         assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.LEFT))
-        assertEquals(EdgeAction.TASK_LIST, store.action(ScreenEdge.RIGHT))
-        listOf(-1, "01", "1.5", "9223372036854775808", true).forEach { invalid ->
-            assertFalse(prefs.importFromJson(JSONObject(backup).put(EdgeActionStore.TASK_LIST, invalid).toString()))
-            assertEquals(Long.MAX_VALUE, store.taskListId)
-            assertEquals(EdgeAction.NOTHING, store.action(ScreenEdge.LEFT))
-        }
+        assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.RIGHT))
+    }
+
+    @Test fun unknownStoredActionsUseEachEdgesDefaultWithoutRewritingPreferences() {
+        val name = "edge-defaults-${UUID.randomUUID()}"
+        val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
+        try {
+            val store = EdgeActionStore(raw)
+            listOf("task_list", "unknown", 42, true).forEach { value ->
+                val edit = raw.edit()
+                listOf(EdgeActionStore.LEFT, EdgeActionStore.RIGHT).forEach { key ->
+                    when (value) {
+                        is String -> edit.putString(key, value)
+                        is Int -> edit.putInt(key, value)
+                        is Boolean -> edit.putBoolean(key, value)
+                    }
+                }
+                assertTrue(edit.commit())
+                assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
+                assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
+                assertEquals(value, raw.all[EdgeActionStore.LEFT])
+                assertEquals(value, raw.all[EdgeActionStore.RIGHT])
+            }
+        } finally { deleteTestPreferences(context, name) }
+    }
+
+    @Test fun launcherDoesNotRequestMuditaNotesPermissions() {
+        val requested = context.packageManager.getPackageInfo(context.packageName,
+            android.content.pm.PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty()
+        assertFalse(requested.contains("com.mudita.data.provider.permission.READ_NOTES"))
+        assertFalse(requested.contains("com.mudita.data.provider.permission.WRITE_NOTES"))
     }
 }

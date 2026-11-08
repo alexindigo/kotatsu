@@ -3,7 +3,7 @@ package com.gezimos.katapult.lockscreen
 import org.junit.Assert.*
 import org.junit.Test
 
-class TaskPageGestureTest {
+class EdgePageGestureTest {
     @Test fun sixStepPreviewUsesTheSameInclusiveLineOnBothEdges() {
         ScreenEdge.entries.forEach { edge ->
             val sign = if (edge == ScreenEdge.LEFT) 1 else -1
@@ -28,13 +28,18 @@ class TaskPageGestureTest {
         }
     }
 
-    @Test fun stableActionIdsAndTaskSelectionImportsAreStrict() {
-        assertEquals(EdgeAction.TASK_LIST, EdgeActionStore.defaultAction(ScreenEdge.LEFT))
+    @Test fun stableActionIdsAndImportsAreStrict() {
+        assertEquals(listOf("side_screen", "camera", "nothing"), EdgeAction.entries.map { it.id })
+        assertEquals(EdgeAction.SIDE_SCREEN, EdgeActionStore.defaultAction(ScreenEdge.LEFT))
         assertEquals(EdgeAction.CAMERA, EdgeActionStore.defaultAction(ScreenEdge.RIGHT))
-        assertEquals(EdgeAction.TASK_LIST, EdgeAction.fromId("task_list"))
-        assertTrue(EdgeActionStore.validImport(EdgeActionStore.TASK_LIST, Long.MAX_VALUE.toString()))
-        listOf(null, 1, "-1", "01", "+1", "1.0", "9223372036854775808").forEach {
-            assertFalse(EdgeActionStore.validImport(EdgeActionStore.TASK_LIST, it))
+        EdgeAction.entries.forEach { action ->
+            assertEquals(action, EdgeAction.fromId(action.id))
+            assertTrue(EdgeActionStore.validImport(EdgeActionStore.LEFT, action.id))
+            assertTrue(EdgeActionStore.validImport(EdgeActionStore.RIGHT, action.id))
+        }
+        listOf(null, 1, "task_list", "bogus", "SIDE_SCREEN", "").forEach {
+            assertFalse(EdgeActionStore.validImport(EdgeActionStore.LEFT, it))
+            assertFalse(EdgeActionStore.validImport(EdgeActionStore.RIGHT, it))
         }
     }
 

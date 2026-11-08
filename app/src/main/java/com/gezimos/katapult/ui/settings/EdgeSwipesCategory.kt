@@ -9,10 +9,9 @@ import com.gezimos.katapult.lockscreen.ScreenEdge
 @Composable
 fun edgeSwipesCategory(enabled: Boolean, left: EdgeAction, right: EdgeAction, cameraAvailable: Boolean,
                         onEnabled: (Boolean) -> Unit, onAction: (ScreenEdge, EdgeAction) -> Unit,
-                        taskListTitle: String? = null, onTaskList: () -> Unit = {}, onSideScreen: () -> Unit = {}): SettingsCategory {
+                        onSideScreen: () -> Unit = {}): SettingsCategory {
     val choices = EdgeAction.entries.map { SettingsChoice(it.id, stringResource(when (it) {
         EdgeAction.CAMERA -> R.string.edge_camera
-        EdgeAction.TASK_LIST -> R.string.edge_task_list
         EdgeAction.SIDE_SCREEN -> R.string.side_screen
         EdgeAction.NOTHING -> R.string.edge_nothing
     })) }
@@ -30,10 +29,6 @@ fun edgeSwipesCategory(enabled: Boolean, left: EdgeAction, right: EdgeAction, ca
             SettingsEntry.Metadata("camera", stringResource(R.string.edge_camera),
                 stringResource(if (cameraAvailable) R.string.edge_camera_available else R.string.edge_camera_unavailable),
                 stringResource(R.string.edge_camera_setup)),
-        )),
-        SettingsGroup("tasks", stringResource(R.string.edge_task_list), listOf(
-            SettingsEntry.Open("task-list", stringResource(R.string.edge_task_list), stringResource(R.string.edge_task_help),
-                onTaskList, summary = taskListTitle ?: stringResource(R.string.edge_task_choose)),
         )),
         SettingsGroup("side", stringResource(R.string.side_screen), listOf(
             SettingsEntry.Open("side-screen", stringResource(R.string.side_screen), stringResource(R.string.side_screen_help), onSideScreen),

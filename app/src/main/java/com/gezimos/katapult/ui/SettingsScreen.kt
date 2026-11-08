@@ -187,12 +187,6 @@ fun SettingsScreen(
         onDispose { subscription.close() }
     }
     val edgeStore = remember(edgeRevision) { prefs.edgeActions }
-    val taskLists = remember(context) {
-        com.gezimos.katapult.notes.TaskListSettings(com.gezimos.katapult.notes.MuditaNotes(context.contentResolver))
-    }
-    LaunchedEffect(navigation.current) {
-        if (isMudita && navigation.current in setOf("edges", "task-list-picker")) taskLists.refresh()
-    }
     var actionServiceEnabled by remember { mutableStateOf(LockscreenWidgetService.isEnabled(context)) }
     var lockscreenLatestFirst by remember { mutableStateOf(prefs.lockscreenWidgetLatestFirst) }
     var screensaverWallpaper by remember { mutableStateOf(prefs.screensaverWallpaper) }
@@ -376,9 +370,7 @@ fun SettingsScreen(
             if (!requested || serviceOn) edgeStore.enabled = requested
             else viewModel.requestActionService(AccessibilityFeature.EDGE_SWIPES)
         }, onAction = edgeStore::setAction,
-        taskListTitle = taskLists.choices?.firstOrNull { it.id == edgeStore.taskListId }?.title
-            ?.ifBlank { context.getString(R.string.edge_task_untitled) },
-        onTaskList = { navigation.push("task-list-picker") }, onSideScreen = { navigation.push("side-screen") })
+        onSideScreen = { navigation.push("side-screen") })
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
         screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,
         screensaverDoubleTapBrightness, screensaverOnPower, screensaverAppIcon, screensaverUpdateMode,
@@ -441,9 +433,6 @@ fun SettingsScreen(
             val entry = edges.groups.flatMap { it.entries }.filterIsInstance<SettingsEntry.Value>()
                 .single { it.id == destination.removePrefix("edge-choice:") }
             ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
-        } else if (destination == "task-list-picker" && isMudita) {
-            com.gezimos.katapult.ui.settings.TaskListPicker(taskLists.choices, edgeStore.taskListId,
-                { edgeStore.taskListId = it }, popPage)
         } else if (destination.startsWith("choice:")) {
             val (_, chapterId, entryId) = destination.split(":")
             val choice = chapters.values.single { it.id == chapterId }.groups.flatMap { it.visibleEntries }

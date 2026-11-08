@@ -225,7 +225,6 @@ class LockscreenWidgetService :
     private val badgeListener: () -> Unit = { mainHandler.post { evaluate() } }
     private lateinit var prefs: PrefsManager
     private var edgeGestures: EdgeGestures? = null
-    private var taskListPage: TaskListPage? = null
     private var sidePage: EdgePageWindow? = null
     private var widgetLaunch: WidgetActivityLaunch? = null
     private val badgeOwner = Any()
@@ -234,7 +233,7 @@ class LockscreenWidgetService :
         acquireBadges = { SensitiveAccess.acquireBadges(badgeOwner) },
         acquireMedia = { SensitiveAccess.acquireMedia(mediaOwner) },
         subscriptions = ::syncSourceSubscriptions,
-        clearLockscreen = { taskListPage?.hide(); sidePage?.hide(); edgeGestures?.apply(false); removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); stopWidgets(); musicState.value = null },
+        clearLockscreen = { sidePage?.hide(); edgeGestures?.apply(false); removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); stopWidgets(); musicState.value = null },
         clearInspection = {
             mainHandler.removeCallbacks(keyguardRecheck)
             visibility.invalidate()
@@ -326,8 +325,6 @@ class LockscreenWidgetService :
     override fun onServiceConnected() {
         instance = this
         prefs = PrefsManager(this)
-        taskListPage = TaskListPage(this, mainHandler, com.gezimos.katapult.notes.MuditaNotes(contentResolver),
-            { prefs.edgeActions.taskListId }, ::edgeEligible, { mainHandler.post { evaluate() } })
         widgetLaunch = WidgetActivityLaunch(this, ::edgeEligible, { sidePage?.hide() })
         sidePage = EdgePageWindow(this, mainHandler, ::edgeEligible, { mainHandler.post { evaluate() } }, "Kotatsu side screen") { back, capture, close ->
             SideScreenView(this, prefs.lockscreenWidgetStore.screens().first(), back, capture, close,
@@ -336,18 +333,16 @@ class LockscreenWidgetService :
         edgeGestures = EdgeGestures(this, mainHandler, prefs.edgeActions, ::edgeEligible,
             { mainHandler.post { evaluate() } }, { edge, action ->
                 if (edgeEligible()) when (action) {
-                    EdgeAction.TASK_LIST -> taskListPage?.settle(edge)
                     EdgeAction.SIDE_SCREEN -> sidePage?.settle(edge)
                     EdgeAction.CAMERA -> SecureCamera.open(this)
                     EdgeAction.NOTHING -> Unit
                 }
             }, { edge, step ->
                 when (prefs.edgeActions.action(edge)) {
-                    EdgeAction.TASK_LIST -> taskListPage?.preview(edge, step)
                     EdgeAction.SIDE_SCREEN -> sidePage?.preview(edge, step)
                     else -> Unit
                 }
-            }, { taskListPage?.cancelPreview(); sidePage?.cancelPreview() })
+            }, { sidePage?.cancelPreview() })
         SensitiveAccess.initialize(this)
         SensitiveAccess.accessibilityConnection(true)
         policySubscription = SensitiveAccess.subscribe { mainHandler.post { syncWeatherLease(); evaluate() } }
@@ -383,7 +378,6 @@ class LockscreenWidgetService :
 
     override fun onInterrupt() {
         sidePage?.hide(); widgetLaunch?.close()
-        taskListPage?.hide()
         edgeGestures?.interrupt()
         syncSourceSubscriptions(false, false)
         releaseSensitiveConsumers()
@@ -400,7 +394,6 @@ class LockscreenWidgetService :
 
     override fun onDestroy() {
         lockscreenInspection.close()
-        taskListPage?.close(); taskListPage = null
         sidePage?.close(); sidePage = null
         widgetLaunch?.close(); widgetLaunch = null
         edgeGestures?.close(); edgeGestures = null
@@ -803,8 +796,8 @@ class LockscreenWidgetService :
         // A covered lock screen suppresses overlays/collectors, not the selected
         // recheck itself; otherwise teardown would forget that it is covered.
         consumers.reconcile(demand.copy(inspectPin = inspection))
-        if (!onLockscreen || !prefs.edgeActions.enabled) { taskListPage?.hide(); sidePage?.hide() }
-        if (taskListPage?.opened == true || sidePage?.opened == true) {
+        if (!onLockscreen || !prefs.edgeActions.enabled) sidePage?.hide()
+        if (sidePage?.opened == true) {
             edgeGestures?.apply(false)
             removeOverlay(); removeMusicOverlay(); removeMessageOverlay(); removeWeatherOverlay(); removeClockCover(); removeWidgetsOverlay()
             scheduleKeyguardRecheck()
