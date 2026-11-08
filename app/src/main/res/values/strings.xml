@@ -202,7 +202,6 @@
     <string name="lockscreen_widgets_show">Show on lock screen</string>
     <string name="lockscreen_widgets_show_desc">Covers the padlock and unlock hint</string>
     <string name="lockscreen_widgets_add">Add widget</string>
-    <string name="lockscreen_widgets_add_desc">Any installed app widget</string>
     <string name="lockscreen_widgets_unavailable">Unavailable</string>
     <string name="lockscreen_widgets_small">Small</string>
     <string name="lockscreen_widgets_medium">Medium</string>
@@ -397,7 +396,6 @@
     <string name="app_store_open_website">Open f-droid.org</string>
     <string name="app_store_no_browser">No app can open f-droid.org on this phone.</string>
     <string name="app_store_launch_failed">F-Droid couldn\'t be opened.</string>
-    <string name="paper_widget_manage_help">Resize, move, edit or remove this widget</string>
     <string name="paper_permissions_hint">Tap a row to manage access</string>
     <string name="paper_group_android_access">Android access</string>
     <string name="paper_granted">Granted</string>

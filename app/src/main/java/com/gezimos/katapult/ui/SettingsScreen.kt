@@ -72,6 +72,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import com.gezimos.katapult.ui.settings.SettingsEntry
+import com.gezimos.katapult.ui.settings.LockscreenWidgetsPage
+import com.gezimos.katapult.ui.settings.LockscreenWidgetManagementPage
 import com.gezimos.katapult.ui.settings.AppStorePackages
 import com.gezimos.katapult.ui.settings.appStoreEntry
 import com.gezimos.katapult.ui.settings.rememberAppStorePackages
@@ -470,40 +472,13 @@ fun SettingsScreen(
     }
 
     if (destination == "widgets") {
-        SettingsPage(stringResource(R.string.lockscreen_widgets), popPage) {
-            SheetText(androidx.compose.ui.res.pluralStringResource(R.plurals.paper_widgets_configured,
-                widgetSettings.rows.size, widgetSettings.rows.size))
-            Entry(SettingsEntry.Switch("show", stringResource(R.string.lockscreen_widgets_show),
-                stringResource(R.string.lockscreen_widgets_show_desc), widgetSettings.enabled,
-                { on ->
-                    widgetSettings.requestEnabled(on) { viewModel.requestActionService(AccessibilityFeature.LOCKSCREEN_WIDGETS) }
-                }))
-            Entry(com.gezimos.katapult.ui.settings.widgetRotationEntry(widgetSettings.rotation, widgetSettings::rotation),
-                onChoice = { navigation.push("widget-rotation") })
-            Entry(SettingsEntry.Switch("widget-swipe", stringResource(R.string.widget_swipe),
-                stringResource(R.string.widget_swipe_help), widgetSettings.swipeToSwitch, widgetSettings::swipeToSwitch))
-            widgetSettings.rows.forEach { row ->
-                Entry(SettingsEntry.Open(row.widget.id.toString(), row.label,
-                    stringResource(R.string.paper_widget_manage_help), { navigation.push("widget:${row.widget.id}") },
-                    summary = stringResource(widgetSizeTitle(row.widget.size))))
-            }
-            Entry(SettingsEntry.Open("add", stringResource(R.string.lockscreen_widgets_add),
-                stringResource(R.string.lockscreen_widgets_add_desc), { navigation.push("providers") }))
-        }
+        LockscreenWidgetsPage(widgetSettings, popPage,
+            { on -> widgetSettings.requestEnabled(on) { viewModel.requestActionService(AccessibilityFeature.LOCKSCREEN_WIDGETS) } },
+            { navigation.push("widget-rotation") }, { navigation.push("widget:$it") },
+            { navigation.push("providers") }, { (context as? MainActivity)?.openLockscreenWidget(it) })
     }
     if (destination.startsWith("widget:")) {
-        val row = widgetSettings.rows.single { it.widget.id == destination.removePrefix("widget:").toInt() }
-        val index = widgetSettings.rows.indexOfFirst { it.widget.id == row.widget.id }
-        LockscreenWidgetMenu(
-            row = row,
-            canMoveUp = index > 0,
-            canMoveDown = index in 0 until widgetSettings.rows.lastIndex,
-            onResize = { size -> widgetSettings.resize(row.widget.id, size) },
-            onMove = { delta -> widgetSettings.move(row.widget.id, delta) },
-            onEdit = { (context as? MainActivity)?.editLockscreenWidget(row.widget.id) },
-            onRemove = { widgetSettings.remove(row.widget.id) },
-            onDismiss = popPage,
-        )
+        LockscreenWidgetManagementPage(widgetSettings, destination.removePrefix("widget:").toInt(), popPage)
     }
     if (destination == "widget-rotation") {
         val entry = com.gezimos.katapult.ui.settings.widgetRotationEntry(widgetSettings.rotation, widgetSettings::rotation)
@@ -1109,39 +1084,6 @@ internal fun MultiChoiceSheet(
     }
 }
 
-/** A mixed menu: size is a choice; moving, editing and removing remain actions. */
-@Composable
-internal fun LockscreenWidgetMenu(
-    row: com.gezimos.katapult.lockscreen.WidgetSettingsRow,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
-    onResize: (com.gezimos.katapult.lockscreen.LockscreenWidgetSize) -> Unit,
-    onMove: (Int) -> Unit,
-    onEdit: () -> Unit,
-    onRemove: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    SettingsPage(row.label, onDismiss) {
-        com.gezimos.katapult.lockscreen.LockscreenWidgetSize.entries.forEach { size ->
-            ChoiceOption(stringResource(widgetSizeTitle(size)), size == row.widget.size) {
-                onResize(size); onDismiss()
-            }
-        }
-        if (canMoveUp) SheetAction(stringResource(R.string.lockscreen_widgets_up)) {
-            onMove(-1); onDismiss()
-        }
-        if (canMoveDown) SheetAction(stringResource(R.string.lockscreen_widgets_down)) {
-            onMove(1); onDismiss()
-        }
-        if (row.canEdit) SheetAction(stringResource(R.string.lockscreen_widgets_edit)) {
-            onEdit(); onDismiss()
-        }
-        SheetAction(stringResource(R.string.lockscreen_widgets_remove)) {
-            onRemove(); onDismiss()
-        }
-    }
-}
-
 /** A plain pick list: nothing is selected yet, so no radio marks. */
 @Composable
 internal fun WidgetProviderSheet(
@@ -1152,10 +1094,4 @@ internal fun WidgetProviderSheet(
     SettingsPage(stringResource(R.string.lockscreen_widgets_add), onDismiss) {
         providers.forEach { provider -> SheetAction(provider.label) { onPick(provider); onDismiss() } }
     }
-}
-
-private fun widgetSizeTitle(size: com.gezimos.katapult.lockscreen.LockscreenWidgetSize): Int = when (size) {
-    com.gezimos.katapult.lockscreen.LockscreenWidgetSize.S -> R.string.lockscreen_widgets_small
-    com.gezimos.katapult.lockscreen.LockscreenWidgetSize.M -> R.string.lockscreen_widgets_medium
-    com.gezimos.katapult.lockscreen.LockscreenWidgetSize.L -> R.string.lockscreen_widgets_large
 }

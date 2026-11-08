@@ -13,7 +13,8 @@ import com.gezimos.katapult.R
 import com.gezimos.katapult.util.PrefsManager
 
 data class WidgetProviderChoice(val info: AppWidgetProviderInfo, val label: String)
-data class WidgetSettingsRow(val widget: LockscreenWidget, val label: String, val canEdit: Boolean)
+data class WidgetSettingsRow(val widget: LockscreenWidget, val label: String, val canEdit: Boolean,
+    val canOpen: Boolean = canEdit)
 
 /** Owns allocation/binding/configuration. Composables only render rows and forward intents. */
 class LockscreenWidgetSettings(private val context: Context, private val prefs: PrefsManager) : AutoCloseable {
@@ -43,8 +44,9 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
         screens = store.screens()
         rows = widgets().map { widget ->
             val info = manager.getAppWidgetInfo(widget.id)
+            val canEdit = info?.configure != null && info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0
             WidgetSettingsRow(widget, info?.loadLabel(context.packageManager) ?: context.getString(R.string.lockscreen_widgets_unavailable),
-                info?.configure != null && info.widgetFeatures and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0)
+                canEdit, canEdit || info?.provider?.packageName?.let { context.packageManager.getLaunchIntentForPackage(it) } != null)
         }
     }
 
@@ -97,6 +99,19 @@ class LockscreenWidgetSettings(private val context: Context, private val prefs: 
 
     fun move(id: Int, delta: Int) {
         try { applied(store.move(id, delta)) } catch (_: Exception) { failed() }
+    }
+
+    fun reorder(ids: List<String>) {
+        try { applied(store.reorder(ids.map(String::toInt))) } catch (_: Exception) { refresh(); failed() }
+    }
+
+    fun open(id: Int, configure: (Int) -> Unit, launch: (Intent) -> Unit) {
+        refresh()
+        val row = rows.firstOrNull { it.widget.id == id } ?: return
+        if (row.canEdit) edit(id, configure)
+        else manager.getAppWidgetInfo(id)?.provider?.packageName?.let {
+            context.packageManager.getLaunchIntentForPackage(it)
+        }?.let { intent -> try { launch(intent) } catch (_: Exception) { failed() } }
     }
 
     fun remove(id: Int) {

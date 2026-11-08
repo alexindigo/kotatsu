@@ -1,4 +1,6 @@
 <resources>
+    <string name="paper_widget_cards_group">Widgets</string>
+    <string name="paper_widget_card_help">Resize, move or remove this widget</string>
     <string name="widget_rotation">Rotation</string>
     <string name="widget_rotation_help">Show one widget at a time, in list order</string>
     <string name="widget_rotation_wake">On each wake</string>

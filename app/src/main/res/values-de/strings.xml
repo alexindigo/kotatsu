@@ -305,7 +305,6 @@
     <string name="lockscreen_widgets_show">Auf dem Sperrbildschirm anzeigen</string>
     <string name="lockscreen_widgets_show_desc">Verdeckt das Schloss und den Entsperrhinweis</string>
     <string name="lockscreen_widgets_add">Widget hinzufügen</string>
-    <string name="lockscreen_widgets_add_desc">Jedes installierte App-Widget</string>
     <string name="lockscreen_widgets_unavailable">Nicht verfügbar</string>
     <string name="lockscreen_widgets_small">Klein</string>
     <string name="lockscreen_widgets_medium">Mittel</string>
@@ -395,7 +394,6 @@
     <string name="app_store_open_website">f-droid.org öffnen</string>
     <string name="app_store_no_browser">Keine App auf diesem Telefon kann f-droid.org öffnen.</string>
     <string name="app_store_launch_failed">F-Droid konnte nicht geöffnet werden.</string>
-    <string name="paper_widget_manage_help">Größe ändern, verschieben, bearbeiten oder entfernen</string>
     <string name="paper_permissions_hint">Eine Zeile antippen, um den Zugriff zu verwalten</string>
     <string name="paper_group_android_access">Android-Zugriff</string>
     <string name="paper_granted">Gewährt</string>

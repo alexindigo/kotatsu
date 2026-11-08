@@ -25,6 +25,8 @@ class MainActivity : ComponentActivity() {
 
     fun editLockscreenWidget(id: Int, cell: Int? = null) { viewModel.lockscreenWidgets.edit(id, ::configureWidget, cell) }
 
+    fun openLockscreenWidget(id: Int) { viewModel.lockscreenWidgets.open(id, ::configureWidget, ::startActivity) }
+
     private fun configureWidget(id: Int) {
         try {
             com.gezimos.katapult.lockscreen.LockscreenWidgetHost.get(this)

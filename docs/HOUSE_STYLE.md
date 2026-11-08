@@ -84,6 +84,7 @@ The dots in these sketches represent a drawn leader, not literal text.
 | 6 | Pages, not sheets | A destination fills the real usable screen, using the same ‹ Title chapter header, index lines, groups and bottom pager. No slide-in surface, overlay, heavy modal boundary, scrim or previous page visible. One Settings back stack owns root → chapter → page → sub-page; device Back and ‹ pop exactly one level, retaining the parent's page number. Choices apply and return; multi-select stays until Back. Android-owned external screens and prompts outside Settings keep their existing behavior |
 | 7 | Choice list | Short full-row options; one check mark beside the selected option, with its name Bold. No radio rings or leaders pointing to empty cells. Selection applies the choice; Back leaves it unchanged |
 | 8 | Hide / Notify matrix | **Hide** left, app name/leader centre, **Notify** right. Checked = black square with white check; enabled unchecked = heavy empty box; disabled = thin empty box; not applicable = reserved blank cell. Both columns have independent targets; blank/disabled Notify must not activate Hide |
+| 9 | Bracket card | One measured content block with real left/right bracket strokes spanning its entire height. Lock-screen widgets use three compact lines: provider name / Open external handoff, small help, small bold size. No Size or Remove action rows inside the card. Shared `PaperCard`, `PaperCardEntry` and `PaperCardList` live in paper-ui |
 
 ```text
 Hide     App                                  Notify
@@ -96,6 +97,28 @@ Draw the check mark as a shared vector symbol where the bundled font lacks
 the glyph; do not depend on an arbitrary system fallback font. Likewise,
 render an external-link symbol once: a hidden zero-font copy plus a generated
 duplicate changes line metrics and breaks the help spacing.
+
+User decision (2026-11-08): the lock-screen widget list uses a Widgets section
+with one card per configured provider, followed immediately by Add widget. The
+three top controls retain their existing presentation. Add appears on page 1 when
+the measured content fits. Long-press and drag moves whole cards without animation.
+
+The approved compact mock (2026-11-08) uses the help "Resize, move or remove this
+widget" and a small bold size on the third line. Card padding is about 6 dp
+vertically and 14 dp inside the brackets, with 12 dp between cards. Open has an
+independent 48 dp target and opens the provider's settings; tapping elsewhere
+opens Kotatsu's existing size/move/remove page. The configured-count summary is
+omitted as in the mock; the three top controls keep their existing styling.
+Long-press shows the entire held card as a solid black rectangle with white
+text/leader ink, including the bracket lanes in the fill, with one state redraw.
+Normal brackets and the ready fill share one drawing owner and measured bounds.
+Drag previews whole-card steps without animation or
+per-pixel redraw. Drop commits once and restores normal ink; cancellation restores
+normal ink and the saved order.
+Accessibility move actions provide the same reorder outcome without a gesture;
+unavailable directions are omitted. Open uses reconfiguration when supported,
+otherwise the provider app's entry. If neither exists, show only the provider
+name, without an inert Open action. Side-screen widget rows are unchanged.
 
 The accepted root uses device Back, a compact noninteractive title and ten
 48 dp index rows. Its 64 px reference Notice lane fits the 480×800 example

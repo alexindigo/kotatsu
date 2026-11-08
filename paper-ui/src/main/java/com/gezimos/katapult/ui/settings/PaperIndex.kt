@@ -47,7 +47,7 @@ import kotlin.math.abs
 import kotlin.math.max
 
 @Composable
-private fun Modifier.inkFocus(): Modifier {
+internal fun Modifier.inkFocus(): Modifier {
     var focused by remember { mutableStateOf(false) }
     val ink = LocalInk.current
     return onFocusChanged { focused = it.isFocused }.drawBehind {
@@ -73,23 +73,19 @@ fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root:
 }
 
 @Composable
-private fun IndexName(title: String, root: Boolean = false) {
+internal fun IndexName(title: String, root: Boolean = false) {
     Text(title, fontFamily = LatoFamily, fontSize = if (root) 21.sp else 18.sp,
-        lineHeight = if (root) 25.5.sp else 21.75.sp, fontWeight = FontWeight.Bold, color = LocalInk.current)
+        lineHeight = if (root) 25.5.sp else 21.75.sp, fontWeight = FontWeight.Bold, color = LocalInk.current,
+        maxLines = 1, overflow = TextOverflow.Ellipsis)
 }
 
 /** The name owns the leader baseline; text values align to it. */
 @Composable
 private fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit) {
-    val ink = LocalInk.current
     Layout(modifier = modifier.fillMaxWidth(), content = {
         title()
         value()
-        Canvas(Modifier) {
-            drawLine(ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
-                strokeWidth = size.height, cap = StrokeCap.Round,
-                pathEffect = PathEffect.dashPathEffect(floatArrayOf(.1f, 3.dp.toPx())))
-        }
+        IndexLeader()
     }) { children, constraints ->
         val gap = 7.5.dp.roundToPx()
         val leaderMin = 9.dp.roundToPx()
@@ -108,6 +104,16 @@ private fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> 
             leader.placeRelative(titlePlaceable.width + gap,
                 titleY + titlePlaceable[FirstBaseline] - leader.height / 2)
         }
+    }
+}
+
+@Composable
+internal fun IndexLeader() {
+    val ink = LocalInk.current
+    Canvas(Modifier) {
+        drawLine(ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
+            strokeWidth = size.height, cap = StrokeCap.Round,
+            pathEffect = PathEffect.dashPathEffect(floatArrayOf(.1f, 3.dp.toPx())))
     }
 }
 
@@ -235,7 +241,8 @@ fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
     val action = when (entry) {
         is SettingsEntry.Switch -> Modifier.toggleable(entry.checked, role = Role.Switch, onValueChange = entry.onCheckedChange)
         is SettingsEntry.Value -> Modifier.clickable(role = Role.Button) { onChoice(entry) }
-        is SettingsEntry.Open -> Modifier.clickable(role = Role.Button, onClick = entry.onOpen)
+        is SettingsEntry.Open -> Modifier.clickable(role = Role.Button,
+            onClickLabel = external.takeIf { entry.external }, onClick = entry.onOpen)
         is SettingsEntry.Link -> Modifier.clickable(role = Role.Button, onClickLabel = external, onClick = entry.onOpen)
         is SettingsEntry.Metadata -> Modifier
     }
@@ -244,7 +251,8 @@ fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
             if (entry is SettingsEntry.Switch) stateDescription = if (entry.checked) on else off
             if (entry is SettingsEntry.Value) contentDescription = "${entry.title}, ${entry.value}"
         }.padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
-        IndexLine(entry.title, value)
+        if (value.isEmpty()) IndexName(entry.title)
+        else IndexLine(entry.title, value, external = entry is SettingsEntry.Open && entry.external)
         if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
             lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
         if (entry is SettingsEntry.Open && entry.summary.isNotEmpty()) Text(entry.summary,

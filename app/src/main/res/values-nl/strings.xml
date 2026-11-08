@@ -305,7 +305,6 @@
     <string name="lockscreen_widgets_show">Op vergrendelscherm tonen</string>
     <string name="lockscreen_widgets_show_desc">Bedekt het slotje en de ontgrendelhint</string>
     <string name="lockscreen_widgets_add">Widget toevoegen</string>
-    <string name="lockscreen_widgets_add_desc">Elke geïnstalleerde app-widget</string>
     <string name="lockscreen_widgets_unavailable">Niet beschikbaar</string>
     <string name="lockscreen_widgets_small">Klein</string>
     <string name="lockscreen_widgets_medium">Middelgroot</string>
@@ -395,7 +394,6 @@
     <string name="app_store_open_website">f-droid.org openen</string>
     <string name="app_store_no_browser">Geen app op deze telefoon kan f-droid.org openen.</string>
     <string name="app_store_launch_failed">F-Droid kon niet worden geopend.</string>
-    <string name="paper_widget_manage_help">Formaat wijzigen, verplaatsen, bewerken of verwijderen</string>
     <string name="paper_permissions_hint">Tik op een rij om toegang te beheren</string>
     <string name="paper_group_android_access">Android-toegang</string>
     <string name="paper_granted">Verleend</string>

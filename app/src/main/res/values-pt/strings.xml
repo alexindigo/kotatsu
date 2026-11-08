@@ -305,7 +305,6 @@
     <string name="lockscreen_widgets_show">Mostrar no ecrã de bloqueio</string>
     <string name="lockscreen_widgets_show_desc">Cobre o cadeado e a indicação de desbloqueio</string>
     <string name="lockscreen_widgets_add">Adicionar widget</string>
-    <string name="lockscreen_widgets_add_desc">Qualquer widget de app instalado</string>
     <string name="lockscreen_widgets_unavailable">Indisponível</string>
     <string name="lockscreen_widgets_small">Pequeno</string>
     <string name="lockscreen_widgets_medium">Médio</string>
@@ -395,7 +394,6 @@
     <string name="app_store_open_website">Abrir f-droid.org</string>
     <string name="app_store_no_browser">Nenhuma app neste telefone pode abrir f-droid.org.</string>
     <string name="app_store_launch_failed">Não foi possível abrir o F-Droid.</string>
-    <string name="paper_widget_manage_help">Redimensionar, mover, editar ou remover este widget</string>
     <string name="paper_permissions_hint">Toque numa linha para gerir o acesso</string>
     <string name="paper_group_android_access">Acesso Android</string>
     <string name="paper_granted">Concedido</string>

@@ -305,7 +305,6 @@
     <string name="lockscreen_widgets_show">Pokaż na ekranie blokady</string>
     <string name="lockscreen_widgets_show_desc">Zakrywa kłódkę i wskazówkę odblokowania</string>
     <string name="lockscreen_widgets_add">Dodaj widżet</string>
-    <string name="lockscreen_widgets_add_desc">Dowolny zainstalowany widżet aplikacji</string>
     <string name="lockscreen_widgets_unavailable">Niedostępny</string>
     <string name="lockscreen_widgets_small">Mały</string>
     <string name="lockscreen_widgets_medium">Średni</string>
@@ -395,7 +394,6 @@
     <string name="app_store_open_website">Otwórz f-droid.org</string>
     <string name="app_store_no_browser">Żadna aplikacja na tym telefonie nie może otworzyć f-droid.org.</string>
     <string name="app_store_launch_failed">Nie udało się otworzyć F-Droid.</string>
-    <string name="paper_widget_manage_help">Zmień rozmiar, przenieś, edytuj lub usuń widżet</string>
     <string name="paper_permissions_hint">Dotknij wiersza, aby zarządzać dostępem</string>
     <string name="paper_group_android_access">Dostęp Androida</string>
     <string name="paper_granted">Przyznany</string>

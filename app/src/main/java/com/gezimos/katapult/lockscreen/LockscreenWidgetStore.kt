@@ -105,6 +105,14 @@ class LockscreenWidgetStore(context: Context, private val prefs: SharedPreferenc
         write(list)
     }
 
+    /** A drag supplies identity/order only. Read live sizes and reject a stale membership. */
+    fun reorder(ids: List<Int>): Result = synchronized(prefs) {
+        val snapshot = snapshot()
+        val selected = snapshot.selected.associateBy { it.id }
+        if (ids.size != selected.size || ids.toSet() != selected.keys) return@synchronized unchanged(snapshot, Result.INVALID)
+        write(ids.map { selected.getValue(it) })
+    }
+
     fun remove(id: Int): Result = synchronized(prefs) {
         val snapshot = snapshot()
         val list = snapshot.selected

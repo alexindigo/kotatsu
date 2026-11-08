@@ -6,11 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.runtime.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.gezimos.katapult.lockscreen.LockscreenWidget
-import com.gezimos.katapult.lockscreen.LockscreenWidgetSize
 import com.gezimos.katapult.lockscreen.WidgetProviderChoice
-import com.gezimos.katapult.lockscreen.WidgetSettingsRow
-import com.gezimos.katapult.ui.LockscreenWidgetMenu
 import com.gezimos.katapult.ui.MultiChoiceSheet
 import com.gezimos.katapult.ui.WidgetProviderSheet
 import com.gezimos.katapult.ui.SettingsScreen
@@ -138,59 +134,6 @@ class PaperIndexSheetsInstrumentedTest {
             assertTrue(image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
         }
         image.recycle()
-    }
-
-    @Test fun widgetMenuRetainsSizeSelectionAndEveryConditionalAction() = withActivity { activity ->
-        val row = WidgetSettingsRow(LockscreenWidget(27, LockscreenWidgetSize.M), "Fixture widget", true)
-        var resized: LockscreenWidgetSize? = null
-        var moved: Int? = null
-        var edited = false
-        var removed = false
-        var dismissed = false
-        fun render(up: Boolean = true, down: Boolean = true, editable: Boolean = true) {
-            val frame = java.util.concurrent.CountDownLatch(1)
-            instrumentation.runOnMainSync {
-                activity.setContent {
-                    LockscreenWidgetMenu(row.copy(canEdit = editable), up, down,
-                        { resized = it }, { moved = it }, { edited = true }, { removed = true }, { dismissed = true })
-                    SideEffect { frame.countDown() }
-                }
-            }
-            assertTrue("Widget fixture did not compose", frame.await(8, java.util.concurrent.TimeUnit.SECONDS))
-            ui.await("Widget menu not rendered") { ui.has("Fixture widget") }
-        }
-        render()
-        assertEquals(true, ui.checked(context.getString(R.string.lockscreen_widgets_medium)))
-        assertEquals(false, ui.checked(context.getString(R.string.lockscreen_widgets_small)))
-        assertEquals(false, ui.checked(context.getString(R.string.lockscreen_widgets_large)))
-        ui.click(context.getString(R.string.lockscreen_widgets_small))
-        assertEquals(LockscreenWidgetSize.S, resized); assertTrue(dismissed)
-        dismissed = false
-        ui.click(context.getString(R.string.lockscreen_widgets_up))
-        assertEquals(-1, moved); assertTrue(dismissed)
-        dismissed = false
-        ui.click(context.getString(R.string.lockscreen_widgets_down))
-        assertEquals(1, moved); assertTrue(dismissed)
-        dismissed = false
-        ui.click(context.getString(R.string.lockscreen_widgets_edit))
-        assertTrue(edited); assertTrue(dismissed)
-        dismissed = false
-        ui.click(context.getString(R.string.paper_next_page))
-        ui.click(context.getString(R.string.lockscreen_widgets_remove))
-        assertTrue(removed); assertTrue(dismissed)
-        render(up = false, down = false, editable = false)
-        if (ui.has(context.getString(R.string.paper_previous_page))) ui.click(context.getString(R.string.paper_previous_page))
-        ui.await("Conditional widget actions were not removed") {
-            !ui.has(context.getString(R.string.lockscreen_widgets_up)) &&
-                !ui.has(context.getString(R.string.lockscreen_widgets_down)) &&
-                !ui.has(context.getString(R.string.lockscreen_widgets_edit))
-        }
-        assertFalse(ui.has(context.getString(R.string.lockscreen_widgets_up)))
-        assertFalse(ui.has(context.getString(R.string.lockscreen_widgets_down)))
-        assertFalse(ui.has(context.getString(R.string.lockscreen_widgets_edit)))
-        dismissed = false
-        ui.back()
-        ui.await("Back did not dismiss widget menu") { dismissed }
     }
 
     @Test fun providerPickForwardsTheExactProviderAndDismisses() = withActivity { activity ->

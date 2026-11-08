@@ -164,6 +164,27 @@ class LockscreenWidgetStoreInstrumentedTest {
         }
     }
 
+    @Test fun dragPermutationKeepsLiveSizesAndRejectsStaleOrDuplicateMembership() {
+        WidgetHostTestFixture(context).use { fixture ->
+            val info = fixture.providers.firstProvider("com.alexindigo.kotatsu.notes.debug")
+            val ids = List(3) { fixture.bind(info) }
+            val store = fixture.prefs.lockscreenWidgetStore
+            assertEquals(LockscreenWidgetStore.Result.APPLIED, store.replaceImportedSelection(LockscreenWidgetList.encode(
+                ids.take(2).map { LockscreenWidget(it, LockscreenWidgetSize.S) })))
+            assertEquals(LockscreenWidgetStore.Result.APPLIED, store.resize(ids[0], LockscreenWidgetSize.M))
+            assertEquals(LockscreenWidgetStore.Result.APPLIED, store.reorder(ids.take(2).reversed()))
+            assertEquals(listOf(LockscreenWidget(ids[1], LockscreenWidgetSize.S), LockscreenWidget(ids[0], LockscreenWidgetSize.M)), store.read())
+            assertEquals(LockscreenWidgetStore.Result.INVALID, store.reorder(listOf(ids[0], ids[0])))
+            assertEquals(LockscreenWidgetStore.Result.APPLIED, store.addAfterConfigure(LockscreenWidget(ids[2], LockscreenWidgetSize.S)))
+            val current = store.read()
+            assertEquals(LockscreenWidgetStore.Result.INVALID, store.reorder(ids.take(2)))
+            assertEquals("A stale drag cannot discard a concurrently added widget", current, store.read())
+            assertEquals(LockscreenWidgetStore.Result.APPLIED, store.remove(ids[0]))
+            assertEquals(LockscreenWidgetStore.Result.INVALID, store.reorder(ids))
+            assertEquals(listOf(ids[1], ids[2]), store.read().map { it.id })
+        }
+    }
+
     private fun configure(fixture: WidgetHostTestFixture, settings: LockscreenWidgetSettings): LockscreenWidget {
         val info = fixture.providers.singleProvider("com.alexindigo.kotatsu.weather.debug")
         var id: Int? = null
