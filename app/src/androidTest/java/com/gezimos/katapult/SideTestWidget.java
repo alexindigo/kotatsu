@@ -13,6 +13,13 @@ import android.widget.RemoteViews;
 public class SideTestWidget extends AppWidgetProvider {
     @Override public void onReceive(Context context, Intent intent) {
         super.onReceive(context, intent);
+        if ((context.getPackageName() + ".SIDE_SERVICE").equals(intent.getAction())) {
+            int id = intent.getIntExtra("id", -1);
+            context.getSharedPreferences("side-fixture", 0).edit().putBoolean("service-" + id, true)
+                .putInt("service-rows-" + id, intent.getIntExtra("count", 0)).commit();
+            if (intent.getBooleanExtra("install", false)) publish(context, id, 0);
+            else AppWidgetManager.getInstance(context).notifyAppWidgetViewDataChanged(id, resource(context, "id", "fixture_list"));
+        }
         if ((context.getPackageName() + ".SIDE_ROWS").equals(intent.getAction())) {
             int id = intent.getIntExtra("id", -1);
             int count = intent.getIntExtra("count", 24);
@@ -31,7 +38,15 @@ public class SideTestWidget extends AppWidgetProvider {
     }
     public static void publish(Context context, int id, int count) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
+        if (context.getSharedPreferences("side-fixture", 0).getBoolean("service-" + id, false)) {
+            RemoteViews collection = new RemoteViews(context.getPackageName(), resource(context, "layout", "side_test_collection"));
+            collection.setRemoteAdapter(resource(context, "id", "fixture_list"), new Intent(context, SideTestCollectionService.class)
+                .putExtra("id", id).setData(android.net.Uri.parse("fixture://collection/" + id)));
+            manager.updateAppWidget(id, collection);
+            return;
+        }
         RemoteViews views = new RemoteViews(context.getPackageName(), resource(context, "layout", "side_test_widget"));
+        views.setViewVisibility(resource(context, "id", "fixture_content"), count < 0 ? View.GONE : View.VISIBLE);
         views.setViewVisibility(resource(context, "id", "fixture_heading"),
             manager.getAppWidgetOptions(id).getBoolean("kotatsu.host.title", false) ? View.GONE : View.VISIBLE);
         android.content.SharedPreferences prefs = context.getSharedPreferences("side-fixture", 0);
@@ -56,13 +71,15 @@ public class SideTestWidget extends AppWidgetProvider {
         for (int id : ids) {
             // A fresh binding is a fresh fixture, including after an emulator restores its ID pool.
             context.getSharedPreferences("side-fixture", 0).edit().putInt("rows-" + id, 24)
+                .putBoolean("service-" + id, false)
                 .putInt("broadcast-" + id, 0).putInt("launches-" + id, 0).commit();
             publish(context, id, 24);
         }
     }
     @Override public void onDeleted(Context context, int[] ids) {
         android.content.SharedPreferences.Editor edit = context.getSharedPreferences("side-fixture", 0).edit();
-        for (int id : ids) edit.remove("rows-" + id).remove("broadcast-" + id).remove("launches-" + id);
+        for (int id : ids) edit.remove("rows-" + id).remove("broadcast-" + id).remove("launches-" + id)
+            .remove("service-" + id).remove("service-rows-" + id);
         edit.commit();
     }
     @Override public void onAppWidgetOptionsChanged(Context context, AppWidgetManager manager, int id, Bundle options) {

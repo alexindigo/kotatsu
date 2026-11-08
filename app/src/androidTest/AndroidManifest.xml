@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <application>
+        <service android:name="com.gezimos.katapult.SideTestCollectionService" android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
         <provider android:name="androidx.startup.InitializationProvider" tools:node="remove" />
         <receiver android:name="com.gezimos.katapult.SideTestWidget" android:exported="true" android:label="Side test list">
             <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>

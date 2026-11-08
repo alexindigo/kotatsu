@@ -1,4 +1,5 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/fixture_content"
     android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="#FFFFFF">
     <TextView android:id="@+id/fixture_heading" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:text="Fixture heading" android:textColor="#000000" />

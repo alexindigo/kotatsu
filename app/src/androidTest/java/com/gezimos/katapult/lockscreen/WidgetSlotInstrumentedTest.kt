@@ -45,6 +45,8 @@ class WidgetSlotInstrumentedTest {
 
     @Test fun weatherAndQuoteInEverySizeEndAtThePreSlotBoxContentBottom() {
         WidgetHostTestFixture(context).use { fixture ->
+            val ui = PlatformUiDriver(instrumentation)
+            context.contentResolver.call(android.net.Uri.parse("content://com.mudita.notes/notes"), "reset", null, null)
             val providers = listOf(fixture.providers.singleProvider("com.alexindigo.kotatsu.weather.debug"),
                 fixture.manager.installedProviders.single {
                     it.provider.packageName == "com.alexindigo.kotatsu.notes.debug" && it.provider.className.endsWith(".QuoteWidgetProvider")
@@ -58,6 +60,16 @@ class WidgetSlotInstrumentedTest {
             try {
                 for (provider in providers) for (size in LockscreenWidgetSize.entries) {
                     val widget = LockscreenWidget(fixture.bind(provider), size)
+                    if (provider.provider.className.endsWith(".QuoteWidgetProvider")) {
+                        context.startActivity(Intent().setComponent(android.content.ComponentName("com.alexindigo.kotatsu.notes.debug",
+                            "com.alexindigo.kotatsu.notes.QuoteConfigureActivity"))
+                            .putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, widget.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                        ui.click("Note"); ui.click("Kotatsu quotes"); ui.back()
+                    }
+                    var expected = 0
+                    val geometry = LockscreenWidgetBoxGeometry.from(window, density)
+                    lateinit var content: LockscreenWidgetSlot
+                    lateinit var box: LockscreenWidgetBox
                     main {
                         slot?.stop()
                         val requestedHeight = (size.heightDp * density).toInt()
@@ -71,12 +83,21 @@ class WidgetSlotInstrumentedTest {
                                 View.MeasureSpec.makeMeasureSpec(window.height(), View.MeasureSpec.EXACTLY))
                             layout(0, 0, window.width(), window.height())
                         }
-                        val expected = legacy.getChildAt(0).bottom
-                        val geometry = LockscreenWidgetBoxGeometry.from(window, density)
-                        val content = LockscreenWidgetSlot(activity, Handler(Looper.getMainLooper()), {}).also { slot = it }
+                        expected = legacy.getChildAt(0).bottom
+                        content = LockscreenWidgetSlot(activity, Handler(Looper.getMainLooper()), {
+                            content.show(listOf(widget), WidgetRotation.WAKE, true, visibility)
+                        }).also { slot = it }
                         content.show(listOf(widget), WidgetRotation.WAKE, true, visibility)
-                        val box = LockscreenWidgetBox(activity, content, geometry)
+                        box = LockscreenWidgetBox(activity, content, geometry)
                         activity.setContentView(box)
+                    }
+                    ui.await("Nonempty provider must reach the slot before geometry is measured") {
+                        var ready = false
+                        main { ready = content.childCount == 1 }
+                        ready
+                    }
+                    main {
+                        val requestedHeight = (size.heightDp * density).toInt()
                         box.measure(View.MeasureSpec.makeMeasureSpec(geometry.paper.width(), View.MeasureSpec.EXACTLY),
                             View.MeasureSpec.makeMeasureSpec(geometry.paper.height(), View.MeasureSpec.EXACTLY))
                         box.layout(geometry.paper.left, geometry.paper.top, geometry.paper.right, geometry.paper.bottom)

@@ -125,15 +125,81 @@ class LockscreenWidgetHost private constructor(context: Context) : AppWidgetHost
 /** A widget view whose padding stays zero through every (re)bind; see [LockscreenWidgetHost.onCreateView]. */
 internal class UnpaddedHostView(context: Context, clock: () -> Long = SystemClock::elapsedRealtime) : AppWidgetHostView(context) {
     private val picture = VisibleWidgetPicture<RemoteViews>(clock)
+    internal var contentChanged: (() -> Unit)? = null
+        set(value) {
+            field = value
+            if (value == null) {
+                observedAdapters.forEach { it.unregisterDataSetObserver(dataObserver) }
+                observedAdapters.clear()
+            } else contentUpdated()
+        }
+    private val observedAdapters = mutableSetOf<android.widget.Adapter>()
+    private val dataObserver = object : android.database.DataSetObserver() {
+        override fun onChanged() = contentUpdated()
+        override fun onInvalidated() = contentUpdated()
+    }
+    private var contentHandler: android.os.Handler? = null
+    private var inspectingContent = false
+    private val notifyContent = Runnable {
+        if (contentChanged != null) {
+            inspectingContent = true
+            try {
+                // A detached collection still needs one event-driven layout to clear
+                // pending layout flags. Its later service connection can then propagate
+                // requestLayout through this host, without waiting for a visible frame.
+                if (!isAttachedToWindow && isLayoutRequested) {
+                    val options = android.appwidget.AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId)
+                    val density = resources.displayMetrics.density
+                    val w = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 300) * density).toInt().coerceAtLeast(1)
+                    val h = (options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 112) * density).toInt().coerceAtLeast(1)
+                    measure(MeasureSpec.makeMeasureSpec(w, MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(h, MeasureSpec.EXACTLY))
+                    layout(0, 0, w, h)
+                }
+                val next = mutableSetOf<android.widget.Adapter>()
+                fun visit(view: android.view.View) {
+                    if (view is android.widget.AdapterView<*>) view.adapter?.let(next::add)
+                    if (view is android.view.ViewGroup) repeat(view.childCount) { visit(view.getChildAt(it)) }
+                }
+                visit(this)
+                (observedAdapters - next).forEach { it.unregisterDataSetObserver(dataObserver) }
+                (next - observedAdapters).forEach { it.registerDataSetObserver(dataObserver) }
+                observedAdapters.clear(); observedAdapters.addAll(next)
+            } finally { inspectingContent = false }
+            contentChanged?.invoke()
+        }
+    }
+
+    init { contentHandler = android.os.Handler(android.os.Looper.getMainLooper()) }
+
+    private fun contentUpdated() {
+        if (inspectingContent || contentChanged == null) return
+        contentHandler?.let { it.removeCallbacks(notifyContent); it.post(notifyContent) }
+    }
+
+    override fun requestLayout() {
+        super.requestLayout()
+        // Also receives adapter connection/data-change layout requests while detached.
+        // The handler is null during View's superclass construction.
+        contentUpdated()
+    }
 
     override fun updateAppWidget(remoteViews: RemoteViews?) {
         super.updateAppWidget(remoteViews)
-        picture.receive(remoteViews)
+        // An empty provider update invalidates any older visible picture too. Otherwise
+        // becoming eligible again could replay stale blank/nonblank content over the new tree.
+        if (widgetHasContent(this)) picture.receive(remoteViews) else picture.clear()
+        contentUpdated()
     }
 
     internal fun hostVisibility(visible: Boolean) {
         // Bypass receipt: replaying must never make the old picture young again.
         picture.visibility(visible)?.let { super.updateAppWidget(it) }
+        contentUpdated()
+    }
+
+    override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
+        super.onLayout(changed, left, top, right, bottom)
+        contentUpdated()
     }
 
     override fun setAppWidget(appWidgetId: Int, info: AppWidgetProviderInfo?) {

@@ -123,6 +123,10 @@ class QuoteWidgetInstrumentedTest {
             await("Notes content job must publish the edit") { f.text() == "Edited once" }
             fixture("quote-edit", "Edited twice")
             await("Successor job must publish a second edit") { f.text() == "Edited twice" && f.author().isEmpty() }
+            fixture("quote-edit", " \n\t\n\n")
+            await("A note with no parsed entries must leave blank paper") { f.text().isEmpty() && f.author().isEmpty() }
+            fixture("quote-edit", "Returned quote\nReturned author")
+            await("Content can return after an empty note") { f.text() == "Returned quote" && f.author() == "Returned author" }
             fixture("quote-edit", null)
             await("Deleted note must leave blank paper, including after RemoteViews reapply") { f.text().isEmpty() && f.author().isEmpty() }
         }
