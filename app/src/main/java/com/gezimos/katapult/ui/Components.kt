@@ -51,11 +51,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.R
 
-val LatoFamily = FontFamily(
-    Font(R.font.lato_regular, FontWeight.Normal),
-    Font(R.font.lato_bold, FontWeight.Bold),
-)
-
 val IconSize = 72.dp
 val LocalIconSize = staticCompositionLocalOf { IconSize }
 val PagePadding = 8.dp
@@ -83,8 +78,6 @@ val EinkTintMatrixDark = ColorMatrix(floatArrayOf(
 val EinkColorFilterDark = ColorFilter.colorMatrix(EinkTintMatrixDark)
 
 // Theme: Ink = foreground, Surface = background. Inverted in dark mode. Provided in App.kt.
-val LocalInk = staticCompositionLocalOf { Color.Black }
-val LocalSurface = staticCompositionLocalOf { Color.White }
 val LocalIconFilter = staticCompositionLocalOf { EinkColorFilter }
 
 val NoIndication = object : androidx.compose.foundation.IndicationNodeFactory {

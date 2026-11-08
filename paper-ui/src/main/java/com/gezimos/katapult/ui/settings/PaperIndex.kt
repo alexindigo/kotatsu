@@ -39,7 +39,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gezimos.katapult.R
+import com.gezimos.katapult.paper.R
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
@@ -147,7 +147,7 @@ fun ChapterHeader(title: String, help: SettingsHelp?, onBack: () -> Unit, onHelp
 
 /** One heading structure: owners inject navigation and action content, never their identity. */
 @Composable
-internal fun PageHeader(title: String, leading: (@Composable () -> Unit)? = null,
+fun PageHeader(title: String, leading: (@Composable () -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null) {
     Row(Modifier.fillMaxWidth().heightIn(min = 57.dp)
         .padding(start = if (leading == null) 16.dp else 6.dp, end = 12.dp, top = 9.dp),
@@ -161,14 +161,14 @@ internal fun PageHeader(title: String, leading: (@Composable () -> Unit)? = null
 }
 
 @Composable
-internal fun HeaderAction(label: String, onClick: () -> Unit, content: @Composable () -> Unit) {
+fun HeaderAction(label: String, onClick: () -> Unit, content: @Composable () -> Unit) {
     Box(Modifier.size(48.dp).semantics { contentDescription = label }
         .inkFocus().clickable(role = Role.Button, onClickLabel = label, onClick = onClick),
         contentAlignment = Alignment.Center) { content() }
 }
 
 @Composable
-internal fun CloseMark() {
+fun CloseMark() {
     val ink = LocalInk.current
     Canvas(Modifier.size(18.dp)) {
         drawLine(ink, Offset(size.width * .2f, size.height * .2f),
@@ -219,7 +219,7 @@ fun Notice(content: NoticeContent) {
 }
 
 @Composable
-internal fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
+fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
     minimumHeight: androidx.compose.ui.unit.Dp = 67.5.dp) {
     val on = stringResource(R.string.paper_on)
     val off = stringResource(R.string.paper_off)
@@ -254,7 +254,7 @@ internal fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit
 }
 
 @Composable
-internal fun Pager(page: Int, count: Int, compact: Boolean, onPage: (Int) -> Unit) {
+fun Pager(page: Int, count: Int, compact: Boolean, onPage: (Int) -> Unit) {
     val label = stringResource(R.string.paper_page, page + 1, count)
     Box(Modifier.fillMaxWidth().height(if (compact) 48.dp else 63.dp)
         .padding(start = 12.dp, end = 12.dp, bottom = if (compact) 0.dp else 7.5.dp)
@@ -408,7 +408,7 @@ fun TableOfContents(title: String, entries: List<SettingsEntry>, notice: NoticeC
 
 /** One full-height page frame for chapters, management, choices and editors. Insets belong to its owner. */
 @Composable
-internal fun PageFrame(title: String, onBack: () -> Unit, modifier: Modifier = Modifier,
+fun PageFrame(title: String, onBack: () -> Unit, modifier: Modifier = Modifier,
     help: SettingsHelp? = null, onHelp: () -> Unit = {},
     heading: @Composable () -> Unit = { ChapterHeader(title, help, onBack, onHelp) }, content: @Composable () -> Unit) {
     // Native overlay windows can own device Back without an Activity dispatcher.
@@ -430,7 +430,7 @@ fun SettingsPage(title: String, onDismiss: () -> Unit, imePadding: Boolean = fal
 
 /** Allocate complete list rows from measured page capacity; the pager never belongs to scrolling content. */
 @Composable
-internal fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
+fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
     swipePaging: Boolean = true,
     heading: @Composable () -> Unit = { ChapterHeader(title, null, onDismiss, {}) },
     header: @Composable () -> Unit, row: @Composable (T) -> Unit) {

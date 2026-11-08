@@ -42,6 +42,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":paper-ui"))
     constraints {
         // Align Kotlin's existing transitive annotations with the instrumentation APK.
         // AGP's consistent resolution otherwise pins tests to stdlib's older 13.0.

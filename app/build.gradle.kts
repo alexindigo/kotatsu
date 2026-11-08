@@ -62,6 +62,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":paper-ui"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

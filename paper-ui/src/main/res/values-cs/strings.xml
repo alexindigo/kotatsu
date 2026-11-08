@@ -1,0 +1,10 @@
+<resources>
+    <string name="paper_back">Zpět</string>
+    <string name="paper_next_page">Další stránka</string>
+    <string name="paper_previous_page">Předchozí stránka</string>
+    <string name="paper_page">Stránka %1$d z %2$d</string>
+    <string name="paper_on">Zapnuto</string>
+    <string name="paper_off">Vypnuto</string>
+    <string name="paper_open">Otevřít</string>
+    <string name="paper_external">Otevřít externí odkaz mimo Kotatsu</string>
+</resources>

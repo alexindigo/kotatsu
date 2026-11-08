@@ -77,7 +77,7 @@ class WidgetUnlockActivity : ComponentActivity() {
         window.setWindowAnimations(0)
         setContentView(TextView(this).apply {
             text = getString(R.string.side_unlock); textSize = 22f
-            typeface = ResourcesCompat.getFont(this@WidgetUnlockActivity, R.font.lato_regular)
+            typeface = ResourcesCompat.getFont(this@WidgetUnlockActivity, com.gezimos.katapult.paper.R.font.lato_regular)
             setTextColor(Color.BLACK); setBackgroundColor(Color.WHITE)
             setPadding(16, 16, 16, 16)
         })

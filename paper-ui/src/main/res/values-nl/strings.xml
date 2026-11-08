@@ -1,0 +1,10 @@
+<resources>
+    <string name="paper_back">Terug</string>
+    <string name="paper_next_page">Volgende pagina</string>
+    <string name="paper_previous_page">Vorige pagina</string>
+    <string name="paper_page">Pagina %1$d van %2$d</string>
+    <string name="paper_on">Aan</string>
+    <string name="paper_off">Uit</string>
+    <string name="paper_open">Openen</string>
+    <string name="paper_external">Externe link openen, Kotatsu verlaten</string>
+</resources>
