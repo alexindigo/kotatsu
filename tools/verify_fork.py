@@ -21,6 +21,13 @@ import source_receipt
 BASELINE='c6601b8128089db8ad28cdcc1f57361575066d5f'
 RELEASE_ID='com.alexindigo.kotatsu'
 NAMESPACE='com.gezimos.katapult'
+RELEASE_VERSION='0.5.2'
+# One inventory for source, metadata, compiled identities and release receipts.
+RELEASE_APPS={
+    'app':{'applicationId':RELEASE_ID,'namespace':NAMESPACE,'versionCode':14,'label':'Kotatsu','debugVersionSuffix':'-debug'},
+    'kotatsu-weather':{'applicationId':RELEASE_ID+'.weather','namespace':RELEASE_ID+'.weather','versionCode':9,'label':'Kotatsu Weather','debugVersionSuffix':''},
+    'kotatsu-notes':{'applicationId':RELEASE_ID+'.notes','namespace':RELEASE_ID+'.notes','versionCode':9,'label':'Kotatsu Notes','debugVersionSuffix':''},
+}
 ANDROID='{http://schemas.android.com/apk/res/android}'
 LOCALES=('', '-cs','-de','-es','-fr','-it','-nl','-pl','-pt')
 ORIGINAL_INDEX_SHA256='fab7b450c008fdd5f6bee3abde03d9cb06cfb9f29fb8fce44f9cc4b5e2062472'
@@ -225,8 +232,35 @@ def execution_identity(root,base,args):
                                  args.source_receipt,args.expected_source_receipt_sha256)
 
 
+def source_release_identities(root):
+    settings=confined(root,'settings.gradle.kts').read_text()
+    require(re.findall(r'rootProject\.name\s*=\s*"([^"]+)"',settings)==['Kotatsu'],'Wrong release root project')
+    included=re.findall(r'include\(":([^"]+)"\)',settings)
+    applications={p.parent.name for p in root.glob('*/build.gradle.kts')
+                  if 'alias(libs.plugins.android.application)' in p.read_text()}
+    require(applications==set(RELEASE_APPS) and all(included.count(m)==1 for m in RELEASE_APPS),'Incomplete release app inventory/settings')
+    result={}
+    for module,spec in RELEASE_APPS.items():
+        build=confined(root,module+'/build.gradle.kts').read_text()
+        for field,expected in (('applicationId',spec['applicationId']),('namespace',spec['namespace']),
+                               ('versionCode',str(spec['versionCode'])),('versionName',RELEASE_VERSION),
+                               ('minSdk','30'),('targetSdk','36')):
+            values=re.findall(r'\b'+field+r'\s*=\s*(?:"([^"]*)"|(\d+)\b)',build)
+            require([''.join(v) for v in values]==[expected],module+': wrong/ambiguous source '+field)
+        require(re.findall(r'applicationIdSuffix\s*=\s*"([^"]*)"',build)==['.debug'],module+': wrong debug package suffix')
+        require(re.findall(r'versionNameSuffix\s*=\s*"([^"]*)"',build)==([spec['debugVersionSuffix']] if spec['debugVersionSuffix'] else []),module+': wrong debug version suffix')
+        for field in ('isMinifyEnabled','isShrinkResources'):
+            require(re.findall(field+r'\s*=\s*(\w+)',build)==['true'],module+': missing release optimization')
+        main=ET.parse(confined(root,module+'/src/main/res/values/strings.xml')).getroot()
+        require([n.text for n in main.findall("string[@name='app_name']")]==[spec['label']],module+': wrong source label')
+        result[module]={'applicationId':spec['applicationId'],'namespace':spec['namespace'],
+                        'versionCode':spec['versionCode'],'versionName':RELEASE_VERSION}
+    return result
+
+
 def source_identity(root,base,index_path,execution=None):
     provenance=execution_identity(root,base,execution)
+    release_apps=source_release_identities(root)
     build=(root/'app/build.gradle.kts').read_text();original=baseline_bytes(root,base,'app/build.gradle.kts').decode()
     require(build==original.replace('archivesName.set("katapult-v1.6")','archivesName.set("kotatsu-v0.5.2")').replace('applicationId = "com.gezimos.katapult"','applicationId = "'+RELEASE_ID+'"').replace('versionCode = 7','versionCode = 14').replace('versionName = "1.6"','versionName = "0.5.2"'),'Build versions/dependencies/signing/optimization or namespace changed beyond identity')
     settings=(root/'settings.gradle.kts').read_bytes()
@@ -249,6 +283,7 @@ def source_identity(root,base,index_path,execution=None):
     require(index_path is not None,'Explicit original provenance index required')
     checks=deferred_assets(root,base,index_path)
     checks['sourceProvenance']=provenance
+    checks['releaseApps']=release_apps
     return checks
 
 
@@ -307,43 +342,100 @@ def build_identity(args,root,apk,provenance,index_digest):
     require(receipt.get('sourceBefore')==receipt.get('sourceAfter')==provenance,'Build source receipt mismatch/replay')
     require(receipt.get('deferredIndexSha256')==index_digest,'Build asset index mismatch')
     tasks=receipt.get('tasks',[])
-    require([t.get('task') for t in tasks]==[':app:testReleaseUnitTest',':app:lintRelease',':app:assembleRelease'],'Missing current release task evidence')
+    expected_tasks=[':'+module+':'+task for module in RELEASE_APPS for task in ('testReleaseUnitTest','lintRelease','assembleRelease')]
+    require([t.get('task') for t in tasks]==expected_tasks,'Missing current release task evidence for all three apps')
     for task in tasks:
         require(task.get('exitCode')==0,'Unsuccessful build task receipt')
         log=Path(task.get('log',''));require(log.is_file() and sha(log.read_bytes())==task.get('logSha256'),'Build log changed/missing')
         text=log.read_text()
         require('BUILD SUCCESSFUL' in text,'Unsuccessful task output')
-        observed={m.group(1):m.group(2) for m in re.finditer(r'^> Task (:[A-Za-z0-9_:]+)([^\n]*)$',text,re.M)}
-        required={':app:testReleaseUnitTest':(':app:testReleaseUnitTest',),
-                  ':app:lintRelease':(':app:lintAnalyzeRelease',':app:lintReportRelease'),
-                  ':app:assembleRelease':(':app:minifyReleaseWithR8',':app:optimizeReleaseResources',':app:packageRelease')}[task['task']]
+        observed={m.group(1):m.group(2) for m in re.finditer(r'^> Task (:[A-Za-z0-9_:\-]+)([^\n]*)$',text,re.M)}
+        prefix,kind=task['task'].rsplit(':',1)
+        required=tuple(prefix+':'+name for name in {
+            'testReleaseUnitTest':('testReleaseUnitTest',),
+            'lintRelease':('lintAnalyzeRelease','lintReportRelease'),
+            'assembleRelease':('minifyReleaseWithR8','optimizeReleaseResources','packageRelease')}[kind])
         require(task['task'] in observed,'Missing actual task output')
         require(all(name in observed and not observed[name].strip() for name in required),'Required build work not freshly executed')
-        if task['task']==':app:assembleRelease':
+        if kind=='assembleRelease':
             require('minifyReleaseWithR8' in text and re.search(r'R8|r8',text) and re.search(r'shrink|[Rr]esource.*optimi',text),'Missing current R8/resource-shrinking output')
-    required=['app/build/outputs/apk/release/'+apk.name,'app/build/outputs/apk/release/output-metadata.json',
-              'app/build/outputs/mapping/release/mapping.txt']
+    required=[]
+    for module in RELEASE_APPS:
+        output=unique_apk(root/(module+'/build/outputs/apk/release'),root,'release',module)
+        prefix=module+'/build/outputs/'
+        required.extend([prefix+'apk/release/'+output.name,prefix+'apk/release/output-metadata.json',
+                         prefix+'mapping/release/mapping.txt',prefix+'mapping/release/resources.txt'])
+    require(apk==root/required[0],'Receipt launcher APK mismatch')
     files=receipt.get('artifacts',{})
     require(all(name in files for name in required),'Missing bound APK/metadata/current mapping')
     for name,digest in files.items():
         require(sha(confined(root,name).read_bytes())==digest,'Build artifact/evidence changed: '+name)
-    require('app/build/outputs/mapping/release/resources.txt' in files,'Missing current resource shrink evidence')
-    return {'buildReceiptSha256':sha(data),'mappingSha256':files[required[2]],'tasks':[t['task'] for t in tasks]}
+    for module in RELEASE_APPS:
+        require(confined(root,module+'/build/outputs/mapping/release/mapping.txt').stat().st_size>0,'Empty release mapping: '+module)
+    return {'buildReceiptSha256':sha(data),'mappingSha256':files[required[2]],'tasks':[t['task'] for t in tasks],
+            'apps':list(RELEASE_APPS)}
 
 
-def unique_apk(directory,root,variant):
-    directory=Path(directory).absolute();expected=Path(root)/'app/build/outputs/apk'/variant
+def unique_apk(directory,root,variant,module='app'):
+    require(module in RELEASE_APPS,'Unknown release app')
+    directory=Path(directory).absolute();expected=Path(root)/module/'build/outputs/apk'/variant
     require(directory==expected.absolute() and not directory.is_symlink(),'Variant artifact directory escape')
     require(directory.is_dir(),'Missing APK directory')
     for parent in directory.parents:
         require(not parent.is_symlink(),'Artifact ancestor symlink')
-    metadata=json.loads((directory/'output-metadata.json').read_text())
-    require(metadata.get('variantName')==variant and metadata.get('applicationId')==RELEASE_ID+('.debug' if variant=='debug' else ''),'APK metadata ID/variant mismatch')
+    metadata=json.loads(confined(directory,'output-metadata.json').read_text())
+    require(metadata.get('variantName')==variant and metadata.get('applicationId')==RELEASE_APPS[module]['applicationId']+('.debug' if variant=='debug' else ''),'APK metadata ID/variant mismatch: '+module)
     elements=metadata.get('elements');require(isinstance(elements,list) and len(elements)==1,'Need exactly one metadata output')
     name=elements[0].get('outputFile');require(isinstance(name,str) and Path(name).name==name and name.endswith('.apk'),'Metadata path escape')
     candidates=list(directory.glob('*.apk'));require(len(candidates)==1 and candidates[0].name==name,'Zero/multiple/mismatched immediate APKs')
     require(not candidates[0].is_symlink() and candidates[0].is_file(),'APK is not a confined regular file')
     return candidates[0]
+
+
+def compiled_app_identity(args,root,module,inspect_unsigned=False):
+    spec=RELEASE_APPS[module];variant=args.variant
+    apk=unique_apk(root/module/'build/outputs/apk'/variant,root,variant,module)
+    expected=spec['applicationId']+('.debug' if variant=='debug' else '')
+    version=RELEASE_VERSION+(spec['debugVersionSuffix'] if variant=='debug' else '')
+    metadata=json.loads((apk.parent/'output-metadata.json').read_text())['elements'][0]
+    require(type(metadata.get('versionCode')) is int and metadata['versionCode']==spec['versionCode'] and metadata.get('versionName')==version,'APK metadata version mismatch: '+module)
+    manifest=ET.fromstring(command(args.apkanalyzer,'manifest','print',apk))
+    require(manifest.tag=='manifest' and manifest.get('package')==expected,'Actual compiled package mismatch: '+module)
+    badging=parse_badging(command(args.aapt2,'dump','badging',apk))
+    require(badging['package']==expected and badging['versionCode']==str(spec['versionCode']) and badging['versionName']==version,'Compiled APK version/ID mismatch: '+module)
+    label=spec['label']+(' Debug' if module=='app' and variant=='debug' else '')
+    require(all(v==label for v in badging['labels'].values()),'Wrong compiled locale label: '+module)
+    require(badging['debuggable']==(variant=='debug'),'Compiled debuggability mismatch: '+module)
+    require(command(args.apkanalyzer,'manifest','min-sdk',apk).strip()=='30' and command(args.apkanalyzer,'manifest','target-sdk',apk).strip()=='36','Compiled SDK mismatch: '+module)
+    cert=None
+    if not inspect_unsigned:
+        require(re.fullmatch(r'[0-9a-fA-F]{64}',args.expected_cert_sha256 or ''),'Independent expected certificate required')
+        cert=signer(args.apksigner,apk)
+        require(cert==args.expected_cert_sha256.lower(),'APK signer mismatch: '+module)
+    return {'path':str(apk),'sha256':sha(apk.read_bytes()),'applicationId':expected,'versionCode':spec['versionCode'],
+            'versionName':version,'labels':badging['labels'],'signerSha256':cert}
+
+
+def release_identity(args):
+    """Current three-APK gate, separate from the historical launcher branding audit."""
+    root=Path(args.root).absolute()
+    provenance=execution_identity(root,args.baseline,args)
+    sources=source_release_identities(root)
+    inspect_unsigned=args.inspect_unsigned
+    require(not inspect_unsigned or args.variant=='release','Unsigned inspection requires release outputs')
+    apps={module:compiled_app_identity(args,root,module,inspect_unsigned) for module in RELEASE_APPS}
+    build=None
+    if args.variant=='release' and not inspect_unsigned:
+        build=build_identity(args,root,Path(apps['app']['path']),provenance,ORIGINAL_INDEX_SHA256)
+    execution_identity(root,args.baseline,args)
+    report={'schemaVersion':1,'variant':args.variant,'sourceProvenance':provenance,'sources':sources,'apps':apps,
+            'signaturesVerified':not inspect_unsigned,'buildProvenance':build,
+            'inspectionOnly':inspect_unsigned,'brandingVerified':False}
+    target=Path(args.report);require(not target.exists() and target.parent.is_dir(),'Report collision/missing owned parent')
+    with target.open('x') as handle:json.dump(report,handle,indent=2,sort_keys=True);handle.write('\n')
+    for module,row in apps.items():print('PASS release-identity',module,row['applicationId'],row['versionName'])
+    if inspect_unsigned:print('INSPECTION ONLY: signatures and release build provenance not verified')
+    print(target)
 
 
 def parse_badging(text):
@@ -674,6 +766,7 @@ def apk_identity(args):
     if args.variant=='release':
         mapping=confined(root,'app/build/outputs/mapping/release/mapping.txt');require(mapping.stat().st_size>0,'Empty release mapping/minification proof')
         checks['buildProvenance']=build_identity(args,root,apk,checks['sourceProvenance'],checks['indexSha256'])
+        checks['releaseApps']={module:compiled_app_identity(args,root,module) for module in RELEASE_APPS}
     checks['packagedBranding']=packaged_branding(args,root,apk,app,resources,names)
     capability=None
     if getattr(args,'require_offline',False):
@@ -707,6 +800,7 @@ def main():
     pre=subs.add_parser('prereqs');pre.add_argument('--root',required=True)
     for flag in ('jdk-home','sdk-root','gradle-user-home','apkanalyzer','aapt2','apksigner'):pre.add_argument('--'+flag,required=True)
     identity=subs.add_parser('identity');apk=subs.add_parser('apk-identity')
+    release=subs.add_parser('release-identity',help='Verify source and APK identities for all three apps (no historical branding audit)')
     for parser in (identity,apk):
         parser.add_argument('--root',required=True);parser.add_argument('--baseline',required=True);parser.add_argument('--deferred-assets-index',required=True,help='Original provenance index (legacy argument name); not the approved delivery manifest')
         for flag in ('expected-source-head','expected-source-tree','source-receipt','expected-source-receipt-sha256'):parser.add_argument('--'+flag,required=True)
@@ -714,9 +808,16 @@ def main():
     for flag in ('apk-dir','expected-cert-sha256','apkanalyzer','aapt2','apksigner','report'):apk.add_argument('--'+flag,required=True)
     apk.add_argument('--require-offline',action='store_true')
     apk.add_argument('--build-receipt');apk.add_argument('--expected-build-receipt-sha256')
+    for flag in ('root','baseline','expected-source-head','expected-source-tree','source-receipt','expected-source-receipt-sha256','apkanalyzer','aapt2','report'):
+        release.add_argument('--'+flag,required=True)
+    release.add_argument('--variant',choices=('debug','release'),required=True)
+    release.add_argument('--expected-cert-sha256');release.add_argument('--apksigner')
+    release.add_argument('--build-receipt');release.add_argument('--expected-build-receipt-sha256')
+    release.add_argument('--inspect-unsigned',action='store_true',help='Inspect release identities only; does not certify signing or release task provenance')
     args=p.parse_args()
     if args.mode=='prereqs':prerequisites(args)
     elif args.mode=='identity':source_identity(Path(args.root).absolute(),args.baseline,args.deferred_assets_index,execution=args);print('PASS identity;',SOURCE_ARTWORK_STATUS)
+    elif args.mode=='release-identity':release_identity(args)
     else:apk_identity(args)
 
 

@@ -55,6 +55,9 @@ Get the APKs from [Kotatsu Releases](https://github.com/alexindigo/kotatsu/relea
 |---|---|---|
 | 1 | [kotatsu-v0.5.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.5.2/kotatsu-v0.5.2.apk) | The launcher |
 | 2 | [kotatsu-weather-v0.5.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.5.2/kotatsu-weather-v0.5.2.apk) | Optional weather widget; separate app with network access |
+| 3 | kotatsu-notes-v0.5.2.apk (not in the published 0.5.2 release) | Optional Mudita Notes task-list widget; separate app, available in the next release |
+
+Release asset names follow `kotatsu-v<version>.apk`, `kotatsu-weather-v<version>.apk` and `kotatsu-notes-v<version>.apk`. The source version literals above will be updated together for the next release.
 
 Open the downloaded APK on the phone and allow installation from that source when Android asks. Open Kotatsu to preview it; choose it as the default Home app in Android settings when ready. Updates are installed manually from Releases.
 
@@ -151,6 +154,8 @@ cd kotatsu
 ```
 
 Debug APKs are written under each app's `build/outputs/apk/debug/`: `app/`, `kotatsu-weather/` and `kotatsu-notes/`. Release builds use `:app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease` with `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` set for your own signing key. A self-signed build cannot replace an installed release signed with a different key.
+
+See [release tooling](docs/RELEASE_TOOLING.md) for the three-APK identity gate, build receipts and asset naming.
 
 ## Troubleshooting
 

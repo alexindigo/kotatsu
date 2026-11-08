@@ -18,29 +18,37 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 17
+          java-version: 21
 
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Decode keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $GITHUB_WORKSPACE/keystore.jks
 
-      - name: Build release APK
+      - name: Build release APKs
         env:
           KEYSTORE_FILE: ${{ github.workspace }}/keystore.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
+        run: ./gradlew :app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease
 
-      - name: Upload APK
+      - name: Name release assets
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python3 tools/prepare_release.py --root . --tag "$RELEASE_TAG" --output release-apks
+
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: kotatsu-release
-          path: app/build/outputs/apk/release/*.apk
+          path: release-apks/*.apk
+          if-no-files-found: error
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: app/build/outputs/apk/release/*.apk
+          files: release-apks/*.apk
+          fail_on_unmatched_files: true

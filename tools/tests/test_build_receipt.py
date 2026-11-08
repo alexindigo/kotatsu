@@ -18,22 +18,27 @@ class BuildReceiptTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.provenance = {'head': 'a'*40, 'headTree': 'b'*40, 'sourceReceiptSha256': 'c'*64}
         self.tasks = []
-        for number, task in enumerate((':app:testReleaseUnitTest', ':app:lintRelease', ':app:assembleRelease')):
+        release_tasks=[':'+module+':'+task for module in ('app','kotatsu-weather','kotatsu-notes')
+                       for task in ('testReleaseUnitTest','lintRelease','assembleRelease')]
+        for number, task in enumerate(release_tasks):
+            prefix=task.rsplit(':',1)[0]
             log = self.root / ('task-' + str(number) + '.log')
             text = '> Task ' + task + '\nBUILD SUCCESSFUL\n'
             if task.endswith('lintRelease'):
-                text += '> Task :app:lintAnalyzeRelease\n> Task :app:lintReportRelease\n'
+                text += f'> Task {prefix}:lintAnalyzeRelease\n> Task {prefix}:lintReportRelease\n'
             if task.endswith('assembleRelease'):
-                text += '> Task :app:minifyReleaseWithR8\n> Task :app:optimizeReleaseResources\n> Task :app:packageRelease\nR8 resource shrinking enabled\n'
+                text += f'> Task {prefix}:minifyReleaseWithR8\n> Task {prefix}:optimizeReleaseResources\n> Task {prefix}:packageRelease\nR8 resource shrinking enabled\n'
             log.write_text(text)
             self.tasks.append({'task': task, 'exitCode': 0, 'log': str(log), 'logSha256': verify.sha(log.read_bytes())})
         self.files = {}
-        for name in ('app/build/outputs/apk/release/app.apk', 'app/build/outputs/apk/release/output-metadata.json',
-                     'app/build/outputs/mapping/release/mapping.txt', 'app/build/outputs/mapping/release/resources.txt'):
-            path = self.root / name
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_bytes(b'fresh fixture')
-            self.files[name] = verify.sha(path.read_bytes())
+        for module,package in (('app','com.alexindigo.kotatsu'),('kotatsu-weather','com.alexindigo.kotatsu.weather'),('kotatsu-notes','com.alexindigo.kotatsu.notes')):
+            for suffix in ('apk/release/app.apk','apk/release/output-metadata.json','mapping/release/mapping.txt','mapping/release/resources.txt'):
+                name=module+'/build/outputs/'+suffix
+                path = self.root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                data=json.dumps({'variantName':'release','applicationId':package,'elements':[{'outputFile':'app.apk'}]}).encode() if suffix.endswith('.json') else b'fresh fixture'
+                path.write_bytes(data)
+                self.files[name] = verify.sha(path.read_bytes())
         self.apk = self.root / 'app/build/outputs/apk/release/app.apk'
         self.receipt = self.root / 'receipt.json'
         self.value = {'sourceBefore': self.provenance, 'sourceAfter': self.provenance,
@@ -98,3 +103,32 @@ class BuildReceiptTest(unittest.TestCase):
                 with self.assertRaises(verify.VerificationError):
                     self.check()
                 self.value['tasks'] = saved
+
+    def test_companion_tasks_and_artifacts_cannot_be_omitted_or_replayed(self):
+        self.check()
+        for module in ('kotatsu-weather','kotatsu-notes'):
+            with self.subTest(module=module):
+                saved=self.value['tasks']
+                self.value['tasks']=[t for t in saved if not t['task'].startswith(':'+module+':')]
+                self.pin()
+                with self.assertRaisesRegex(verify.VerificationError,'all three apps'):self.check()
+                self.value['tasks']=saved;self.pin()
+                for suffix in ('apk/release/app.apk','apk/release/output-metadata.json','mapping/release/mapping.txt','mapping/release/resources.txt'):
+                    name=module+'/build/outputs/'+suffix
+                    digest=self.files.pop(name);self.pin()
+                    with self.assertRaisesRegex(verify.VerificationError,'Missing bound'):self.check()
+                    self.files[name]=digest;self.pin()
+                path=self.root/(module+'/build/outputs/mapping/release/mapping.txt')
+                path.write_bytes(b'stale companion mapping')
+                with self.assertRaisesRegex(verify.VerificationError,'artifact'):self.check()
+                path.write_bytes(b'fresh fixture')
+
+    def test_cached_companion_optimization_is_rejected(self):
+        self.check()
+        for module in ('kotatsu-weather','kotatsu-notes'):
+            task=next(t for t in self.tasks if t['task']==':'+module+':assembleRelease')
+            log=Path(task['log']);original=log.read_text()
+            log.write_text(original.replace(':minifyReleaseWithR8\n',':minifyReleaseWithR8 FROM-CACHE\n'))
+            task['logSha256']=verify.sha(log.read_bytes());self.pin()
+            with self.assertRaisesRegex(verify.VerificationError,'not freshly'):self.check()
+            log.write_text(original);task['logSha256']=verify.sha(log.read_bytes());self.pin()
