@@ -1,0 +1,21 @@
+<resources>
+    <string name="quote_label">Zitat des Tages</string>
+    <string name="quote_description">Zitate aus einer Textnotiz in Mudita Notes auf dem Sperrbildschirm.</string>
+    <string name="choose_note">Notiz auswählen</string>
+    <string name="choose_quotes">Eine Notiz mit Zitaten auswählen</string>
+    <string name="no_text_notes">Erstelle eine Textnotiz in Mudita Notes. Trenne Zitate durch Leerzeilen; schreibe den Autor in die nächste Zeile.</string>
+    <string name="untitled_note">Unbenannte Notiz</string>
+    <string name="quote_frequency">Häufigkeit</string>
+    <string name="quote_order">Reihenfolge</string>
+    <string name="quote_frequency_value">Häufigkeit: %1$s</string>
+    <string name="quote_order_value">Reihenfolge: %1$s</string>
+    <string name="quote_widget_name">Zitat: %1$s</string>
+    <string name="quote_daily">Täglich</string>
+    <string name="quote_hourly">Stündlich</string>
+    <string name="quote_on_wake">Beim Aufwecken</string>
+    <string name="quote_rotation">Der Reihe nach</string>
+    <string name="quote_shuffle">Gemischt</string>
+    <string name="quote_random">Zufällig</string>
+    <string name="quote_done">Fertig</string>
+    <string name="quote_back">Zurück</string>
+</resources>

@@ -10,7 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.os.Looper
-import android.os.SystemClock
 import android.view.View
 import android.view.ViewGroup
 import android.widget.CheckBox
@@ -29,15 +28,7 @@ class NotesWidgetInstrumentedTest {
         if (Looper.myLooper() == Looper.getMainLooper()) work() else instrumentation.runOnMainSync(work)
     }
     private fun fixture(method: String, arg: String? = null) = context.contentResolver.call(MuditaNotes.URI, method, arg, null)!!
-    private fun await(message: String, ready: () -> Boolean) {
-        val end = SystemClock.elapsedRealtime() + 20_000
-        var observed = ready()
-        while (!observed && SystemClock.elapsedRealtime() < end) {
-            Thread.sleep(40)
-            observed = ready()
-        }
-        assertTrue(message, observed)
-    }
+    private fun await(message: String, ready: () -> Boolean) = awaitWidgetHost(message, ready)
 
     /** Receipt is not row binding: RemoteCollectionItems notifies its adapter before ListView lays out. */
     private class ObservedHostView(context: Context) : AppWidgetHostView(context) {

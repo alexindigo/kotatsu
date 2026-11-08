@@ -68,11 +68,12 @@ object NotesRuntime {
     fun changed(context: Context, changedIds: Set<Long>?) {
         val store = NotesStore(context)
         refresh(context, affectedWidgets(ids(context).associateWith(store::selected), changedIds).toIntArray())
+        QuoteRuntime.changed(context, changedIds)
     }
 
     fun arm(context: Context, replace: Boolean = false) {
         val scheduler = context.getSystemService(JobScheduler::class.java)
-        if (ids(context).isEmpty()) { scheduler.cancel(WATCH_JOB); return }
+        if (ids(context).isEmpty() && QuoteRuntime.ids(context).isEmpty()) { scheduler.cancel(WATCH_JOB); return }
         if (!unlocked(context) || !replace && scheduler.getPendingJob(WATCH_JOB) != null) return
         val result = scheduler.schedule(JobInfo.Builder(WATCH_JOB, ComponentName(context, NotesChangedJob::class.java))
             .addTriggerContentUri(JobInfo.TriggerContentUri(MuditaNotes.URI, JobInfo.TriggerContentUri.FLAG_NOTIFY_FOR_DESCENDANTS))

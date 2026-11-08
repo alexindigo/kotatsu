@@ -1,0 +1,21 @@
+<resources>
+    <string name="quote_label">Citaat van de dag</string>
+    <string name="quote_description">Citaten uit een tekstnotitie van Mudita Notes op het vergrendelscherm.</string>
+    <string name="choose_note">Notitie kiezen</string>
+    <string name="choose_quotes">Kies een notitie met citaten</string>
+    <string name="no_text_notes">Maak een tekstnotitie in Mudita Notes. Scheid citaten met lege regels; zet de auteur op de volgende regel.</string>
+    <string name="untitled_note">Naamloze notitie</string>
+    <string name="quote_frequency">Frequentie</string>
+    <string name="quote_order">Volgorde</string>
+    <string name="quote_frequency_value">Frequentie: %1$s</string>
+    <string name="quote_order_value">Volgorde: %1$s</string>
+    <string name="quote_widget_name">Citaat: %1$s</string>
+    <string name="quote_daily">Dagelijks</string>
+    <string name="quote_hourly">Elk uur</string>
+    <string name="quote_on_wake">Bij ontwaken</string>
+    <string name="quote_rotation">Op volgorde</string>
+    <string name="quote_shuffle">Geschud</string>
+    <string name="quote_random">Willekeurig</string>
+    <string name="quote_done">Gereed</string>
+    <string name="quote_back">Terug</string>
+</resources>

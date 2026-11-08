@@ -1,0 +1,21 @@
+<resources>
+    <string name="quote_label">Quote of the day</string>
+    <string name="quote_description">Quotes from a Mudita Notes text note, on your lock screen.</string>
+    <string name="choose_note">Choose a note</string>
+    <string name="choose_quotes">Choose a note with quotes</string>
+    <string name="no_text_notes">Create a text note in Mudita Notes. Separate quotes with blank lines; put the author on the next line.</string>
+    <string name="untitled_note">Untitled note</string>
+    <string name="quote_frequency">Frequency</string>
+    <string name="quote_order">Order</string>
+    <string name="quote_frequency_value">Frequency: %1$s</string>
+    <string name="quote_order_value">Order: %1$s</string>
+    <string name="quote_widget_name">Quote: %1$s</string>
+    <string name="quote_daily">Daily</string>
+    <string name="quote_hourly">Hourly</string>
+    <string name="quote_on_wake">On wake</string>
+    <string name="quote_rotation">Rotation</string>
+    <string name="quote_shuffle">Shuffle</string>
+    <string name="quote_random">Random</string>
+    <string name="quote_done">Done</string>
+    <string name="quote_back">Back</string>
+</resources>

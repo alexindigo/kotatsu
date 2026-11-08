@@ -1,0 +1,8 @@
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp" android:minHeight="112dp"
+    android:targetCellWidth="4" android:targetCellHeight="2"
+    android:resizeMode="horizontal|vertical" android:widgetCategory="home_screen|keyguard"
+    android:configure="com.alexindigo.kotatsu.notes.QuoteConfigureActivity"
+    android:widgetFeatures="reconfigurable" android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_quote" android:previewLayout="@layout/widget_quote"
+    android:description="@string/quote_description" />

@@ -78,6 +78,14 @@ public class NotesCrossPackageHostActivity extends Activity {
         result.putString("hostPackage", getPackageName());
         if (view != null) result.putString("providerLabel", AppWidgetManager.getInstance(this).getAppWidgetInfo(widgetId).loadLabel(getPackageManager()));
         if (view == null) return result;
+        TextView quote = view.findViewById(id("quote_text"));
+        if (quote != null) {
+            result.putString("quote", quote.getText().toString());
+            result.putBoolean("quoteRestricted", quote.getContext().isRestricted());
+            result.putInt("quoteWeight", quote.getTypeface().getWeight());
+            result.putFloat("quoteSize", quote.getTextSize());
+            result.putFloat("quoteWidth", quote.getPaint().measureText("WWmm ii 0123456789"));
+        }
         ListView list = view.findViewById(id("tasks"));
         if (list != null) result.putParcelable("listBounds", bounds(list));
         TextView heading = view.findViewById(id("heading"));

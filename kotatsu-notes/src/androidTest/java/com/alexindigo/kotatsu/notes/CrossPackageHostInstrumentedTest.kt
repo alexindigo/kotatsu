@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.Typeface
 import android.os.Bundle
-import android.os.SystemClock
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
@@ -17,16 +16,48 @@ class CrossPackageHostInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private fun fixture(method: String) = context.contentResolver.call(MuditaNotes.URI, method, null, null)!!
-    private fun await(message: String, ready: () -> Boolean) {
-        val end = SystemClock.elapsedRealtime() + 20_000
-        while (!ready() && SystemClock.elapsedRealtime() < end) Thread.sleep(40)
-        assertTrue(message, ready())
-    }
+    private fun await(message: String, ready: () -> Boolean) = awaitWidgetHost(message, ready)
     private fun findButton(node: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
         node ?: return null
         if (node.viewIdResourceName == "android:id/button1" && node.isVisibleToUser) return node
         for (index in 0 until node.childCount) findButton(node.getChild(index))?.let { return it }
         return null
+    }
+
+    @Test fun quoteUsesTheNamedSystemLatoFamilyAcrossThePackageBoundary() {
+        fixture("reset")
+        var id = -1
+        val clock = QuoteRuntime.clock
+        try {
+            QuoteRuntime.clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneId.of("UTC"))
+            context.startActivity(Intent().setComponent(ComponentName(instrumentation.context.packageName, NotesCrossPackageHostActivity::class.java.name))
+                .putExtra("providerPackage", context.packageName).putExtra("providerClass", QuoteWidgetProvider::class.java.name)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            await("Quote host must start") { fixture("host-stats").getString("hostState") != null }
+            if (fixture("host-stats").getString("hostState") == "consent") {
+                var button: AccessibilityNodeInfo? = null
+                await("Bind consent") { button = findButton(instrumentation.uiAutomation.rootInActiveWindow); button != null }
+                assertTrue(button!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+            }
+            await("Quote host must bind") { fixture("host-stats").getString("hostState") == "bound" }
+            id = fixture("host-stats").getInt("hostId")
+            NotesRuntime.enqueue { QuoteStore(context).save(id, QuoteConfig(7)); QuoteRuntime.refresh(context) }.get()
+            await("Quote must reach the other UID") { fixture("host-stats").getString("quote") == "First quote" }
+            val observed = fixture("host-stats")
+            assertNotEquals(context.applicationInfo.uid, observed.getInt("hostUid"))
+            assertTrue(observed.getBoolean("quoteRestricted"))
+            assertEquals(400, observed.getInt("quoteWeight"))
+            val paint = Paint().apply { typeface = Typeface.create("lato-mudita", Typeface.NORMAL); textSize = observed.getFloat("quoteSize") }
+            assertEquals(paint.measureText("WWmm ii 0123456789"), observed.getFloat("quoteWidth"), .01f)
+            val png = fixture("host-capture").getByteArray("png")!!
+            val directory = java.io.File(context.getExternalFilesDir(null), "notes-renders").apply { mkdirs() }
+            java.io.File(directory, "widget-quote-cross-package.png").writeBytes(png)
+        } finally {
+            fixture("host-close")
+            await("Quote host must release") { fixture("host-stats").getString("hostState") == null }
+            if (id >= 0) NotesRuntime.enqueue { QuoteStore(context).delete(id); QuoteRuntime.refresh(context) }.get()
+            QuoteRuntime.clock = clock
+        }
     }
 
     @Test fun actualOtherPackageHostRendersTheIntendedTypefaceAndCommittedRows() {

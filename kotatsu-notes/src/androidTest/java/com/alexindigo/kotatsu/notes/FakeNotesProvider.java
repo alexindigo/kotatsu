@@ -16,6 +16,8 @@ public class FakeNotesProvider extends ContentProvider {
     private long updatedAt;
     private int writes;
     private boolean titlesOnly;
+    private String quoteContent;
+    private boolean textTitlesOnly;
 
     @Override public boolean onCreate() { return true; }
     @Override public String getType(Uri uri) { return "vnd.android.cursor.dir/notes"; }
@@ -26,6 +28,23 @@ public class FakeNotesProvider extends ContentProvider {
             String[] args, String order) {
         require(COLLECTION.equals(uri));
         boolean choosing = Arrays.equals(projection, new String[]{"id", "title"});
+        boolean text = args != null && "TEXT".equals(args[args.length - 1]);
+        if (text) {
+            if (choosing) {
+                require("note_type = ?".equals(selection) && args.length == 1);
+                require("updated_at DESC, id ASC".equals(order));
+                textTitlesOnly = true;
+            } else {
+                require(Arrays.equals(projection, new String[]{"id", "title", "content"}));
+                require("id = ? AND note_type = ?".equals(selection) && args.length == 2);
+            }
+            MatrixCursor result = new MatrixCursor(projection);
+            if (quoteContent != null && (choosing || "7".equals(args[0]))) {
+                if (choosing) result.addRow(new Object[]{7L, "Kotatsu quotes"});
+                else result.addRow(new Object[]{7L, "Kotatsu quotes", quoteContent});
+            }
+            return result;
+        }
         if (choosing) {
             require("note_type = ?".equals(selection) && Arrays.equals(args, new String[]{"CHECKLIST"}));
             require("updated_at DESC, id ASC".equals(order));
@@ -67,6 +86,7 @@ public class FakeNotesProvider extends ContentProvider {
             case "host-capture": return NotesCrossPackageHostActivity.capture();
             case "host-close": NotesCrossPackageHostActivity.closeHost(); return new Bundle();
             case "reset":
+                quoteContent = "First quote\nFirst author\n\nSecond quote\n\nThird quote\nThird author"; textTitlesOnly = false;
                 writes = 0; titlesOnly = false; title = "Kotatsu long list"; updatedAt = 100;
                 content = "[{\"text\":\"Milk\",\"checked\":false},{\"text\":\"Ask the pharmacist about the allergy tablets for the weekend trip\",\"checked\":false}]";
                 break;
@@ -93,10 +113,16 @@ public class FakeNotesProvider extends ContentProvider {
                 getContext().getContentResolver().notifyChange(COLLECTION, null);
                 break;
             case "stats": break;
+            case "quote-edit":
+                quoteContent = arg;
+                getContext().getContentResolver().notifyChange(Uri.withAppendedPath(COLLECTION, "7"), null);
+                break;
+            case "quote-silent-edit": quoteContent = arg; break;
             default: throw new IllegalArgumentException("Unknown fixture operation");
         }
         Bundle result = new Bundle();
         result.putInt("writes", writes); result.putBoolean("titlesOnly", titlesOnly); result.putString("content", content);
+        result.putBoolean("textTitlesOnly", textTitlesOnly); result.putString("quoteContent", quoteContent);
         return result;
     }
     @Override public Uri insert(Uri uri, ContentValues values) { throw new UnsupportedOperationException(); }

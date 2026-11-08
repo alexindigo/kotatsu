@@ -1,0 +1,21 @@
+<resources>
+    <string name="quote_label">Citát dne</string>
+    <string name="quote_description">Citáty z textové poznámky Mudita Notes na zamykací obrazovce.</string>
+    <string name="choose_note">Vybrat poznámku</string>
+    <string name="choose_quotes">Vyberte poznámku s citáty</string>
+    <string name="no_text_notes">Vytvořte textovou poznámku v Mudita Notes. Citáty oddělte prázdnými řádky; autora napište na další řádek.</string>
+    <string name="untitled_note">Poznámka bez názvu</string>
+    <string name="quote_frequency">Četnost</string>
+    <string name="quote_order">Pořadí</string>
+    <string name="quote_frequency_value">Četnost: %1$s</string>
+    <string name="quote_order_value">Pořadí: %1$s</string>
+    <string name="quote_widget_name">Citát: %1$s</string>
+    <string name="quote_daily">Denně</string>
+    <string name="quote_hourly">Každou hodinu</string>
+    <string name="quote_on_wake">Při probuzení</string>
+    <string name="quote_rotation">Postupně</string>
+    <string name="quote_shuffle">Promíchaně</string>
+    <string name="quote_random">Náhodně</string>
+    <string name="quote_done">Hotovo</string>
+    <string name="quote_back">Zpět</string>
+</resources>

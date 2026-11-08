@@ -1,0 +1,21 @@
+<resources>
+    <string name="quote_label">Citazione del giorno</string>
+    <string name="quote_description">Citazioni da una nota di testo Mudita Notes sulla schermata di blocco.</string>
+    <string name="choose_note">Scegli una nota</string>
+    <string name="choose_quotes">Scegli una nota con citazioni</string>
+    <string name="no_text_notes">Crea una nota di testo in Mudita Notes. Separa le citazioni con righe vuote; scrivi l\'autore sulla riga successiva.</string>
+    <string name="untitled_note">Nota senza titolo</string>
+    <string name="quote_frequency">Frequenza</string>
+    <string name="quote_order">Ordine</string>
+    <string name="quote_frequency_value">Frequenza: %1$s</string>
+    <string name="quote_order_value">Ordine: %1$s</string>
+    <string name="quote_widget_name">Citazione: %1$s</string>
+    <string name="quote_daily">Ogni giorno</string>
+    <string name="quote_hourly">Ogni ora</string>
+    <string name="quote_on_wake">Al risveglio</string>
+    <string name="quote_rotation">In sequenza</string>
+    <string name="quote_shuffle">Senza ripetizioni</string>
+    <string name="quote_random">Casuale</string>
+    <string name="quote_done">Fine</string>
+    <string name="quote_back">Indietro</string>
+</resources>

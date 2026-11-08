@@ -26,6 +26,6 @@ class NotesChangedJob : JobService() {
     }
     override fun onStopJob(params: JobParameters): Boolean {
         running?.cancel(true); running = null
-        return NotesRuntime.ids(this).isNotEmpty()
+        return NotesRuntime.ids(this).isNotEmpty() || QuoteRuntime.ids(this).isNotEmpty()
     }
 }

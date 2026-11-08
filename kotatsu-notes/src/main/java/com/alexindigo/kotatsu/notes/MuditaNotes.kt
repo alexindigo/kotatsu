@@ -4,10 +4,27 @@ import android.content.ContentResolver
 import android.content.ContentValues
 import android.net.Uri
 
-class MuditaNotes(private val resolver: ContentResolver) : NotesPort {
-    override fun choices(): List<TaskListChoice>? = resolver.query(URI, arrayOf("id", "title"),
-        "note_type = ?", arrayOf(TYPE), "updated_at DESC, id ASC")?.use { cursor ->
+data class TextNote(val id: Long, val title: String, val content: String)
+interface TextNotesPort {
+    fun textChoices(): List<TaskListChoice>?
+    fun readText(id: Long): TextNote?
+}
+
+class MuditaNotes(private val resolver: ContentResolver) : NotesPort, TextNotesPort {
+    override fun choices(): List<TaskListChoice>? = choices(TYPE)
+    override fun textChoices(): List<TaskListChoice>? = choices("TEXT")
+    private fun choices(type: String): List<TaskListChoice>? = resolver.query(URI, arrayOf("id", "title"),
+        "note_type = ?", arrayOf(type), "updated_at DESC, id ASC")?.use { cursor ->
         buildList { while (cursor.moveToNext()) add(TaskListChoice(cursor.getLong(0), cursor.getString(1).orEmpty())) }
+    }
+
+    override fun readText(id: Long): TextNote? {
+        if (id < 0) return null
+        return resolver.query(URI, arrayOf("id", "title", "content"),
+            "id = ? AND note_type = ?", arrayOf(id.toString(), "TEXT"), null)?.use { cursor ->
+            if (!cursor.moveToFirst()) null else TextNote(cursor.getLong(0), cursor.getString(1).orEmpty(),
+                cursor.getString(2).orEmpty()).takeIf { it.id == id }
+        }
     }
 
     override fun read(id: Long): TaskListSnapshot? {

@@ -6,12 +6,7 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
-import android.view.ViewGroup
-import android.widget.LinearLayout
-import android.widget.ScrollView
-import android.widget.TextView
 
 /** A widget-bound titles-only picker. Selection applies and returns; Back leaves it unchanged. */
 class ConfigureActivity : Activity() {
@@ -30,10 +25,15 @@ class ConfigureActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        if (widgetId in QuoteRuntime.ids(this)) {
+            startActivity(Intent(this, QuoteConfigureActivity::class.java)
+                .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId))
+            finish(); return
+        }
         if (widgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            when (val target = settingsTarget(NotesRuntime.ids(this))) {
+            when (val target = settingsTarget(NotesRuntime.ids(this) + QuoteRuntime.ids(this))) {
                 SettingsTarget.NoWidget -> showPage(R.string.app_name, listOf(getString(R.string.add_widget_help) to null))
-                is SettingsTarget.One -> { widgetId = target.widgetId; loadChoices() }
+                is SettingsTarget.One -> { openWidget(target.widgetId) }
                 is SettingsTarget.Choose -> chooseWidget(target.widgetIds)
             }
         } else loadChoices()
@@ -44,16 +44,29 @@ class ConfigureActivity : Activity() {
         NotesRuntime.enqueue {
             val store = NotesStore(this)
             val titles = runCatching { NotesRuntime.notes(this).choices()?.associate { it.id to it.title } }.getOrNull()
+            val quoteTitles = runCatching { QuoteRuntime.notes(this).textChoices()?.associate { it.id to it.title } }.getOrNull()
+            val quotes = QuoteRuntime.ids(this).toSet()
             val names = ids.map { id ->
-                titles?.get(store.selected(id))?.ifBlank { getString(R.string.untitled_list) } ?: getString(R.string.choose_list)
+                if (id in quotes) getString(R.string.quote_widget_name,
+                    quoteTitles?.get(QuoteStore(this).config(id)?.noteId)?.ifBlank { getString(R.string.untitled_note) }
+                        ?: getString(R.string.quote_label))
+                else titles?.get(store.selected(id))?.ifBlank { getString(R.string.untitled_list) } ?: getString(R.string.choose_list)
             }
             runOnUiThread {
                 if (isFinishing || isDestroyed || generation != request) return@runOnUiThread
                 showPage(R.string.choose_widget, ids.mapIndexed { index, id -> names[index] to {
-                    widgetId = id; loadChoices()
+                    openWidget(id)
                 } })
             }
         }
+    }
+
+    private fun openWidget(id: Int) {
+        widgetId = id
+        if (id in QuoteRuntime.ids(this)) {
+            startActivity(Intent(this, QuoteConfigureActivity::class.java).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id))
+            finish()
+        } else loadChoices()
     }
 
     private fun loadChoices() {
@@ -90,30 +103,7 @@ class ConfigureActivity : Activity() {
     }
 
     private fun showPage(title: Int, entries: List<Pair<String, (() -> Unit)?>>) {
-        val body = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setBackgroundColor(Color.WHITE)
-            setPadding(dp(16), dp(16), dp(16), dp(20))
-        }
-        body.addView(text(getString(title), 26f, true).apply { setPadding(0, 0, 0, dp(16)) })
-        entries.forEach { (label, action) ->
-            body.addView(text(label, 18f, action != null).apply {
-                minHeight = dp(48); gravity = Gravity.CENTER_VERTICAL
-                setPadding(0, dp(9), 0, dp(9))
-                if (action != null) {
-                    isSingleLine = true; ellipsize = android.text.TextUtils.TruncateAt.END
-                    setOnClickListener { action() }
-                    background = getDrawable(R.drawable.choice_focus)
-                }
-            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
-        }
-        setContentView(ScrollView(this).apply { setBackgroundColor(Color.WHITE); addView(body) })
+        notesPage(getString(title), entries.map { NotesPageEntry(it.first, it.second) })
     }
-
-    private fun text(label: String, size: Float, bold: Boolean) = TextView(this).apply {
-        text = label; textSize = size; setTextColor(Color.BLACK)
-        typeface = resources.getFont(if (bold) R.font.lato_bold else R.font.lato_regular)
-    }
-    private fun dp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
     override fun onPause() { generation++; super.onPause() }
 }
