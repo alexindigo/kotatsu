@@ -91,7 +91,8 @@ class WallpaperSourceInstrumentedTest {
             assertNotEquals("Cold proof reused the same process", File(proof, "cold-$expected.pid").readText(), android.os.Process.myPid().toString())
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 lateinit var model: MainViewModel
-                scenario.onActivity { model = it.viewModel; model.onHomeIntent() }
+                scenario.onActivity { model = it.viewModel }
+                scenario.sendSingleHomeIntent()
                 assertEquals(expected, model.wallpaperSource)
                 assertHome(model, expected)
                 scenario.onActivity { model.openWallpaperSettings() }
@@ -110,20 +111,22 @@ class WallpaperSourceInstrumentedTest {
                 .putBoolean("show_battery", false).putBoolean("show_alarm", false).commit()
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 lateinit var model: MainViewModel
-                scenario.onActivity { model = it.viewModel; model.onHomeIntent() }
+                scenario.onActivity { model = it.viewModel }
+                scenario.sendSingleHomeIntent()
                 for (source in WallpaperSource.entries) {
                     // Both public entrances must reach the same choice list and selection semantics.
-                    scenario.onActivity { model.onHomeIntent() }
+                    scenario.sendSingleHomeIntent()
                     ui.await("Home missing") { ui.has(context.getString(R.string.all_apps)) }
                     ui.homeMenu()
                     ui.click(context.getString(R.string.wallpaper))
                     assertChoice(model.wallpaperSource)
                     if (source == WallpaperSource.PHOTO) pick(scenario, photo) else ui.click(label(source))
                     ui.await("Choice did not commit") { model.wallpaperSource == source }
-                    scenario.onActivity { model.onHomeIntent() }
+                    scenario.sendSingleHomeIntent()
                     assertHome(model, source)
                     scenario.recreate()
-                    scenario.onActivity { model = it.viewModel; model.onHomeIntent() }
+                    scenario.onActivity { model = it.viewModel }
+                    scenario.sendSingleHomeIntent()
                     assertHome(model, source)
                     scenario.onActivity { model.navigateTo(Screen.SETTINGS) }
                     ui.click(context.getString(R.string.section_appearance))
@@ -155,14 +158,15 @@ class WallpaperSourceInstrumentedTest {
                         model.themeMode = if (dark) PrefsManager.THEME_DARK else PrefsManager.THEME_LIGHT
                         model.prefs.themeMode = model.themeMode
                         model.applyStatusBar(it)
-                        model.clearWallpaper(); model.onHomeIntent()
+                        model.clearWallpaper()
                     }
+                    scenario.sendSingleHomeIntent()
                     ui.await("Clock fixture missing") { ui.has("10:45") }
                     val baseline = frame()
                     scenario.onActivity { model.openWallpaperSettings() }
                     ui.click(label(WallpaperSource.KOTATSU))
                     ui.await("Bundled choice not published") { model.wallpaperSource == WallpaperSource.KOTATSU }
-                    scenario.onActivity { model.onHomeIntent() }
+                    scenario.sendSingleHomeIntent()
                     assertHome(model, WallpaperSource.KOTATSU)
                     val withPicture = frame()
                     verifyContrast(model, baseline, withPicture, dark)
@@ -208,7 +212,7 @@ class WallpaperSourceInstrumentedTest {
                     assertEquals(source, model.prefs.wallpaperSource)
                     File(proof, "cold-$source.pid").writeText(android.os.Process.myPid().toString())
                     assertTrue(raw.edit().commit())
-                    scenario.onActivity { model.onHomeIntent() }
+                    scenario.sendSingleHomeIntent()
                     assertHome(model, source)
                 }
             }
@@ -338,7 +342,7 @@ class WallpaperSourceInstrumentedTest {
     private fun frame(): Bitmap {
         instrumentation.waitForIdleSync()
         Thread.sleep(250)
-        return instrumentation.uiAutomation.takeScreenshot()!!
+        return instrumentation.platformAutomation.takeScreenshot()!!
     }
 
     private fun save(bitmap: Bitmap, name: String) {

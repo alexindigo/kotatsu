@@ -431,4 +431,13 @@
     <string name="edge_camera_available">Dispon&#237;vel</string>
     <string name="edge_camera_unavailable">Indispon&#237;vel</string>
     <string name="edge_camera_setup">Requer uma c&#226;mara segura compat&#237;vel. No Open Camera, conceda permiss&#227;o de c&#226;mara e ative Defini&#231;&#245;es > Mais controlos da c&#226;mara > Mostrar c&#226;mara quando bloqueado.</string>
+    <string name="recent_apps">Apps recentes</string>
+    <string name="recent_close">Fechar</string>
+    <string name="recent_dismiss">Fechar aplica&#231;&#245;es recentes</string>
+    <string name="recent_just_now">Agora mesmo</string>
+    <string name="recent_yesterday">Ontem</string>
+    <string name="recent_usage_required">Acesso de uso desativado</string>
+    <plurals name="recent_minutes"><item quantity="one">H&#225; %d min</item><item quantity="other">H&#225; %d min</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">H&#225; %d h</item><item quantity="other">H&#225; %d h</item></plurals>
+    <plurals name="recent_days"><item quantity="one">H&#225; %d dia</item><item quantity="other">H&#225; %d dias</item></plurals>
 </resources>

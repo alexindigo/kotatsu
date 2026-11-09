@@ -43,6 +43,7 @@ class MainActivity : ComponentActivity() {
     companion object { private const val REQUEST_CONFIGURE_WIDGET = 0x4B54 }
 
     private var einkHelper: EinkHelper? = null
+    private var homeKeyGate: AutoCloseable? = null
     private var acknowledgmentRequestId: Long? = null
     private val callAcknowledgmentPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val id = acknowledgmentRequestId
@@ -126,6 +127,9 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        homeKeyGate = com.gezimos.katapult.recent.HomeKeyFilterState.observeLauncher {
+            viewModel.screen != Screen.ONBOARDING && !viewModel.reorderMode
+        }
         viewModel.lockscreenWidgets.restoreState(savedInstanceState)
         acknowledgmentRequestId = savedInstanceState?.takeIf { it.containsKey("call_acknowledgment_request") }
             ?.getLong("call_acknowledgment_request")
@@ -147,6 +151,9 @@ class MainActivity : ComponentActivity() {
             App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker,
                 configExporter = configExporter, configImporter = configImporter,
                 screensaverWallpaperPicker = screensaverWallpaperPicker, onClearBadge = ::clearBadge)
+        }
+        if (savedInstanceState == null) {
+            if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) viewModel.onHomeIntent()
         }
     }
 
@@ -199,7 +206,9 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         overridePendingTransition(0, 0)
-        viewModel.onHomeIntent()
+        if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME))
+            viewModel.onHomeIntent()
+        else viewModel.onLauncherIntent()
 
         val savedMode = viewModel.prefs.einkHelperMode
         if (savedMode != EinkHelper.MEINK_MODE_DISABLED) {
@@ -209,5 +218,10 @@ class MainActivity : ComponentActivity() {
         if (viewModel.prefs.einkRefreshOnHome) {
             EinkRefreshHelper.refresh(this, darkMode = viewModel.prefs.darkMode)
         }
+    }
+
+    override fun onDestroy() {
+        homeKeyGate?.close(); homeKeyGate = null
+        super.onDestroy()
     }
 }

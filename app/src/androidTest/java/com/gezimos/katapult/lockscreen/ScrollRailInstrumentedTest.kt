@@ -11,6 +11,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.MainActivity
 import com.gezimos.katapult.PlatformUiDriver
 import com.gezimos.katapult.R
+import com.gezimos.katapult.ui.settings.PaperScrollRail
+import com.gezimos.katapult.ui.scrollRailLabels
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -47,7 +49,7 @@ class ScrollRailInstrumentedTest {
             main {
                 activity.setContentView(ComposeView(activity).apply { setContent {
                     val rail = metrics.value
-                    NotesScrollRail(rail.viewport, rail.maximum, rail.position, { value ->
+                    PaperScrollRail(rail.viewport, rail.maximum, rail.position, scrollRailLabels(), { value ->
                         commands.add(value)
                         commandedMaximum = rail.maximum
                         if (feedback) {

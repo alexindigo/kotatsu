@@ -10,7 +10,6 @@ data class SideScreen(val id: String = "side", val name: String = "", val layout
 }
 
 /** Shared rail geometry uses measured content and viewport, never a provider/package assumption. */
-data class RailThumb(val top: Float, val height: Float, val travel: Float)
 data class ListRail(val viewport: Int, val maximum: Int, val position: Int)
 fun listRail(count: Int, first: Int, last: Int, firstTop: Int, firstHeight: Int,
              lastBottom: Int, lastHeight: Int, viewport: Int): ListRail? {
@@ -27,13 +26,6 @@ fun listRail(count: Int, first: Int, last: Int, firstTop: Int, firstHeight: Int,
         else -> (first * 1000 - firstTop * 1000 / firstHeight).coerceIn(0, maximum)
     }
     return ListRail(extent, maximum, position)
-}
-fun railThumb(track: Float, viewport: Int, maximum: Int, position: Int, minimum: Float): RailThumb {
-    val height = track.coerceAtLeast(0f)
-    val thumb = (height * viewport.coerceAtLeast(0) / (viewport.toFloat() + maximum).coerceAtLeast(1f))
-        .coerceIn(minimum.coerceIn(0f, height), height)
-    val travel = height - thumb
-    return RailThumb(travel * position.coerceIn(0, maximum.coerceAtLeast(0)) / maximum.coerceAtLeast(1), thumb, travel)
 }
 
 /** Pure codec for a list of screens, even though v1 exposes just the first screen. */

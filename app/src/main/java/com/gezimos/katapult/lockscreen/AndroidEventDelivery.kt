@@ -8,6 +8,18 @@ import org.xmlpull.v1.XmlPullParser
 
 /** Shared Android boundary for scoped event delivery. Copies every unrelated service property. */
 internal class AndroidEventDelivery(private val service: AccessibilityService) : ReplayServiceInfoPort<AccessibilityServiceInfo> {
+    companion object {
+        private val connections = java.util.IdentityHashMap<AccessibilityService, ReplayDelivery<AccessibilityServiceInfo>>()
+        fun connected(service: AccessibilityService) {
+            disconnected(service)
+            connections[service] = ReplayDelivery(AndroidEventDelivery(service)) {
+                android.util.Log.e("AndroidEventDelivery", "Could not restore event delivery until reconnect", it)
+            }
+        }
+        fun scoped(service: AccessibilityService): ReplayDelivery<AccessibilityServiceInfo> =
+            checkNotNull(connections[service]) { "Event delivery has no connected owner" }
+        fun disconnected(service: AccessibilityService) { connections.remove(service)?.cancel() }
+    }
     override fun currentInfo(): AccessibilityServiceInfo = copy(service.serviceInfo)
     override fun staticInfo(): AccessibilityServiceInfo = currentInfo().apply {
         service.resources.getXml(R.xml.lockscreen_widget_service).use { xml ->
@@ -21,7 +33,11 @@ internal class AndroidEventDelivery(private val service: AccessibilityService) :
         packageNames = null
         notificationTimeout = 0L
     }
-    override fun apply(info: AccessibilityServiceInfo) { service.serviceInfo = copy(info) }
+    override fun apply(info: AccessibilityServiceInfo) {
+        service.serviceInfo = copy(info).apply {
+            flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS
+        }
+    }
     private fun copy(info: AccessibilityServiceInfo): AccessibilityServiceInfo {
         val parcel = Parcel.obtain()
         return try {

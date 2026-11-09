@@ -431,4 +431,13 @@
     <string name="edge_camera_available">Verf&#252;gbar</string>
     <string name="edge_camera_unavailable">Nicht verf&#252;gbar</string>
     <string name="edge_camera_setup">Ben&#246;tigt eine kompatible sichere Kamera. Erlaube Open Camera den Kamerazugriff und aktiviere Einstellungen > Weitere Kameraeinstellungen > Kamera bei gesperrtem Bildschirm anzeigen.</string>
+    <string name="recent_apps">Letzte Apps</string>
+    <string name="recent_close">Schlie&#223;en</string>
+    <string name="recent_dismiss">Letzte Apps schlie&#223;en</string>
+    <string name="recent_just_now">Gerade eben</string>
+    <string name="recent_yesterday">Gestern</string>
+    <string name="recent_usage_required">Nutzungszugriff ist aus</string>
+    <plurals name="recent_minutes"><item quantity="one">Vor %d Min.</item><item quantity="other">Vor %d Min.</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">Vor %d Std.</item><item quantity="other">Vor %d Std.</item></plurals>
+    <plurals name="recent_days"><item quantity="one">Vor %d Tag</item><item quantity="other">Vor %d Tagen</item></plurals>
 </resources>

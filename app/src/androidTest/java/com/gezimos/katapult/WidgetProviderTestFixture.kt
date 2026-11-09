@@ -62,7 +62,7 @@ internal class WidgetProviderTestFixture(private val context: Context) : AutoClo
     private fun shell(action: String, component: ComponentName) {
         // API31 shell cannot change another package's component state. Only the dedicated test
         // emulator's root is used, as with its protected provider-update acceptance broadcast.
-        ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+        ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().platformAutomation.executeShellCommand(
             "su 0 pm $action --user 0 ${component.flattenToString()}")).bufferedReader().use { it.readText() }
         // A command's return/output does not prove AppWidgetService has processed the package event.
     }

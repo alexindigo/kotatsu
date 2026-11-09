@@ -431,4 +431,13 @@
     <string name="edge_camera_available">Disponible</string>
     <string name="edge_camera_unavailable">Indisponible</string>
     <string name="edge_camera_setup">N&#233;cessite un appareil photo s&#233;curis&#233; compatible. Dans Open Camera, autorisez la cam&#233;ra puis activez Param&#232;tres > Plus de contr&#244;les de la cam&#233;ra > Afficher la cam&#233;ra quand verrouill&#233;.</string>
+    <string name="recent_apps">Applications r&#233;centes</string>
+    <string name="recent_close">Fermer</string>
+    <string name="recent_dismiss">Fermer les applications r&#233;centes</string>
+    <string name="recent_just_now">&#192; l\'instant</string>
+    <string name="recent_yesterday">Hier</string>
+    <string name="recent_usage_required">Acc&#232;s aux usages d&#233;sactiv&#233;</string>
+    <plurals name="recent_minutes"><item quantity="one">Il y a %d min</item><item quantity="other">Il y a %d min</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">Il y a %d h</item><item quantity="other">Il y a %d h</item></plurals>
+    <plurals name="recent_days"><item quantity="one">Il y a %d jour</item><item quantity="other">Il y a %d jours</item></plurals>
 </resources>

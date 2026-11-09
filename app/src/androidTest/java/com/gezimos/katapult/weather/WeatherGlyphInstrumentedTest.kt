@@ -1,5 +1,6 @@
 package com.gezimos.katapult.weather
 
+import com.gezimos.katapult.platformAutomation
 import android.app.Application
 import android.content.Context
 import android.content.Intent
@@ -125,10 +126,10 @@ class WeatherGlyphInstrumentedTest {
     private fun stableFrame(): Bitmap {
         instrumentation.waitForIdleSync()
         Thread.sleep(150)
-        var previous = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        var previous = checkNotNull(instrumentation.platformAutomation.takeScreenshot())
         repeat(30) {
             Thread.sleep(100)
-            val next = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+            val next = checkNotNull(instrumentation.platformAutomation.takeScreenshot())
             if (previous.sameAs(next)) { previous.recycle(); return next }
             previous.recycle(); previous = next
         }

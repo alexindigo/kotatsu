@@ -36,6 +36,24 @@ class ReplayDeliveryTest {
         lease.end(token)
         assertFalse(lease.busy)
         assertEquals(listOf(port.static, Info(null, 0, 93), original), port.writes)
+        // Home confirmation, widget launch and replay share one connection owner.
+        val home = lease.begin()
+        val widget = lease.begin()
+        val replay = lease.begin()
+        lease.end(home)
+        assertEquals(Info(null, 0, 93), port.value)
+        assertTrue(lease.dispatched(replay))
+        assertEquals(Info(null, 0, 93), port.value)
+        lease.end(widget)
+        assertEquals(original, port.value)
+        assertTrue(lease.current(replay))
+        val nextHome = lease.begin()
+        lease.end(replay)
+        lease.end(home) // A stale observer must not release the new Home lease.
+        assertEquals(Info(null, 0, 93), port.value)
+        lease.end(nextHome)
+        assertEquals(original, port.value)
+        assertFalse(lease.busy)
     }
 
     @Test fun rejectedDispatchAndCancelledInjectionRestoreAndReleaseTheirGeneration() {

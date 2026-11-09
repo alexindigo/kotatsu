@@ -504,7 +504,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onHomeIntent() {
+    fun onHomeIntent() = onLauncherIntent()
+
+    fun onLauncherIntent() {
         requestReorderExit {
             // Close draft editors without treating HOME as an explicit cancellation.
             showRenameDialog = false

@@ -243,10 +243,10 @@ class HomeContrastInstrumentedTest {
     private fun stableFrame(): Bitmap {
         instrumentation.waitForIdleSync()
         Thread.sleep(150)
-        var previous = instrumentation.uiAutomation.takeScreenshot()!!
+        var previous = instrumentation.platformAutomation.takeScreenshot()!!
         repeat(20) {
             Thread.sleep(100)
-            val next = instrumentation.uiAutomation.takeScreenshot()!!
+            val next = instrumentation.platformAutomation.takeScreenshot()!!
             if (previous.sameAs(next)) { previous.recycle(); return next }
             previous.recycle()
             previous = next

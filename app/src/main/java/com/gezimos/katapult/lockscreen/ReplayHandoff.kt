@@ -28,10 +28,9 @@ internal class ReplayHandoff(
         lateinit var timeout: Runnable
     }
     private var pending: Pending? = null
-    private val delivery = ReplayDelivery(AndroidEventDelivery(service)) {
-        Log.e(TAG, "Could not restore narrow event delivery; replay disabled until reconnect", it)
-    }
-    val busy get() = delivery.busy
+    private val delivery = AndroidEventDelivery.scoped(service)
+    private var lease: Long? = null
+    val busy get() = lease != null
 
     fun begin(path: Path, duration: Long, owned: List<Pair<View, String>>, detach: () -> Unit) {
         if (busy || !eligible()) return
@@ -53,7 +52,9 @@ internal class ReplayHandoff(
                 detach()
                 return
             }
-            val next = Pending(delivery.begin(), Path(path), EdgeSwipe.duration(duration), owned.map { it.first }, ids, titles)
+            val token = delivery.begin()
+            lease = token
+            val next = Pending(token, Path(path), EdgeSwipe.duration(duration), owned.map { it.first }, ids, titles)
             pending = next
             next.timeout = Runnable { if (pending === next) { cancel("removal timeout"); finished() } }
             handler.postDelayed(next.timeout, 1500L)
@@ -104,6 +105,7 @@ internal class ReplayHandoff(
     private fun complete(token: Long) {
         if (!delivery.current(token)) return
         delivery.end(token)
+        if (lease == token) lease = null
         finished()
     }
 
@@ -111,7 +113,8 @@ internal class ReplayHandoff(
         if (busy) Log.w(TAG, "Replay dropped: $reason")
         pending?.let { handler.removeCallbacks(it.timeout) }
         pending = null
-        delivery.cancel()
+        lease?.let(delivery::end)
+        lease = null
     }
 
     companion object { private const val TAG = "ReplayHandoff" }

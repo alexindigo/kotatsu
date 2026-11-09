@@ -21,9 +21,7 @@ import com.gezimos.katapult.R
 /** Bounded causal observation, not a replacement PendingIntent sender or an activity interceptor. */
 internal class WidgetActivityLaunch(private val service: AccessibilityService,
                                     private val eligible: () -> Boolean, private val closePage: () -> Unit) : AutoCloseable {
-    private val delivery = ReplayDelivery(AndroidEventDelivery(service)) {
-        android.util.Log.e("WidgetActivityLaunch", "Could not restore narrow event delivery", it)
-    }
+    private val delivery = AndroidEventDelivery.scoped(service)
     private var deliveryToken: Long? = null
     private var open = false
     private var tapped: Long? = null

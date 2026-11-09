@@ -6,6 +6,7 @@ import android.graphics.PixelFormat
 import android.os.Handler
 import android.view.Gravity
 import android.view.View
+import android.view.WindowInsets
 import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.lifecycle.LifecycleOwner
@@ -17,9 +18,13 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 /** The one surface/settle/close implementation. Content owns its own data and lifetime. */
 internal class EdgePageWindow(private val context: Context, private val handler: Handler,
-                              private val eligible: () -> Boolean, private val changed: () -> Unit,
-                              private val title: String,
-                              private val content: (() -> Unit, (Float, Float) -> Boolean, (Float, Float) -> Boolean) -> EdgePageView) : AutoCloseable {
+                               private val eligible: () -> Boolean, private val changed: () -> Unit,
+                               private val title: String,
+                               private val focusable: Boolean = true,
+                               private val invertOnOpen: Boolean = true,
+                               private val swipeClose: Boolean = true,
+                               private val fitSystemBars: Boolean = false,
+                               private val content: (() -> Unit, (Float, Float) -> Boolean, (Float, Float) -> Boolean) -> EdgePageView) : AutoCloseable {
     private val wm = context.getSystemService(WindowManager::class.java)
     private var view: EdgePageView? = null
     private var params: WindowManager.LayoutParams? = null
@@ -36,8 +41,8 @@ internal class EdgePageWindow(private val context: Context, private val handler:
         edge = from
         return try {
             val root = content(::hide,
-                { dx, dy -> EdgeSwipe.capturesPageClose(edge, dx, dy, EdgeSwipe.SLOP_DP * context.resources.displayMetrics.density) },
-                { dx, dy -> EdgeSwipe.closesPage(edge, dx, dy, wm.maximumWindowMetrics.bounds.width(), EdgeSwipe.SLOP_DP * context.resources.displayMetrics.density) })
+                { dx, dy -> swipeClose && EdgeSwipe.capturesPageClose(edge, dx, dy, EdgeSwipe.SLOP_DP * context.resources.displayMetrics.density) },
+                { dx, dy -> swipeClose && EdgeSwipe.closesPage(edge, dx, dy, wm.maximumWindowMetrics.bounds.width(), EdgeSwipe.SLOP_DP * context.resources.displayMetrics.density) })
             // Own the content before any fallible setup/attachment, so hide always releases it.
             view = root
             root.setViewTreeLifecycleOwner(context as LifecycleOwner)
@@ -51,12 +56,31 @@ internal class EdgePageWindow(private val context: Context, private val handler:
                 setFitInsetsTypes(0); setTitle(title)
             }
             params = p
+            if (fitSystemBars) {
+                fitToSystemBars(p)
+                root.setOnApplyWindowInsetsListener { _, insets ->
+                    if (fitToSystemBars(p) && root.isAttachedToWindow) wm.updateViewLayout(root, p)
+                    insets
+                }
+            }
             root.translationX = if (from == ScreenEdge.LEFT) -wm.maximumWindowMetrics.bounds.width().toFloat() else wm.maximumWindowMetrics.bounds.width().toFloat()
             wm.addView(root, p)
             true
         } catch (error: RuntimeException) {
             android.util.Log.w("EdgePageWindow", "Could not attach page", error); hide(); false
         }
+    }
+
+    /** Accessibility overlays sit above the bars, so their own insets omit those sources.
+     * Window metrics include all sources regardless of z-order; fit the window, not its content. */
+    private fun fitToSystemBars(p: WindowManager.LayoutParams): Boolean {
+        val metrics = wm.currentWindowMetrics
+        val bars = metrics.windowInsets.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars())
+        val width = metrics.bounds.width() - bars.left - bars.right
+        val height = metrics.bounds.height() - bars.top - bars.bottom
+        if (p.x == bars.left && p.y == bars.top && p.width == width && p.height == height) return false
+        p.x = bars.left; p.y = bars.top; p.width = width; p.height = height
+        return true
     }
 
     fun preview(from: ScreenEdge, step: Int) {
@@ -73,14 +97,18 @@ internal class EdgePageWindow(private val context: Context, private val handler:
         val root = view ?: return
         val p = params ?: return
         root.translationX = 0f
-        p.flags = p.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv() and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
+        p.flags = p.flags and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE.inv()
+        if (focusable) p.flags = p.flags and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE.inv()
         try { wm.updateViewLayout(root, p) } catch (_: RuntimeException) { hide(); return }
         opened = true
-        try { root.requestFocus(); root.settled() }
+        try { if (focusable) root.requestFocus(); root.settled() }
         catch (error: RuntimeException) { android.util.Log.w("EdgePageWindow", "Could not settle page", error); hide(); return }
-        flashOnOpen()
+        if (invertOnOpen) flashOnOpen()
         changed()
     }
+
+    /** Full page without an edge preview; attachment/removal has the same owner. */
+    fun show() = settle(ScreenEdge.LEFT)
 
     /** Clear the previous keyguard clock once on entry; scrolling never requests an inversion. */
     private fun flashOnOpen() {

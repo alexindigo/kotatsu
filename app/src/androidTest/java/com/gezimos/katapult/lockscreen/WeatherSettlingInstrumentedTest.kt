@@ -1,5 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.platformAutomation
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -182,7 +183,7 @@ class WeatherSettlingInstrumentedTest {
         if (InstrumentationRegistry.getArguments().getString("captureScreenshots") != "true") return
         instrumentation.waitForIdleSync()
         Thread.sleep(200)
-        val screenshot = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        val screenshot = checkNotNull(instrumentation.platformAutomation.takeScreenshot())
         val copy = screenshot.copy(Bitmap.Config.ARGB_8888, false)
         try {
             val file = File(File(context.getExternalFilesDir(null), "weather-e").apply { mkdirs() }, "$name.png")

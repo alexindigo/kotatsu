@@ -1,5 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.platformAutomation
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.SharedPreferences
@@ -188,9 +189,9 @@ class LockscreenWidgetStoreInstrumentedTest {
     private fun configure(fixture: WidgetHostTestFixture, settings: LockscreenWidgetSettings): LockscreenWidget {
         val info = fixture.providers.singleProvider("com.alexindigo.kotatsu.weather.debug")
         var id: Int? = null
-        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+        instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         try { settings.add(info, { fail("Binding should be allowed") }, { id = it }) }
-        finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+        finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
         assertNotNull(id)
         settings.configured(true)
         return settings.rows.single { it.widget.id == id }.widget

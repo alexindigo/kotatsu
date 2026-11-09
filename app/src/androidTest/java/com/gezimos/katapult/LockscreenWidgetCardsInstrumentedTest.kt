@@ -79,7 +79,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         fun event(action: Int) {
             val e = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, card.centerX().toFloat(), card.centerY().toFloat(), 0)
             e.source = InputDevice.SOURCE_TOUCHSCREEN
-            assertTrue(instrumentation.uiAutomation.injectInputEvent(e, true)); e.recycle()
+            assertTrue(instrumentation.platformAutomation.injectInputEvent(e, true)); e.recycle()
         }
         event(MotionEvent.ACTION_DOWN)
         try {
@@ -120,7 +120,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         for (action in listOf(MotionEvent.ACTION_DOWN, MotionEvent.ACTION_UP)) {
             val event = MotionEvent.obtain(time, SystemClock.uptimeMillis(), action, edge.left + 2f, edge.centerY().toFloat(), 0)
             event.source = InputDevice.SOURCE_TOUCHSCREEN
-            assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true)); event.recycle()
+            assertTrue(instrumentation.platformAutomation.injectInputEvent(event, true)); event.recycle()
         }
         ui.await("Card tap opens Kotatsu's size/move/remove page") { ui.has(context.getString(R.string.lockscreen_widgets_small)) }
         assertEquals(true, ui.checked(context.getString(R.string.lockscreen_widgets_medium)))
@@ -146,11 +146,11 @@ class LockscreenWidgetCardsInstrumentedTest {
             if (!ui.has(providerLabel) && ui.has(context.getString(R.string.paper_next_page))) ui.click(context.getString(R.string.paper_next_page))
         }
         ui.await("Provider list must offer the removed widget") { ui.has(providerLabel) }
-        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+        instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         try {
             ui.click(providerLabel)
             ui.await("New widget configure must launch") { ui.packageVisible("com.alexindigo.kotatsu.notes.debug") }
-        } finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+        } finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
         ui.back()
         ui.await("Configured widget must be added exactly once") { fixture.prefs.lockscreenWidgetStore.read().size == 2 }
         showCards(labels)
@@ -276,7 +276,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         fun event(action: Int, y: Float) {
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
             event.source = InputDevice.SOURCE_TOUCHSCREEN
-            assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true)); event.recycle()
+            assertTrue(instrumentation.platformAutomation.injectInputEvent(event, true)); event.recycle()
         }
         event(MotionEvent.ACTION_DOWN, start)
         SystemClock.sleep(700)
@@ -313,7 +313,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         window.getPixels(expected, 0, content.width, origin[0] - decorOrigin[0], top - decorOrigin[1], content.width, height)
         var frame: Bitmap? = null
         ui.await("Displayed frame must equal committed window") {
-            val candidate = instrumentation.uiAutomation.takeScreenshot()
+            val candidate = instrumentation.platformAutomation.takeScreenshot()
             val pixels = IntArray(expected.size)
             candidate.getPixels(pixels, 0, content.width, origin[0], top, content.width, height)
             if (expected.contentEquals(pixels)) { frame = candidate; true } else { candidate.recycle(); false }

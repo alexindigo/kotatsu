@@ -1,4 +1,4 @@
-package com.gezimos.katapult.lockscreen
+package com.gezimos.katapult.ui.settings
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -18,12 +18,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.unit.dp
-import com.gezimos.katapult.R
 import com.gezimos.katapult.ui.LocalInk
-import com.gezimos.katapult.ui.NoIndication
 import kotlin.math.roundToInt
 
 @Composable
@@ -35,7 +32,7 @@ internal fun Modifier.railFocus(interactions: MutableInteractionSource): Modifie
 
 /** Shared drawing and input; the consumer owns the scroll coordinate domain and commands. */
 @Composable
-internal fun NotesScrollRail(viewport: Int, maximum: Int, position: Int, moveTo: (Int) -> Unit,
+fun PaperScrollRail(viewport: Int, maximum: Int, position: Int, labels: ScrollRailLabels, moveTo: (Int) -> Unit,
                              step: (Int) -> Unit = { direction -> moveTo((position + direction * viewport / 2).coerceIn(0, maximum)) }) {
     val ink = LocalInk.current
     val currentPosition by rememberUpdatedState(position)
@@ -43,9 +40,9 @@ internal fun NotesScrollRail(viewport: Int, maximum: Int, position: Int, moveTo:
     val currentViewport by rememberUpdatedState(viewport)
     val currentMove by rememberUpdatedState(moveTo)
     val interactions = remember { MutableInteractionSource() }
-    val scrollLabel = stringResource(R.string.edge_task_scroll)
+    val scrollLabel = labels.scroll
     Column(Modifier.fillMaxHeight().width(ScrollRailGeometry.arrowCell)) {
-        ScrollArrow(false, position > 0) { step(-1) }
+        ScrollArrow(false, position > 0, labels.up) { step(-1) }
         Canvas(Modifier.weight(1f).fillMaxWidth().railFocus(interactions).focusable(interactionSource = interactions).semantics {
             contentDescription = scrollLabel
             progressBarRangeInfo = ProgressBarRangeInfo(position.toFloat(), 0f..maximum.coerceAtLeast(1).toFloat())
@@ -73,17 +70,16 @@ internal fun NotesScrollRail(viewport: Int, maximum: Int, position: Int, moveTo:
             val thumb = railThumb(size.height, viewport, maximum, position, 24.dp.toPx())
             drawRoundRect(ink, Offset(left, thumb.top), Size(width, thumb.height), radius)
         }
-        ScrollArrow(true, position < maximum) { step(1) }
+        ScrollArrow(true, position < maximum, labels.down) { step(1) }
     }
 }
 
 @Composable
-private fun ScrollArrow(down: Boolean, available: Boolean, onClick: () -> Unit) {
+private fun ScrollArrow(down: Boolean, available: Boolean, label: String, onClick: () -> Unit) {
     val ink = LocalInk.current
-    val label = stringResource(if (down) R.string.edge_task_scroll_down else R.string.edge_task_scroll_up)
     val interactions = remember { MutableInteractionSource() }
     Box(Modifier.size(ScrollRailGeometry.arrowCell).railFocus(interactions)
-        .clickable(enabled = available, interactionSource = interactions, indication = NoIndication, role = Role.Button, onClick = onClick)
+        .clickable(enabled = available, interactionSource = interactions, indication = null, role = Role.Button, onClick = onClick)
         .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
         Canvas(Modifier.size(ScrollRailGeometry.arrowDrawing)) {
             val path = Path().apply {
@@ -105,3 +101,5 @@ private fun ScrollArrow(down: Boolean, available: Boolean, onClick: () -> Unit) 
         }
     }
 }
+
+data class ScrollRailLabels(val scroll: String, val up: String, val down: String)

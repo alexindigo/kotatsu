@@ -431,4 +431,13 @@
     <string name="edge_camera_available">Disponibile</string>
     <string name="edge_camera_unavailable">Non disponibile</string>
     <string name="edge_camera_setup">Richiede una fotocamera sicura compatibile. In Open Camera, concedi il permesso per la fotocamera e attiva Impostazioni > Altri controlli fotocamera > Mostra fotocamera quando bloccato.</string>
+    <string name="recent_apps">App recenti</string>
+    <string name="recent_close">Chiudi</string>
+    <string name="recent_dismiss">Chiudi app recenti</string>
+    <string name="recent_just_now">Ora</string>
+    <string name="recent_yesterday">Ieri</string>
+    <string name="recent_usage_required">Accesso utilizzo disattivato</string>
+    <plurals name="recent_minutes"><item quantity="one">%d min fa</item><item quantity="other">%d min fa</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">%d h fa</item><item quantity="other">%d h fa</item></plurals>
+    <plurals name="recent_days"><item quantity="one">%d giorno fa</item><item quantity="other">%d giorni fa</item></plurals>
 </resources>

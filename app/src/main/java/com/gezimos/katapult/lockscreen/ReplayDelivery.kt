@@ -8,14 +8,14 @@ internal interface ReplayServiceInfoPort<T> {
     fun apply(info: T)
 }
 
-/** One connection-local owner; broad delivery is leased only until the removal acknowledgement. */
+/** One connection-local owner; overlapping observers release only their own broad-delivery lease. */
 internal class ReplayDelivery<T : Any>(private val port: ReplayServiceInfoPort<T>,
                                      private val failed: (RuntimeException) -> Unit) {
     private var original: T? = null
     private var generation = 0L
     private var usable = true
-    var busy = false
-        private set
+    private val leases = mutableMapOf<Long, Boolean>()
+    val busy get() = leases.isNotEmpty()
 
     init {
         // A reconnect must not inherit the previous connection's temporary delivery settings.
@@ -24,29 +24,34 @@ internal class ReplayDelivery<T : Any>(private val port: ReplayServiceInfoPort<T
     }
 
     fun begin(): Long {
-        check(usable && !busy) { "Replay event delivery is unavailable or busy" }
-        val captured = port.currentInfo()
+        check(usable) { "Replay event delivery is unavailable" }
+        val widen = leases.values.none { it }
+        val captured = if (widen) port.currentInfo() else null
         val token = ++generation
+        leases[token] = true
+        if (captured == null) return token
         original = captured
-        busy = true
         try { port.apply(port.widened(captured)) }
         catch (error: RuntimeException) { end(token); throw error }
         return token
     }
 
-    /** Restore before dispatch; callback ownership stays live until completion/cancellation. */
-    fun dispatched(token: Long): Boolean = current(token) && restore()
+    /** Release observation before dispatch; callback ownership stays live until completion/cancellation. */
+    fun dispatched(token: Long): Boolean {
+        if (!current(token)) return false
+        leases[token] = false
+        return leases.values.any { it } || restore()
+    }
 
-    fun current(token: Long): Boolean = busy && token == generation
+    fun current(token: Long): Boolean = token in leases
 
     fun end(token: Long) {
         if (!current(token)) return
-        restore()
-        busy = false
-        generation++
+        leases.remove(token)
+        if (leases.values.none { it }) restore()
     }
 
-    fun cancel() { if (busy) end(generation) }
+    fun cancel() { leases.clear(); restore() }
 
     private fun restore(): Boolean {
         val captured = original ?: return usable

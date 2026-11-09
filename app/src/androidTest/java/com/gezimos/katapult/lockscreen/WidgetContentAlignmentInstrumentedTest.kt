@@ -1,4 +1,5 @@
 package com.gezimos.katapult.lockscreen
+import com.gezimos.katapult.ui.settings.ScrollRailGeometry
 
 import android.content.Intent
 import android.graphics.Bitmap

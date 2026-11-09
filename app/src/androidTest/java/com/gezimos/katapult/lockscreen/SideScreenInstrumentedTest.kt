@@ -1,5 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.platformAutomation
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import android.os.Bundle
@@ -142,9 +143,9 @@ class SideScreenInstrumentedTest {
             var replacement = -1
             main { first = LockscreenWidgetSettings(context, fixture.prefs); restored = LockscreenWidgetSettings(context, fixture.prefs) }
             try {
-                instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+                instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                 try { main { first.add(info, { fail("Bind permitted") }, { replacement = it }, 0) } }
-                finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+                finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
                 main {
                     val saved = Bundle(); first.saveState(saved); restored.restoreState(saved)
                     assertEquals(original, store.screens().first().slots[0])
@@ -208,9 +209,9 @@ class SideScreenInstrumentedTest {
             var pending = -1
             main { settings = LockscreenWidgetSettings(context, fixture.prefs) }
             try {
-                instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+                instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                 try { main { settings.add(info, { fail("Expected allowed bind") }, { pending = it }, 0) } }
-                finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+                finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
                 assertTrue(pending > 0)
                 assertEquals(listOf<Int?>(null, null), fixture.prefs.lockscreenWidgetStore.screens().first().slots)
                 val state = Bundle()

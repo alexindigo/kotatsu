@@ -146,10 +146,10 @@ class ScreensaverContrastInstrumentedTest {
     private fun frame(): Bitmap {
         instrumentation.waitForIdleSync()
         Thread.sleep(150)
-        var previous = instrumentation.uiAutomation.takeScreenshot()!!
+        var previous = instrumentation.platformAutomation.takeScreenshot()!!
         repeat(20) {
             Thread.sleep(100)
-            val current = instrumentation.uiAutomation.takeScreenshot()!!
+            val current = instrumentation.platformAutomation.takeScreenshot()!!
             if (previous.sameAs(current)) { previous.recycle(); return current }
             previous.recycle(); previous = current
         }

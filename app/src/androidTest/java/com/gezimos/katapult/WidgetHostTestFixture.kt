@@ -33,7 +33,7 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
     }
 
     fun bind(info: AppWidgetProviderInfo): Int {
-        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val automation = InstrumentationRegistry.getInstrumentation().platformAutomation
         automation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         try {
             val id = host.allocateAppWidgetId()

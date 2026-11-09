@@ -431,4 +431,13 @@
     <string name="edge_camera_available">Dostupn&#253;</string>
     <string name="edge_camera_unavailable">Nedostupn&#253;</string>
     <string name="edge_camera_setup">Vy&#382;aduje kompatibiln&#237; zabezpe&#269;en&#253; fotoapar&#225;t. V Open Camera povolte p&#345;&#237;stup k fotoapar&#225;tu a zapn&#283;te Nastaven&#237; > Dal&#353;&#237; ovl&#225;d&#225;n&#237; fotoapar&#225;tu > Zobrazit fotoapar&#225;t p&#345;i uzam&#269;en&#237;.</string>
+    <string name="recent_apps">Ned&#225;vn&#233; aplikace</string>
+    <string name="recent_close">Zav&#345;&#237;t</string>
+    <string name="recent_dismiss">Zav&#345;&#237;t ned&#225;vn&#233; aplikace</string>
+    <string name="recent_just_now">Pr&#225;v&#283; te&#271;</string>
+    <string name="recent_yesterday">V&#269;era</string>
+    <string name="recent_usage_required">P&#345;&#237;stup k vyu&#382;it&#237; je vypnut&#253;</string>
+    <plurals name="recent_minutes"><item quantity="one">P&#345;ed %d min</item><item quantity="few">P&#345;ed %d min</item><item quantity="many">P&#345;ed %d min</item><item quantity="other">P&#345;ed %d min</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">P&#345;ed %d h</item><item quantity="few">P&#345;ed %d h</item><item quantity="many">P&#345;ed %d h</item><item quantity="other">P&#345;ed %d h</item></plurals>
+    <plurals name="recent_days"><item quantity="one">P&#345;ed %d dnem</item><item quantity="few">P&#345;ed %d dny</item><item quantity="many">P&#345;ed %d dne</item><item quantity="other">P&#345;ed %d dny</item></plurals>
 </resources>

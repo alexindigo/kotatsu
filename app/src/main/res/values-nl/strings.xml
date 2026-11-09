@@ -431,4 +431,13 @@
     <string name="edge_camera_available">Beschikbaar</string>
     <string name="edge_camera_unavailable">Niet beschikbaar</string>
     <string name="edge_camera_setup">Vereist een geschikte beveiligde camera. Geef Open Camera cameratoegang en schakel Instellingen > Meer camerabediening > Camera tonen wanneer vergrendeld in.</string>
+    <string name="recent_apps">Recente apps</string>
+    <string name="recent_close">Sluiten</string>
+    <string name="recent_dismiss">Recente apps sluiten</string>
+    <string name="recent_just_now">Zojuist</string>
+    <string name="recent_yesterday">Gisteren</string>
+    <string name="recent_usage_required">Gebruikstoegang staat uit</string>
+    <plurals name="recent_minutes"><item quantity="one">%d min geleden</item><item quantity="other">%d min geleden</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">%d u geleden</item><item quantity="other">%d u geleden</item></plurals>
+    <plurals name="recent_days"><item quantity="one">%d dag geleden</item><item quantity="other">%d dagen geleden</item></plurals>
 </resources>

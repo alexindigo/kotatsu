@@ -29,6 +29,7 @@ import android.view.Gravity
 import android.view.ContextThemeWrapper
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.KeyEvent
 import android.view.View
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
@@ -82,6 +83,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import com.gezimos.katapult.R
+import com.gezimos.katapult.BuildConfig
+import com.gezimos.katapult.recent.HomeKeyFilter
+import com.gezimos.katapult.recent.HomeKeyFilterState
 import com.gezimos.katapult.service.DirectBadgeHelper
 import com.gezimos.katapult.service.NotificationListener
 import com.gezimos.katapult.service.BadgeSources
@@ -203,6 +207,56 @@ class LockscreenWidgetService :
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
+    private fun homeKeyEligible(): Boolean = HomeKeyFilterState.isActive(this) && ::prefs.isInitialized &&
+        prefs.onboardingComplete && HomeKeyFilterState.launcherAllowsFilter() &&
+        !getSystemService(KeyguardManager::class.java).isKeyguardLocked &&
+        getSystemService(PowerManager::class.java).isInteractive
+    private val homeKeys = HomeKeyFilter(SystemClock::uptimeMillis, { delay, action ->
+        val callback = Runnable(action)
+        mainHandler.postDelayed(callback, delay)
+        AutoCloseable { mainHandler.removeCallbacks(callback) }
+    }, ::homeKeyEligible, {
+        mainHandler.post {
+            if (homeKeyEligible()) {
+                recentPage?.close()
+                val sent = performGlobalAction(GLOBAL_ACTION_HOME)
+                if (BuildConfig.DEBUG) android.util.Log.d("KotatsuHome", "path=key single uptime=${SystemClock.uptimeMillis()} sent=$sent")
+            }
+        }
+    }, {
+        mainHandler.post {
+            if (homeKeyEligible()) recentPage?.toggle()
+        }
+    })
+    private var recentPage: RecentAppsOverlay? = null
+    private var recentBackHeld = false
+
+    private var recentAppClose: RecentAppClose? = null
+
+    override fun onKeyEvent(event: KeyEvent): Boolean {
+        recentPage?.observeKey(event)
+        if (recentPage?.visible == true && !homeKeyEligible()) recentPage?.close()
+        if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+            if (event.action == KeyEvent.ACTION_DOWN && recentPage?.visible == true) {
+                recentBackHeld = true
+                return true
+            }
+            if (event.action == KeyEvent.ACTION_UP && recentBackHeld) {
+                recentBackHeld = false
+                recentPage?.back()
+                return true
+            }
+        }
+        if (event.keyCode != KeyEvent.KEYCODE_HOME) return false
+        val consumed = when (event.action) {
+            KeyEvent.ACTION_DOWN -> homeKeys.down(event.eventTime, event.repeatCount > 0)
+            KeyEvent.ACTION_UP -> homeKeys.up()
+            else -> false
+        }
+        if (BuildConfig.DEBUG) android.util.Log.d("KotatsuHome",
+            "path=key uptime=${SystemClock.uptimeMillis()} eventTime=${event.eventTime} action=${event.action} consumed=$consumed")
+        return consumed
+    }
     private var overlay: View? = null
     private var overlayParams: WindowManager.LayoutParams? = null
     private var clockCover: View? = null
@@ -292,6 +346,7 @@ class LockscreenWidgetService :
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
+                    homeKeys.close(); recentPage?.close(); recentBackHeld = false
                     widgetsContent?.hide()
                     visibility.invalidate()
                     maybeStartScreensaver()
@@ -325,6 +380,11 @@ class LockscreenWidgetService :
     override fun onServiceConnected() {
         instance = this
         prefs = PrefsManager(this)
+        AndroidEventDelivery.connected(this)
+        val delivery = AndroidEventDelivery(this)
+        delivery.apply(delivery.currentInfo())
+        HomeKeyFilterState.connected(this)
+        recentPage = RecentAppsOverlay(this, mainHandler, ::homeKeyEligible)
         widgetLaunch = WidgetActivityLaunch(this, ::edgeEligible, { sidePage?.hide() })
         sidePage = EdgePageWindow(this, mainHandler, ::edgeEligible, { mainHandler.post { evaluate() } }, "Kotatsu side screen") { back, capture, close ->
             SideScreenView(this, prefs.lockscreenWidgetStore.screens().first(), back, capture, close,
@@ -343,6 +403,8 @@ class LockscreenWidgetService :
                     else -> Unit
                 }
             }, { sidePage?.cancelPreview() }, { delta -> widgetsContent?.rotation?.swipe(delta) })
+        recentAppClose = RecentAppClose(this, mainHandler)
+        recentPage?.onForegroundClose { recentAppClose?.start(it) }
         SensitiveAccess.initialize(this)
         SensitiveAccess.accessibilityConnection(true)
         policySubscription = SensitiveAccess.subscribe { mainHandler.post { syncWeatherLease(); evaluate() } }
@@ -363,6 +425,8 @@ class LockscreenWidgetService :
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
+        recentAppClose?.event(event)
+        if (recentPage?.visible == true && getSystemService(KeyguardManager::class.java).isKeyguardLocked) recentPage?.close()
         widgetLaunch?.event(event)
         edgeGestures?.event(event)
         // Window changes have no source package. Keep their stream intact for the
@@ -377,6 +441,8 @@ class LockscreenWidgetService :
     }
 
     override fun onInterrupt() {
+        homeKeys.close()
+        recentPage?.close(); recentBackHeld = false
         sidePage?.hide(); widgetLaunch?.close()
         edgeGestures?.interrupt()
         syncSourceSubscriptions(false, false)
@@ -393,10 +459,15 @@ class LockscreenWidgetService :
     }
 
     override fun onDestroy() {
+        homeKeys.close()
+        recentPage?.close(); recentPage = null; recentBackHeld = false
+        HomeKeyFilterState.disconnected(this)
         lockscreenInspection.close()
         sidePage?.close(); sidePage = null
         widgetLaunch?.close(); widgetLaunch = null
         edgeGestures?.close(); edgeGestures = null
+        recentAppClose?.close(); recentAppClose = null
+        AndroidEventDelivery.disconnected(this)
         if (instance === this) instance = null
         SensitiveAccess.accessibilityConnection(false)
         policySubscription?.close(); policySubscription = null
@@ -421,6 +492,13 @@ class LockscreenWidgetService :
         removeOverlay()
         removeClockCover()
         super.onDestroy()
+    }
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        homeKeys.close()
+        recentPage?.close(); recentBackHeld = false
+        HomeKeyFilterState.disconnected(this)
+        return super.onUnbind(intent)
     }
 
     /**
@@ -752,6 +830,7 @@ class LockscreenWidgetService :
 
     private fun evaluate() {
         if (!::prefs.isInitialized) return
+        if (recentPage?.visible == true && !homeKeyEligible()) recentPage?.close()
         applyClockCover(launcherForeground || screensaverForeground)
         if (!SensitiveAccess.accessibility() ||
             (!prefs.lockscreenWidget && !prefs.lockscreenMusicWidget && !prefs.lockscreenWeather &&

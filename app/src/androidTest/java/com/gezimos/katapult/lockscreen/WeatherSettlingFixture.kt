@@ -1,5 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.platformAutomation
 import android.os.ParcelFileDescriptor
 import android.util.Base64
 import androidx.test.platform.app.InstrumentationRegistry
@@ -15,7 +16,7 @@ internal class WeatherSettlingFixture : AutoCloseable {
     private var ownsSeed = false
 
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
-        instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        instrumentation.platformAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
 
     fun seed(widgetId: Int): String {
         // Exercise the adverse binding interleaving deliberately: Weather has read its pre-seed state.

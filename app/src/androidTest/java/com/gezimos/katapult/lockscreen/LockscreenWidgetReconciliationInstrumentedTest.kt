@@ -1,5 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.platformAutomation
 import android.appwidget.AppWidgetHost
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.WidgetHostTestFixture
@@ -25,9 +26,9 @@ class LockscreenWidgetReconciliationInstrumentedTest {
                     assertTrue("Removed bindings must not remain as configured rows", settings.rows.isEmpty())
                     assertEquals("[]", fixture.prefs.lockscreenWidgets)
                     var configuredId: Int? = null
-                    instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+                    instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                     try { settings.add(info, { fail("Binding should be allowed") }, { configuredId = it }) }
-                    finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+                    finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
                     assertNotNull("Ghosts must not consume the size budget", configuredId)
                     settings.configured(true)
                     assertEquals(listOf(configuredId), settings.rows.map { it.widget.id })
@@ -42,9 +43,9 @@ class LockscreenWidgetReconciliationInstrumentedTest {
             val unbound = fixture.host.allocateAppWidgetId()
             val otherHost = AppWidgetHost(context, 0x4B5501)
             val foreign = otherHost.allocateAppWidgetId()
-            instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+            instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
             try { assertTrue(fixture.manager.bindAppWidgetIdIfAllowed(foreign, info.provider)) }
-            finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+            finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
             try {
                 instrumentation.runOnMainSync {
                     fixture.restoreExternalSelection(LockscreenWidgetList.encode(listOf(unbound, foreign, Int.MAX_VALUE)
@@ -95,9 +96,9 @@ class LockscreenWidgetReconciliationInstrumentedTest {
                 try {
                     for (failed in listOf(false, true)) {
                         var pending: Int? = null
-                        instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+                        instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                         try { settings.add(info, { fail("Binding should be allowed") }, { pending = it }) }
-                        finally { instrumentation.uiAutomation.dropShellPermissionIdentity() }
+                        finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
                         assertNotNull(pending)
                         if (failed) settings.launchFailed() else settings.configured(false)
                         assertNull(fixture.manager.getAppWidgetInfo(pending!!))

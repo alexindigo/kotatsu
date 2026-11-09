@@ -46,7 +46,7 @@ class DraftsAndPickersInstrumentedTest {
             }
             open()
             edit("Unsaved rename F7")
-            scenario.onActivity { it.viewModel.onHomeIntent() }
+            scenario.sendSingleHomeIntent()
             ui.await("HOME did not close rename") { !ui.has(context.getString(R.string.save)) }
             open()
             ui.await("HOME lost unsaved rename") { ui.has("Unsaved rename F7") }
@@ -86,7 +86,7 @@ class DraftsAndPickersInstrumentedTest {
             }
             open()
             edit("Unsaved message F7")
-            scenario.onActivity { it.viewModel.onHomeIntent() }
+            scenario.sendSingleHomeIntent()
             ui.await("HOME did not close message") { !ui.has(context.getString(R.string.save)) }
             open()
             ui.await("HOME lost message draft") { ui.has("Unsaved message F7") }
@@ -153,8 +153,8 @@ class DraftsAndPickersInstrumentedTest {
                 assertTrue("Activity-owned picker is not registered", key in keys)
                 assertTrue("Picker request was not launched", key in saved.getStringArrayList("KEY_COMPONENT_ACTIVITY_LAUNCHED_KEYS")!!)
                 request = codes[keys.indexOf(key)]
-                activity.viewModel.onHomeIntent()
             }
+            scenario.sendSingleHomeIntent()
             assertEquals("External picker was not intercepted", 1, monitor.hits)
         } finally { instrumentation.removeMonitor(monitor) }
         scenario.recreate()
@@ -205,7 +205,7 @@ class DraftsAndPickersInstrumentedTest {
                 }
                 ui.await("Import preview not rendered") { ui.has(context.getString(R.string.policy_import_confirmation)) }
                 assertTrue(ui.has(context.getString(R.string.config_import_replaces_settings)))
-                scenario.onActivity { it.viewModel.onHomeIntent() }
+                scenario.sendSingleHomeIntent()
                 ui.await("HOME did not remove preview") { !ui.has(context.getString(R.string.policy_import_confirmation)) }
                 scenario.recreate()
                 scenario.onActivity {

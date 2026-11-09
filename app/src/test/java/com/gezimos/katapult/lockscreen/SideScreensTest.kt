@@ -1,4 +1,6 @@
 package com.gezimos.katapult.lockscreen
+import com.gezimos.katapult.ui.settings.RailThumb
+import com.gezimos.katapult.ui.settings.railThumb
 
 import org.junit.Assert.*
 import org.junit.Test

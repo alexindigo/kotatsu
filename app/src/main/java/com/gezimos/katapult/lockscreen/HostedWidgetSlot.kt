@@ -13,6 +13,7 @@ import android.widget.FrameLayout
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.gezimos.katapult.ui.settings.ScrollRailGeometry
 
 /** Native child ownership and generic collection driving. Does not know its page/window/consumer. */
 internal class HostedWidgetSlot(context: Context, private val host: LockscreenWidgetHost, private val id: Int,

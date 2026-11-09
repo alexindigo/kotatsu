@@ -12,7 +12,7 @@ import android.view.accessibility.AccessibilityWindowInfo
 import android.accessibilityservice.AccessibilityServiceInfo
 
 /** Test-only public UI input; no adopted shell permissions or production hooks. */
-class PlatformUiDriver(instrumentation: Instrumentation) {
+class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: String? = null) {
     private val context = instrumentation.targetContext
     private val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
 
@@ -56,9 +56,18 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
     }
 
     /** Input goes to the focused owner, including system dialogs such as the fullscreen hint. */
-    private fun focusedRoot(): AccessibilityNodeInfo? = windows().singleOrNull {
-        it.isFocused && it.isActive
-    }?.root?.takeIf { it.refresh() }
+    private fun focusedRoot(): AccessibilityNodeInfo? {
+        fun containsPane(node: AccessibilityNodeInfo): Boolean {
+            if (!node.refresh()) return false
+            if (node.paneTitle?.toString() == paneTitle) return true
+            for (i in 0 until node.childCount) if (node.getChild(i)?.let(::containsPane) == true) return true
+            return false
+        }
+        return windows().singleOrNull {
+            if (paneTitle == null) it.isFocused && it.isActive
+            else it.type == AccessibilityWindowInfo.TYPE_ACCESSIBILITY_OVERLAY && it.root?.let(::containsPane) == true
+        }?.root?.takeIf { it.refresh() }
+    }
 
     /** A model callback can precede dialog disposal. Observe the input destination before the next action. */
     fun awaitFocusedWindow(windowId: Int) {
@@ -154,6 +163,8 @@ class PlatformUiDriver(instrumentation: Instrumentation) {
     }
 
     fun packageVisible(packageName: String): Boolean = focusedRoot()?.packageName?.toString() == packageName
+    fun windowVisible(): Boolean = focusedRoot()?.childCount?.let { it > 0 } == true
+    fun windowDescriptions(): String = windows().joinToString { "title=${it.title} type=${it.type} focused=${it.isFocused} package=${it.root?.packageName}" }
 
     fun gridLabels(labels: List<String>): List<String> = labels.map { label ->
         val rect = Rect()

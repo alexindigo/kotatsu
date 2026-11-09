@@ -89,6 +89,12 @@ On Kompakt, open launcher Settings → Lockscreen → Lock-screen widgets, enabl
 
 Back exits a nondefault launcher preview after internal navigation and dialogs are resolved. Clock and date formats can follow Android's System setting or use a chosen format. If Action Service access is lost, Kotatsu names the affected features and offers to turn them off.
 
+Double-press Home within 400 ms to open Recent apps. The newest app sits at the bottom; scroll up for older apps.
+Tap an app name to switch to it. Close, or swipe a row left by at least a third of its width, to stop its background
+processes and hide it until it is used again. Close all asks for confirmation in the top line. Back cancels that
+confirmation; otherwise Back or another double-press returns to the app or Home where you started.
+Recent apps uses the existing usage-statistics choice and Android usage access.
+
 ### Edge swipes on the lock screen and Home
 
 On Kompakt, open Settings > Lock screen > Edge swipes and enable the Kotatsu Action Service when prompted.
@@ -137,8 +143,9 @@ Android grants and Kotatsu's Sensitive access choices are separate: a grant alon
 | 4 | Notification listener | Optional badge counts and media information; dismissal and media controls have separate in-app choices |
 | 5 | `READ_CALL_LOG`, `READ_SMS` | Optional direct Phone/Messages badge counts on supported Kompakt devices |
 | 6 | `WRITE_CALL_LOG` | Separate, deliberate call acknowledgment action |
-| 7 | Usage access (`PACKAGE_USAGE_STATS`) | Optional most-recent / most-used app sorting |
+| 7 | Usage access (`PACKAGE_USAGE_STATS`) | Optional most-recent / most-used app sorting and Recent apps |
 | 8 | Kotatsu Action Service (accessibility) | Optional lock-screen overlays/widgets, edge actions and gesture passthrough, clock cover, locking and screensaver features |
+| 9 | `KILL_BACKGROUND_PROCESSES` | Close background app processes from Recent apps |
 
 Kotatsu Weather separately declares Internet and network-state access. Location access is optional for Add current location: a one-off fix while setup is open, never a background location request. Search for a place instead to avoid granting location access.
 

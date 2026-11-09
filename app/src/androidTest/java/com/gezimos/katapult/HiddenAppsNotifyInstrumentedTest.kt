@@ -104,7 +104,7 @@ class HiddenAppsNotifyInstrumentedTest {
         for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
             val event = android.view.MotionEvent.obtain(time, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
             event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
-            assertTrue(instrumentation.uiAutomation.injectInputEvent(event, true))
+            assertTrue(instrumentation.platformAutomation.injectInputEvent(event, true))
             event.recycle()
         }
     }

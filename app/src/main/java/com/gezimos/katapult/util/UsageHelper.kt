@@ -33,9 +33,12 @@ object UsageHelper {
 
     fun available(context: Context): Boolean {
         val prefs = PrefsManager(context)
-        return prefs.sensitiveChoice(SensitiveChoice.USAGE_STATS) &&
-            prefs.appSortMode != PrefsManager.APP_SORT_MANUAL && hasPermission(context)
+        return collectionAllowed(context) && prefs.appSortMode != PrefsManager.APP_SORT_MANUAL
     }
+
+    /** Usage consumers share consent/grant, independently of the app-grid sort choice. */
+    fun collectionAllowed(context: Context): Boolean =
+        PrefsManager(context).sensitiveChoice(SensitiveChoice.USAGE_STATS) && hasPermission(context)
 
     fun hasPermission(context: Context): Boolean {
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -52,10 +55,28 @@ object UsageHelper {
         }
     }
 
-    fun openSettings(context: Context) {
-        try {
-            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
-        } catch (_: Exception) {}
+    private fun settingsIntents(context: Context) = listOf(
+        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, android.net.Uri.fromParts("package", context.packageName, null)),
+        Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS),
+    ).filter { it.resolveActivity(context.packageManager) != null }
+
+    fun canOpenSettings(context: Context): Boolean = settingsIntents(context).isNotEmpty()
+
+    /** One navigation boundary for Activity, wrapped and application contexts. */
+    fun openSettings(context: Context): Boolean {
+        for (intent in settingsIntents(context)) {
+            if (context !is android.app.Activity) intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                context.startActivity(intent)
+                return true
+            } catch (error: android.content.ActivityNotFoundException) {
+                android.util.Log.w("UsageHelper", "Usage settings entry disappeared", error)
+            } catch (error: SecurityException) {
+                android.util.Log.w("UsageHelper", "Usage settings entry is unavailable", error)
+            }
+        }
+        android.util.Log.w("UsageHelper", "No accessible usage settings activity")
+        return false
     }
 
     @Synchronized fun invalidate() {

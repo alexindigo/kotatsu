@@ -1,5 +1,6 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.platformAutomation
 import android.content.Intent
 import android.os.ParcelFileDescriptor
 import android.widget.ImageView
@@ -20,7 +21,7 @@ class WeatherHostPersistenceInstrumentedTest {
     private val context = instrumentation.targetContext
     private val weather = "com.alexindigo.kotatsu.weather.debug"
     private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
-        instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        instrumentation.platformAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
 
     @Test fun weatherEditsSurviveRealHostRebindingAndPermissionDeath() {
         val retained = InstrumentationRegistry.getArguments().getString("retainWeatherFixture") == "true"
@@ -58,9 +59,9 @@ class WeatherHostPersistenceInstrumentedTest {
             shell("appops set 2000 android:mock_location allow")
             shell("cmd location providers add-test-provider gps")
             shell("cmd location providers set-test-provider-enabled gps true")
-            instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
+            instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
             instrumentation.runOnMainSync { activity.addLockscreenWidget(info) }
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            instrumentation.platformAutomation.dropShellPermissionIdentity()
             ui.await("Real host did not open configure") { ui.has("Add location") }
             locate(10, 20)
             ui.click("Done")
@@ -109,7 +110,7 @@ class WeatherHostPersistenceInstrumentedTest {
             ui.await("Permission revocation did not kill Weather", 10_000) { shell("pidof $weather").trim() != oldPid }
             openIcon(); ui.await("Permission-death recreation lost a place") { hasTwoPlaces() }; ui.click("Done")
         } finally {
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            instrumentation.platformAutomation.dropShellPermissionIdentity()
             instrumentation.runOnMainSync {
                 // Optional retained fixture supports reboot/update acceptance outside instrumentation.
                 if (InstrumentationRegistry.getArguments().getString("retainWeatherFixture") != "true") {

@@ -311,7 +311,8 @@ fun SettingsScreen(
     val apps = appsCategory(isMudita, appSortMode, showKatapultIcon, hideAllAppsButton, infiniteScroll, hideArrowButtons,
         onSort = {
             appSortMode = it; prefs.appSortMode = it; viewModel.loadApps()
-            if (it != PrefsManager.APP_SORT_MANUAL && !UsageHelper.hasPermission(context)) UsageHelper.openSettings(context)
+            if (it != PrefsManager.APP_SORT_MANUAL && !UsageHelper.hasPermission(context) && !UsageHelper.openSettings(context))
+                navigation.push("permissions")
         },
         onIcon = { showKatapultIcon = it; prefs.showKatapultIcon = it; viewModel.loadApps() },
         onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
@@ -642,6 +643,8 @@ fun SettingsScreen(
         }
         val writeSettings = remember(permTick) { Settings.System.canWrite(context) }
         val usageAccess = remember(permTick) { UsageHelper.hasPermission(context) }
+        var usageSettingsFailed by remember(permTick) { mutableStateOf(false) }
+        val canOpenUsageSettings = !usageSettingsFailed && UsageHelper.canOpenSettings(context)
         val openAppDetails = {
             try {
                 context.startActivity(
@@ -701,9 +704,8 @@ fun SettingsScreen(
                 title = stringResource(R.string.perm_usage_access),
                 description = stringResource(R.string.perm_usage_access_desc),
                 checked = usageAccess,
-            ) {
-                UsageHelper.openSettings(context)
-            }
+                onClick = if (canOpenUsageSettings) ({ usageSettingsFailed = !UsageHelper.openSettings(context) }) else null,
+            )
           }
         }
     }
@@ -1064,12 +1066,13 @@ private fun PermissionRow(
     description: String,
     checked: Boolean,
     service: Boolean = false,
-    onClick: () -> Unit,
+    onClick: (() -> Unit)?,
 ) {
     val status = stringResource(if (service) {
         if (checked) R.string.paper_on else R.string.paper_off
     } else if (checked) R.string.paper_granted else R.string.paper_not_granted)
-    Entry(SettingsEntry.Open(title, title, description, onClick, actionLabel = status), minimumHeight = 63.dp)
+    Entry(if (onClick != null) SettingsEntry.Open(title, title, description, onClick, actionLabel = status)
+        else SettingsEntry.Metadata(title, title, status, description), minimumHeight = 63.dp)
 }
 
 @Composable

@@ -21,6 +21,7 @@ import com.gezimos.katapult.R
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.NoIndication
+import com.gezimos.katapult.ui.scrollRailLabels
 import com.gezimos.katapult.ui.settings.*
 
 /** Activity-owned presentation of the same side surface, with ordinary PendingIntent delivery. */
@@ -86,7 +87,7 @@ internal class SideScreenView(context: Context, private val screen: SideScreen, 
                             if (slot == null) Box(Modifier.weight(1f).padding(16.dp)) { SheetText(stringResource(R.string.side_empty)) }
                             else {
                                 AndroidView(factory = { slot }, modifier = Modifier.weight(1f).fillMaxHeight())
-                                slot.rail?.let { rail -> NotesScrollRail(rail.viewport, rail.maximum, rail.position, slot::moveTo, slot::step) }
+                                slot.rail?.let { rail -> PaperScrollRail(rail.viewport, rail.maximum, rail.position, scrollRailLabels(), slot::moveTo, slot::step) }
                             }
                         }
                     }

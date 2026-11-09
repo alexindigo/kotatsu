@@ -81,11 +81,13 @@ internal fun IndexName(title: String, root: Boolean = false) {
 
 /** The name owns the leader baseline; text values align to it. */
 @Composable
-private fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit) {
+internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit,
+    leadingTarget: (@Composable () -> Unit)? = null) {
     Layout(modifier = modifier.fillMaxWidth(), content = {
         title()
         value()
         IndexLeader()
+        leadingTarget?.invoke()
     }) { children, constraints ->
         val gap = 7.5.dp.roundToPx()
         val leaderMin = 9.dp.roundToPx()
@@ -98,7 +100,12 @@ private fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> 
         val leader = children[2].measure(Constraints.fixed(
             (width - titlePlaceable.width - valuePlaceable.width - 2 * gap).coerceAtLeast(0), 1.5.dp.roundToPx()))
         val height = max(titleY + titlePlaceable.height, valueY + valuePlaceable.height)
+        // The leading target owns the entire row except the measured value cell.
+        // Its bounds are structural; the text/leader keep their existing geometry.
+        val target = if (leadingTarget == null) null else children[3].measure(
+            Constraints.fixed((width - valuePlaceable.width).coerceAtLeast(0), height))
         layout(width, height) {
+            target?.placeRelative(0, 0)
             titlePlaceable.placeRelative(0, titleY)
             valuePlaceable.placeRelative(width - valuePlaceable.width, valueY)
             leader.placeRelative(titlePlaceable.width + gap,

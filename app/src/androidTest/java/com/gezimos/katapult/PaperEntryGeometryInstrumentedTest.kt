@@ -90,14 +90,14 @@ class PaperEntryGeometryInstrumentedTest {
 
     private fun capture(activity: MainActivity, name: String) {
         instrumentation.waitForIdleSync()
-        instrumentation.uiAutomation.waitForIdle(100, 5000)
+        instrumentation.platformAutomation.waitForIdle(100, 5000)
         val committed = CountDownLatch(1)
         main {
             activity.window.decorView.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
             activity.window.decorView.invalidate()
         }
         assertTrue(committed.await(8, TimeUnit.SECONDS))
-        val bitmap = instrumentation.uiAutomation.takeScreenshot()
+        val bitmap = instrumentation.platformAutomation.takeScreenshot()
         val directory = File(context.getExternalFilesDir(null), "tight-row-renders").apply { mkdirs() }
         File(directory, "$name.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         bitmap.recycle()

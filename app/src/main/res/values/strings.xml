@@ -433,4 +433,13 @@
     <string name="edge_camera_available">Available</string>
     <string name="edge_camera_unavailable">Unavailable</string>
     <string name="edge_camera_setup">Needs a compatible secure camera. In Open Camera, grant camera permission and enable Settings > More camera controls > Show camera when locked.</string>
+    <string name="recent_apps">Recent apps</string>
+    <string name="recent_close">Close</string>
+    <string name="recent_dismiss">Close recent apps</string>
+    <string name="recent_just_now">Just now</string>
+    <string name="recent_yesterday">Yesterday</string>
+    <string name="recent_usage_required">Usage access is off</string>
+    <plurals name="recent_minutes"><item quantity="one">%d min ago</item><item quantity="other">%d min ago</item></plurals>
+    <plurals name="recent_hours"><item quantity="one">%d h ago</item><item quantity="other">%d h ago</item></plurals>
+    <plurals name="recent_days"><item quantity="one">%d day ago</item><item quantity="other">%d days ago</item></plurals>
 </resources>
