@@ -215,7 +215,7 @@ class LockscreenWidgetService :
         val callback = Runnable(action)
         mainHandler.postDelayed(callback, delay)
         AutoCloseable { mainHandler.removeCallbacks(callback) }
-    }, { homeKeyEligible() && prefs.homeButtonRecentApps }, {
+    }, ::homeKeyEligible, {
         mainHandler.post {
             if (homeKeyEligible()) {
                 recentPage?.close()
@@ -227,7 +227,9 @@ class LockscreenWidgetService :
         mainHandler.post {
             if (homeKeyEligible() && prefs.homeButtonRecentApps) recentPage?.toggle()
         }
-    })
+    }, { ::prefs.isInitialized && prefs.homeButtonRecentApps },
+        { ::prefs.isInitialized && prefs.homeButtonScreenshot }, { screenshots?.capture() })
+    private var screenshots: com.gezimos.katapult.screenshot.ScreenshotCapture? = null
     private var recentPage: RecentAppsOverlay? = null
     private var recentBackHeld = false
 
@@ -249,10 +251,17 @@ class LockscreenWidgetService :
         }
         if (event.keyCode == KeyEvent.KEYCODE_HOME && event.action == KeyEvent.ACTION_DOWN &&
             recentPage?.visible == true && !prefs.homeButtonRecentApps) recentPage?.close()
-        if (event.keyCode != KeyEvent.KEYCODE_HOME) return false
-        val consumed = when (event.action) {
-            KeyEvent.ACTION_DOWN -> homeKeys.down(event.eventTime, event.repeatCount > 0)
-            KeyEvent.ACTION_UP -> homeKeys.up()
+        val consumed = when (event.keyCode) {
+            KeyEvent.KEYCODE_HOME -> when (event.action) {
+                KeyEvent.ACTION_DOWN -> homeKeys.down(event.eventTime, event.repeatCount > 0)
+                KeyEvent.ACTION_UP -> homeKeys.up()
+                else -> false
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> when (event.action) {
+                KeyEvent.ACTION_DOWN -> homeKeys.volumeDown(event.repeatCount > 0)
+                KeyEvent.ACTION_UP -> homeKeys.volumeUp()
+                else -> false
+            }
             else -> false
         }
         if (BuildConfig.DEBUG) android.util.Log.d("KotatsuHome",
@@ -348,7 +357,7 @@ class LockscreenWidgetService :
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    homeKeys.close(); recentPage?.close(); recentBackHeld = false
+                    homeKeys.close(); screenshots?.clear(); recentPage?.close(); recentBackHeld = false
                     widgetsContent?.hide()
                     visibility.invalidate()
                     maybeStartScreensaver()
@@ -387,6 +396,9 @@ class LockscreenWidgetService :
         delivery.apply(delivery.currentInfo())
         HomeKeyFilterState.connected(this)
         recentPage = RecentAppsOverlay(this, mainHandler, ::homeKeyEligible)
+        screenshots = com.gezimos.katapult.screenshot.ScreenshotCapture(this, mainHandler, {
+            homeKeyEligible() && prefs.homeButtonScreenshot
+        })
         widgetLaunch = WidgetActivityLaunch(this, ::edgeEligible, { sidePage?.hide() })
         sidePage = EdgePageWindow(this, mainHandler, ::edgeEligible, { mainHandler.post { evaluate() } }, "Kotatsu side screen") { back, capture, close ->
             SideScreenView(this, prefs.lockscreenWidgetStore.screens().first(), back, capture, close,
@@ -445,6 +457,7 @@ class LockscreenWidgetService :
     override fun onInterrupt() {
         homeKeys.close()
         recentPage?.close(); recentBackHeld = false
+        screenshots?.clear()
         sidePage?.hide(); widgetLaunch?.close()
         edgeGestures?.interrupt()
         syncSourceSubscriptions(false, false)
@@ -463,6 +476,7 @@ class LockscreenWidgetService :
     override fun onDestroy() {
         homeKeys.close()
         recentPage?.close(); recentPage = null; recentBackHeld = false
+        screenshots?.close(); screenshots = null
         HomeKeyFilterState.disconnected(this)
         lockscreenInspection.close()
         sidePage?.close(); sidePage = null
@@ -499,6 +513,7 @@ class LockscreenWidgetService :
     override fun onUnbind(intent: Intent?): Boolean {
         homeKeys.close()
         recentPage?.close(); recentBackHeld = false
+        screenshots?.clear()
         HomeKeyFilterState.disconnected(this)
         return super.onUnbind(intent)
     }

@@ -355,6 +355,14 @@
     <string name="paper_group_app_pages">Stránky aplikací</string>
     <string name="paper_group_on_home">Na domovské obrazovce</string>
     <string name="paper_group_home_button">Tla&#269;&#237;tko Dom&#367;</string>
+    <string name="home_button_screenshot">Sn&#237;mek obrazovky</string>
+    <string name="home_button_screenshot_help">Podr&#382;te Dom&#367; a stiskn&#283;te sn&#237;&#382;en&#237; hlasitosti</string>
+    <string name="screenshot_saved">Ulo&#382;eno</string>
+    <string name="screenshot_saved_announcement">Sn&#237;mek obrazovky ulo&#382;en</string>
+    <string name="screenshot_preview">N&#225;hled sn&#237;mku obrazovky</string>
+    <string name="screenshot_not_saved">Sn&#237;mek obrazovky nebyl ulo&#382;en</string>
+    <string name="screenshot_storage_full">&#218;lo&#382;i&#353;t&#283; telefonu je pln&#233;</string>
+    <string name="screenshot_unavailable">Obrazovku nyn&#237; nelze zachytit</string>
     <string name="home_button_recent_apps_help">Dvoj&#237;m stisknut&#237;m tla&#269;&#237;tka Dom&#367; zobraz&#237;te ned&#225;vn&#233; aplikace</string>
     <string name="paper_group_indicators">Indikátory</string>
     <string name="paper_group_android_notifications">Oznámení Androidu</string>

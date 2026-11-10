@@ -358,6 +358,14 @@
     <string name="paper_group_on_home">On Home</string>
     <string name="paper_group_home_button">Home button</string>
     <string name="home_button_recent_apps_help">Press Home twice to see recent apps</string>
+    <string name="home_button_screenshot">Screenshot</string>
+    <string name="home_button_screenshot_help">Hold Home, then press Volume down</string>
+    <string name="screenshot_saved">Saved</string>
+    <string name="screenshot_saved_announcement">Screenshot saved</string>
+    <string name="screenshot_preview">Screenshot preview</string>
+    <string name="screenshot_not_saved">Screenshot not saved</string>
+    <string name="screenshot_storage_full">Phone storage is full</string>
+    <string name="screenshot_unavailable">The screen can\'t be captured right now</string>
     <string name="paper_group_indicators">Indicators</string>
     <string name="paper_group_android_notifications">Android notifications</string>
     <string name="paper_group_widgets_message">Widgets and message</string>

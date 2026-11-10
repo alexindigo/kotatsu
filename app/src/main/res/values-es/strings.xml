@@ -355,6 +355,14 @@
     <string name="paper_group_app_pages">Páginas de apps</string>
     <string name="paper_group_on_home">En inicio</string>
     <string name="paper_group_home_button">Bot&#243;n de inicio</string>
+    <string name="home_button_screenshot">Captura de pantalla</string>
+    <string name="home_button_screenshot_help">Mant&#233;n Inicio y pulsa Bajar volumen</string>
+    <string name="screenshot_saved">Guardada</string>
+    <string name="screenshot_saved_announcement">Captura de pantalla guardada</string>
+    <string name="screenshot_preview">Vista previa de la captura</string>
+    <string name="screenshot_not_saved">Captura no guardada</string>
+    <string name="screenshot_storage_full">El almacenamiento del tel&#233;fono est&#225; lleno</string>
+    <string name="screenshot_unavailable">No se puede capturar la pantalla ahora</string>
     <string name="home_button_recent_apps_help">Pulsa Inicio dos veces para ver las aplicaciones recientes</string>
     <string name="paper_group_indicators">Indicadores</string>
     <string name="paper_group_android_notifications">Notificaciones de Android</string>

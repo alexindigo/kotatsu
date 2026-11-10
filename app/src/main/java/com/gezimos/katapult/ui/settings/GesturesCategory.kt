@@ -7,9 +7,10 @@ import com.gezimos.katapult.util.PrefsManager
 
 @Composable
 fun gesturesCategory(
-    swipeApps: Boolean, vertical: Boolean, doubleTap: Int, longPress: Int, recentApps: Boolean,
+    swipeApps: Boolean, vertical: Boolean, doubleTap: Int, longPress: Int, recentApps: Boolean, screenshot: Boolean,
     onSwipe: (Boolean) -> Unit, onVertical: (Boolean) -> Unit, onDoubleTap: (Int) -> Unit, onLongPress: (Int) -> Unit,
     onRecentApps: (Boolean) -> Unit,
+    onScreenshot: (Boolean) -> Unit,
 ): SettingsCategory {
     val directions = listOf(SettingsChoice("horizontal", stringResource(R.string.gesture_horizontal)), SettingsChoice("vertical", stringResource(R.string.gesture_vertical)))
     val taps = listOf(PrefsManager.DOUBLE_TAP_OFF to R.string.double_tap_off, PrefsManager.DOUBLE_TAP_BRIGHTNESS to R.string.double_tap_brightness,
@@ -34,6 +35,8 @@ fun gesturesCategory(
         SettingsGroup("home_button", stringResource(R.string.paper_group_home_button), listOf(
             SettingsEntry.Switch("recent_apps", stringResource(R.string.recent_apps), stringResource(R.string.home_button_recent_apps_help),
                 recentApps, onRecentApps),
+            SettingsEntry.Switch("screenshot", stringResource(R.string.home_button_screenshot), stringResource(R.string.home_button_screenshot_help),
+                screenshot, onScreenshot),
         )),
     ), summary = direction.label, help = SettingsHelp(stringResource(R.string.paper_about_gestures), stringResource(R.string.section_gestures),
         listOf(stringResource(R.string.gestures_readme_nav), stringResource(R.string.gestures_readme_apps))))

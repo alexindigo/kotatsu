@@ -355,6 +355,14 @@
     <string name="paper_group_app_pages">Pages des apps</string>
     <string name="paper_group_on_home">À l\'accueil</string>
     <string name="paper_group_home_button">Bouton Accueil</string>
+    <string name="home_button_screenshot">Capture d\'&#233;cran</string>
+    <string name="home_button_screenshot_help">Maintenez Accueil, puis appuyez sur Volume bas</string>
+    <string name="screenshot_saved">Enregistr&#233;e</string>
+    <string name="screenshot_saved_announcement">Capture d\'&#233;cran enregistr&#233;e</string>
+    <string name="screenshot_preview">Aper&#231;u de la capture d\'&#233;cran</string>
+    <string name="screenshot_not_saved">Capture non enregistr&#233;e</string>
+    <string name="screenshot_storage_full">Le stockage du t&#233;l&#233;phone est plein</string>
+    <string name="screenshot_unavailable">Impossible de capturer l\'&#233;cran pour le moment</string>
     <string name="home_button_recent_apps_help">Appuyez deux fois sur Accueil pour voir les applications r&#233;centes</string>
     <string name="paper_group_indicators">Indicateurs</string>
     <string name="paper_group_android_notifications">Notifications Android</string>

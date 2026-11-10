@@ -7,6 +7,8 @@ class HomeKeyFilterTest {
     private class Fixture {
         var now = 0L
         var eligible = true
+        var recentApps = true
+        var screenshot = false
         val results = mutableListOf<String>()
         class Task(val at: Long, val run: () -> Unit) { var cancelled = false }
         val tasks = mutableListOf<Task>()
@@ -14,7 +16,7 @@ class HomeKeyFilterTest {
             val task = Task(now + delay, action)
             tasks += task
             AutoCloseable { task.cancelled = true }
-        }, { eligible }, { results += "home" }, { results += "double" })
+        }, { eligible }, { results += "home" }, { results += "double" }, { recentApps }, { screenshot }, { results += "screenshot" })
         fun advance(at: Long) {
             while (true) {
                 val next = tasks.filter { !it.cancelled && it.at <= at }.minByOrNull { it.at } ?: break
@@ -170,5 +172,82 @@ class HomeKeyFilterTest {
             blocked.close()
         } finally { HomeKeyFilterState.disconnected(second); HomeKeyFilterState.disconnected(first) }
         assertFalse(HomeKeyFilterState.active)
+    }
+
+    @Test fun screenshotOnlySendsHomeOnUpWithoutSchedulingADoublePressDelay() {
+        val f = Fixture(); f.recentApps = false; f.screenshot = true
+        assertTrue(f.filter.down(0)); assertTrue(f.tasks.isEmpty())
+        assertTrue(f.filter.down(20, repeat = true)); assertTrue(f.results.isEmpty())
+        assertTrue(f.filter.up()); assertEquals(listOf("home"), f.results)
+        assertTrue(f.filter.down(100)); assertTrue(f.filter.up())
+        assertEquals(listOf("home", "home"), f.results)
+    }
+
+    @Test fun bothFeaturesOffPassEveryHomeAndVolumeEvent() {
+        val f = Fixture(); f.recentApps = false; f.screenshot = false
+        assertFalse(f.filter.down(0)); assertFalse(f.filter.down(1, repeat = true)); assertFalse(f.filter.up())
+        assertFalse(f.filter.volumeDown()); assertFalse(f.filter.volumeDown(true)); assertFalse(f.filter.volumeUp())
+        f.advance(1000); assertTrue(f.results.isEmpty()); assertTrue(f.tasks.isEmpty())
+    }
+
+    @Test fun chordConsumesBothReleaseOrdersAndRepeatsAndCancelsEvenAnExpiredHome() {
+        for (recent in listOf(false, true)) for (homeFirst in listOf(false, true)) for (heldUntil in listOf(100L, 700L)) {
+            val f = Fixture(); f.recentApps = recent; f.screenshot = true
+            assertFalse(f.filter.volumeDown()); assertFalse(f.filter.volumeUp())
+            assertTrue(f.filter.down(0)); f.advance(heldUntil)
+            assertTrue(f.filter.volumeDown()); assertTrue(f.filter.volumeDown(true))
+            assertTrue(f.filter.down(heldUntil, repeat = true))
+            if (homeFirst) { assertTrue(f.filter.up()); assertTrue(f.filter.volumeUp()) }
+            else {
+                assertTrue(f.filter.volumeUp())
+                assertFalse("Only one screenshot per held Home", f.filter.volumeDown())
+                assertTrue(f.filter.up())
+            }
+            f.advance(2000); assertEquals(listOf("screenshot"), f.results)
+            assertFalse(f.filter.up()); assertFalse(f.filter.volumeUp())
+            // The capture may still be saving. A separate chord must remain accepted.
+            assertTrue(f.filter.down(2000)); assertTrue(f.filter.volumeDown()); assertTrue(f.filter.up()); assertTrue(f.filter.volumeUp())
+            assertEquals(listOf("screenshot", "screenshot"), f.results)
+        }
+    }
+
+    @Test fun disabledScreenshotAndUnheldVolumeRepeatsNeverCapture() {
+        val f = Fixture()
+        assertTrue(f.filter.down(0)); assertFalse(f.filter.volumeDown()); assertFalse(f.filter.volumeUp())
+        assertTrue(f.filter.up()); f.advance(500); assertEquals(listOf("home"), f.results)
+        f.screenshot = true
+        assertTrue(f.filter.down(1000)); assertFalse(f.filter.volumeDown(true))
+        f.eligible = false
+        assertFalse(f.filter.volumeDown()); assertTrue(f.filter.up()); assertFalse(f.filter.volumeUp())
+        f.advance(2000); assertEquals(listOf("home"), f.results)
+    }
+
+    @Test fun screenshotOnlyEligibilityLossKeepsTheOwnedHomeReleaseWithoutSendingHome() {
+        val f = Fixture(); f.recentApps = false; f.screenshot = true
+        assertTrue(f.filter.down(0))
+        f.eligible = false
+        assertTrue(f.filter.down(100, repeat = true))
+        assertTrue(f.filter.up()); assertFalse(f.filter.up())
+        f.advance(1000); assertTrue(f.results.isEmpty())
+    }
+
+    @Test fun chordKeepsBothOwnedReleasesWhenEligibilityOrFeaturesEnd() {
+        for (featuresOff in listOf(false, true)) for (homeFirst in listOf(false, true)) {
+            val f = Fixture(); f.screenshot = true
+            assertTrue(f.filter.down(0)); assertTrue(f.filter.volumeDown())
+            if (featuresOff) { f.recentApps = false; f.screenshot = false }
+            else f.eligible = false
+            assertTrue(f.filter.down(100, repeat = true)); assertTrue(f.filter.volumeDown(true))
+            if (homeFirst) { assertTrue(f.filter.up()); assertTrue(f.filter.volumeUp()) }
+            else { assertTrue(f.filter.volumeUp()); assertTrue(f.filter.up()) }
+            assertFalse(f.filter.up()); assertFalse(f.filter.volumeUp())
+            f.advance(1000); assertEquals(listOf("screenshot"), f.results)
+        }
+    }
+
+    @Test fun recentAppsKeepsItsExistingPairPolicyWhenScreenshotIsOn() {
+        val f = Fixture(); f.screenshot = true
+        f.filter.down(0); f.filter.up(); f.advance(140); f.filter.down(140); f.filter.up()
+        f.advance(1000); assertEquals(listOf("double"), f.results)
     }
 }

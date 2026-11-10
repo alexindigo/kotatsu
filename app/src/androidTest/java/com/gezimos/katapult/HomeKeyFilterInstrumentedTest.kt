@@ -70,7 +70,7 @@ class HomeKeyFilterInstrumentedTest {
         val accessibility = shell("settings get secure accessibility_enabled")
         assertFalse("Preserve an already-enabled Action Service", enabled.contains(LockscreenWidgetService::class.java.name))
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
-        val keys = listOf("onboarding_complete", "collect_usage_stats", "home_button_recent_apps")
+        val keys = listOf("onboarding_complete", "collect_usage_stats", "home_button_recent_apps", "home_button_screenshot")
         val previous = keys.associateWith { prefs.all[it] }
         val launches = java.util.concurrent.CopyOnWriteArrayList<Intent>()
         val monitor = object : Instrumentation.ActivityMonitor() {
@@ -84,7 +84,7 @@ class HomeKeyFilterInstrumentedTest {
         instrumentation.addMonitor(monitor)
         try {
             prefs.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true)
-                .putBoolean("home_button_recent_apps", true).commit()
+                .putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false).commit()
             home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             val model = home.viewModel

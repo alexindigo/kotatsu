@@ -355,6 +355,14 @@
     <string name="paper_group_app_pages">App-pagina\'s</string>
     <string name="paper_group_on_home">Op het startscherm</string>
     <string name="paper_group_home_button">Homeknop</string>
+    <string name="home_button_screenshot">Schermafbeelding</string>
+    <string name="home_button_screenshot_help">Houd Home ingedrukt en druk op Volume omlaag</string>
+    <string name="screenshot_saved">Opgeslagen</string>
+    <string name="screenshot_saved_announcement">Schermafbeelding opgeslagen</string>
+    <string name="screenshot_preview">Voorbeeld van schermafbeelding</string>
+    <string name="screenshot_not_saved">Schermafbeelding niet opgeslagen</string>
+    <string name="screenshot_storage_full">De telefoonopslag is vol</string>
+    <string name="screenshot_unavailable">Het scherm kan nu niet worden vastgelegd</string>
     <string name="home_button_recent_apps_help">Druk tweemaal op Home om recente apps te zien</string>
     <string name="paper_group_indicators">Indicatoren</string>
     <string name="paper_group_android_notifications">Android-meldingen</string>

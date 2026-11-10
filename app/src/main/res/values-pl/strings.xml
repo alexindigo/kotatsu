@@ -355,6 +355,14 @@
     <string name="paper_group_app_pages">Strony aplikacji</string>
     <string name="paper_group_on_home">Na ekranie głównym</string>
     <string name="paper_group_home_button">Przycisk Home</string>
+    <string name="home_button_screenshot">Zrzut ekranu</string>
+    <string name="home_button_screenshot_help">Przytrzymaj Home i naci&#347;nij zmniejszanie g&#322;o&#347;no&#347;ci</string>
+    <string name="screenshot_saved">Zapisano</string>
+    <string name="screenshot_saved_announcement">Zrzut ekranu zapisany</string>
+    <string name="screenshot_preview">Podgl&#261;d zrzutu ekranu</string>
+    <string name="screenshot_not_saved">Nie zapisano zrzutu ekranu</string>
+    <string name="screenshot_storage_full">Pami&#281;&#263; telefonu jest pe&#322;na</string>
+    <string name="screenshot_unavailable">Nie mo&#380;na teraz przechwyci&#263; ekranu</string>
     <string name="home_button_recent_apps_help">Naci&#347;nij Home dwa razy, aby zobaczy&#263; ostatnie aplikacje</string>
     <string name="paper_group_indicators">Wskaźniki</string>
     <string name="paper_group_android_notifications">Powiadomienia Androida</string>

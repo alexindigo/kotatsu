@@ -355,6 +355,14 @@
     <string name="paper_group_app_pages">Pagine app</string>
     <string name="paper_group_on_home">Sulla Home</string>
     <string name="paper_group_home_button">Tasto Home</string>
+    <string name="home_button_screenshot">Screenshot</string>
+    <string name="home_button_screenshot_help">Tieni premuto Home, poi premi Volume gi&#249;</string>
+    <string name="screenshot_saved">Salvato</string>
+    <string name="screenshot_saved_announcement">Screenshot salvato</string>
+    <string name="screenshot_preview">Anteprima dello screenshot</string>
+    <string name="screenshot_not_saved">Screenshot non salvato</string>
+    <string name="screenshot_storage_full">La memoria del telefono &#232; piena</string>
+    <string name="screenshot_unavailable">Impossibile acquisire lo schermo al momento</string>
     <string name="home_button_recent_apps_help">Premi Home due volte per vedere le app recenti</string>
     <string name="paper_group_indicators">Indicatori</string>
     <string name="paper_group_android_notifications">Notifiche Android</string>
