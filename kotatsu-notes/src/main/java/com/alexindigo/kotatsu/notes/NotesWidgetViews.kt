@@ -9,6 +9,7 @@ import android.os.Build
 import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
+import android.widget.TextView
 import kotlin.math.floor
 
 object NotesWidgetViews {
@@ -16,6 +17,21 @@ object NotesWidgetViews {
     const val TICK = "com.alexindigo.kotatsu.notes.TICK"
     const val TOKEN = "rendered"
     const val INDEX = "index"
+
+    /** A collection edge may discard only space shared by every drawing in its last row. */
+    private fun bottomTrim(context: Context, rendered: RenderedList, artworkBorder: Int): Int {
+        val last = rendered.snapshot.items!!.lastOrNull() ?: return 0
+        if (last.kind != TaskRowKind.ITEM) return 0
+        val label = TextView(context, null, 0, R.style.NotesWidgetTask).apply { text = last.text }
+        val unspecified = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        label.measure(unspecified, unspecified)
+        label.layout(0, 0, label.measuredWidth, label.measuredHeight)
+        val ink = android.graphics.Rect()
+        label.paint.getTextBounds(last.text, 0, last.text.length, ink)
+        val rowHeight = maxOf(context.resources.getDimensionPixelSize(R.dimen.task_button_size), label.measuredHeight)
+        val inkBottom = label.totalPaddingTop + label.layout.getLineBaseline(label.lineCount - 1) + ink.bottom
+        return minOf(artworkBorder, (rowHeight - inkBottom).coerceAtLeast(0))
+    }
 
     fun message(context: Context, text: Int) = RemoteViews(context.packageName, R.layout.widget_notes).apply {
         setViewVisibility(R.id.heading, View.GONE)
@@ -75,9 +91,9 @@ object NotesWidgetViews {
             setViewVisibility(R.id.heading, if (hostTitle) View.GONE else View.VISIBLE)
             setViewVisibility(R.id.message, View.GONE)
             setViewVisibility(R.id.tasks, View.VISIBLE)
-            // Exclude the vector artwork's transparent 2-of-24-unit border from
-            // the collection's outer edges. Native scrolling and clipping own it.
-            setViewPadding(R.id.tasks, 0, -opticalBorder, 0, -opticalBorder)
+            // The last row contains both checkbox art and text. Its shared blank extent,
+            // not the checkbox border alone, owns the collection's scroll boundary.
+            setViewPadding(R.id.tasks, 0, -opticalBorder, 0, -bottomTrim(context, rendered, opticalBorder))
             setPendingIntentTemplate(R.id.tasks, template)
             setRemoteAdapter(R.id.tasks, items.build())
         }
