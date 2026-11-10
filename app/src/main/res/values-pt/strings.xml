@@ -354,6 +354,8 @@
     <string name="paper_group_navigation">Navegação</string>
     <string name="paper_group_app_pages">Páginas de apps</string>
     <string name="paper_group_on_home">No ecrã inicial</string>
+    <string name="paper_group_home_button">Bot&#227;o In&#237;cio</string>
+    <string name="home_button_recent_apps_help">Prima In&#237;cio duas vezes para ver as apps recentes</string>
     <string name="paper_group_indicators">Indicadores</string>
     <string name="paper_group_android_notifications">Notificações do Android</string>
     <string name="paper_group_widgets_message">Widgets e mensagem</string>

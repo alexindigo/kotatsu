@@ -356,6 +356,8 @@
     <string name="paper_group_navigation">Navigation</string>
     <string name="paper_group_app_pages">App pages</string>
     <string name="paper_group_on_home">On Home</string>
+    <string name="paper_group_home_button">Home button</string>
+    <string name="home_button_recent_apps_help">Press Home twice to see recent apps</string>
     <string name="paper_group_indicators">Indicators</string>
     <string name="paper_group_android_notifications">Android notifications</string>
     <string name="paper_group_widgets_message">Widgets and message</string>

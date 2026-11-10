@@ -26,7 +26,8 @@ class PaperIndexSettingsInstrumentedTest {
         try {
             instrumentation.runOnMainSync {
                 shared.edit().putBoolean("notice_action_service_dismissed", false)
-                    .putInt("theme_mode", PrefsManager.THEME_LIGHT).putBoolean("hide_app_names", false).commit()
+                    .putInt("theme_mode", PrefsManager.THEME_LIGHT).putBoolean("hide_app_names", false)
+                    .remove("home_button_recent_apps").commit()
             }
             activity = instrumentation.startActivitySync(Intent(Intent.ACTION_MAIN).apply {
                 setClassName(context.packageName, MainActivity::class.java.name)
@@ -148,6 +149,82 @@ class PaperIndexSettingsInstrumentedTest {
             prefs.hideAppNames && ui.checked(title) == true &&
                 ui.findAncestor(title) { it.isCheckable }?.stateDescription == context.getString(R.string.paper_on)
         }
+    }
+
+    @Test fun gesturesHomeButtonRecentAppsPersistsAcrossWholeGroupPagesWithSharedNotice() = withSettings { activity, vm, prefs, ui ->
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        assertFalse(com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(context))
+        assertTrue(prefs.homeButtonRecentApps)
+        val title = context.getString(R.string.recent_apps)
+        val groups = linkedMapOf(
+            context.getString(R.string.paper_group_app_pages) to listOf(R.string.swipe_up_all_apps, R.string.app_gesture_direction),
+            context.getString(R.string.paper_group_on_home) to listOf(R.string.double_tap_action, R.string.home_long_press),
+            context.getString(R.string.paper_group_home_button) to listOf(R.string.recent_apps),
+        ).mapValues { (_, entries) -> entries.map { context.getString(it) } }
+        fun firstPage() {
+            instrumentation.waitForIdleSync()
+            repeat(12) {
+                if (!ui.has(context.getString(R.string.paper_previous_page))) return
+                ui.click(context.getString(R.string.paper_previous_page))
+                instrumentation.waitForIdleSync()
+            }
+            fail("Gestures did not return to its first measured page")
+        }
+        fun reveal(label: String) {
+            instrumentation.waitForIdleSync()
+            if (ui.has(label)) return
+            firstPage()
+            repeat(12) {
+                if (ui.has(label)) return
+                assertTrue("No Gestures page contains $label", ui.has(context.getString(R.string.paper_next_page)))
+                ui.click(context.getString(R.string.paper_next_page))
+                instrumentation.waitForIdleSync()
+            }
+            fail("Gestures pages did not reveal $label")
+        }
+        ui.click(context.getString(R.string.section_gestures))
+        reveal(title)
+        ui.await("Home button group missing") { ui.has(context.getString(R.string.home_button_recent_apps_help)) && ui.checked(title) == true }
+        firstPage()
+        val seen = mutableListOf<String>()
+        for (page in 0 until 12) {
+            val visible = groups.keys.filter { ui.has(it) }
+            assertTrue("Gestures page has no group", visible.isNotEmpty())
+            assertEquals(visible, ui.gridLabels(visible))
+            groups.forEach { (group, entries) -> entries.forEach { entry ->
+                assertEquals("Whole group $group was split at $entry", group in visible, ui.has(entry))
+            } }
+            seen += visible
+            assertTrue(ui.has(context.getString(R.string.paper_service_off)))
+            if (!ui.has(context.getString(R.string.paper_next_page))) break
+            assertTrue("Gestures measured pages did not end", page < 11)
+            ui.click(context.getString(R.string.paper_next_page))
+            instrumentation.waitForIdleSync()
+        }
+        assertEquals("Measured pages lost, duplicated or reordered groups", groups.keys.toList(), seen)
+        reveal(title)
+        assertFalse(ui.has(context.getString(R.string.paper_next_page)))
+        assertTrue(ui.has(context.getString(R.string.paper_service_off)))
+        val bitmap = instrumentation.platformAutomation.takeScreenshot()
+        java.io.File(context.getExternalFilesDir(null), "gestures-home-button.png").outputStream().use {
+            assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+        }
+        bitmap.recycle()
+        ui.click(title)
+        ui.await("Recent apps Off not saved or exposed") { !prefs.homeButtonRecentApps && ui.checked(title) == false }
+        assertFalse(PrefsManager(context).homeButtonRecentApps)
+        assertFalse(org.json.JSONObject(prefs.exportToJson(context)).getBoolean("home_button_recent_apps"))
+        instrumentation.runOnMainSync { activity.setContent { androidx.compose.material3.Text("Closed settings") } }
+        instrumentation.waitForIdleSync()
+        instrumentation.runOnMainSync {
+            activity.setContent { SettingsScreen(vm, activity.configExporter, activity.configImporter, activity.screensaverWallpaperPicker) }
+        }
+        ui.click(context.getString(R.string.section_gestures))
+        reveal(title)
+        ui.await("Recent apps Off lost on reopening") { ui.checked(title) == false }
+        ui.click(title)
+        ui.await("Recent apps On not saved") { prefs.homeButtonRecentApps && ui.checked(title) == true }
     }
 
     @Test fun noticeDismissalSurvivesSettingsRecreationAndStaysLocal() = withSettings { activity, vm, prefs, ui ->

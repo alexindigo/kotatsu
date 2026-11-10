@@ -215,7 +215,7 @@ class LockscreenWidgetService :
         val callback = Runnable(action)
         mainHandler.postDelayed(callback, delay)
         AutoCloseable { mainHandler.removeCallbacks(callback) }
-    }, ::homeKeyEligible, {
+    }, { homeKeyEligible() && prefs.homeButtonRecentApps }, {
         mainHandler.post {
             if (homeKeyEligible()) {
                 recentPage?.close()
@@ -225,7 +225,7 @@ class LockscreenWidgetService :
         }
     }, {
         mainHandler.post {
-            if (homeKeyEligible()) recentPage?.toggle()
+            if (homeKeyEligible() && prefs.homeButtonRecentApps) recentPage?.toggle()
         }
     })
     private var recentPage: RecentAppsOverlay? = null
@@ -247,6 +247,8 @@ class LockscreenWidgetService :
                 return true
             }
         }
+        if (event.keyCode == KeyEvent.KEYCODE_HOME && event.action == KeyEvent.ACTION_DOWN &&
+            recentPage?.visible == true && !prefs.homeButtonRecentApps) recentPage?.close()
         if (event.keyCode != KeyEvent.KEYCODE_HOME) return false
         val consumed = when (event.action) {
             KeyEvent.ACTION_DOWN -> homeKeys.down(event.eventTime, event.repeatCount > 0)

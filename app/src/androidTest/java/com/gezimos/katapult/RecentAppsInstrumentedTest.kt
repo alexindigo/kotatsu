@@ -75,6 +75,15 @@ class RecentAppsInstrumentedTest {
         } finally { main { activity.finish() } }
     }
 
+    @Test fun recentAppsOffDoesNotOpenTheServiceOverlay() = RecentOverlayFixture().use { fixture ->
+        main { fixture.home.viewModel.prefs.homeButtonRecentApps = false }
+        fixture.settings()
+        fixture.homeKey(2)
+        SystemClock.sleep(600)
+        assertFalse(fixture.overlay.windowVisible())
+        assertFalse(fixture.home.viewModel.prefs.homeButtonRecentApps)
+    }
+
     @Test fun overlayScreenOffAndInterruptRemoveItWithoutLaunchingHome() = RecentOverlayFixture().use { fixture ->
         fixture.settings()
         fixture.open()

@@ -83,6 +83,21 @@ class HomeKeyFilterTest {
         assertTrue(f.results.isEmpty()); assertFalse(f.filter.up())
     }
 
+    @Test fun recentAppsOffPassesEveryHomeEventAndCancelsPendingSingle() {
+        val f = Fixture()
+        f.filter.down(0); f.filter.up()
+        f.eligible = false
+        assertFalse(f.filter.down(100))
+        assertFalse(f.filter.down(110, repeat = true))
+        assertFalse(f.filter.up())
+        f.advance(1000)
+        assertTrue(f.results.isEmpty())
+        f.eligible = true
+        assertTrue(f.filter.down(1000)); assertTrue(f.filter.up())
+        f.advance(1500)
+        assertEquals(listOf("home"), f.results)
+    }
+
     @Test fun elapsedEventTimeRatherThanHandlerTimeDefinesPair() {
         val f = Fixture()
         f.now = 300

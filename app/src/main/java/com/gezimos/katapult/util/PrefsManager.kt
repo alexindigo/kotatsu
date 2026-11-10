@@ -411,6 +411,10 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_VERTICAL_APP_GESTURES, false)
         set(value) = prefs.edit().putBoolean(KEY_VERTICAL_APP_GESTURES, value).apply()
 
+    var homeButtonRecentApps: Boolean
+        get() = boolPref(KEY_HOME_BUTTON_RECENT_APPS, true)
+        set(value) = prefs.edit().putBoolean(KEY_HOME_BUTTON_RECENT_APPS, value).apply()
+
     var lockscreenWidget: Boolean
         get() = boolPref(KEY_LOCKSCREEN_WIDGET, false)
         set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WIDGET, value).apply()
@@ -728,7 +732,7 @@ class PrefsManager(context: Context) {
         EdgeActionStore.HOME_ENABLED -> true
         EdgeActionStore.LEFT, EdgeActionStore.RIGHT -> ""
         KEY_WIDGET_ROTATION -> WidgetRotation.WAKE.name
-        KEY_WIDGET_SWIPE -> true
+        KEY_WIDGET_SWIPE, KEY_HOME_BUTTON_RECENT_APPS -> true
         KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER, KEY_WEATHER_CELSIUS,
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
@@ -884,6 +888,7 @@ class PrefsManager(context: Context) {
         private const val KEY_HIDE_ALL_APPS_BUTTON = "hide_all_apps_button"
         private const val KEY_SWIPE_UP_ALL_APPS = "swipe_up_all_apps"
         private const val KEY_VERTICAL_APP_GESTURES = "vertical_app_gestures"
+        private const val KEY_HOME_BUTTON_RECENT_APPS = "home_button_recent_apps"
         private const val KEY_LOCKSCREEN_WIDGET = "lockscreen_widget"
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
         private const val KEY_LOCKSCREEN_WEATHER = "lockscreen_weather"

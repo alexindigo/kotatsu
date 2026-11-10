@@ -354,6 +354,8 @@
     <string name="paper_group_navigation">Nawigacja</string>
     <string name="paper_group_app_pages">Strony aplikacji</string>
     <string name="paper_group_on_home">Na ekranie głównym</string>
+    <string name="paper_group_home_button">Przycisk Home</string>
+    <string name="home_button_recent_apps_help">Naci&#347;nij Home dwa razy, aby zobaczy&#263; ostatnie aplikacje</string>
     <string name="paper_group_indicators">Wskaźniki</string>
     <string name="paper_group_android_notifications">Powiadomienia Androida</string>
     <string name="paper_group_widgets_message">Widżety i wiadomość</string>

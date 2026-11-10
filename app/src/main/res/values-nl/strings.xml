@@ -354,6 +354,8 @@
     <string name="paper_group_navigation">Navigatie</string>
     <string name="paper_group_app_pages">App-pagina\'s</string>
     <string name="paper_group_on_home">Op het startscherm</string>
+    <string name="paper_group_home_button">Homeknop</string>
+    <string name="home_button_recent_apps_help">Druk tweemaal op Home om recente apps te zien</string>
     <string name="paper_group_indicators">Indicatoren</string>
     <string name="paper_group_android_notifications">Android-meldingen</string>
     <string name="paper_group_widgets_message">Widgets en bericht</string>

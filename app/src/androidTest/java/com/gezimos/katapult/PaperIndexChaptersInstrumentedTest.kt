@@ -26,7 +26,7 @@ class PaperIndexChaptersInstrumentedTest {
         "appearance" to listOf(listOf("shape", "size", "names"), listOf("theme", "wallpaper", "status", "clock"), listOf("mode", "refresh")),
         "home" to listOf(listOf("clock_format", "date_format", "alarm", "battery"), listOf("weather", "celsius", "dock", "music")),
         "apps" to listOf(listOf("sort", "icon", "hidden", "system"), listOf("button", "infinite", "arrows")),
-        "gestures" to listOf(listOf("swipe", "direction", "double_tap", "long_press")),
+        "gestures" to listOf(listOf("swipe", "direction", "double_tap", "long_press", "recent_apps")),
         "notifications" to listOf(listOf("indicators", "apps", "log", "history")),
         "lock" to listOf(listOf("notifications", "apps", "sort", "edges"), listOf("music", "weather", "widgets", "message")),
         "screensaver" to listOf(listOf("enabled", "system", "customization", "wallpaper"), listOf("brightness", "power", "icon", "mode")),
@@ -51,8 +51,8 @@ class PaperIndexChaptersInstrumentedTest {
             { record(it) }, { record(it) }, {}, {}, {}, {}, {}, {}),
         appsCategory(true, PrefsManager.APP_SORT_MANUAL, false, false, false, false,
             { record(it.toString()) }, {}, {}, {}, {}, {}, {}),
-        gesturesCategory(true, true, PrefsManager.DOUBLE_TAP_OFF, PrefsManager.HOME_LONG_PRESS_EDIT,
-            {}, { record(it.toString()) }, { record(it.toString()) }, { record(it.toString()) }),
+        gesturesCategory(true, true, PrefsManager.DOUBLE_TAP_OFF, PrefsManager.HOME_LONG_PRESS_EDIT, true,
+            {}, { record(it.toString()) }, { record(it.toString()) }, { record(it.toString()) }, {}),
         notificationsCategory(true, true, {}, {}, {}, {}),
         lockCategory(true, true, false, true, false, false, true, 1, {}, {}, { record(it.toString()) }, {}, {}, {}, {}),
         screensaverCategory(enabled, true, true, true, background, image, false, false, false, PrefsManager.SCREENSAVER_MODE_AUTO,
@@ -73,7 +73,7 @@ class PaperIndexChaptersInstrumentedTest {
             androidx.compose.runtime.key(renderKey) {
                 val category = definitions(record, enabled, background, image).first { it.id == id }
                 androidx.compose.runtime.SideEffect { definition.set(category); composed.countDown() }
-                val reminder = if (notice && (id == "appearance" || id == "lock" || id == "screensaver" && enabled)) NoticeContent(
+                val reminder = if (notice && (id == "appearance" || id == "gestures" || id == "lock" || id == "screensaver" && enabled)) NoticeContent(
                     context.getString(R.string.paper_service_off), context.getString(R.string.paper_notice_region),
                     context.getString(R.string.paper_notice_dismiss), {}, context.getString(R.string.paper_turn_on), {}) else null
                 PaperIndexRenderer(category, {}, Modifier.requiredSize(360.dp, 564.dp), reminder,

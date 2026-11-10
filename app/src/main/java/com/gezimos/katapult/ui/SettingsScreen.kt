@@ -179,6 +179,7 @@ fun SettingsScreen(
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
     var swipeUpAllApps by remember { mutableStateOf(prefs.swipeUpAllApps) }
     var verticalAppGestures by remember { mutableStateOf(prefs.verticalAppGestures) }
+    var homeButtonRecentApps by remember { mutableStateOf(prefs.homeButtonRecentApps) }
     var lockscreenWidget by remember { mutableStateOf(prefs.lockscreenWidget) }
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
     var lockscreenWeather by remember { mutableStateOf(prefs.lockscreenWeather) }
@@ -318,14 +319,15 @@ fun SettingsScreen(
         onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
         onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
         onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
-    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress,
+    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress, homeButtonRecentApps,
         onSwipe = { swipeUpAllApps = it; prefs.swipeUpAllApps = it },
         onVertical = { verticalAppGestures = it; prefs.verticalAppGestures = it },
         onDoubleTap = {
             doubleTapAction = it; prefs.doubleTapAction = it
             if (it == PrefsManager.DOUBLE_TAP_LOCK && !LockscreenWidgetService.isEnabled(context))
                 viewModel.requestActionService(AccessibilityFeature.DOUBLE_TAP_LOCK)
-        }, onLongPress = { homeLongPress = it; prefs.homeLongPressAction = it })
+        }, onLongPress = { homeLongPress = it; prefs.homeLongPressAction = it },
+        onRecentApps = { homeButtonRecentApps = it; prefs.homeButtonRecentApps = it })
     val notificationAccess = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     val notifications = notificationsCategory(notificationIndicators, notificationAccess,
         onIndicators = { requested ->
@@ -425,7 +427,7 @@ fun SettingsScreen(
             TableOfContents(stringResource(R.string.settings), entries, notice)
         } else if (destination.startsWith("chapter:")) {
             val chapter = chapters.getValue(destination.removePrefix("chapter:").toInt())
-            val chapterNotice = notice.takeIf { chapter.id in setOf("appearance", "lock", "screensaver") && (chapter.id != "screensaver" || screensaverEnabled) }
+            val chapterNotice = notice.takeIf { chapter.id in setOf("appearance", "gestures", "lock", "screensaver") && (chapter.id != "screensaver" || screensaverEnabled) }
             PaperIndexRenderer(chapter, popPage, notice = chapterNotice,
                 noticeGroup = when (chapter.id) { "appearance" -> "screen"; "screensaver" -> "interaction"; else -> null },
                 onChoice = { navigation.push("choice:${chapter.id}:${it.id}") },

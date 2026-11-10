@@ -47,7 +47,7 @@ class HomeKeyFilterInstrumentedTest {
         val accessibility = shell("settings get secure accessibility_enabled")
         assertFalse("Preserve an already-enabled Action Service", enabled.contains(LockscreenWidgetService::class.java.name))
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
-        val keys = listOf("onboarding_complete", "collect_usage_stats")
+        val keys = listOf("onboarding_complete", "collect_usage_stats", "home_button_recent_apps")
         val previous = keys.associateWith { prefs.all[it] }
         val launches = java.util.concurrent.CopyOnWriteArrayList<Intent>()
         val monitor = object : Instrumentation.ActivityMonitor() {
@@ -60,7 +60,8 @@ class HomeKeyFilterInstrumentedTest {
         var home: MainActivity? = null
         instrumentation.addMonitor(monitor)
         try {
-            prefs.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true).commit()
+            prefs.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true)
+                .putBoolean("home_button_recent_apps", true).commit()
             home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             val model = home.viewModel
@@ -130,6 +131,11 @@ class HomeKeyFilterInstrumentedTest {
             val callback = LockscreenWidgetService::class.java.getDeclaredMethod("onKeyEvent", KeyEvent::class.java).apply { isAccessible = true }
             main {
                 assertEquals(false, callback.invoke(service, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN)))
+                model.prefs.homeButtonRecentApps = false
+                assertTrue(HomeKeyFilterState.active)
+                assertEquals(false, callback.invoke(service, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_HOME)))
+                assertEquals(false, callback.invoke(service, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_HOME)))
+                model.prefs.homeButtonRecentApps = true
                 model.screen = Screen.ONBOARDING
                 assertEquals(false, callback.invoke(service, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_HOME)))
                 assertEquals(false, callback.invoke(service, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_HOME)))
