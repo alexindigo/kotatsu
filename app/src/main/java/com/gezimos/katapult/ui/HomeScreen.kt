@@ -148,7 +148,8 @@ fun HomeScreen(
             .background(LocalSurface.current)
             .pointerInput(viewModel.prefs.verticalAppGestures) {
                 awaitEachGesture {
-                    awaitFirstDown(requireUnconsumed = false)
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    var swipeClaimed = false
                     var swipeAcc = 0f
                     var pinchStart = 0f
                     var pinch = false
@@ -173,6 +174,14 @@ fun HomeScreen(
                                 pressed[0].positionChange().x
                             }
                             swipeAcc += delta
+                            val change = pressed.firstOrNull { it.id == down.id }
+                            if (change != null) {
+                                if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop)
+                                    swipeClaimed = true
+                                // Claim movement, not the initial press: children keep clicks and
+                                // still presses, while their tap/long-press recognizers see cancellation.
+                                if (swipeClaimed) change.consume()
+                            }
                         }
                     }
                     if (!pinch && viewModel.prefs.swipeUpAllApps && swipeAcc < -100f) {
