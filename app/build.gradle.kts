@@ -78,3 +78,12 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+
+// The source-policy test reads sibling modules too, beyond :app's runtime classpath.
+tasks.withType<org.gradle.api.tasks.testing.Test>().configureEach {
+    inputs.files(rootProject.subprojects.map { module ->
+        module.fileTree("src/main") {
+            include("**/*.kt", "**/*.java", "res/layout*/**/*.xml", "res/values*/**/*.xml")
+        }
+    }).withPropertyName("appearanceSources").withPathSensitivity(org.gradle.api.tasks.PathSensitivity.RELATIVE)
+}

@@ -21,7 +21,7 @@ Paths below are relative to the repository root. `kit/` in the tables means
 
 | # | Source | Owns |
 |---|---|---|
-| 1 | `paper-ui/src/main/java/com/gezimos/katapult/ui/PaperTokens.kt` | Bundled Lato family, `LocalInk`, `LocalSurface` |
+| 1 | `paper-ui/src/main/java/com/gezimos/katapult/ui/PaperTokens.kt` | Bundled Lato family, resource-backed `PaperPalette`, `LocalPalette`, derived `LocalInk` and `LocalSurface` |
 | 2 | `kit/PaperIndex.kt` | Headers, index tracks, entries, groups, Notice, pagers, page frames, choices, checkbox drawing, help |
 | 3 | `kit/PaperActions.kt` | Independently actionable name/value tracks (`PaperActionEntry`) |
 | 4 | `kit/PaperCard.kt` | Bracket cards, compact widget content, reorder presentation and gesture ownership |
@@ -34,10 +34,11 @@ Paths below are relative to the repository root. `kit/` in the tables means
 
 ## Principles
 
-Use black and white: `#000000` ink and `#FFFFFF` paper in the reference light
-presentation. Read `LocalInk` and `LocalSurface`, not hardcoded per-screen
-colours. Do not communicate state with grey, opacity, gradients or shadows.
-Ordinary antialiasing is rasterization, not a semantic third colour.
+Use the appearance owner's palette: black ink on white paper in Light, white
+ink on black paper in Dark. Read `LocalInk` and `LocalSurface`, not hardcoded
+per-screen colours. Muted is `#777777` in both palettes; Weather uses it for
+stale/status marks. Do not add other greys, opacity, gradients or shadows.
+Ordinary antialiasing is rasterization, not an additional semantic colour.
 
 Leave honest blank space. A sparse Screensaver page with one setting is valid.
 Rules separate real sections, leaders connect names to values, and boxes show
@@ -56,6 +57,28 @@ Build relationships structurally. A name, dotted leader and value share one
 measured baseline; the value hugs the right content edge. Do not align them
 with spaces, literal periods, fixed text widths or compensating offsets.
 
+### Appearance ownership
+
+`paper-ui/src/main/res/values/paper_palette.xml` defines ink, paper and muted
+once. `PaperPalette` reads those resources for Compose and Android Views;
+`inverse()` swaps ink and paper for held cards. `LocalPalette` has no fallback:
+every Compose root must provide an owner's palette. `LocalInk` and
+`LocalSurface` are derived accessors, not independent state. Open surfaces
+observe their owner.
+
+| # | Surface | Palette |
+|---|---|---|
+| 1 | Kotatsu Home, All Apps, Settings, Recent apps, choice surfaces and screenshot preview | Kotatsu Theme mode: Light, Dark or System; System is the default |
+| 2 | Lock-screen widgets, music, weather, notifications, side screen and edge pages | Always Light, matching Mudita's white lock screen |
+| 3 | Screensaver | Kotatsu Theme mode |
+| 4 | Notes and Weather screens and widgets | Light, owned by each companion app |
+
+Layouts and values XML reference palette resources. `AppearanceSourcePolicyTest`
+checks all modules' main Kotlin/Java and layout/values XML during unit tests.
+Drawable/mipmap artwork is exempt and UI glyphs are tinted at use.
+Its exact-snippet pixel-processing allowlist covers contrast masks, canonical
+icon silhouettes and glyph-coverage measurement, never whole UI files.
+
 ## Exact kit tokens
 
 Use `sp` for type and `dp` for geometry. Lato Regular is weight 400; Lato Bold
@@ -67,7 +90,7 @@ the implementation, not from measuring an image.
 
 | # | Element | Exact current values | Owner |
 |---|---|---|---|
-| 1 | Font and colours | Lato Regular/Bold; default ink black, surface white | `PaperTokens.kt`: `LatoFamily`, `LocalInk`, `LocalSurface` |
+| 1 | Font and colours | Lato Regular/Bold; Light ink `#000000`, paper `#FFFFFF`; Dark swaps them; muted `#777777` in both | `PaperTokens.kt`: `LatoFamily`, `PaperPalette`, `LocalInk`, `LocalSurface` |
 | 2 | Page title | 26 sp Bold, 31.5 sp line height; one line, ellipsis | `PageHeader` |
 | 3 | Header structure | Minimum 57 dp high; top 9 dp, end 12 dp; start 6 dp with a leading action, otherwise 16 dp | `PageHeader` |
 | 4 | Header action | Centred drawing inside a 48 x 48 dp button; help `?` is 22.5 sp Bold | `HeaderAction`, `ChapterHeader` |
@@ -397,7 +420,7 @@ Use **one reusable Notice component** for temporary service/dependency
 reminders on every current and future screen, not distinct global/contextual
 designs. Its anatomy is a top ink rule, plain message, optional text action
 and **×** dismiss control. Lato Regular 14 sp message, Bold underlined action,
-black on white; no box, warning icon or animation.
+palette ink on paper; no box, warning icon or animation.
 
 `NoticeContent` takes message text, localized region/dismiss labels,
 optional action label/callback, dismissal callback and announcement state /
@@ -607,7 +630,7 @@ count follows measured content and visible state, not chapter identity.
 
 ## Mood
 
-Aim for a notepad-like feel: personal, spacious and plain, with black ink on
-white paper. Clear type, simple marks and honest blank space keep the screen
+Aim for a notepad-like feel: personal, spacious and plain, with the owner's
+ink on paper. Clear type, simple marks and honest blank space keep the screen
 calm on e-ink. Make each page easy to read and leave. Do not make it look busy
 to prove that it does something.
