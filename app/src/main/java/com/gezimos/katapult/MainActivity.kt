@@ -228,7 +228,7 @@ class MainActivity : ComponentActivity() {
         }
 
         if (viewModel.prefs.einkRefreshOnHome) {
-            EinkRefreshHelper.refresh(this, darkMode = viewModel.prefs.darkMode)
+            EinkRefreshHelper.refresh(this)
         }
     }
 

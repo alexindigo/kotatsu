@@ -2,7 +2,7 @@ package com.gezimos.katapult
 
 import android.appwidget.AppWidgetProviderInfo
 import android.content.Intent
-import androidx.activity.compose.setContent
+import com.gezimos.katapult.setPaperContent as setContent
 import androidx.compose.runtime.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry

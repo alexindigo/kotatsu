@@ -16,7 +16,7 @@ import android.os.ParcelFileDescriptor
 import android.system.Os
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.viewModelScope
-import androidx.activity.compose.setContent
+import com.gezimos.katapult.setPaperContent as setContent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.util.BitmapHelper

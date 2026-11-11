@@ -136,6 +136,54 @@ class ScreenshotInstrumentedTest {
         else -> null
     }
 
+    @Test fun lockScreenNotificationWidgetStaysLightInBothThemes() = withService { service, activity ->
+        val prefs = com.gezimos.katapult.util.PrefsManager(context)
+        val build = LockscreenWidgetService::class.java.getDeclaredMethod("buildWidget", List::class.java, Int::class.javaPrimitiveType)
+            .apply { isAccessible = true }
+        main { com.gezimos.katapult.util.SystemChrome.apply(activity.window, com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN, false, prefs) }
+        for (dark in listOf(false, true)) {
+            lateinit var frame: android.widget.FrameLayout
+            main {
+                prefs.themeMode = if (dark) com.gezimos.katapult.util.PrefsManager.THEME_DARK else com.gezimos.katapult.util.PrefsManager.THEME_LIGHT
+                val widget = build.invoke(service, listOf(context.packageName to 3), 3) as View
+                frame = android.widget.FrameLayout(activity).apply {
+                    setBackgroundColor(com.gezimos.katapult.ui.Appearance.palette(activity, com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN).paperArgb)
+                    addView(widget, android.widget.FrameLayout.LayoutParams(-1, -2, android.view.Gravity.CENTER))
+                }
+                activity.setContentView(frame)
+                assertEquals(com.gezimos.katapult.ui.PaperPalette.Light(context).inkArgb, textView(widget, "3")!!.currentTextColor)
+            }
+            committedFrame(frame)
+            val prefix = InstrumentationRegistry.getArguments().getString("appearanceCapturePrefix", "appearance")
+            capture("$prefix-${if (dark) "dark" else "light"}-lockscreen-notifications.png")
+        }
+    }
+
+    @Test fun previewFollowsLiveThemeOverAnotherApp() = withService { service, _ ->
+        val prefs = com.gezimos.katapult.util.PrefsManager(context)
+        main {
+            prefs.themeMode = com.gezimos.katapult.util.PrefsManager.THEME_LIGHT
+            context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        ui.await("Origin app missing") { ui.has("Brightness level") }
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val window = ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), wm)
+        val sample = Bitmap.createBitmap(48, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
+        try {
+            main { window.saved(sample) }
+            for (dark in listOf(false, true)) {
+                main { prefs.themeMode = if (dark) com.gezimos.katapult.util.PrefsManager.THEME_DARK else com.gezimos.katapult.util.PrefsManager.THEME_LIGHT }
+                val palette = if (dark) com.gezimos.katapult.ui.PaperPalette.Dark(context) else com.gezimos.katapult.ui.PaperPalette.Light(context)
+                ui.await("Preview text did not observe theme") { textView(wm.view, context.getString(R.string.screenshot_saved))?.currentTextColor == palette.inkArgb }
+                committedFrame(checkNotNull(wm.view))
+                assertEquals(palette.paperArgb, (wm.view!!.background as android.graphics.drawable.ColorDrawable).color)
+                assertEquals("Do not recreate the open preview", 1, wm.adds)
+                val prefix = InstrumentationRegistry.getArguments().getString("appearanceCapturePrefix", "appearance")
+                capture("$prefix-${if (dark) "dark" else "light"}-screenshot-preview.png")
+            }
+        } finally { main { window.close() }; sample.recycle() }
+    }
+
     @Test fun previewHasOneWindowReplacesInPlaceAndExpiresThreeSecondsAfterLatestResult() = withService { service, _ ->
         main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
         ui.await("Origin app missing") { ui.has("Brightness level") }

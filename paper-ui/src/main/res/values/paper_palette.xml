@@ -1,0 +1,9 @@
+<resources>
+    <color name="paper_light_ink">#000000</color>
+    <color name="paper_light_paper">#FFFFFF</color>
+    <color name="paper_muted">#777777</color>
+    <!-- Technical transparency for non-drawing selectors, not a semantic ink. -->
+    <color name="paper_clear">#00000000</color>
+    <color name="paper_dark_ink">@color/paper_light_paper</color>
+    <color name="paper_dark_paper">@color/paper_light_ink</color>
+</resources>

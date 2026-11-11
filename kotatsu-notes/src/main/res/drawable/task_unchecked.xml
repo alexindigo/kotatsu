@@ -1,5 +1,5 @@
 <vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="@dimen/task_button_size" android:height="@dimen/task_button_size"
     android:viewportWidth="24" android:viewportHeight="24">
-    <path android:fillColor="@android:color/transparent" android:strokeColor="#000000" android:strokeWidth="2"
+    <path android:fillColor="@color/paper_clear" android:strokeColor="@color/paper_light_ink" android:strokeWidth="2"
         android:pathData="M5,3H19Q21,3 21,5V19Q21,21 19,21H5Q3,21 3,19V5Q3,3 5,3Z" />
 </vector>

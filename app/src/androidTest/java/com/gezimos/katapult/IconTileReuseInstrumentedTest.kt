@@ -58,7 +58,7 @@ class IconTileReuseInstrumentedTest {
         try {
             instrumentation.runOnMainSync {
                 activity.setContent {
-                    CompositionLocalProvider(LocalInk provides Color.Black, LocalSurface provides Color.White) {
+                    CompositionLocalProvider(com.gezimos.katapult.ui.LocalPalette provides com.gezimos.katapult.ui.PaperPalette.Light(activity)) {
                         Column(Modifier.fillMaxSize().background(Color.White).padding(16.dp)) {
                             IconCollectionPicker(catalogue, CircleShape, render = render,
                                 onChoose = { false }, onChosen = {}, onImport = {})

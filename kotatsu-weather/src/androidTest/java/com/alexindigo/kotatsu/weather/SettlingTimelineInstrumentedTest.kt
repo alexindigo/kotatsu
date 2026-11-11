@@ -41,7 +41,7 @@ class SettlingTimelineInstrumentedTest {
         var grey = 0
         for (y in 0 until height) for (x in 0 until width) {
             if (settling.getPixel(x, y) == Color.BLACK) black++
-            if (settling.getPixel(x, y) == Color.rgb(160, 160, 160)) grey++
+            if (settling.getPixel(x, y) == WeatherAppearance.palette(context).mutedArgb) grey++
         }
         assertEquals("No black label/number/icon/dot survives settling", 0, black)
         assertTrue(grey > 0)

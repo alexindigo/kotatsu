@@ -3,9 +3,7 @@ package com.gezimos.katapult.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.paneTitle
@@ -35,24 +33,22 @@ private fun lastUseLabel(lastUsed: Long, now: Long): String {
 fun RecentAppsScreen(model: RecentApps) {
     val title = stringResource(R.string.recent_apps)
     val close = stringResource(R.string.recent_close)
-    CompositionLocalProvider(LocalInk provides Color.Black, LocalSurface provides Color.White) {
-        PageFrame(title, model::back, Modifier.windowInsetsPadding(WindowInsets.systemBars)
-            .semantics { paneTitle = title }, heading = {
-            PageHeader(title, trailing = {
-                HeaderAction(stringResource(R.string.recent_dismiss), model::dismiss) { CloseMark() }
-            })
-            Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
-        }) {
-            if (!model.available) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
-                val message = stringResource(R.string.recent_usage_required)
-                Entry(if (model.canOpenAccess) SettingsEntry.Open("recent-access", message, "", onOpen = model::openAccess)
-                    else SettingsEntry.Metadata("recent-access", message, ""))
-            } else {
-                WholeRowList(model.apps, scrollRailLabels(), { it.packageName }, reset = model.refreshRevision) { app ->
-                    PaperActionEntry(app.label, lastUseLabel(app.lastUsed, model.now), close,
-                        { model.switchTo(app.packageName) }, { model.close(app.packageName) },
-                        onSwipeLeft = { model.close(app.packageName) })
-                }
+    PageFrame(title, model::back, Modifier.windowInsetsPadding(WindowInsets.systemBars)
+        .semantics { paneTitle = title }, heading = {
+        PageHeader(title, trailing = {
+            HeaderAction(stringResource(R.string.recent_dismiss), model::dismiss) { CloseMark() }
+        })
+        Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
+    }) {
+        if (!model.available) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+            val message = stringResource(R.string.recent_usage_required)
+            Entry(if (model.canOpenAccess) SettingsEntry.Open("recent-access", message, "", onOpen = model::openAccess)
+                else SettingsEntry.Metadata("recent-access", message, ""))
+        } else {
+            WholeRowList(model.apps, scrollRailLabels(), { it.packageName }, reset = model.refreshRevision) { app ->
+                PaperActionEntry(app.label, lastUseLabel(app.lastUsed, model.now), close,
+                    { model.switchTo(app.packageName) }, { model.close(app.packageName) },
+                    onSwipeLeft = { model.close(app.packageName) })
             }
         }
     }

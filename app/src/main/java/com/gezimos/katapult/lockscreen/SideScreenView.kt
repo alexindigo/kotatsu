@@ -20,6 +20,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.gezimos.katapult.R
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
+import com.gezimos.katapult.ui.LocalPalette
+import com.gezimos.katapult.ui.Appearance
 import com.gezimos.katapult.ui.NoIndication
 import com.gezimos.katapult.ui.scrollRailLabels
 import com.gezimos.katapult.ui.settings.*
@@ -71,8 +73,7 @@ internal class SideScreenView(context: Context, private val screen: SideScreen, 
             id?.let { HostedWidgetSlot(context, host, it, dispatch).also(slots::add) }
         }
         paper.setContent {
-            CompositionLocalProvider(LocalInk provides androidx.compose.ui.graphics.Color.Black,
-                LocalSurface provides androidx.compose.ui.graphics.Color.White,
+            CompositionLocalProvider(LocalPalette provides Appearance.current(Appearance.Surface.LOCK_SCREEN),
                 androidx.compose.foundation.LocalIndication provides NoIndication) {
                 Column(Modifier.fillMaxSize().background(LocalSurface.current).statusBarsPadding().navigationBarsPadding()) {
                     PageHeader(sideScreenName(context, screen), trailing = {

@@ -58,9 +58,9 @@ class ConfigureActivity : Activity() {
         super.onCreate(savedInstanceState)
         setResult(RESULT_CANCELED)
         // Black on white to the bottom edge, like Kotatsu's own settings.
-        window.setBackgroundDrawable(ColorDrawable(Color.WHITE))
-        window.statusBarColor = Color.WHITE
-        window.navigationBarColor = Color.WHITE
+        window.setBackgroundDrawable(ColorDrawable(palette.paperArgb))
+        window.statusBarColor = palette.paperArgb
+        window.navigationBarColor = palette.paperArgb
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         val requested = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         val restored = savedInstanceState?.getInt("widgetId", AppWidgetManager.INVALID_APPWIDGET_ID)
@@ -111,13 +111,13 @@ class ConfigureActivity : Activity() {
         footer.addView(done, LinearLayout.LayoutParams(MATCH, WRAP).apply { topMargin = dp(16) })
         // Kotatsu's ink rule marks the footer's edge, but only while the settings above actually scroll under it;
         // it keeps its space when hidden, so showing it never moves anything.
-        val edge = View(this).apply { setBackgroundColor(Color.BLACK); visibility = View.INVISIBLE }
+        val edge = View(this).apply { setBackgroundColor(palette.inkArgb); visibility = View.INVISIBLE }
         val scroll = ScrollView(this).apply { addView(body) }
         scroll.viewTreeObserver.addOnGlobalLayoutListener {
             edge.visibility = if (scroll.canScrollVertically(1) || scroll.canScrollVertically(-1)) View.VISIBLE else View.INVISIBLE
         }
         setContentView(column().apply {
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(palette.paperArgb)
             addView(scroll, LinearLayout.LayoutParams(MATCH, 0, 1f))
             addView(edge, LinearLayout.LayoutParams(MATCH, stroke()))
             addView(footer)
@@ -170,7 +170,7 @@ class ConfigureActivity : Activity() {
         editorReady = false
         editDialog?.dismiss()
         setContentView(column().apply {
-            setBackgroundColor(Color.WHITE); setPadding(dp(16), dp(16), dp(16), dp(20))
+            setBackgroundColor(palette.paperArgb); setPadding(dp(16), dp(16), dp(16), dp(20))
             addView(text("Kotatsu Weather", 24f, bold = true))
             addView(text(getString(R.string.config_unreadable), 18f).apply { setPadding(0, dp(16), 0, 0) })
         })
@@ -205,7 +205,7 @@ class ConfigureActivity : Activity() {
             "choose Kotatsu Weather. Its settings open from here afterwards.", 14f).apply { setPadding(0, dp(12), 0, 0) })
         body.addView(View(this), LinearLayout.LayoutParams(MATCH, 0, 1f))
         body.addView(button("Close") { finish() }.apply {
-            setTextColor(Color.WHITE); background = shape(Color.BLACK, Color.BLACK)
+            setTextColor(palette.paperArgb); background = shape(palette.inkArgb, palette.inkArgb)
         })
         setContentView(body)
     }
@@ -234,13 +234,13 @@ class ConfigureActivity : Activity() {
         }
         val full = config.locations.size >= MAX_LOCATIONS
         add.isEnabled = !full
-        add.setTextColor(if (full) QUIET else Color.BLACK)
-        add.background = shape(Color.WHITE, if (full) QUIET else Color.BLACK)
+        add.setTextColor(if (full) QUIET else palette.inkArgb)
+        add.background = shape(palette.paperArgb, if (full) QUIET else palette.inkArgb)
         addNote.visibility = if (full) View.VISIBLE else View.GONE
         val ready = config.locations.isNotEmpty()
         done.isEnabled = ready
-        done.setTextColor(if (ready) Color.WHITE else QUIET)
-        done.background = shape(fill = if (ready) Color.BLACK else Color.WHITE, outline = if (ready) Color.BLACK else QUIET)
+        done.setTextColor(if (ready) palette.paperArgb else QUIET)
+        done.background = shape(fill = if (ready) palette.inkArgb else palette.paperArgb, outline = if (ready) palette.inkArgb else QUIET)
         doneHint.visibility = if (ready) View.GONE else View.VISIBLE
     }
 
@@ -262,6 +262,7 @@ class ConfigureActivity : Activity() {
             addView(text("Edit location", 24f, bold = true), LinearLayout.LayoutParams(0, WRAP, 1f))
             addView(ImageView(context).apply {
                 setImageResource(R.drawable.ic_delete)
+                setColorFilter(palette.inkArgb)
                 contentDescription = "Remove location"
                 setPadding(dp(16), dp(12), 0, dp(12))
                 setOnClickListener {
@@ -328,8 +329,8 @@ class ConfigureActivity : Activity() {
             shown.text = hours(value())
             for ((button, enabled) in listOf(minus to (value() > min()), plus to (value() < max()))) {
                 button.isEnabled = enabled
-                button.setTextColor(if (enabled) Color.BLACK else QUIET)
-                button.background = shape(Color.WHITE, if (enabled) Color.BLACK else QUIET)
+                button.setTextColor(if (enabled) palette.inkArgb else QUIET)
+                button.background = shape(palette.paperArgb, if (enabled) palette.inkArgb else QUIET)
             }
         }
         minus.setOnClickListener { set(value() - MARK_EVERY_HOURS) }
@@ -444,7 +445,7 @@ class ConfigureActivity : Activity() {
     private fun hours(hour: Int) = "$hour:00"
     private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
     private fun text(value: String, size: Float, bold: Boolean = false) = TextView(this).apply {
-        text = value; textSize = size; setTextColor(Color.BLACK)
+        text = value; textSize = size; setTextColor(palette.inkArgb)
         typeface = resources.getFont(if (bold) R.font.lato_bold else R.font.lato_regular)
     }
     /** A full-width action button, Mudita's dialog-button height; showRows() sets its fill for each state. */
@@ -456,9 +457,9 @@ class ConfigureActivity : Activity() {
 
     /** Drawn like Mudita's own dialog buttons (outline, corners, bold system text), for a button in a dialog body. */
     private fun dialogButton(label: String) = TextView(this).apply {
-        text = label; textSize = 24f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.BLACK)
+        text = label; textSize = 24f; typeface = Typeface.DEFAULT_BOLD; setTextColor(palette.inkArgb)
         gravity = Gravity.CENTER; minHeight = dp(56); isAllCaps = false
-        background = GradientDrawable().apply { cornerRadius = dp(8).toFloat(); setColor(Color.WHITE); setStroke(stroke(), Color.BLACK) }
+        background = GradientDrawable().apply { cornerRadius = dp(8).toFloat(); setColor(palette.paperArgb); setStroke(stroke(), palette.inkArgb) }
     }
 
     /** Kotatsu's outline weight. */
@@ -472,9 +473,9 @@ class ConfigureActivity : Activity() {
         this.hint = hint
         textSize = 18f
         typeface = resources.getFont(R.font.lato_regular)
-        setTextColor(Color.BLACK)
+        setTextColor(palette.inkArgb)
         setHintTextColor(QUIET)
-        background = GradientDrawable().apply { setColor(Color.WHITE); setStroke(stroke(), Color.BLACK) }
+        background = GradientDrawable().apply { setColor(palette.paperArgb); setStroke(stroke(), palette.inkArgb) }
         setPadding(dp(12), dp(10), dp(12), dp(10))
     }
 
@@ -498,7 +499,7 @@ class ConfigureActivity : Activity() {
         texts.addView(text(detail, 14f).apply { tag = DETAIL })
         texts.addView(text(status, 14f).apply { tag = STATUS })
         addView(texts, LinearLayout.LayoutParams(0, WRAP, 1f))
-        addView(ImageView(context).apply { setImageResource(R.drawable.ic_chevron_right) },
+        addView(ImageView(context).apply { setImageResource(R.drawable.ic_chevron_right); setColorFilter(palette.inkArgb) },
             LinearLayout.LayoutParams(dp(24), dp(24)))
         setOnClickListener { onClick() }
     }
@@ -513,7 +514,7 @@ class ConfigureActivity : Activity() {
         addView(texts, LinearLayout.LayoutParams(0, WRAP, 1f))
         addView(text("", 14f, bold = true).apply {
             tag = PILL; gravity = Gravity.CENTER; minWidth = dp(48)
-            setPadding(dp(12), dp(6), dp(12), dp(6)); background = shape(Color.WHITE, Color.BLACK)
+            setPadding(dp(12), dp(6), dp(12), dp(6)); background = shape(palette.paperArgb, palette.inkArgb)
         })
         setOnClickListener { onClick() }
     }
@@ -531,11 +532,14 @@ class ConfigureActivity : Activity() {
     /** Dialog content: Lato in ink throughout, including the pickers' and field's own text. */
     private fun style(view: View) {
         if (view is TextView) {
-            view.setTextColor(Color.BLACK)
+            view.setTextColor(palette.inkArgb)
             if (view.typeface != resources.getFont(R.font.lato_bold)) view.typeface = resources.getFont(R.font.lato_regular)
         }
         if (view is ViewGroup) for (i in 0 until view.childCount) style(view.getChildAt(i))
     }
+
+    private val palette get() = WeatherAppearance.palette(this)
+    private val QUIET get() = palette.mutedArgb
 
     private companion object {
         const val REQUEST_LOCATION = 0x4B57
@@ -543,8 +547,6 @@ class ConfigureActivity : Activity() {
         const val FINDING = "Finding your location…"
         const val MATCH = ViewGroup.LayoutParams.MATCH_PARENT
         const val WRAP = ViewGroup.LayoutParams.WRAP_CONTENT
-        /** Disabled ink, the same grey the widget uses for an old forecast. */
-        val QUIET = Color.rgb(160, 160, 160)
         const val TITLE = "title"
         const val DETAIL = "detail"
         const val STATUS = "status"

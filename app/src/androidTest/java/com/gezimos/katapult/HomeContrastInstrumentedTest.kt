@@ -90,7 +90,8 @@ class HomeContrastInstrumentedTest {
             for (dark in listOf(false, true)) {
                 instrumentation.runOnMainSync {
                     model.themeMode = if (dark) PrefsManager.THEME_DARK else PrefsManager.THEME_LIGHT
-                    SystemChrome.apply(current.window, dark, false)
+                    model.prefs.themeMode = model.themeMode
+                    SystemChrome.apply(current.window, com.gezimos.katapult.ui.Appearance.Surface.APP, false, model.prefs)
                     model.clearWallpaper()
                 }
                 val baseline = stableFrame()

@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.ComposeView
 import com.gezimos.katapult.recent.AndroidRecentApps
 import com.gezimos.katapult.recent.RecentApps
 import com.gezimos.katapult.ui.NoIndication
+import com.gezimos.katapult.ui.Appearance
 import com.gezimos.katapult.ui.RecentAppsScreen
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -33,7 +34,7 @@ internal class RecentAppsOverlay(context: Context, private val handler: Handler,
             init {
                 paper.setContent {
                     CompositionLocalProvider(androidx.compose.foundation.LocalIndication provides NoIndication) {
-                        RecentAppsScreen(model)
+                        Appearance.Provide(Appearance.Surface.APP) { RecentAppsScreen(model) }
                     }
                 }
                 addView(paper, LayoutParams(-1, -1))

@@ -10,7 +10,7 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.view.InputDevice
 import android.view.MotionEvent
-import androidx.activity.compose.setContent
+import com.gezimos.katapult.setPaperContent as setContent
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember

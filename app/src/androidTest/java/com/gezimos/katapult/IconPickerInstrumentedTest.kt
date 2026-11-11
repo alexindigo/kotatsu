@@ -65,8 +65,7 @@ class IconPickerInstrumentedTest {
 
         fun show(unavailable: Boolean) = instrumentation.runOnMainSync {
             activity.setContent {
-                CompositionLocalProvider(com.gezimos.katapult.ui.LocalInk provides Color.Black,
-                    com.gezimos.katapult.ui.LocalSurface provides Color.White) {
+                CompositionLocalProvider(com.gezimos.katapult.ui.LocalPalette provides com.gezimos.katapult.ui.PaperPalette.Light(activity)) {
                     Column(Modifier.fillMaxSize().background(Color.White).padding(16.dp)) {
                         com.gezimos.katapult.ui.IconCollectionPicker(catalogue, CircleShape,
                             render = { icon -> if (unavailable) null else com.gezimos.katapult.util.CatalogueIconRenderer.render(context, icon, 64) },

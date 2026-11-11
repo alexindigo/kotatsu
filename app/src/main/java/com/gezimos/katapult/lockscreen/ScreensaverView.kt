@@ -69,6 +69,8 @@ import com.gezimos.katapult.ui.LocalIconShape
 import com.gezimos.katapult.ui.appIconShape
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
+import com.gezimos.katapult.ui.LocalPalette
+import com.gezimos.katapult.ui.Appearance
 import com.gezimos.katapult.ui.PagePadding
 import com.gezimos.katapult.util.BitmapHelper
 import com.gezimos.katapult.util.DeviceHelper
@@ -109,7 +111,8 @@ fun ScreensaverView() {
 internal fun ScreensaverView(feed: BadgeFeed) {
     val context = LocalContext.current
     val prefs = remember { PrefsManager(context) }
-    val dark = prefs.darkMode
+    val palette = Appearance.current(Appearance.Surface.SCREENSAVER, prefs)
+    val dark = palette.isDark
     val scope = rememberCoroutineScope()
     val contrast = remember(scope) { WallpaperContrast(scope) }
     var wallpaperPath by remember { mutableStateOf(prefs.screensaverPicture) }
@@ -246,8 +249,7 @@ internal fun ScreensaverView(feed: BadgeFeed) {
     val iconShape = appIconShape(prefs.roundedIcons)
     CompositionLocalProvider(
         LocalIconShape provides iconShape,
-        LocalInk provides if (dark) Color.White else Color.Black,
-        LocalSurface provides if (dark) Color.Black else Color.White,
+        LocalPalette provides palette,
         LocalIconFilter provides if (dark) EinkColorFilterDark else EinkColorFilter,
     ) {
         ContrastInkBox(

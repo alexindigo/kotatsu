@@ -115,7 +115,8 @@ internal class EdgePageWindow(private val context: Context, private val handler:
         if (!opened) return
         val root = view ?: return
         handler.removeCallbacks(clean); clean.run()
-        flash = View(context).apply { setBackgroundColor(Color.BLACK) }.also { root.addView(it, FrameLayout.LayoutParams(-1, -1)) }
+        flash = View(context).apply { setBackgroundColor(com.gezimos.katapult.ui.Appearance.palette(context,
+            com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN).inkArgb) }.also { root.addView(it, FrameLayout.LayoutParams(-1, -1)) }
         handler.postDelayed(clean, 80)
     }
 

@@ -3,7 +3,7 @@ package com.gezimos.katapult
 import android.content.Context
 import android.content.Intent
 import android.graphics.Rect
-import androidx.activity.compose.setContent
+import com.gezimos.katapult.setPaperContent as setContent
 import androidx.lifecycle.ViewModelProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry

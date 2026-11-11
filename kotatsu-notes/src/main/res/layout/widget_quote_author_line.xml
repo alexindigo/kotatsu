@@ -1,6 +1,6 @@
 <TextView xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/quote_author_line" android:layout_width="wrap_content" android:layout_height="wrap_content"
     android:layout_gravity="end" android:gravity="top|start" android:textAlignment="textStart" android:textDirection="firstStrongLtr"
-    android:fontFamily="lato-mudita" android:textStyle="italic" android:textColor="#000000"
+    android:fontFamily="lato-mudita" android:textStyle="italic" android:textColor="@color/paper_light_ink"
     android:breakStrategy="simple" android:hyphenationFrequency="none"
     android:scrollHorizontally="false" android:ellipsize="none" android:importantForAccessibility="no" />

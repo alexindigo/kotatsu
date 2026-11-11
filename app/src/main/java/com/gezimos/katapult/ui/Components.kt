@@ -103,7 +103,7 @@ val RoundedBadgeShape = RoundedCornerShape(topStart = 0.dp, topEnd = 0.dp, botto
 fun appIconShape(rounded: Boolean): Shape = if (rounded) RoundedIconShape else CircleShape
 
 /** Dotted outline around an app-icon tile; rounded corners follow [ICON_CORNER_FRACTION]. */
-fun Modifier.dashedDotBorder(strokeWidth: Dp = 2.dp, isRounded: Boolean, outset: Dp = 0.dp, color: Color = Color.Black): Modifier = this.drawBehind {
+fun Modifier.dashedDotBorder(strokeWidth: Dp = 2.dp, isRounded: Boolean, outset: Dp = 0.dp, color: Color): Modifier = this.drawBehind {
     val sw = strokeWidth.toPx()
     val out = outset.toPx()
     val dotRadius = sw * 0.7f

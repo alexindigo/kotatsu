@@ -1,6 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/task_row" android:layout_width="match_parent" android:layout_height="wrap_content"
-    android:orientation="vertical" android:background="#FFFFFF" android:paddingStart="@dimen/task_row_start" android:paddingEnd="16dp">
+    android:orientation="vertical" android:background="@color/paper_light_paper" android:paddingStart="@dimen/task_row_start" android:paddingEnd="16dp">
     <LinearLayout android:id="@+id/task_content" android:layout_width="match_parent" android:layout_height="wrap_content"
         android:orientation="horizontal" android:gravity="top" android:baselineAligned="true" android:paddingBottom="@dimen/task_row_padding">
     <CheckBox android:id="@+id/task_check" android:layout_width="wrap_content" android:layout_height="wrap_content"

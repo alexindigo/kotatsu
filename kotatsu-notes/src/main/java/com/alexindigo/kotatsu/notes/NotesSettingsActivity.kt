@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.ui.Modifier
 import androidx.compose.runtime.CompositionLocalProvider
+import com.gezimos.katapult.ui.LocalPalette
 
 /** Activity policy, matching Kotatsu's App: the kit's ink ring is the only focus indication. */
 private object NotesNoIndication : IndicationNodeFactory {
@@ -35,9 +36,10 @@ open class NotesSettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.setWindowAnimations(0)
-        window.setBackgroundDrawable(ColorDrawable(Color.WHITE))
-        window.statusBarColor = Color.WHITE
-        window.navigationBarColor = Color.WHITE
+        val palette = NotesAppearance.palette(this)
+        window.setBackgroundDrawable(ColorDrawable(palette.paperArgb))
+        window.statusBarColor = palette.paperArgb
+        window.navigationBarColor = palette.paperArgb
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         val widgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
         if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
@@ -48,8 +50,9 @@ open class NotesSettingsActivity : ComponentActivity() {
           CompositionLocalProvider(
             LocalOnBackPressedDispatcherOwner provides this@NotesSettingsActivity,
             LocalIndication provides NotesNoIndication,
+            LocalPalette provides palette,
           ) {
-            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.White)
+            Box(Modifier.fillMaxSize().background(palette.paper)
                 .statusBarsPadding().navigationBarsPadding()) {
                 NotesSettingsBook(owner, kind, ::finish)
             }

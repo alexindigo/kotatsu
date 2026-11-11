@@ -224,9 +224,7 @@ private class BottomSheetDialog(
         )
         window.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE)
 
-        val prefs = PrefsManager(context)
-        SystemChrome.apply(window, SystemChrome.isDark(context, prefs.themeMode), hideStatusBar)
-        window.setBackgroundDrawableResource(android.R.color.transparent)
+        window.setBackgroundDrawableResource(com.gezimos.katapult.paper.R.color.paper_clear)
 
         if (hideStatusBar) {
             // Hide on dialog window
@@ -258,7 +256,11 @@ private class BottomSheetDialog(
     }
 
     fun setContent(parent: CompositionContext, content: @Composable () -> Unit) {
-        dialogLayout.setContent(parent, content)
+        dialogLayout.setContent(parent) {
+            val palette = LocalPalette.current
+            SideEffect { SystemChrome.apply(checkNotNull(window), palette, hideStatusBar, paintBackground = false) }
+            content()
+        }
     }
 
     fun updateOnDismiss(newOnDismiss: () -> Unit) {

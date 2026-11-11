@@ -48,6 +48,7 @@ class ScrollRailInstrumentedTest {
         try {
             main {
                 activity.setContentView(ComposeView(activity).apply { setContent {
+                  com.gezimos.katapult.ui.Appearance.Provide(com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN) {
                     val rail = metrics.value
                     PaperScrollRail(rail.viewport, rail.maximum, rail.position, scrollRailLabels(), { value ->
                         commands.add(value)
@@ -58,6 +59,7 @@ class ScrollRailInstrumentedTest {
                             metrics.value = ListRail(extent, 12000 - extent, value.coerceAtMost(12000 - extent))
                         }
                     })
+                  }
                 } })
             }
             val label = context.getString(R.string.edge_task_scroll)

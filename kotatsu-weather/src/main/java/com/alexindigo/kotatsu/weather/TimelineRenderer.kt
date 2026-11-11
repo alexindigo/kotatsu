@@ -11,9 +11,10 @@ object TimelineRenderer {
     fun render(
         context: Context, model: TimelineModel, width: Int, height: Int,
     ): Bitmap {
+        val palette = WeatherAppearance.palette(context)
         val bitmap = Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        canvas.drawColor(Color.WHITE)
+        canvas.drawColor(palette.paperArgb)
         if (model.rows.isEmpty()) return bitmap
         val density = context.resources.displayMetrics.density
         val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -39,7 +40,7 @@ object TimelineRenderer {
             val status = planStatusText(layout, width.toFloat(), density, context.resources.displayMetrics.scaledDensity,
                 paint.measureText(text) / 1000, font.top / 1000, font.bottom / 1000)
             paint.textSize = status.textSize
-            paint.color = Color.rgb(160, 160, 160)
+            paint.color = palette.mutedArgb
             canvas.drawText(text, padding, status.baseline, paint)
         }
         paint.letterSpacing = 0f
@@ -51,12 +52,12 @@ object TimelineRenderer {
             if (right <= left) emptyList() else placeNumbers(row.numbers, axis, left, right, numberGap, paint::measureText)
         }
         for ((index, row) in rows.withIndex()) {
-            paint.color = if (row.model.stale || model.settling) Color.rgb(160, 160, 160) else Color.BLACK
+            paint.color = if (row.model.stale || model.settling) palette.mutedArgb else palette.inkArgb
             paint.letterSpacing = LABEL_TRACKING_EM
             canvas.drawText(row.model.label, padding, row.baseline, paint)
             paint.letterSpacing = 0f
             if (row.model.state == RowState.NO_DATA || right <= left) {
-                paint.color = Color.rgb(160, 160, 160)
+                paint.color = palette.mutedArgb
                 canvas.drawText("No forecast", padding + model.rows.maxOf { trackedLabelWidth(paint, it.label) } +
                     minOf(10f * density, width / 40f), row.baseline, paint)
                 continue
@@ -74,25 +75,25 @@ object TimelineRenderer {
                 Condition.CLEAR -> R.drawable.ic_weather_clear_day
             }
             context.getDrawable(resource)?.mutate()?.apply {
-                setTint(if (row.model.stale || model.settling) Color.rgb(160, 160, 160) else Color.BLACK)
+                setTint(if (row.model.stale || model.settling) palette.mutedArgb else palette.inkArgb)
                 setBounds(iconLeft.toInt(), (row.y - iconBox / 2).toInt(), (iconLeft + iconBox).toInt(), (row.y + iconBox / 2).toInt())
                 draw(canvas)
             }
         }
         // A single needle spans the stack of rows (not the empty space above it), beneath the number patches.
         model.needleHour?.takeUnless { model.settling }?.let { axis.x(it, left, right) }?.takeIf { right > left }?.let { x ->
-            paint.color = Color.rgb(128, 128, 128)
+            paint.color = palette.mutedArgb
             canvas.drawLine(x, rows.first().y - iconBox / 2, x, rows.last().y + iconBox / 2, paint)
         }
         for ((index, row) in rows.withIndex()) {
             if (right <= left) continue
             for (number in placedRows[index]) {
-                paint.color = Color.WHITE
+                paint.color = palette.paperArgb
                 // The patch never reaches a neighbouring mark's number or dot (see maxNumberWidth).
                 val half = number.width / 2 + numberGap
                 canvas.drawRect(number.x - half, row.y - rowHeight / 2 - numberGap,
                     number.x + half, row.y + rowHeight / 2 + numberGap, paint)
-                paint.color = if (row.model.stale || model.settling) Color.rgb(160, 160, 160) else Color.BLACK
+                paint.color = if (row.model.stale || model.settling) palette.mutedArgb else palette.inkArgb
                 canvas.drawText(number.number.value.toString(), number.x - number.width / 2, row.baseline, paint)
             }
         }

@@ -101,7 +101,9 @@ class NotesSettingsInstrumentedTest {
             val owner = NotesSettingsOwner(activity)
             owner.refresh()
             activity.setContent {
-                Box(Modifier.requiredSize(360.dp, 420.dp)) { NotesSettingsBook(owner, null, activity::finish) }
+                androidx.compose.runtime.CompositionLocalProvider(com.gezimos.katapult.ui.LocalPalette provides NotesAppearance.palette(activity)) {
+                    Box(Modifier.requiredSize(360.dp, 420.dp)) { NotesSettingsBook(owner, null, activity::finish) }
+                }
             }
         }
         val page = com.gezimos.katapult.paper.R.string.paper_page

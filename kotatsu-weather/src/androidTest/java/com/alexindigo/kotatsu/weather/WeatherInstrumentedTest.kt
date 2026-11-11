@@ -160,15 +160,14 @@ class WeatherInstrumentedTest {
         val forecast = forecast()
         val bitmap = render("fresh-two-rows", listOf(forecast, forecast.copy(samples = forecast.samples.map { it.copy(code = 61) })))
         assertTrue(hasColor(bitmap, Color.BLACK))
-        assertTrue(hasColor(bitmap, Color.rgb(128, 128, 128)))
-        assertTrue(hasColor(bitmap, Color.rgb(160, 160, 160)))
+        assertTrue(hasColor(bitmap, WeatherAppearance.palette(context).mutedArgb))
         assertNeedleBetweenRows(bitmap)
     }
     @Test fun renderStaleTwoRows() {
         val old = forecast().copy(fetchedAt = now.toInstant().minusSeconds(13 * 60 * 60L))
         val bitmap = render("stale-two-rows", listOf(old, old))
         assertFalse(hasColor(bitmap, Color.BLACK))
-        assertTrue(hasColor(bitmap, Color.rgb(160, 160, 160)))
+        assertTrue(hasColor(bitmap, WeatherAppearance.palette(context).mutedArgb))
         assertNeedleBetweenRows(bitmap)
     }
     @Test fun renderFourRowsCondensed() {
@@ -181,7 +180,7 @@ class WeatherInstrumentedTest {
     @Test fun renderNoData() {
         val bitmap = render("no-data", listOf(null, null))
         assertFalse(hasColor(bitmap, Color.BLACK))
-        assertTrue(hasColor(bitmap, Color.rgb(160, 160, 160)))
+        assertTrue(hasColor(bitmap, WeatherAppearance.palette(context).mutedArgb))
     }
     @Test fun configAndCacheStaySeparateByWidgetAndUnitsButNotZone() {
         val store = WeatherStore(context)
@@ -224,7 +223,7 @@ class WeatherInstrumentedTest {
     }
     private fun assertNeedleBetweenRows(bitmap: Bitmap) {
         // One unbroken grey column crosses both bottom-aligned rows and the gap between them.
-        val needle = Color.rgb(128, 128, 128)
+        val needle = WeatherAppearance.palette(context).mutedArgb
         val longest = (0 until bitmap.width).maxOf { x ->
             var run = 0; var best = 0
             for (y in 0 until bitmap.height) { run = if (bitmap.getPixel(x, y) == needle) run + 1 else 0; best = maxOf(best, run) }

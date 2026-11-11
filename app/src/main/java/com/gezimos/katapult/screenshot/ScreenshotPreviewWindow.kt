@@ -16,6 +16,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
 import com.gezimos.katapult.R
+import com.gezimos.katapult.ui.Appearance
 import kotlin.math.roundToInt
 
 /** Owns one noninteractive window, its image content and its one expiry callback. Main thread only. */
@@ -28,13 +29,21 @@ class ScreenshotPreviewWindow(
     private var root: FrameLayout? = null
     private var captures = 0
     private var announcementPending = false
+    private val palette get() = Appearance.palette(context, Appearance.Surface.APP)
+    private val colours = mutableListOf<() -> Unit>()
+    private var appearance: AutoCloseable? = null
     private val expire = Runnable { hide() }
     private fun dp(value: Float) = (value * context.resources.displayMetrics.density).roundToInt()
     private fun dp(value: Int) = dp(value.toFloat())
-    private fun box(stroke: Int) = GradientDrawable().apply { setColor(Color.WHITE); setStroke(dp(stroke), Color.BLACK) }
+    private fun box(stroke: Int) = GradientDrawable().apply {
+        val redraw = { setColor(palette.paperArgb); setStroke(dp(stroke), palette.inkArgb) }
+        colours.add(redraw); redraw()
+    }
 
     private fun label(text: String, bold: Boolean) = TextView(context).apply {
-        this.text = text; setTextColor(Color.BLACK); textSize = 14f; includeFontPadding = false
+        this.text = text; textSize = 14f; includeFontPadding = false
+        val redraw = { setTextColor(palette.inkArgb) }
+        colours.add(redraw); redraw()
         typeface = ResourcesCompat.getFont(context, if (bold) com.gezimos.katapult.paper.R.font.lato_bold else com.gezimos.katapult.paper.R.font.lato_regular)
         if (bold) maxLines = 1
         maxWidth = wm.maximumWindowMetrics.bounds.width() - dp(2 * INSET_DP + 24)
@@ -42,6 +51,7 @@ class ScreenshotPreviewWindow(
     }
 
     fun saved(bitmap: Bitmap) {
+        colours.clear()
         val width = (wm.maximumWindowMetrics.bounds.width() / 4).coerceAtLeast(1)
         val height = (width.toFloat() * bitmap.height / bitmap.width).roundToInt().coerceAtLeast(1)
         val scaled = Bitmap.createScaledBitmap(bitmap, width, height, true)
@@ -61,6 +71,7 @@ class ScreenshotPreviewWindow(
     }
 
     fun failed(reason: ScreenshotFailure) {
+        colours.clear()
         val title = context.getString(R.string.screenshot_not_saved)
         val help = context.getString(if (reason == ScreenshotFailure.STORAGE_FULL) R.string.screenshot_storage_full else R.string.screenshot_unavailable)
         show("$title. $help", true) { card ->
@@ -71,7 +82,7 @@ class ScreenshotPreviewWindow(
 
     private fun show(announcement: String, failure: Boolean, content: (LinearLayout) -> Unit) {
         val container = root ?: FrameLayout(context).apply {
-            setBackgroundColor(Color.WHITE); setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
+            setBackgroundColor(palette.paperArgb); setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }.also { root = it }
@@ -84,6 +95,10 @@ class ScreenshotPreviewWindow(
         }
         content(card)
         container.addView(card, FrameLayout.LayoutParams(-2, -2))
+        if (appearance == null) appearance = Appearance.observe(context, Appearance.Surface.APP) { value ->
+            root?.setBackgroundColor(value.paperArgb)
+            colours.forEach { it() }
+        }
         container.contentDescription = announcement
         container.visibility = if (captures == 0) View.VISIBLE else View.INVISIBLE
         try {
@@ -133,6 +148,8 @@ class ScreenshotPreviewWindow(
     }
 
     fun hide() {
+        appearance?.close(); appearance = null
+        colours.clear()
         handler.removeCallbacks(expire)
         announcementPending = false
         val view = root

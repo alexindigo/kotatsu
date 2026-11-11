@@ -256,7 +256,7 @@ private fun RenameDialog(
                 fontFamily = LatoFamily,
                 color = LocalInk.current,
             ),
-            cursorBrush = SolidColor(Color.Transparent),
+            cursorBrush = SolidColor(LocalInk.current.copy(alpha = 0f)),
             modifier = Modifier
                 .fillMaxWidth()
                 .border(2.5.dp, LocalInk.current)

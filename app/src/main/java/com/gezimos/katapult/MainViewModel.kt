@@ -706,7 +706,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun applyStatusBar(context: Context) {
         val activity = context as? Activity ?: return
-        SystemChrome.apply(activity.window, SystemChrome.isDark(activity, prefs.themeMode), prefs.hideStatusBar)
+        SystemChrome.apply(activity.window, com.gezimos.katapult.ui.Appearance.Surface.APP, prefs.hideStatusBar, prefs)
     }
 
     fun launchIntent(context: Context, intent: Intent) {

@@ -76,7 +76,9 @@ class WidgetUnlockActivity : ComponentActivity() {
         setContentView(TextView(this).apply {
             text = getString(R.string.side_unlock); textSize = 22f
             typeface = ResourcesCompat.getFont(this@WidgetUnlockActivity, com.gezimos.katapult.paper.R.font.lato_regular)
-            setTextColor(Color.BLACK); setBackgroundColor(Color.WHITE)
+            val palette = com.gezimos.katapult.ui.Appearance.palette(this@WidgetUnlockActivity,
+                com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN)
+            setTextColor(palette.inkArgb); setBackgroundColor(palette.paperArgb)
             setPadding(16, 16, 16, 16)
         })
         registerReceiver(screen, IntentFilter(Intent.ACTION_SCREEN_OFF))

@@ -26,7 +26,8 @@ internal data class LockscreenWidgetBoxGeometry(val paper: Rect, val content: Re
 /** Content fills the padded paper; child gravity is relative to this same content bottom. */
 internal class LockscreenWidgetBox(context: Context, slot: LockscreenWidgetSlot, geometry: LockscreenWidgetBoxGeometry) : FrameLayout(context) {
     init {
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(com.gezimos.katapult.ui.Appearance.palette(context,
+            com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN).paperArgb)
         setPadding(geometry.sidePadding, 0, geometry.sidePadding, geometry.bottomPadding)
         addView(slot, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
     }

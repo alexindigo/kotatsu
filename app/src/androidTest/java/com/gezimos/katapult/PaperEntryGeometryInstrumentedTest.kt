@@ -2,7 +2,7 @@ package com.gezimos.katapult
 
 import android.content.Intent
 import android.graphics.Bitmap
-import androidx.activity.compose.setContent
+import com.gezimos.katapult.setPaperContent as setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onGloballyPositioned

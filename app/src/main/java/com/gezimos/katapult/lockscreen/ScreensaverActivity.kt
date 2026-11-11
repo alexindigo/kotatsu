@@ -47,7 +47,7 @@ class ScreensaverActivity : ComponentActivity() {
         setTurnScreenOn(true)
 
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        SystemChrome.apply(window, SystemChrome.isDark(this, prefs.themeMode), prefs.hideStatusBar)
+        SystemChrome.apply(window, com.gezimos.katapult.ui.Appearance.Surface.SCREENSAVER, prefs.hideStatusBar, prefs)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.navigationBars())
@@ -56,7 +56,7 @@ class ScreensaverActivity : ComponentActivity() {
         setContent { ScreensaverView() }
 
         if (prefs.screensaverEinkRefresh && !fromPower) {
-            EinkRefreshHelper.refresh(this, darkMode = prefs.darkMode)
+            EinkRefreshHelper.refresh(this, surface = com.gezimos.katapult.ui.Appearance.Surface.SCREENSAVER)
         }
 
         if (!fromPower) {

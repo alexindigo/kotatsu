@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.toSize
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
+import com.gezimos.katapult.ui.LocalPalette
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.paper.R
 
@@ -40,9 +41,10 @@ private val LocalCardClickAllowed = staticCompositionLocalOf<() -> Boolean> { { 
 /** One content-sized block with two structural bracket lanes, never text glyphs. */
 @Composable
 fun PaperCard(modifier: Modifier = Modifier, moving: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
-    val ink = if (moving) Color.White else LocalInk.current
-    val surface = if (moving) Color.Black else LocalSurface.current
-    CompositionLocalProvider(LocalInk provides ink, LocalSurface provides surface) {
+    val palette = LocalPalette.current.let { if (moving) it.inverse() else it }
+    val ink = palette.ink
+    val surface = palette.paper
+    CompositionLocalProvider(LocalPalette provides palette) {
         // One drawing owns the full measured card bounds. Ready is a rectangle, not
         // inverted bracket strokes painted over a fill (which cut white notches into it).
         Column(modifier.fillMaxWidth().drawBehind {

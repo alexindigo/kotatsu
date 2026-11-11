@@ -1,6 +1,6 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
-    android:orientation="vertical" android:background="#FFFFFF">
+    android:orientation="vertical" android:background="@color/paper_light_paper">
     <TextView android:id="@+id/heading" android:layout_width="match_parent" android:layout_height="wrap_content"
         style="@style/NotesWidgetHeading" android:textSize="26sp"
         android:singleLine="true" android:ellipsize="end" android:paddingStart="16dp" android:paddingEnd="16dp"
@@ -11,5 +11,5 @@
     <ListView android:id="@+id/tasks" android:layout_width="match_parent" android:layout_height="0dp"
         android:layout_weight="1" android:divider="@null" android:dividerHeight="0dp"
         android:clipToPadding="false" android:scrollbars="none"
-        android:listSelector="@android:color/transparent" android:visibility="gone" />
+        android:listSelector="@color/paper_clear" android:visibility="gone" />
 </LinearLayout>

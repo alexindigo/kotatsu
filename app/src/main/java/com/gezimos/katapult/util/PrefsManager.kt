@@ -322,19 +322,15 @@ class PrefsManager(context: Context) {
         set(value) = prefs.edit().putBoolean(KEY_ROUNDED_ICONS, value).apply()
 
     var themeMode: Int
-        get() = intPref(KEY_THEME_MODE, if (boolPref(KEY_DARK_MODE, false)) THEME_DARK else THEME_LIGHT)
+        get() = intPref(KEY_THEME_MODE, when {
+            boolPref(KEY_DARK_MODE, false) -> THEME_DARK
+            prefs.contains(KEY_DARK_MODE) -> THEME_LIGHT
+            else -> DEFAULT_THEME_MODE
+        })
         set(value) = prefs.edit().putInt(KEY_THEME_MODE, value).apply()
 
     val darkMode: Boolean
-        get() = when (themeMode) {
-            THEME_DARK -> true
-            THEME_SYSTEM -> {
-                val mode = appContext.resources.configuration.uiMode and
-                    android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                mode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-            else -> false
-        }
+        get() = com.gezimos.katapult.ui.Appearance.isDark(appContext, themeMode)
 
     var hideStatusBar: Boolean
         get() = boolPref(KEY_HIDE_STATUS_BAR, false)
@@ -746,7 +742,8 @@ class PrefsManager(context: Context) {
         KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED,
         KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
-        KEY_ICON_SIZE, KEY_THEME_MODE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
+        KEY_THEME_MODE -> DEFAULT_THEME_MODE
+        KEY_ICON_SIZE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
         KEY_LAST_BRIGHTNESS, KEY_HOME_LONG_PRESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
         KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH, KEY_WALLPAPER_SOURCE,
@@ -867,6 +864,7 @@ class PrefsManager(context: Context) {
         const val THEME_LIGHT = 0
         const val THEME_DARK = 1
         const val THEME_SYSTEM = 2
+        const val DEFAULT_THEME_MODE = THEME_SYSTEM
         private const val KEY_HIDE_STATUS_BAR = "hide_status_bar"
         private const val KEY_HIDE_STATUS_BAR_CLOCK = "hide_status_bar_clock"
         private const val KEY_EINK_REFRESH_HOME = "eink_refresh_home"

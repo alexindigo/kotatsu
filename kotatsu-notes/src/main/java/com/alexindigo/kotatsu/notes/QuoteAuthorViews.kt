@@ -85,6 +85,7 @@ internal object QuoteAuthorViews {
                         setSpan(LeadingMarginSpan.Standard(line.leadingMargin), 0, length, Spanned.SPAN_PARAGRAPH)
                     }
                     setTextViewText(R.id.quote_author_line, text)
+                    setTextColor(R.id.quote_author_line, NotesAppearance.palette(context).inkArgb)
                     setTextViewTextSize(R.id.quote_author_line, TypedValue.COMPLEX_UNIT_PX, layout.size)
                     setViewPadding(R.id.quote_author_line, line.paddingLeft, 0, line.paddingRight, 0)
                     setInt(R.id.quote_author_line, "setWidth", line.width)

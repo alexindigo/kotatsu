@@ -29,7 +29,8 @@ internal class LockscreenWidgetSlot(context: Context, handler: Handler, private 
     val current get() = rotation.current
 
     init {
-        setBackgroundColor(Color.WHITE)
+        setBackgroundColor(com.gezimos.katapult.ui.Appearance.palette(context,
+            com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN).paperArgb)
     }
 
     fun show(list: List<LockscreenWidget>, mode: WidgetRotation, visible: Boolean, visibility: LockscreenVisibility) {

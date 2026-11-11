@@ -4,4 +4,4 @@
     android:includeFontPadding="false" android:singleLine="true" android:ellipsize="end"
     android:paddingStart="@dimen/task_row_start" android:paddingEnd="24dp"
     android:paddingTop="@dimen/task_button_padding" android:paddingBottom="@dimen/task_button_padding"
-    android:accessibilityHeading="true" android:background="#FFFFFF" />
+    android:accessibilityHeading="true" android:background="@color/paper_light_paper" />

@@ -67,6 +67,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
+import com.gezimos.katapult.ui.LocalPalette
+import com.gezimos.katapult.ui.Appearance
 import com.gezimos.katapult.ui.MusicWidget
 import com.gezimos.katapult.ui.NoIndication
 import com.gezimos.katapult.ui.LatoFamily
@@ -534,7 +536,7 @@ class LockscreenWidgetService :
         if (!want) return
         // The Kompakt's status bar is always white, regardless of app dark mode.
         val view = View(this).apply {
-            setBackgroundColor(Color.WHITE)
+            setBackgroundColor(Appearance.palette(this@LockscreenWidgetService, Appearance.Surface.LOCK_SCREEN).paperArgb)
         }
         val params = WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
@@ -579,13 +581,9 @@ class LockscreenWidgetService :
             setViewTreeSavedStateRegistryOwner(this@LockscreenWidgetService)
             setContent {
                 val media = musicState.value ?: return@setContent
-                val dark = prefs.darkMode
                 CompositionLocalProvider(
                     androidx.compose.foundation.LocalIndication provides NoIndication,
-                    LocalInk provides if (dark) androidx.compose.ui.graphics.Color.White
-                        else androidx.compose.ui.graphics.Color.Black,
-                    LocalSurface provides if (dark) androidx.compose.ui.graphics.Color.Black
-                        else androidx.compose.ui.graphics.Color.White,
+                    LocalPalette provides Appearance.current(Appearance.Surface.LOCK_SCREEN),
                 ) {
                     MusicWidget(
                         info = media,
@@ -658,13 +656,13 @@ class LockscreenWidgetService :
         if (weatherOverlay != null && shownWeather == rendered) return
         removeWeatherOverlay()
         // Black on a transparent window, whatever the theme: the lock screen stays white in dark theme.
-        val ink = androidx.compose.ui.graphics.Color.Black
         val view = ComposeView(this).apply {
-            setBackgroundColor(Color.TRANSPARENT)
             setViewTreeLifecycleOwner(this@LockscreenWidgetService)
             setViewTreeViewModelStoreOwner(this@LockscreenWidgetService)
             setViewTreeSavedStateRegistryOwner(this@LockscreenWidgetService)
             setContent {
+              Appearance.Provide(Appearance.Surface.LOCK_SCREEN) {
+                val ink = LocalInk.current
                 Row(Modifier.fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
                     Icon(weatherIcon(weather.condition, weather.daytime),
                         stringResource(R.string.cd_weather), Modifier.size(18.dp), tint = ink)
@@ -672,6 +670,7 @@ class LockscreenWidgetService :
                     Text(rendered.temperature,
                         fontSize = 18.sp, fontFamily = LatoFamily, color = ink)
                 }
+              }
             }
         }
         val params = WindowManager.LayoutParams().apply {
@@ -798,8 +797,8 @@ class LockscreenWidgetService :
         val lato = try { ResourcesCompat.getFont(this, R.font.lato) } catch (_: Exception) { null }
         val view = TextView(this).apply {
             text = message
-            setBackgroundColor(if (prefs.darkMode) Color.BLACK else Color.WHITE)
-            setTextColor(if (prefs.darkMode) Color.WHITE else Color.BLACK)
+            setBackgroundColor(Appearance.palette(this@LockscreenWidgetService, Appearance.Surface.LOCK_SCREEN).paperArgb)
+            setTextColor(Appearance.palette(this@LockscreenWidgetService, Appearance.Surface.LOCK_SCREEN).inkArgb)
             typeface = Typeface.create(lato, Typeface.BOLD)
             textSize = 20f
             gravity = Gravity.CENTER
@@ -1012,8 +1011,9 @@ class LockscreenWidgetService :
     // --- Edit mode (two-finger long-press) ---
 
     private fun widgetBackground(dashed: Boolean): GradientDrawable {
-        val ink = if (prefs.darkMode) Color.WHITE else Color.BLACK
-        val surface = if (prefs.darkMode) Color.BLACK else Color.WHITE
+        val palette = Appearance.palette(this, Appearance.Surface.LOCK_SCREEN)
+        val ink = palette.inkArgb
+        val surface = palette.paperArgb
         return GradientDrawable().apply {
             setColor(surface)
             cornerRadius = dp(14f).toFloat()
@@ -1152,7 +1152,7 @@ class LockscreenWidgetService :
     // --- Widget view ---
 
     private fun buildWidget(rows: List<Pair<String, Int>>, total: Int): View? {
-        val ink = if (prefs.darkMode) Color.WHITE else Color.BLACK
+        val ink = Appearance.palette(this, Appearance.Surface.LOCK_SCREEN).inkArgb
         val lato = try { ResourcesCompat.getFont(this, R.font.lato) } catch (_: Exception) { null }
 
         // Transparent column: the island box on top, the resize cue below it (outside the box).
@@ -1222,7 +1222,7 @@ class LockscreenWidgetService :
             textSize = 14f
             setTextColor(ink)
             background = GradientDrawable().apply {
-                setColor(if (prefs.darkMode) Color.BLACK else Color.WHITE)
+                setColor(Appearance.palette(this@LockscreenWidgetService, Appearance.Surface.LOCK_SCREEN).paperArgb)
                 cornerRadius = dp(8f).toFloat()
                 setStroke(dp(2.5f), ink)
             }
@@ -1269,7 +1269,7 @@ class LockscreenWidgetService :
      */
     private fun iconBitmap(pkg: String, sizePx: Int, ink: Int): Bitmap? {
         val src = IconUtility.loadIcon(this, pkg, "", sizePx) ?: return null
-        val surface = if (prefs.darkMode) Color.BLACK else Color.WHITE
+        val surface = Appearance.palette(this, Appearance.Surface.LOCK_SCREEN).paperArgb
         val out = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(out)
         val size = sizePx.toFloat()
@@ -1278,7 +1278,7 @@ class LockscreenWidgetService :
         canvas.drawPath(shape, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = surface })
         canvas.save()
         canvas.clipPath(shape)
-        val matrix = if (prefs.darkMode) EinkTintMatrixDark.values else EinkTintMatrix.values
+        val matrix = EinkTintMatrix.values
         canvas.drawBitmap(src, null, RectF(0f, 0f, size, size), Paint(Paint.ANTI_ALIAS_FLAG).apply {
             colorFilter = ColorMatrixColorFilter(matrix)
         })
