@@ -26,7 +26,11 @@ fun appearanceCategory(
     }
     val themes = listOf(PrefsManager.THEME_SYSTEM to R.string.theme_system,
         PrefsManager.THEME_LIGHT to R.string.theme_light, PrefsManager.THEME_DARK to R.string.theme_dark)
-        .map { (id, label) -> SettingsChoice(id.toString(), stringResource(label)) }
+        .map { (id, label) -> SettingsChoice(id.toString(), stringResource(label), stringResource(when (id) {
+            PrefsManager.THEME_SYSTEM -> R.string.theme_system_help
+            PrefsManager.THEME_LIGHT -> R.string.theme_light_help
+            else -> R.string.theme_dark_help
+        })) }
     val eink = listOf(EinkHelper.MEINK_MODE_DISABLED to R.string.paper_eink_disabled,
         EinkHelper.MEINK_MODE_CLEAR to R.string.paper_eink_clear,
         EinkHelper.MEINK_MODE_CONTRAST to R.string.paper_eink_contrast,
@@ -38,7 +42,7 @@ fun appearanceCategory(
     val wallpapers = listOf(
         SettingsChoice("NONE", stringResource(R.string.wallpaper_none)),
         SettingsChoice("KOTATSU", stringResource(R.string.wallpaper_kotatsu)),
-        SettingsChoice("PHOTO", stringResource(R.string.wallpaper_photos)),
+        SettingsChoice("PHOTO", stringResource(R.string.wallpaper_photos), external = true),
     )
     return SettingsCategory("appearance", stringResource(R.string.section_appearance), listOf(
         SettingsGroup("icons", stringResource(R.string.paper_group_icons), listOf(

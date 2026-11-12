@@ -88,8 +88,14 @@
     <string name="infinite_scroll_desc">Faire défiler les pages des deux côtés</string>
     <string name="double_tap_action">Double appui sur l\'accueil</string>
     <string name="double_tap_off">Désactivé</string>
+    <string name="theme_system_help">Suivre le thème sombre d\'Android</string>
+    <string name="theme_light_help">Encre noire sur papier blanc</string>
+    <string name="theme_dark_help">Encre blanche sur papier noir</string>
+    <string name="double_tap_off_help">Aucune action</string>
+    <string name="double_tap_brightness_help">Atténuer l\'éclairage frontal ou le rétablir</string>
+    <string name="double_tap_lock_help">Verrouiller l\'écran ; nécessite Action Service</string>
     <string name="double_tap_brightness">Luminosité</string>
-    <string name="double_tap_lock">Verrouiller</string>
+    <string name="double_tap_lock">Verrouiller le téléphone</string>
     <string name="clock_format">Format de l\'heure</string>
     <string name="date_format">Format de date</string>
     <string name="show_battery" formatted="false">Afficher batterie %</string>

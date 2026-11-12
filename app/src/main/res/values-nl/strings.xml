@@ -87,9 +87,15 @@
     <string name="infinite_scroll">Oneindig scrollen</string>
     <string name="infinite_scroll_desc">Veeg pagina\'s van beide kanten</string>
     <string name="double_tap_action">Dubbeltik op Home</string>
-    <string name="double_tap_off">Uitgeschakeld</string>
+    <string name="double_tap_off">Uit</string>
+    <string name="theme_system_help">Het donkere thema van Android volgen</string>
+    <string name="theme_light_help">Zwarte inkt op wit papier</string>
+    <string name="theme_dark_help">Witte inkt op zwart papier</string>
+    <string name="double_tap_off_help">Er gebeurt niets</string>
+    <string name="double_tap_brightness_help">De voorverlichting dimmen of herstellen</string>
+    <string name="double_tap_lock_help">Het scherm vergrendelen; vereist Action Service</string>
     <string name="double_tap_brightness">Helderheid</string>
-    <string name="double_tap_lock">Vergrendelen</string>
+    <string name="double_tap_lock">Telefoon vergrendelen</string>
     <string name="clock_format">Klokformaat</string>
     <string name="date_format">Datumformaat</string>
     <string name="show_battery" formatted="false">Batterij % tonen</string>

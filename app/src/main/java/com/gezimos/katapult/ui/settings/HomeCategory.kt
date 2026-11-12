@@ -30,9 +30,9 @@ fun homeCategory(
     return SettingsCategory("home", stringResource(R.string.section_home), listOf(
         SettingsGroup("clock", stringResource(R.string.paper_group_clock), listOf(
             SettingsEntry.Value("clock_format", stringResource(R.string.clock_format), stringResource(R.string.paper_clock_format_help),
-                clocks.firstOrNull { it.id == clockFormat }?.label.orEmpty(), clocks, onClock, clockFormat),
+                clocks.firstOrNull { it.id == clockFormat }?.label.orEmpty(), clocks, onClock, clockFormat, appBuiltChoices = true),
             SettingsEntry.Value("date_format", stringResource(R.string.date_format), stringResource(R.string.paper_date_format_help),
-                dates.firstOrNull { it.id == dateFormat }?.label.orEmpty(), dates, onDate, dateFormat),
+                dates.firstOrNull { it.id == dateFormat }?.label.orEmpty(), dates, onDate, dateFormat, appBuiltChoices = true),
             SettingsEntry.Switch("alarm", stringResource(R.string.show_alarm), stringResource(R.string.show_alarm_desc), alarm, onAlarm),
             SettingsEntry.Switch("battery", stringResource(R.string.show_battery), stringResource(R.string.show_battery_desc), battery, onBattery),
         )),

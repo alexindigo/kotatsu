@@ -88,6 +88,12 @@
     <string name="infinite_scroll_desc">Przewijaj strony z obu stron</string>
     <string name="double_tap_action">Podwójne dotknięcie na ekranie głównym</string>
     <string name="double_tap_off">Wyłączone</string>
+    <string name="theme_system_help">Zgodnie z ciemnym motywem Androida</string>
+    <string name="theme_light_help">Czarny atrament na białym papierze</string>
+    <string name="theme_dark_help">Biały atrament na czarnym papierze</string>
+    <string name="double_tap_off_help">Nic się nie dzieje</string>
+    <string name="double_tap_brightness_help">Przyciemnij przednie oświetlenie lub je przywróć</string>
+    <string name="double_tap_lock_help">Zablokuj ekran; wymaga Action Service</string>
     <string name="double_tap_brightness">Jasność</string>
     <string name="double_tap_lock">Zablokuj telefon</string>
     <string name="clock_format">Format zegara</string>

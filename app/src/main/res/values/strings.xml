@@ -102,9 +102,15 @@
     <string name="infinite_scroll">Infinite scroll</string>
     <string name="infinite_scroll_desc">Swipe pages from both sides</string>
     <string name="double_tap_action">Double tap on Home</string>
-    <string name="double_tap_off">Disabled</string>
+    <string name="double_tap_off">Off</string>
+    <string name="theme_system_help">Follow Android\'s dark theme</string>
+    <string name="theme_light_help">Black ink on white paper</string>
+    <string name="theme_dark_help">White ink on black paper</string>
+    <string name="double_tap_off_help">Nothing happens</string>
+    <string name="double_tap_brightness_help">Dim the front light, or bring it back</string>
+    <string name="double_tap_lock_help">Lock the screen; needs the Action Service</string>
     <string name="double_tap_brightness">Brightness</string>
-    <string name="double_tap_lock">Lock Phone</string>
+    <string name="double_tap_lock">Lock phone</string>
     <string name="clock_format">Clock format</string>
     <string name="date_format">Date format</string>
     <string name="show_battery" formatted="false">Show battery %</string>

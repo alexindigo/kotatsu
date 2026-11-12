@@ -104,7 +104,7 @@ class PaperIndexChaptersInstrumentedTest {
         }
     }
 
-    @Test fun everyValueEntryOpensAChoiceSheetWithoutCycling() = withActivity { activity, ui ->
+    @Test fun everyValueEntryOpensItsChoiceSurfaceWithoutCycling() = withActivity { activity, ui ->
         var opened = 0
         fun hasRadioRole(node: android.view.accessibility.AccessibilityNodeInfo): Boolean {
             if (!node.refresh()) return false
@@ -129,7 +129,7 @@ class PaperIndexChaptersInstrumentedTest {
                         }
                     }
                     assertEquals("$id/${entry.id} changed immediately", before, calls)
-                    assertFalse("$id chapter leaked behind its choice page", ui.has(definition.title))
+                    assertFalse("$id chapter leaked into the choice accessibility surface", ui.has(definition.title))
                     ui.back()
                     ui.await("Choice Back did not dismiss $id/${entry.id}") { ui.find { it.className == "android.widget.RadioButton" } == null }
                     assertEquals("Choice Back applied $id/${entry.id}", before, calls)

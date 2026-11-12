@@ -15,7 +15,13 @@ fun gesturesCategory(
 ): SettingsCategory {
     val directions = listOf(SettingsChoice("horizontal", stringResource(R.string.gesture_horizontal)), SettingsChoice("vertical", stringResource(R.string.gesture_vertical)))
     val taps = listOf(PrefsManager.DOUBLE_TAP_OFF to R.string.double_tap_off, PrefsManager.DOUBLE_TAP_BRIGHTNESS to R.string.double_tap_brightness,
-        PrefsManager.DOUBLE_TAP_LOCK to R.string.double_tap_lock).map { (id, label) -> SettingsChoice(id.toString(), stringResource(label)) }
+        PrefsManager.DOUBLE_TAP_LOCK to R.string.double_tap_lock).map { (id, label) ->
+            SettingsChoice(id.toString(), stringResource(label), stringResource(when (id) {
+                PrefsManager.DOUBLE_TAP_OFF -> R.string.double_tap_off_help
+                PrefsManager.DOUBLE_TAP_BRIGHTNESS -> R.string.double_tap_brightness_help
+                else -> R.string.double_tap_lock_help
+            }))
+        }
     val presses = listOf(PrefsManager.HOME_LONG_PRESS_APP_INFO to R.string.home_long_press_app_info,
         PrefsManager.HOME_LONG_PRESS_MENU to R.string.home_long_press_menu, PrefsManager.HOME_LONG_PRESS_CLEAR to R.string.home_long_press_clear,
         PrefsManager.HOME_LONG_PRESS_EDIT to R.string.home_long_press_edit, PrefsManager.HOME_LONG_PRESS_NONE to R.string.home_long_press_none)

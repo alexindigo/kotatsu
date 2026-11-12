@@ -87,7 +87,13 @@
     <string name="infinite_scroll">Endloses Scrollen</string>
     <string name="infinite_scroll_desc">Seiten von beiden Seiten wischen</string>
     <string name="double_tap_action">Doppeltippen auf der Startseite</string>
-    <string name="double_tap_off">Deaktiviert</string>
+    <string name="double_tap_off">Aus</string>
+    <string name="theme_system_help">Dem dunklen Design von Android folgen</string>
+    <string name="theme_light_help">Schwarze Tinte auf weißem Papier</string>
+    <string name="theme_dark_help">Weiße Tinte auf schwarzem Papier</string>
+    <string name="double_tap_off_help">Keine Aktion</string>
+    <string name="double_tap_brightness_help">Die Frontbeleuchtung dimmen oder wiederherstellen</string>
+    <string name="double_tap_lock_help">Bildschirm sperren; benötigt Action Service</string>
     <string name="double_tap_brightness">Helligkeit</string>
     <string name="double_tap_lock">Telefon sperren</string>
     <string name="clock_format">Uhrzeitformat</string>

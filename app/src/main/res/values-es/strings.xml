@@ -88,6 +88,12 @@
     <string name="infinite_scroll_desc">Deslizar páginas desde ambos lados</string>
     <string name="double_tap_action">Doble toque en inicio</string>
     <string name="double_tap_off">Desactivado</string>
+    <string name="theme_system_help">Seguir el tema oscuro de Android</string>
+    <string name="theme_light_help">Tinta negra sobre papel blanco</string>
+    <string name="theme_dark_help">Tinta blanca sobre papel negro</string>
+    <string name="double_tap_off_help">No ocurre nada</string>
+    <string name="double_tap_brightness_help">Atenuar la luz frontal o restaurarla</string>
+    <string name="double_tap_lock_help">Bloquear la pantalla; requiere Action Service</string>
     <string name="double_tap_brightness">Brillo</string>
     <string name="double_tap_lock">Bloquear teléfono</string>
     <string name="clock_format">Formato de Hora</string>

@@ -44,6 +44,7 @@ import com.gezimos.katapult.paper.R
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
+import com.gezimos.katapult.ui.LocalPalette
 import kotlin.math.abs
 import kotlin.math.max
 
@@ -85,7 +86,7 @@ internal fun IndexName(title: String, root: Boolean = false) {
 @Composable
 internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit,
     leadingTarget: (@Composable () -> Unit)? = null,
-    leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current) {
+    leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current, valueHasBaseline: Boolean = true) {
     Layout(modifier = modifier.fillMaxWidth(), content = {
         title()
         value()
@@ -97,12 +98,14 @@ internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () ->
         val width = constraints.maxWidth
         val valuePlaceable = children[1].measure(Constraints(maxWidth = width / 2))
         val titlePlaceable = children[0].measure(Constraints(maxWidth = (width - valuePlaceable.width - 2 * gap - leaderMin).coerceAtLeast(1)))
-        val baseline = max(titlePlaceable[FirstBaseline], valuePlaceable[FirstBaseline])
-        val titleY = baseline - titlePlaceable[FirstBaseline]
-        val valueY = baseline - valuePlaceable[FirstBaseline]
+        val baseline = if (valueHasBaseline) max(titlePlaceable[FirstBaseline], valuePlaceable[FirstBaseline])
+            else titlePlaceable[FirstBaseline]
+        val height = if (valueHasBaseline) max(baseline - titlePlaceable[FirstBaseline] + titlePlaceable.height,
+            baseline - valuePlaceable[FirstBaseline] + valuePlaceable.height) else max(titlePlaceable.height, valuePlaceable.height)
+        val titleY = if (valueHasBaseline) baseline - titlePlaceable[FirstBaseline] else (height - titlePlaceable.height) / 2
+        val valueY = if (valueHasBaseline) baseline - valuePlaceable[FirstBaseline] else (height - valuePlaceable.height) / 2
         val leader = children[2].measure(Constraints.fixed(
             (width - titlePlaceable.width - valuePlaceable.width - 2 * gap).coerceAtLeast(0), 1.5.dp.roundToPx()))
-        val height = max(titleY + titlePlaceable.height, valueY + valuePlaceable.height)
         // The leading target owns the entire row except the measured value cell.
         // Its bounds are structural; the text/leader keep their existing geometry.
         val target = if (leadingTarget == null) null else children[3].measure(
@@ -325,9 +328,9 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
     // Standalone consumers use the same stack contract as the Settings owner.
     val navigation = rememberSettingsNavigation("chapter")
     val values = category.groups.flatMap { it.visibleEntries }.filterIsInstance<SettingsEntry.Value>()
-    if (navigation.current.startsWith("choice:")) {
-        val selected = values.single { it.id == navigation.current.removePrefix("choice:") }
-        ChoicePage(selected.title, selected.choices, selected.selected, selected.onSelect, navigation::pop)
+    val choice = values.singleOrNull { navigation.current == "choice:${it.id}" }
+    if (choice != null && !choice.usesSheet) {
+        ChoiceSurface(choice, navigation::pop)
         return
     }
     if (navigation.current == "help") {
@@ -335,8 +338,10 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
         return
     }
     val groups = category.groups.filter { it.visibleEntries.isNotEmpty() }
-    PageFrame(category.title, onBack, modifier, category.help,
-        onHelp ?: { navigation.push("help") }) {
+    Box(modifier.fillMaxSize()) {
+    PageFrame(category.title, if (choice == null) onBack else navigation::pop,
+        modifier = if (choice == null) Modifier else Modifier.clearAndSetSemantics {}, help = category.help,
+        onHelp = onHelp ?: { navigation.push("help") }) {
         // The body constraint is independent of the current page's footer. Measure the same
         // footer grammar for each candidate, including wrapped/localized Notice text.
         var drag by remember { mutableFloatStateOf(0f) }
@@ -392,6 +397,8 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
             }
         }
         LaunchedEffect(page) { scroll.scrollTo(0) }
+    }
+    if (choice != null) ChoiceSurface(choice, navigation::pop)
     }
 }
 
@@ -537,6 +544,47 @@ fun ChoicePage(title: String, choices: List<SettingsChoice>, selected: String,
     }
 }
 
+/** One presentation decision for every Value consumer. The owner supplies the retained background. */
+@Composable
+fun ChoiceSurface(entry: SettingsEntry.Value, onDismiss: () -> Unit) {
+    if (LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onDismiss)
+    if (!entry.usesSheet) {
+        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, onDismiss)
+        return
+    }
+    PaperSheet(onDismiss) {
+        PaperSheetHeading(entry.title)
+        if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
+            lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp, bottom = 4.5.dp))
+        entry.choices.forEach { choice ->
+            ChoiceSheetOption(choice, choice.id == entry.selected) { onDismiss(); entry.onSelect(choice.id) }
+        }
+    }
+}
+
+@Composable
+private fun ChoiceSheetOption(choice: SettingsChoice, selected: Boolean, onSelect: () -> Unit) {
+    val external = stringResource(R.string.paper_external)
+    Column(Modifier.fillMaxWidth().heightIn(min = if (choice.help.isEmpty()) 48.dp else 67.5.dp)
+        .inkFocus().selectable(selected, role = Role.RadioButton, onClick = onSelect)
+        .semantics(mergeDescendants = true) { if (choice.external) onClick(label = external, action = null) }
+        .padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
+        IndexTracks(title = {
+            Text(choice.label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, color = LocalInk.current,
+                maxLines = 1, overflow = TextOverflow.Ellipsis)
+        }, value = {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.5.dp)) {
+                if (choice.external) Text("\u2197", fontFamily = LatoFamily, fontSize = 18.75.sp,
+                    fontWeight = FontWeight.Bold, color = LocalInk.current)
+                IndexCheckbox(selected, true, outlineColor = if (selected) LocalInk.current else LocalPalette.current.muted)
+            }
+        }, leaderColor = LocalPalette.current.muted, valueHasBaseline = false)
+        if (choice.help.isNotEmpty()) Text(choice.help, fontFamily = LatoFamily, fontSize = 14.sp,
+            lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
+    }
+}
+
 /** One label and a symmetric control slot, shared by choices and checkboxes. */
 @Composable
 private fun OptionRow(label: String, bold: Boolean, action: Modifier, control: @Composable () -> Unit) {
@@ -584,11 +632,12 @@ fun CheckMark(ink: androidx.compose.ui.graphics.Color = LocalInk.current) {
 
 /** State drawing only: the enclosing row/cell owns its independent 48dp control and semantics. */
 @Composable
-fun IndexCheckbox(checked: Boolean, enabled: Boolean, modifier: Modifier = Modifier) {
+fun IndexCheckbox(checked: Boolean, enabled: Boolean, modifier: Modifier = Modifier,
+    outlineColor: androidx.compose.ui.graphics.Color = LocalInk.current) {
     val shape = RoundedCornerShape(3.75.dp)
     val ink = LocalInk.current
     val paper = LocalSurface.current
-    Box(modifier.size(20.dp).border(if (enabled) 2.5.dp else 1.dp, ink, shape)
+    Box(modifier.size(20.dp).border(if (enabled) 2.5.dp else 1.dp, outlineColor, shape)
         .then(if (checked) Modifier.background(ink, shape) else Modifier), contentAlignment = Alignment.Center) {
         if (checked) Box(Modifier.size(14.dp), contentAlignment = Alignment.Center) { CheckMark(paper) }
     }

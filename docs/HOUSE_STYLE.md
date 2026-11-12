@@ -22,10 +22,10 @@ Paths below are relative to the repository root. `kit/` in the tables means
 | # | Source | Owns |
 |---|---|---|
 | 1 | `paper-ui/src/main/java/com/gezimos/katapult/ui/PaperTokens.kt` | Bundled Lato family, resource-backed `PaperPalette`, `LocalPalette`, derived `LocalInk` and `LocalSurface` |
-| 2 | `kit/PaperIndex.kt` | Headers, index tracks, entries, groups, Notice, pagers, page frames, choices, checkbox drawing, help |
+| 2 | `kit/PaperIndex.kt` | Headers, index tracks, entries, groups, Notice, pagers, page frames, `ChoiceSurface`, checkbox drawing, help |
 | 3 | `kit/PaperActions.kt` | Independently actionable name/value tracks (`PaperActionEntry`) |
 | 4 | `kit/PaperCard.kt` | Bracket cards, compact widget content, reorder presentation and gesture ownership |
-| 5 | `kit/SettingsModel.kt` | Entry types, categories, groups, choices, whole-group allocation, Action Service reminder state |
+| 5 | `kit/SettingsModel.kt` | Entry types, static/app-built choice classification, categories, groups, whole-group allocation, Action Service reminder state |
 | 6 | `kit/SettingsNavigation.kt` | Saveable destination stack; only the top page is rendered |
 | 7 | `app/src/main/java/com/gezimos/katapult/ui/settings/*Category.kt` | Launcher chapter vocabulary, groups, live values and injected callbacks |
 | 8 | `app/src/main/java/com/gezimos/katapult/ui/SettingsScreen.kt` | Settings routing, parent page retention, permissions, editors and external handoffs |
@@ -37,9 +37,9 @@ Paths below are relative to the repository root. `kit/` in the tables means
 
 Use the appearance owner's palette: black ink on white paper in Light, white
 ink on black paper in Dark. Read `LocalInk` and `LocalSurface`, not hardcoded
-per-screen colours. Muted is `#777777` in both palettes; Home menu leaders and
-Weather's stale/status marks use it. Do not add other greys, opacity,
-gradients or shadows.
+per-screen colours. Muted is `#777777` in both palettes; Home menu leaders,
+choice-sheet leaders and empty boxes, and Weather's stale/status marks use
+it. Do not add other greys, opacity, gradients or shadows.
 Ordinary antialiasing is rasterization, not an additional semantic colour.
 
 Leave honest blank space. A sparse Screensaver page with one setting is valid.
@@ -108,8 +108,8 @@ the implementation, not from measuring an image.
 | 14 | Entry help/extra summary | 14 sp, 16.5 sp line height; 1.5 dp above each line/block; help Regular, Open summary Bold | `Entry` |
 | 15 | Chapter content | 16 dp horizontal inset; 9 dp between groups | `IndexGroup`, `PaperIndexRenderer` |
 | 16 | Permission entry | Explicit 63 dp minimum; otherwise normal Entry type and help | App `PermissionRow` -> `Entry` |
-| 17 | Choice/checkbox option | Minimum 53.25 dp row; 18 sp, 21.75 sp line height; one-line label; checkbox labels always Bold; trailing 48 x 48 dp centred control slot | Private `OptionRow`, `CheckboxOption` |
-| 18 | Choice weight | Selected label Bold; other labels Regular; no dotted leader | `ChoicePage`, `ChoiceOption` -> `OptionRow` |
+| 17 | Page choice/checkbox option | Minimum 53.25 dp row; 18 sp, 21.75 sp line height; one-line label; checkbox labels always Bold; trailing 48 x 48 dp centred control slot | Private `OptionRow`, `CheckboxOption` |
+| 18 | Page choice weight | Selected label Bold; other labels Regular; no dotted leader | `ChoicePage`, `ChoiceOption` -> `OptionRow` |
 | 19 | Check mark | 21 x 21 dp vector, 1.5 dp stroke; path through (4,13), (9,18), (20,4) on a 24-unit grid | `CheckMark` |
 | 20 | Checkbox drawing | 20 dp square, 3.75 dp corner radius; 2.5 dp enabled or 1 dp disabled border; checked ink fill, paper check | `IndexCheckbox` |
 | 21 | Checkbox check wrapper | 14 dp wrapper around the shared check drawing; wrapper is not a touch target | `IndexCheckbox` |
@@ -141,6 +141,9 @@ the implementation, not from measuring an image.
 | 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
 | 19 | Bottom sheet | Bottom anchored, paper fill; 2 dp ink outline on top and sides, no bottom edge; 18 dp top corners; 16 dp side and 10 dp bottom content padding, navigation-bar padding | `PaperSheet` |
 | 20 | Sheet heading | Normal page header with zero start inset inside the sheet's content inset, followed by a 2 dp ink rule | `PaperSheetHeading` |
+| 21 | Choice-sheet help | Entry help 14/16.5 sp Regular; 1.5 dp top and 4.5 dp bottom padding | `ChoiceSurface` |
+| 22 | Choice-sheet option | 18/21.75 sp, selected Bold otherwise Regular; minimum 48 dp without help or 67.5 dp with help; 9 dp vertical padding; optional full-width 14/16.5 sp help with 1.5 dp top gap | Private `ChoiceSheetOption` |
+| 23 | Choice-sheet tracks | Shared baseline leader geometry in muted; value cell centred on the name track; 20 dp checkbox, chosen ink fill/paper check, unchosen 2.5 dp muted outline; external mark before box with 7.5 dp gap | `IndexTracks`, `IndexCheckbox` |
 
 Targets must be at least 48 dp in both dimensions. A value word or a check
 drawing is not its own tiny target: the surrounding row or independent control
@@ -367,12 +370,40 @@ Destination rows over another app
 carry the external-handoff mark because they open Kotatsu; rows on Home do
 not. Menu leaders use the palette's muted token; labels and values stay ink.
 
+### Short choices: a sheet over the chapter
+
+Static lists of one to four choices open the shared `PaperSheet` on tap.
+Longer lists and app-built lists keep `ChoicePage`, even when an app-built
+list currently has few items. `SettingsEntry.Value.usesSheet` owns this
+decision; every value consumer uses `ChoiceSurface`. There is no rolling
+selector or long-press interaction.
+
+The sheet uses `PaperSheetHeading`: the normal 26 sp Bold page title and
+rule, not a separate smaller title. Entry help is 14 sp above the options.
+Each option has an 18 sp ink name, Regular unless chosen (Bold), a flexible
+muted dotted leader and a checkbox at the value edge. Chosen is ink-filled
+with the paper check; unchosen has an empty muted outline. The box is
+centred structurally on the name track; the leader follows the name's
+baseline. Optional option help sits below the full line.
+
+An option that opens another surface carries the external-link mark in
+the value cell immediately before the box, and a localized external-action
+accessibility label. Wallpaper's **From photos** is such a handoff.
+The whole row exposes radio-button selection semantics; the box is a
+drawing, not an independent checkbox action.
+
+Selection closes before applying the callback, so a choice can open another
+destination. Back or a tap above leaves the value unchanged. The chapter
+stays visible without a scrim or dimming, but is excluded from accessibility
+while the sheet owns interaction. One Settings back stack owns this
+transient destination and preserves the chapter's page number.
+
 ## Values and interaction vocabulary
 
 | # | Content | Use |
 |---|---|---|
 | 1 | **On** / **Off** | A boolean setting's literal value. Tapping the full `SettingsEntry.Switch` row toggles it. No pill switch or sliding dot |
-| 2 | **Rounded**, **Light**, **80 x 80**, **Latest on top** | The actual choice value, Bold at the right. A `SettingsEntry.Value` opens `ChoicePage` |
+| 2 | **Rounded**, **Light**, **80 x 80**, **Latest on top** | The actual choice value, Bold at the right. A `SettingsEntry.Value` opens `ChoiceSurface`: a sheet for one to four static choices, otherwise `ChoicePage` |
 | 3 | **Open** | An internal management destination, not a fake current value. `SettingsEntry.Open` supplies this by default |
 | 4 | **Save file** / **Choose file** | Purpose-specific `Open.actionLabel` values on Config export/import. Say what the next action does |
 | 5 | **Granted** / **Not granted** | Current Android access status. The whole permission row manages access; it is not a grant/revoke switch |
@@ -404,13 +435,16 @@ Back and header Back pop exactly one level and retain the parent's page.
 `SettingsNavigation.push` rejects a destination already in the stack.
 The kit also exposes `SettingsBackOwner` for a book with one stable device
 Back callback; standalone frames install a callback when appropriate.
+For a short-choice sheet, the owner retains the previous destination beneath
+the sheet and removes its accessibility semantics until the sheet closes.
 
-Use pages, not layered Settings surfaces: root -> chapter -> page -> sub-page.
-The child replaces the parent's content and Notice. There is no scrim, slide-in
-transition, heavy modal boundary or previous page left visible. Some function
-names still contain `Sheet` or `Dialog`; their Settings destinations now call
-the full-page kit. Android-owned screens and prompts outside Settings retain
-their existing behaviour.
+Management, help, editors and long/app-built choices use full pages:
+root -> chapter -> page -> sub-page. The child replaces the parent's content
+and Notice, without a scrim, slide-in transition, heavy modal boundary or
+previous page left visible. Short static choices are the shared-sheet
+exception described above, in the same Settings back stack. Some other
+function names still contain `Sheet` or `Dialog` while rendering full pages.
+Android-owned screens and prompts retain their existing behaviour.
 
 | # | Path | Allocation contract |
 |---|---|---|
@@ -580,7 +614,7 @@ semantics. A reusable component knows its children, never its consumers.
 | 4 | Check group boundaries | Each nonempty chapter group has one to six visible entries. Hide unavailable entries using `visible`; empty groups disappear. Do not split a meaningful group to match a screenshot |
 | 5 | Render a chapter | Pass it to `PaperIndexRenderer`. Reuse its help, choices, measured groups, footer and pager instead of hand-building them |
 | 6 | Route a destination | Add the category to the Settings owner's chapter map or push a stable secondary destination. Render only the current top page and use the same pop callback for header/device Back |
-| 7 | Build a secondary page | `ChoicePage` for pure choice; `HelpPage` for prose; `PagedSettingsPage` for item lists; `SettingsPage` for mixed blocks/editors. Group inseparable children in a `Column` |
+| 7 | Build a secondary destination | `ChoiceSurface` for a pure choice, preserving its static/app-built classification and retained background; `HelpPage` for prose; `PagedSettingsPage` for item lists; `SettingsPage` for mixed blocks/editors. Group inseparable children in a `Column` |
 | 8 | Add a reminder only when needed | Supply the shared `NoticeContent` from its state owner and, for chapters, the relevant `noticeGroup`. Do not copy Notice state into the page |
 | 9 | Check the result | Compare actual rendered anatomy, baselines, live values, targets, page boundaries and Back behaviour with this guide. Record any remaining mismatch rather than silently changing the style |
 
@@ -624,7 +658,7 @@ and Add widget, all inside `SettingsPage`.
 | 1 | Show accurate live values and literal On/Off | Imply a configured feature is active because its preference is On |
 | 2 | Use real baseline tracks, leaders for name/value and rules for groups | Align with spaces, period strings, magic offsets or decorative rules |
 | 3 | Keep targets at least 48 dp and let help grow | Make a word/check drawing the entire touch target or shrink text to fit |
-| 4 | Reuse the full-page kit for choices, help, editors and management | Reintroduce layered Settings surfaces or generic pill/switch chrome |
+| 4 | Reuse `PaperSheet` for short static choices and the full-page kit for long/app-built choices, help, editors and management | Add another sheet implementation or generic pill/switch chrome |
 | 5 | Use one selected check and Bold label on a choice page | Add radio rings, leaders to empty cells or colour-only selection |
 | 6 | Keep groups and measured blocks whole | Force a screenshot's row count or split a heading from its entries |
 | 7 | Use bracket cards for configured widget blocks | Put every ordinary setting in a card or add Size/Remove rows inside widget cards |
@@ -641,7 +675,7 @@ differences rather than quietly turning them into a second house style.
 | # | Screen | Observation and relationship to the style |
 |---|---|---|
 | 1 | Edge swipes | A full-width rule has no group label, with blank space where the label would be. `EdgeSwipesCategory.kt` passes an empty group title to `GroupHeading`, which still reserves heading space and draws the rule. Unlike the named chapter groups, the rule has no visible section name |
-| 2 | Theme mode, Icon size, Wallpaper, Order apps, Lock screen sort and Clock format choice pages | These use plain left labels and a light check inset from the chapter value edge, not the Bold name/leader/value line. Current `ChoiceOption` intentionally makes only the selected label Bold and centres its 21 dp / 1.5 dp-stroke check in a 48 dp trailing slot. This is the implemented choice-specific exception, not a reason to add leaders or heavier marks locally |
+| 2 | Long or app-built choice pages | These keep plain left labels and a light check inset from the chapter value edge, not the short sheet's name/leader/box line. `ChoiceOption` intentionally makes only the selected label Bold and centres its 21 dp / 1.5 dp-stroke check in a 48 dp trailing slot. This remains the implemented page-specific exception, not a reason to add leaders or heavier marks locally |
 | 3 | Lock screen message editor | Save and Cancel are separate plain Regular rows below the field, rather than the Bold action/value emphasis used by entries. They currently use `SheetAction`; no action-bar redesign is implied |
 | 4 | Lock screen notification apps | Deselect all is a plain Regular header action above Bold app labels and trailing checkboxes. It uses `SheetAction`, so its typography differs from the main entry/action vocabulary |
 | 5 | Gestures and Order apps | Values include `Edit Shortcut`, `Most Recent` and `Most Used`, mixing title case with sentence-style labels. `Lock Phone` is also an existing gesture choice. These are legacy copy differences, not the writing model for new labels |

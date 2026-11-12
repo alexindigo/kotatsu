@@ -69,6 +69,7 @@ import com.gezimos.katapult.weather.WeatherSources
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import com.gezimos.katapult.ui.settings.SettingsEntry
@@ -94,7 +95,7 @@ import com.gezimos.katapult.ui.settings.screensaverCategory
 import com.gezimos.katapult.ui.settings.systemCategory
 import com.gezimos.katapult.ui.settings.aboutCategory
 import com.gezimos.katapult.ui.settings.SettingsPage
-import com.gezimos.katapult.ui.settings.ChoicePage
+import com.gezimos.katapult.ui.settings.ChoiceSurface
 import com.gezimos.katapult.ui.settings.HelpPage
 import com.gezimos.katapult.ui.settings.rememberSettingsNavigation
 import com.gezimos.katapult.ui.settings.SheetText
@@ -130,12 +131,6 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val navigation = rememberSettingsNavigation()
-    LaunchedEffect(viewModel.settingsPageRequest) {
-        viewModel.settingsPageRequest?.let {
-            navigation.push(it)
-            viewModel.settingsPageRequest = null
-        }
-    }
     val pageStates = rememberSaveableStateHolder()
     val store = appStoreEntry(appStorePackages, openStoreIntent ?: { openAppStoreIntent(context, it) },
         { navigation.push("store") }, { if (navigation.current == "store") navigation.pop() })
@@ -415,6 +410,33 @@ fun SettingsScreen(
         R.string.section_experimental to lock, R.string.section_screensaver to screensaver, R.string.section_system to system,
         R.string.section_about to about)
 
+    LaunchedEffect(viewModel.settingsPageRequest) {
+        viewModel.settingsPageRequest?.let { request ->
+            if (request.startsWith("choice:")) {
+                val chapterId = request.split(":")[1]
+                val chapter = chapters.entries.single { it.value.id == chapterId }
+                navigation.push("chapter:${chapter.key}")
+            }
+            navigation.push(request)
+            viewModel.settingsPageRequest = null
+        }
+    }
+
+    val choiceDestination = navigation.current
+    val activeChoice = when {
+        choiceDestination.startsWith("choice:") -> {
+            val (_, chapterId, entryId) = choiceDestination.split(":")
+            chapters.values.single { it.id == chapterId }.groups.flatMap { it.visibleEntries }
+                .filterIsInstance<SettingsEntry.Value>().single { it.id == entryId }
+        }
+        choiceDestination.startsWith("edge-choice:") && isMudita -> edges.groups.flatMap { it.visibleEntries }
+            .filterIsInstance<SettingsEntry.Value>().single { it.id == choiceDestination.removePrefix("edge-choice:") }
+        choiceDestination == "widget-rotation" -> com.gezimos.katapult.ui.settings.widgetRotationEntry(widgetSettings.rotation, widgetSettings::rotation)
+        choiceDestination == "side-layout" -> com.gezimos.katapult.ui.settings.sideLayoutEntry(widgetSettings.screens.first().layout, widgetSettings::layoutScreen)
+        else -> null
+    }
+    val visibleDestination = if (activeChoice?.usesSheet == true) navigation.previous else navigation.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -422,8 +444,9 @@ fun SettingsScreen(
             .statusBarsPadding()
             .navigationBarsPadding(),
     ) {
-      pageStates.SaveableStateProvider(navigation.current) {
-        val destination = navigation.current
+      pageStates.SaveableStateProvider(visibleDestination) {
+       Box(if (activeChoice?.usesSheet == true) Modifier.clearAndSetSemantics {} else Modifier) {
+        val destination = visibleDestination
         if (destination == "root") {
             val entries = chapters.map { (id, chapter) ->
                 SettingsEntry.Open(chapter.id, chapter.title, "", onOpen = { navigation.push("chapter:$id") }, summary = chapter.summary)
@@ -439,15 +462,6 @@ fun SettingsScreen(
         } else if (destination == "edges" && isMudita) {
             PaperIndexRenderer(edges, popPage, notice = notice,
                 onChoice = { navigation.push("edge-choice:${it.id}") }, onHelp = {})
-        } else if (destination.startsWith("edge-choice:") && isMudita) {
-            val entry = edges.groups.flatMap { it.entries }.filterIsInstance<SettingsEntry.Value>()
-                .single { it.id == destination.removePrefix("edge-choice:") }
-            ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
-        } else if (destination.startsWith("choice:")) {
-            val (_, chapterId, entryId) = destination.split(":")
-            val choice = chapters.values.single { it.id == chapterId }.groups.flatMap { it.visibleEntries }
-                .filterIsInstance<SettingsEntry.Value>().single { it.id == entryId }
-            ChoicePage(choice.title, choice.choices, choice.selected, choice.onSelect, popPage)
         } else if (destination.startsWith("help:")) {
             chapters.values.single { it.id == destination.removePrefix("help:") }.help?.let {
                 HelpPage(it.title, it.paragraphs, popPage)
@@ -488,10 +502,6 @@ fun SettingsScreen(
     if (destination.startsWith("widget:")) {
         LockscreenWidgetManagementPage(widgetSettings, destination.removePrefix("widget:").toInt(), popPage)
     }
-    if (destination == "widget-rotation") {
-        val entry = com.gezimos.katapult.ui.settings.widgetRotationEntry(widgetSettings.rotation, widgetSettings::rotation)
-        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
-    }
     if (destination == "providers") {
         val providers = remember { widgetSettings.providers() }
         WidgetProviderSheet(
@@ -512,10 +522,6 @@ fun SettingsScreen(
         }
         LockscreenMessageSheet(draft, { draft = it }, popPage, { widgetSettings.nameScreen(it); popPage() },
             title = stringResource(R.string.side_name))
-    }
-    if (destination == "side-layout") {
-        val entry = com.gezimos.katapult.ui.settings.sideLayoutEntry(widgetSettings.screens.first().layout, widgetSettings::layoutScreen)
-        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, popPage)
     }
     if (destination.startsWith("side-slot:")) {
         val cell = destination.removePrefix("side-slot:").toInt()
@@ -841,6 +847,8 @@ fun SettingsScreen(
         }
     }
       }
+       }
+      if (activeChoice != null) ChoiceSurface(activeChoice, popPage)
     }
 }
 

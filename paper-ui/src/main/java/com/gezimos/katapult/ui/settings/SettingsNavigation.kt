@@ -4,10 +4,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 
-/** Destination identities, not independent modal flags. Only the top page is rendered. */
+/** Destination identities, not independent modal flags. A choice sheet retains its previous page. */
 class SettingsNavigation internal constructor(destinations: List<String>) {
     private val destinations = mutableStateListOf<String>().apply { addAll(destinations) }
     val current: String get() = destinations.last()
+    val previous: String get() = destinations.getOrElse(destinations.lastIndex - 1) { destinations.first() }
     val canGoBack: Boolean get() = destinations.size > 1
     fun push(destination: String) {
         // Repeated input or a repeated model event must not create duplicate page owners.

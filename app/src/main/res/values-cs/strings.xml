@@ -88,6 +88,12 @@
     <string name="infinite_scroll_desc">Posouvání stránek z obou stran</string>
     <string name="double_tap_action">Dvojité klepnutí na domovské</string>
     <string name="double_tap_off">Vypnuto</string>
+    <string name="theme_system_help">Podle tmavého motivu Androidu</string>
+    <string name="theme_light_help">Černý inkoust na bílém papíře</string>
+    <string name="theme_dark_help">Bílý inkoust na černém papíře</string>
+    <string name="double_tap_off_help">Nic se nestane</string>
+    <string name="double_tap_brightness_help">Ztlumit přední osvětlení nebo ho obnovit</string>
+    <string name="double_tap_lock_help">Zamknout obrazovku; vyžaduje Action Service</string>
     <string name="double_tap_brightness">Jas</string>
     <string name="double_tap_lock">Zamknout telefon</string>
     <string name="clock_format">Formát hodin</string>

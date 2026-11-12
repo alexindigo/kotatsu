@@ -25,7 +25,10 @@ sealed class SettingsEntry {
         override val id: String, override val title: String, override val help: String,
         val value: String, val choices: List<SettingsChoice>, val onSelect: (String) -> Unit,
         val selected: String, override val visible: Boolean = true,
-    ) : SettingsEntry()
+        val appBuiltChoices: Boolean = false,
+    ) : SettingsEntry() {
+        val usesSheet get() = !appBuiltChoices && choices.size in 1..4
+    }
 
     data class Switch(
         override val id: String, override val title: String, override val help: String,
@@ -54,7 +57,7 @@ sealed class SettingsEntry {
     ) : SettingsEntry()
 }
 
-data class SettingsChoice(val id: String, val label: String)
+data class SettingsChoice(val id: String, val label: String, val help: String = "", val external: Boolean = false)
 
 /** Whole-group allocation: fewest pages, then no avoidable singleton, then balanced entry counts. */
 fun paginateGroups(counts: List<Int>, heights: List<Int>, availableHeight: Int): List<IntRange> =
