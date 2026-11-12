@@ -358,26 +358,17 @@ class RecentAppsInstrumentedTest {
     }
 
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
-        val packageName = "org.chromium.webview_shell"
-        val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(packageName))
+        val packageName = BackgroundProcessFixture.PACKAGE_NAME
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
         val choice = prefs.all["collect_usage_stats"]
         val closedStore = context.getSharedPreferences("recent_apps", 0)
         val previousClose = closedStore.all[packageName]
         prefs.edit().putBoolean("collect_usage_stats", true).commit()
         val source = AndroidRecentApps(context)
-        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
-            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
         try {
-            main { activity.viewModel.screen = Screen.HOME; context.startActivity(launch) }
-            ui.await("Real close fixture not foreground") { ui.packageVisible(packageName) }
-            ui.await("Real close fixture has no process") { shell("pidof $packageName").isNotBlank() }
-            val uid = context.packageManager.getApplicationInfo(packageName, 0).uid
-            main { context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
-            ui.await("Home did not regain foreground") { ui.packageVisible(context.packageName) }
-            ui.await("Fixture has not become background") {
-                shell("am get-uid-state $uid").substringBefore(' ').toIntOrNull()?.let { it >= 15 } == true
-            }
+          BackgroundProcessFixture().use { fixture ->
+            fixture.foreground()
+            fixture.background()
             val before = source.history().single { it.packageName == packageName }
             val at = System.currentTimeMillis()
             source.close(listOf(packageName), at)
@@ -391,11 +382,21 @@ class RecentAppsInstrumentedTest {
             ui.await("Reused app must reappear") {
                 recentApps(recreated.history(), context.packageName, recreated.closed()).any { it.packageName == packageName }
             }
+          }
         } finally {
-            main { activity.finish() }
             prefs.edit().apply { if (choice == null) remove("collect_usage_stats") else putBoolean("collect_usage_stats", choice as Boolean) }.commit()
             closedStore.edit().apply { if (previousClose == null) remove(packageName) else putLong(packageName, previousClose as Long) }.commit()
         }
+    }
+
+    @Test fun cachedUidDoesNotMakeTheStoppingProcessKillEligible() {
+        // The observed UID-state-15 window still had native adjustment 200.
+        assertFalse(BackgroundProcessFixture.killEligible("200"))
+        assertFalse(BackgroundProcessFixture.killEligible("499"))
+        assertFalse(BackgroundProcessFixture.killEligible("Permission denied"))
+        assertFalse(BackgroundProcessFixture.killEligible(""))
+        assertTrue(BackgroundProcessFixture.killEligible("500\n"))
+        assertTrue(BackgroundProcessFixture.killEligible("900"))
     }
 
     private fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
