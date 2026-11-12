@@ -114,8 +114,11 @@ Open Side screen in the Edge swipes page to choose its widgets, screen name and 
 or Split for a top/bottom pair. The name defaults to the widget's name. Each scrollable list has its own rail,
 with arrows and a draggable thumb. The screen opens with a six-step slide-in preview. Close it with the top-bar
 close button, Back or a swipe toward its opening edge by one third of the screen width. It also closes on
-screen-off, unlock, PIN entry or another app covering the lock screen. A widget that opens an app asks for
-the phone's normal unlock first.
+screen-off, unlock, PIN entry or another app covering the lock screen.
+A widget tap that opens an app usually asks for the phone's normal unlock first.
+Android does not always report that launch to Kotatsu; then nothing appears on the lock screen,
+and the app is already open after the next unlock. The phone stays locked either way.
+Taps that work in place, such as ticking a Kotatsu Notes task, are not affected.
 
 ### Kotatsu Notes
 
