@@ -7,9 +7,17 @@ import android.os.SystemClock
 import android.view.InputDevice
 import android.view.MotionEvent
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.recent.*
 import com.gezimos.katapult.ui.RecentAppsScreen
+import com.gezimos.katapult.ui.settings.ScrollRailLabels
+import com.gezimos.katapult.ui.settings.WholeRowList
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -157,6 +165,24 @@ class RecentAppsInstrumentedTest {
             instrumentation.removeMonitor(monitor)
             main { activity?.finish() }
         }
+    }
+
+    @Test fun wholeRowRailArrowsMoveWhenOnlyOneRowFits() = withPage { _, _, activity ->
+        val labels = ScrollRailLabels("Rows", "Previous row", "Next row")
+        main { activity.setContent {
+            Box(Modifier.fillMaxWidth().height(170.dp)) {
+                WholeRowList(listOf("Oldest", "Middle", "Newest"), labels, { it }) {
+                    Text(it, Modifier.height(120.dp))
+                }
+            }
+        } }
+        ui.await("One-row viewport did not start at newest") { ui.has("Newest") }
+        ui.click(labels.up)
+        ui.await("Upper arrow must reach the preceding row") { ui.has("Middle") && !ui.has("Newest") }
+        ui.click(labels.up)
+        ui.await("Upper arrow must reach oldest") { ui.has("Oldest") && !ui.find(labels.up)!!.isEnabled }
+        ui.click(labels.down)
+        ui.await("Lower arrow must reach the following row") { ui.has("Middle") && !ui.has("Oldest") }
     }
 
     @Test fun overlayScreenOffAndInterruptRemoveItWithoutLaunchingHome() = RecentOverlayFixture().use { fixture ->

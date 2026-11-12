@@ -79,6 +79,7 @@ fun <T> WholeRowList(items: List<T>, labels: ScrollRailLabels, itemKey: (T) -> A
                 }
             }
         }
-        if (window.maximum > 0) PaperScrollRail(window.end - window.first, window.maximum, window.first, labels, ::moveTo)
+        if (window.maximum > 0) PaperScrollRail(window.end - window.first, window.maximum, window.first, labels, ::moveTo,
+            step = { direction -> moveTo(window.first + direction * ((window.end - window.first) / 2).coerceAtLeast(1)) })
     }
 }
