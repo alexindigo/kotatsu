@@ -8,6 +8,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
+import com.gezimos.katapult.MainActivity
+import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.SensitiveChoice
 import com.gezimos.katapult.util.UsageHelper
 
 /** Android operations are injected at the boundary; the page only forwards intents. */
@@ -23,6 +26,7 @@ interface RecentAppsSource {
 
 class AndroidRecentApps(private val context: Context) : RecentAppsSource {
     private val store = context.getSharedPreferences("recent_apps", Context.MODE_PRIVATE)
+    private val prefs = PrefsManager(context)
     override fun available() = UsageHelper.collectionAllowed(context)
     override fun history(): List<RecentApp> {
         if (!available()) return emptyList()
@@ -46,8 +50,13 @@ class AndroidRecentApps(private val context: Context) : RecentAppsSource {
             context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }
-    override fun openAccess() = UsageHelper.openSettings(context)
-    override fun canOpenAccess() = UsageHelper.canOpenSettings(context)
+    override fun openAccess(): Boolean {
+        if (prefs.sensitiveChoice(SensitiveChoice.USAGE_STATS)) return UsageHelper.openSettings(context)
+        context.startActivity(Intent(context, MainActivity::class.java)
+            .setAction(MainActivity.ACTION_SENSITIVE_ACCESS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        return true
+    }
+    override fun canOpenAccess() = !prefs.sensitiveChoice(SensitiveChoice.USAGE_STATS) || UsageHelper.canOpenSettings(context)
 }
 
 class RecentApps(private val source: RecentAppsSource, private val ownPackage: String,

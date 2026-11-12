@@ -25,6 +25,19 @@ class RecentAppsInstrumentedTest {
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
     private val now = 1_800_000_000_000L
 
+    private fun assertUsageConsentIsVisibleAndOff() {
+        val label = context.getString(R.string.policy_usage_stats)
+        val next = context.getString(R.string.paper_next_page)
+        fun page() = ui.find { it.contentDescription?.toString()?.startsWith("Page ") == true }?.contentDescription?.toString()
+        ui.await("Sensitive access pager absent") { ui.has(label) || ui.has(next) }
+        while (!ui.has(label) && ui.has(next)) {
+            val before = page()
+            ui.click(next)
+            ui.await("Sensitive access pager did not advance") { page() != before }
+        }
+        assertEquals("Sensitive access must expose the still-disabled usage choice", false, ui.checked(label))
+    }
+
     private inner class Source : RecentAppsSource {
         var access = true
         var accessDestination = true
@@ -107,6 +120,42 @@ class RecentAppsInstrumentedTest {
         } finally {
             try { restore("enabled_accessibility_services", enabled) }
             finally { restore("accessibility_enabled", accessibility) }
+        }
+    }
+
+    @Test fun disabledUsageConsentOpensSensitiveAccessInsteadOfAndroidUsageSettings() = RecentOverlayFixture().use { fixture ->
+        main { fixture.home.viewModel.prefs.setSensitiveChoice(com.gezimos.katapult.util.SensitiveChoice.USAGE_STATS, false) }
+        fixture.settings(); fixture.open()
+        fixture.overlay.await("Consent access entry absent") { fixture.overlay.has("Usage access is off") }
+        fixture.overlay.click("Open")
+        ui.await("Consent handoff must open Kotatsu Sensitive access") {
+            !fixture.overlay.windowVisible() && ui.packageVisible(context.packageName) &&
+                ui.has(context.getString(R.string.sensitive_access))
+        }
+        assertUsageConsentIsVisibleAndOff()
+        assertEquals(Screen.SETTINGS, fixture.home.viewModel.screen)
+        assertFalse(fixture.home.viewModel.prefs.sensitiveChoice(com.gezimos.katapult.util.SensitiveChoice.USAGE_STATS))
+    }
+
+    @Test fun disabledUsageConsentOpensSensitiveAccessFromApplicationContextOnColdStart() {
+        val prefs = com.gezimos.katapult.util.PrefsManager(context)
+        val monitor = android.app.Instrumentation.ActivityMonitor(MainActivity::class.java.name, null, false)
+        instrumentation.addMonitor(monitor)
+        var activity: MainActivity? = null
+        try {
+            main { prefs.setSensitiveChoice(com.gezimos.katapult.util.SensitiveChoice.USAGE_STATS, false) }
+            val recent = RecentApps(AndroidRecentApps(context.applicationContext), context.packageName)
+            main { recent.show(); assertTrue(recent.canOpenAccess); recent.openAccess() }
+            activity = instrumentation.waitForMonitorWithTimeout(monitor, 5000) as MainActivity
+            ui.await("Fresh Activity did not route to Sensitive access") {
+                ui.has(context.getString(R.string.sensitive_access))
+            }
+            assertUsageConsentIsVisibleAndOff()
+            assertEquals(Screen.SETTINGS, activity.viewModel.screen)
+            assertFalse(recent.visible)
+        } finally {
+            instrumentation.removeMonitor(monitor)
+            main { activity?.finish() }
         }
     }
 

@@ -40,7 +40,17 @@ class MainActivity : ComponentActivity() {
         if (requestCode == REQUEST_CONFIGURE_WIDGET) viewModel.lockscreenWidgets.configured(resultCode == RESULT_OK)
     }
 
-    companion object { private const val REQUEST_CONFIGURE_WIDGET = 0x4B54 }
+    companion object {
+        private const val REQUEST_CONFIGURE_WIDGET = 0x4B54
+        const val ACTION_SENSITIVE_ACCESS = BuildConfig.APPLICATION_ID + ".SENSITIVE_ACCESS"
+    }
+
+    private fun openRequestedSettings(intent: Intent) {
+        if (intent.action == ACTION_SENSITIVE_ACCESS) {
+            viewModel.settingsPageRequest = "sensitive"
+            viewModel.screen = Screen.SETTINGS
+        }
+    }
 
     private var einkHelper: EinkHelper? = null
     private var homeKeyGate: AutoCloseable? = null
@@ -154,6 +164,7 @@ class MainActivity : ComponentActivity() {
         }
         if (savedInstanceState == null) {
             if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) viewModel.onHomeIntent()
+            openRequestedSettings(intent)
         }
     }
 
@@ -209,6 +220,7 @@ class MainActivity : ComponentActivity() {
         if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME))
             viewModel.onHomeIntent()
         else viewModel.onLauncherIntent()
+        openRequestedSettings(intent)
 
         val savedMode = viewModel.prefs.einkHelperMode
         if (savedMode != EinkHelper.MEINK_MODE_DISABLED) {
