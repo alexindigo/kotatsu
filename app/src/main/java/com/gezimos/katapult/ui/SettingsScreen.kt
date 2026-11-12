@@ -171,7 +171,7 @@ fun SettingsScreen(
     var hideArrowButtons by remember { mutableStateOf(prefs.hideArrowButtons) }
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
-    var swipeUpAllApps by remember { mutableStateOf(prefs.swipeUpAllApps) }
+    var swipeAllApps by remember { mutableStateOf(prefs.swipeAllApps) }
     var verticalAppGestures by remember { mutableStateOf(prefs.verticalAppGestures) }
     var homeButtonRecentApps by remember { mutableStateOf(prefs.homeButtonRecentApps) }
     var homeButtonScreenshot by remember { mutableStateOf(prefs.homeButtonScreenshot) }
@@ -315,8 +315,8 @@ fun SettingsScreen(
         onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
         onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
         onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
-    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
-        onSwipe = { swipeUpAllApps = it; prefs.swipeUpAllApps = it },
+    val gestures = gesturesCategory(swipeAllApps, verticalAppGestures, doubleTapAction, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
+        onSwipe = { swipeAllApps = it; prefs.swipeAllApps = it },
         onVertical = { verticalAppGestures = it; prefs.verticalAppGestures = it },
         onDoubleTap = {
             doubleTapAction = it; prefs.doubleTapAction = it

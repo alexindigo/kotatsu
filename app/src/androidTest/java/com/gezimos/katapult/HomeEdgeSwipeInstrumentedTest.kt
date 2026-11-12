@@ -47,7 +47,7 @@ class HomeEdgeSwipeInstrumentedTest {
                 owner.put("home-edges", model)
                 model.screen = Screen.HOME
                 model.prefs.edgeActions.enabled = true
-                model.prefs.swipeUpAllApps = true
+                model.prefs.swipeAllApps = com.gezimos.katapult.util.HomeAppSwipe.UP
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
@@ -207,7 +207,7 @@ class HomeEdgeSwipeInstrumentedTest {
         } finally { instrumentation.removeMonitor(normal); instrumentation.removeMonitor(secure) }
     }
 
-    @Test fun middleSwipesKeepBothExistingAppGestureModesAndShortEdgesDoNothing() = withHome { model, _, _ ->
+    @Test fun middleSwipesUseTheHomeChoiceAndShortEdgesDoNothing() = withHome { model, _, _ ->
         model.prefs.edgeActions.setAction(ScreenEdge.LEFT, EdgeAction.SIDE_SCREEN)
         model.prefs.edgeActions.setAction(ScreenEdge.RIGHT, EdgeAction.SIDE_SCREEN)
         swipe(.005f, .20f)
@@ -217,7 +217,10 @@ class HomeEdgeSwipeInstrumentedTest {
         assertEquals(Screen.HOME, model.screen)
         swipe(.75f, .25f, vertical = true)
         ui.await("Middle vertical swipe changed") { model.screen == Screen.ALL_APPS }
-        instrumentation.runOnMainSync { model.screen = Screen.HOME; model.prefs.verticalAppGestures = false }
+        instrumentation.runOnMainSync {
+            model.screen = Screen.HOME; model.prefs.verticalAppGestures = false
+            model.prefs.swipeAllApps = com.gezimos.katapult.util.HomeAppSwipe.LEFT
+        }
         ui.await("Home not restored") { ui.has(context.getString(R.string.all_apps)) }
         model.prefs.edgeActions.setAction(ScreenEdge.RIGHT, EdgeAction.NOTHING)
         swipe(.995f, .35f)
