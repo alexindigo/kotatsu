@@ -30,6 +30,22 @@ class LockscreenWidgetCardsInstrumentedTest {
     private val ui = PlatformUiDriver(instrumentation)
     private fun main(work: () -> Unit) = instrumentation.runOnMainSync(work)
 
+    @Test fun widgetFixtureOwnsLightThemeAndRestoresMissingOrDark() {
+        val raw = context.getSharedPreferences("katapult_prefs", 0)
+        val before = raw.all["theme_mode"]
+        try {
+            for (theme in listOf(null, com.gezimos.katapult.util.PrefsManager.THEME_DARK)) {
+                raw.edit().apply { if (theme == null) remove("theme_mode") else putInt("theme_mode", theme) }.commit()
+                WidgetHostTestFixture(context, applicationPreferences = true).use {
+                    assertEquals(com.gezimos.katapult.util.PrefsManager.THEME_LIGHT, raw.getInt("theme_mode", -1))
+                }
+                assertEquals(theme, raw.all["theme_mode"])
+            }
+        } finally {
+            raw.edit().apply { if (before == null) remove("theme_mode") else putInt("theme_mode", before as Int) }.commit()
+        }
+    }
+
     private fun withWidgets(work: (MainActivity, WidgetHostTestFixture, List<LockscreenWidget>, List<String>) -> Unit) {
         val fixture = WidgetHostTestFixture(context, applicationPreferences = true)
         val providers = fixture.manager.installedProviders.filter { it.provider.packageName == "com.alexindigo.kotatsu.notes.debug" }

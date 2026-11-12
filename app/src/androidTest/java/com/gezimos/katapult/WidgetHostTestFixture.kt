@@ -22,6 +22,7 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
     val raw: SharedPreferences = context.getSharedPreferences(name, Context.MODE_PRIVATE)
     private val usesApplicationPreferences = applicationPreferences
     private val initialList = raw.all["lockscreen_widgets"]
+    private val initialTheme = raw.all["theme_mode"]
     val prefs = PrefsManager(object : ContextWrapper(context) {
         override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = raw
     })
@@ -29,7 +30,10 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
     init {
         // Real MainActivity reads the application store. Give its test a temporary empty selection,
         // retaining the exact previous value for restoration after the Activity/producers stop.
-        if (applicationPreferences) assertTrue(raw.edit().putString("lockscreen_widgets", "[]").commit())
+        if (applicationPreferences) {
+            check(initialTheme == null || initialTheme is Int) { "Unexpected fixture theme preference type" }
+            assertTrue(raw.edit().putString("lockscreen_widgets", "[]").putInt("theme_mode", PrefsManager.THEME_LIGHT).commit())
+        }
     }
 
     fun bind(info: AppWidgetProviderInfo): Int {
@@ -57,9 +61,11 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
         if (usesApplicationPreferences) {
             val editor = raw.edit()
             if (initialList == null) editor.remove("lockscreen_widgets") else editor.putString("lockscreen_widgets", initialList as String)
+            if (initialTheme == null) editor.remove("theme_mode") else editor.putInt("theme_mode", initialTheme as Int)
             // commit is also the barrier for any preceding production apply writes.
             assertTrue("Could not restore widget fixture preferences", editor.commit())
             assertEquals(initialList, raw.all["lockscreen_widgets"])
+            assertEquals(initialTheme, raw.all["theme_mode"])
         } else deleteTestPreferences(context, name)
         assertEquals("Widget fixture leaked an allocation", initialIds, host.appWidgetIds.toSet())
     }
