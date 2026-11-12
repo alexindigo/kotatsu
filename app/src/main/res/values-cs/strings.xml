@@ -122,7 +122,11 @@
     <string name="hide_all_apps_button">Skrýt tlačítko Všechny aplikace</string>
     <string name="hide_all_apps_button_desc">Nahradit tlačítko Všechny aplikace zkratkou</string>
     <string name="swipe_up_all_apps">Přejetí pro aplikace</string>
-    <string name="swipe_up_all_apps_desc">Přejetím nahoru nebo doleva otevřete Aplikace</string>
+    <string name="swipe_up_all_apps_desc">Která přejetí na ploše otevřou všechny aplikace</string>
+    <string name="swipe_apps_none">Žádné</string>
+    <string name="swipe_apps_up">Nahoru</string>
+    <string name="swipe_apps_left">Doleva</string>
+    <string name="swipe_apps_up_left">Nahoru a doleva</string>
     <string name="app_gesture_direction">Směr gest aplikací</string>
     <string name="gesture_horizontal">Vodorovně</string>
     <string name="gesture_vertical">Svisle</string>

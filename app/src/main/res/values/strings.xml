@@ -137,7 +137,11 @@
     <string name="hide_all_apps_button">Hide All Apps button</string>
     <string name="hide_all_apps_button_desc">Replace the All Apps button with a shortcut</string>
     <string name="swipe_up_all_apps">Swipe for All Apps</string>
-    <string name="swipe_up_all_apps_desc">Swipe up or left for All Apps</string>
+    <string name="swipe_up_all_apps_desc">Which swipes on Home open All Apps</string>
+    <string name="swipe_apps_none">None</string>
+    <string name="swipe_apps_up">Up</string>
+    <string name="swipe_apps_left">Left</string>
+    <string name="swipe_apps_up_left">Up and left</string>
     <string name="app_gesture_direction">App gesture direction</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertical</string>

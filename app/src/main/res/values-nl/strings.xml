@@ -159,7 +159,11 @@
     <string name="call_sms_badges">Oproep- &amp; SMS-badges</string>
     <string name="call_sms_badges_desc">Leest oproeplog en SMS direct voor Mudita Phone &amp; SMS, die niet werken met de meldingslistener</string>
     <string name="swipe_up_all_apps">Vegen voor alle apps</string>
-    <string name="swipe_up_all_apps_desc">Veeg omhoog of naar links voor alle apps</string>
+    <string name="swipe_up_all_apps_desc">Welke veegbewegingen op het startscherm alle apps openen</string>
+    <string name="swipe_apps_none">Geen</string>
+    <string name="swipe_apps_up">Omhoog</string>
+    <string name="swipe_apps_left">Links</string>
+    <string name="swipe_apps_up_left">Omhoog en links</string>
     <string name="app_gesture_direction">Richting app-gebaren</string>
     <string name="gesture_horizontal">Horizontaal</string>
     <string name="gesture_vertical">Verticaal</string>

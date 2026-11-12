@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.ui.App
+import com.gezimos.katapult.util.HomeAppSwipe
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -27,7 +28,7 @@ class HomeSwipeInstrumentedTest {
             if (name == "katapult_prefs") store else super.getSharedPreferences(name, mode)
     }
 
-    private fun withHome(vertical: Boolean, test: (MainViewModel) -> Unit) {
+    private fun withHome(vertical: Boolean, choice: HomeAppSwipe = HomeAppSwipe.DEFAULT, test: (MainViewModel) -> Unit) {
         WidgetHostTestFixture(context).use { fixture ->
             val owner = ViewModelStore()
             lateinit var model: MainViewModel
@@ -36,7 +37,7 @@ class HomeSwipeInstrumentedTest {
                 owner.put("home-swipe", model)
                 model.screen = Screen.HOME
                 model.prefs.verticalAppGestures = vertical
-                model.prefs.swipeUpAllApps = true
+                model.prefs.swipeAllApps = choice
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
@@ -51,12 +52,12 @@ class HomeSwipeInstrumentedTest {
         }
     }
 
-    private fun slowSwipe(vertical: Boolean) {
+    private fun swipe(vertical: Boolean, slow: Boolean = true, negative: Boolean = true) {
         val bounds = context.getSystemService(android.view.WindowManager::class.java).maximumWindowMetrics.bounds
         val down = SystemClock.uptimeMillis()
-        val duration = ViewConfiguration.getLongPressTimeout() + 300L
+        val duration = if (slow) ViewConfiguration.getLongPressTimeout() + 300L else 200L
         for (step in 0..20) {
-            val position = .75f - .5f * step / 20
+            val position = if (negative) .75f - .5f * step / 20 else .25f + .5f * step / 20
             val event = MotionEvent.obtain(down, SystemClock.uptimeMillis(), when (step) {
                 0 -> MotionEvent.ACTION_DOWN
                 20 -> MotionEvent.ACTION_UP
@@ -68,13 +69,13 @@ class HomeSwipeInstrumentedTest {
             event.recycle()
             if (step < 20) SystemClock.sleep(duration / 20)
         }
-        assertTrue("Regression input must exceed the long-press timeout",
+        if (slow) assertTrue("Regression input must exceed the long-press timeout",
             SystemClock.uptimeMillis() - down > ViewConfiguration.getLongPressTimeout())
         instrumentation.waitForIdleSync()
     }
 
     private fun assertSlowSwipe(vertical: Boolean) = withHome(vertical) { model ->
-        slowSwipe(vertical)
+        swipe(vertical)
         ui.await("Slow ${if (vertical) "vertical" else "horizontal"} swipe must open All Apps, not the Home menu") {
             model.screen == Screen.ALL_APPS && !ui.has(context.getString(R.string.wallpaper))
         }
@@ -82,6 +83,27 @@ class HomeSwipeInstrumentedTest {
 
     @Test fun slowVerticalSwipeCancelsTheHomeLongPress() = assertSlowSwipe(true)
     @Test fun slowHorizontalSwipeCancelsTheHomeLongPress() = assertSlowSwipe(false)
+    @Test fun everyValueRecognizesBothAxesIndependentlyOfAppDirectionIncludingSlowSwipes() {
+        for (appVertical in listOf(false, true)) for (choice in HomeAppSwipe.entries) withHome(appVertical, choice) { model ->
+            for (slow in listOf(false, true)) for (verticalSwipe in listOf(false, true)) {
+                instrumentation.runOnMainSync { model.screen = Screen.HOME }
+                ui.await("Home not restored for $choice/$appVertical/$slow/$verticalSwipe") { ui.has(context.getString(R.string.all_apps)) }
+                swipe(verticalSwipe, slow)
+                val expected = if (verticalSwipe) choice == HomeAppSwipe.UP || choice == HomeAppSwipe.UP_AND_LEFT
+                    else choice == HomeAppSwipe.LEFT || choice == HomeAppSwipe.UP_AND_LEFT
+                ui.await("Wrong swipe result for $choice appVertical=$appVertical slow=$slow verticalSwipe=$verticalSwipe") {
+                    model.screen == if (expected) Screen.ALL_APPS else Screen.HOME
+                }
+                assertFalse("Moving swipes must cancel the Home menu even when the direction is Off", ui.has(context.getString(R.string.wallpaper)))
+            }
+            for (axis in listOf(false, true)) {
+                instrumentation.runOnMainSync { model.screen = Screen.HOME }
+                ui.await("Home not restored") { ui.has(context.getString(R.string.all_apps)) }
+                swipe(axis, slow = false, negative = false)
+                assertEquals("Right/down must not open All Apps", Screen.HOME, model.screen)
+            }
+        }
+    }
     @Test fun stationaryLongPressStillOpensTheHomeMenu() = withHome(true) { model ->
         ui.homeMenu()
         assertEquals(Screen.HOME, model.screen)

@@ -159,7 +159,11 @@
     <string name="call_sms_badges">Badges appels &amp; SMS</string>
     <string name="call_sms_badges_desc">Lit le journal d\'appels et les SMS directement pour Mudita Phone &amp; SMS, qui ne fonctionnent pas avec le listener de notifications</string>
     <string name="swipe_up_all_apps">Balayer pour toutes les apps</string>
-    <string name="swipe_up_all_apps_desc">Balayez vers le haut ou la gauche pour toutes les apps</string>
+    <string name="swipe_up_all_apps_desc">Quels balayages sur l\'accueil ouvrent toutes les apps</string>
+    <string name="swipe_apps_none">Aucun</string>
+    <string name="swipe_apps_up">Vers le haut</string>
+    <string name="swipe_apps_left">Vers la gauche</string>
+    <string name="swipe_apps_up_left">Vers le haut et la gauche</string>
     <string name="app_gesture_direction">Direction des gestes</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertical</string>

@@ -70,7 +70,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -153,7 +152,7 @@ fun HomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(LocalSurface.current)
-            .pointerInput(viewModel.prefs.verticalAppGestures) {
+            .pointerInput(viewModel.prefs.swipeAllApps) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     var swipeClaimed = false
@@ -162,7 +161,6 @@ fun HomeScreen(
                         EdgeSwipe.STRIP_DP.dp.toPx()) else null
                     var displacement = androidx.compose.ui.geometry.Offset.Zero
                     val slop = EdgeSwipe.SLOP_DP.dp.toPx()
-                    var swipeAcc = 0f
                     var pinchStart = 0f
                     var pinch = false
                     var pinchFired = false
@@ -187,12 +185,6 @@ fun HomeScreen(
                                 viewModel.startScreensaver(context)
                             }
                         } else if (!pinch) {
-                            val delta = if (viewModel.prefs.verticalAppGestures) {
-                                pressed[0].positionChange().y
-                            } else {
-                                pressed[0].positionChange().x
-                            }
-                            swipeAcc += delta
                             val change = pressed.firstOrNull { it.id == down.id }
                             if (change != null) {
                                 if ((change.position - down.position).getDistance() > viewConfiguration.touchSlop)
@@ -212,7 +204,7 @@ fun HomeScreen(
                             EdgeAction.NOTHING -> Unit
                         }
                     } else if (!pinch && (edge == null || decision == EdgeSwipeDecision.REPLAY) &&
-                        viewModel.prefs.swipeUpAllApps && swipeAcc < -100f) {
+                        viewModel.prefs.swipeAllApps.opens(displacement.x, displacement.y)) {
                         viewModel.navigateTo(Screen.ALL_APPS)
                     }
                 }

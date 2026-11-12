@@ -159,7 +159,11 @@
     <string name="call_sms_badges">Odznaki połączeń i SMS</string>
     <string name="call_sms_badges_desc">Odczytuje rejestr połączeń i SMS bezpośrednio dla Mudita Phone i SMS, które nie działają z listenerem powiadomień</string>
     <string name="swipe_up_all_apps">Przesuń, aby otworzyć aplikacje</string>
-    <string name="swipe_up_all_apps_desc">Przesuń w górę lub w lewo, aby otworzyć aplikacje</string>
+    <string name="swipe_up_all_apps_desc">Które gesty na ekranie głównym otwierają wszystkie aplikacje</string>
+    <string name="swipe_apps_none">Żadne</string>
+    <string name="swipe_apps_up">W górę</string>
+    <string name="swipe_apps_left">W lewo</string>
+    <string name="swipe_apps_up_left">W górę i w lewo</string>
     <string name="app_gesture_direction">Kierunek gestów</string>
     <string name="gesture_horizontal">Poziomy</string>
     <string name="gesture_vertical">Pionowy</string>

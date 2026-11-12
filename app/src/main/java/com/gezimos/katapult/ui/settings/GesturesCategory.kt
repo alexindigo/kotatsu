@@ -4,11 +4,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import com.gezimos.katapult.R
 import com.gezimos.katapult.util.PrefsManager
+import com.gezimos.katapult.util.HomeAppSwipe
 
 @Composable
 fun gesturesCategory(
-    swipeApps: Boolean, vertical: Boolean, doubleTap: Int, longPress: Int, recentApps: Boolean, screenshot: Boolean, homeMenu: Boolean,
-    onSwipe: (Boolean) -> Unit, onVertical: (Boolean) -> Unit, onDoubleTap: (Int) -> Unit, onLongPress: (Int) -> Unit,
+    swipeApps: HomeAppSwipe, vertical: Boolean, doubleTap: Int, longPress: Int, recentApps: Boolean, screenshot: Boolean, homeMenu: Boolean,
+    onSwipe: (HomeAppSwipe) -> Unit, onVertical: (Boolean) -> Unit, onDoubleTap: (Int) -> Unit, onLongPress: (Int) -> Unit,
     onRecentApps: (Boolean) -> Unit,
     onScreenshot: (Boolean) -> Unit,
     onHomeMenu: (Boolean) -> Unit,
@@ -27,9 +28,16 @@ fun gesturesCategory(
         PrefsManager.HOME_LONG_PRESS_EDIT to R.string.home_long_press_edit, PrefsManager.HOME_LONG_PRESS_NONE to R.string.home_long_press_none)
         .map { (id, label) -> SettingsChoice(id.toString(), stringResource(label)) }
     val direction = directions[if (vertical) 1 else 0]
+    val swipes = HomeAppSwipe.entries.map { choice -> SettingsChoice(choice.id, stringResource(when (choice) {
+        HomeAppSwipe.NONE -> R.string.swipe_apps_none
+        HomeAppSwipe.UP -> R.string.swipe_apps_up
+        HomeAppSwipe.LEFT -> R.string.swipe_apps_left
+        HomeAppSwipe.UP_AND_LEFT -> R.string.swipe_apps_up_left
+    })) }
     return SettingsCategory("gestures", stringResource(R.string.section_gestures), listOf(
         SettingsGroup("pages", stringResource(R.string.paper_group_app_pages), listOf(
-            SettingsEntry.Switch("swipe", stringResource(R.string.swipe_up_all_apps), stringResource(R.string.swipe_up_all_apps_desc), swipeApps, onSwipe),
+            SettingsEntry.Value("swipe", stringResource(R.string.swipe_up_all_apps), stringResource(R.string.swipe_up_all_apps_desc),
+                swipes.single { it.id == swipeApps.id }.label, swipes, { onSwipe(requireNotNull(HomeAppSwipe.fromId(it))) }, swipeApps.id),
             SettingsEntry.Value("direction", stringResource(R.string.app_gesture_direction), stringResource(R.string.paper_gesture_direction_help),
                 direction.label, directions, { onVertical(it == "vertical") }, direction.id),
         )),

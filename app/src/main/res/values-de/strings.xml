@@ -159,7 +159,11 @@
     <string name="call_sms_badges">Anruf- &amp; SMS-Badges</string>
     <string name="call_sms_badges_desc">Liest Anrufliste und SMS direkt für Mudita Phone &amp; SMS, die nicht mit dem Benachrichtigungs-Listener funktionieren</string>
     <string name="swipe_up_all_apps">Wischen für alle Apps</string>
-    <string name="swipe_up_all_apps_desc">Nach oben oder links wischen für alle Apps</string>
+    <string name="swipe_up_all_apps_desc">Welche Wischgesten auf dem Startbildschirm alle Apps öffnen</string>
+    <string name="swipe_apps_none">Keine</string>
+    <string name="swipe_apps_up">Nach oben</string>
+    <string name="swipe_apps_left">Nach links</string>
+    <string name="swipe_apps_up_left">Nach oben und links</string>
     <string name="app_gesture_direction">App-Gestenrichtung</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertikal</string>

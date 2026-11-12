@@ -51,7 +51,7 @@ class PaperIndexChaptersInstrumentedTest {
             { record(it) }, { record(it) }, {}, {}, {}, {}, {}, {}),
         appsCategory(true, PrefsManager.APP_SORT_MANUAL, false, false, false, false,
             { record(it.toString()) }, {}, {}, {}, {}, {}, {}),
-        gesturesCategory(true, true, PrefsManager.DOUBLE_TAP_OFF, PrefsManager.HOME_LONG_PRESS_EDIT, true, true, true,
+        gesturesCategory(com.gezimos.katapult.util.HomeAppSwipe.DEFAULT, true, PrefsManager.DOUBLE_TAP_OFF, PrefsManager.HOME_LONG_PRESS_EDIT, true, true, true,
             {}, { record(it.toString()) }, { record(it.toString()) }, { record(it.toString()) }, {}, {}, {}),
         notificationsCategory(true, true, {}, {}, {}, {}),
         lockCategory(true, true, false, true, false, false, true, 1, {}, {}, { record(it.toString()) }, {}, {}, {}, {}),
@@ -139,7 +139,7 @@ class PaperIndexChaptersInstrumentedTest {
                 if (page < pages.lastIndex) ui.click(context.getString(R.string.paper_next_page))
             }
         }
-        assertEquals("All thirteen Value entries must be exercised", 13, opened)
+        assertEquals("All fourteen Value entries must be exercised", 14, opened)
     }
 
     @Test fun everyHelpPageReplacesItsChapterAndReturnsToItsPageNumber() = withActivity { activity, ui ->

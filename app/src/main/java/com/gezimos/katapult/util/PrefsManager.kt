@@ -31,7 +31,19 @@ class PrefsManager(context: Context) {
         changeListeners.forEach { it(key) }
     }
 
-    init { seedDefaultsOnce() }
+    init {
+        // Seeding and migration share one snapshot, including concurrent preference owners.
+        synchronized(prefs) {
+            val fresh = prefs.all.isEmpty()
+            seedDefaultsOnce()
+            if (!prefs.contains(KEY_SWIPE_ALL_APPS)) {
+                val choice = HomeAppSwipe.resolve(null, legacy = !fresh,
+                    enabled = prefs.all[KEY_SWIPE_UP_ALL_APPS] as? Boolean,
+                    vertical = prefs.all[KEY_VERTICAL_APP_GESTURES] as? Boolean)
+                prefs.edit().putString(KEY_SWIPE_ALL_APPS, choice.id).remove(KEY_SWIPE_UP_ALL_APPS).apply()
+            }
+        }
+    }
 
     fun sensitiveChoice(choice: SensitiveChoice): Boolean = boolPref(choice.key, true)
 
@@ -399,9 +411,9 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_HIDE_ALL_APPS_BUTTON, false)
         set(value) = prefs.edit().putBoolean(KEY_HIDE_ALL_APPS_BUTTON, value).apply()
 
-    var swipeUpAllApps: Boolean
-        get() = boolPref(KEY_SWIPE_UP_ALL_APPS, true)
-        set(value) = prefs.edit().putBoolean(KEY_SWIPE_UP_ALL_APPS, value).apply()
+    var swipeAllApps: HomeAppSwipe
+        get() = HomeAppSwipe.fromId(strPref(KEY_SWIPE_ALL_APPS, HomeAppSwipe.DEFAULT.id)) ?: HomeAppSwipe.DEFAULT
+        set(value) = prefs.edit().putString(KEY_SWIPE_ALL_APPS, value.id).apply()
 
     var verticalAppGestures: Boolean
         get() = boolPref(KEY_VERTICAL_APP_GESTURES, false)
@@ -639,7 +651,7 @@ class PrefsManager(context: Context) {
         json.put(CONFIG_VERSION_KEY, appVersionCode(context))
         val widgets = lockscreenWidgetStore.exportSelection()
         for ((key, value) in prefs.all) {
-            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED || key == LockscreenWidgetStore.KEY || key in RETIRED_KEYS) continue
+            if (key == KEY_NOTICE_ACTION_SERVICE_DISMISSED || key == KEY_SWIPE_UP_ALL_APPS || key == LockscreenWidgetStore.KEY || key in RETIRED_KEYS) continue
             when (value) {
                 is Boolean -> json.put(key, value)
                 is Int -> json.put(key, value)
@@ -652,6 +664,7 @@ class PrefsManager(context: Context) {
         }
         if (widgets != null) json.put(LockscreenWidgetStore.KEY, widgets)
         json.put(KEY_WALLPAPER_SOURCE, wallpaperSource.name)
+        json.put(KEY_SWIPE_ALL_APPS, swipeAllApps.id)
         json.toString(2)
     }
 
@@ -709,7 +722,7 @@ class PrefsManager(context: Context) {
             is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
         }
         for (key in json.keys()) {
-            if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY || key in LOCAL_IMPORT_KEYS || key in RETIRED_KEYS) continue
+            if (key == CONFIG_TYPE_KEY || key == CONFIG_VERSION_KEY || key == KEY_SWIPE_UP_ALL_APPS || key in LOCAL_IMPORT_KEYS || key in RETIRED_KEYS) continue
             if (key in preservedChoices) continue
             val value = json.opt(key)
             if (declaredImportDefault(key) == null && !matchesStoredType(existing[key], value)) continue
@@ -725,6 +738,11 @@ class PrefsManager(context: Context) {
                 )
             }
         }
+        val swipe = HomeAppSwipe.resolve(json.opt(KEY_SWIPE_ALL_APPS) as? String,
+            legacy = json.has(KEY_SWIPE_UP_ALL_APPS) || json.has(KEY_VERTICAL_APP_GESTURES),
+            enabled = json.opt(KEY_SWIPE_UP_ALL_APPS) as? Boolean,
+            vertical = json.opt(KEY_VERTICAL_APP_GESTURES) as? Boolean)
+        editor.putString(KEY_SWIPE_ALL_APPS, swipe.id)
         // Preserve omissions and missing-key true defaults in the SAME import editor.
         preservedChoices.forEach { (key, value) -> editor.putBoolean(key, value) }
         lockscreenWidgetStore.commitImportedPreferences(editor)
@@ -747,6 +765,7 @@ class PrefsManager(context: Context) {
         KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
         KEY_THEME_MODE -> DEFAULT_THEME_MODE
+        KEY_SWIPE_ALL_APPS -> HomeAppSwipe.DEFAULT.id
         KEY_ICON_SIZE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
         KEY_LAST_BRIGHTNESS, KEY_HOME_LONG_PRESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
         KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
@@ -768,6 +787,7 @@ class PrefsManager(context: Context) {
     }
 
     private fun isUsableString(key: String, value: String): Boolean = when (key) {
+        KEY_SWIPE_ALL_APPS -> HomeAppSwipe.fromId(value) != null
         KEY_WIDGET_ROTATION -> WidgetRotation.entries.any { it.name == value }
         KEY_WALLPAPER_SOURCE -> WallpaperSource.entries.any { it.name == value }
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT -> value == "system" || runCatching {
@@ -893,6 +913,7 @@ class PrefsManager(context: Context) {
         private const val KEY_HOME_LONG_PRESS = "home_long_press"
         private const val KEY_HIDE_ALL_APPS_BUTTON = "hide_all_apps_button"
         private const val KEY_SWIPE_UP_ALL_APPS = "swipe_up_all_apps"
+        private const val KEY_SWIPE_ALL_APPS = "swipe_all_apps"
         private const val KEY_VERTICAL_APP_GESTURES = "vertical_app_gestures"
         private const val KEY_HOME_BUTTON_RECENT_APPS = "home_button_recent_apps"
         private const val KEY_HOME_BUTTON_SCREENSHOT = "home_button_screenshot"

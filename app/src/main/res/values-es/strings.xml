@@ -159,7 +159,11 @@
     <string name="call_sms_badges">Badges de llamadas y SMS</string>
     <string name="call_sms_badges_desc">Lee el registro de llamadas y SMS directamente para Mudita Phone y SMS, que no funcionan con el listener de notificaciones</string>
     <string name="swipe_up_all_apps">Deslizar para todas las apps</string>
-    <string name="swipe_up_all_apps_desc">Desliza arriba o a la izquierda para todas las apps</string>
+    <string name="swipe_up_all_apps_desc">Qué deslizamientos en Inicio abren todas las apps</string>
+    <string name="swipe_apps_none">Ninguno</string>
+    <string name="swipe_apps_up">Arriba</string>
+    <string name="swipe_apps_left">Izquierda</string>
+    <string name="swipe_apps_up_left">Arriba e izquierda</string>
     <string name="app_gesture_direction">Dirección de gestos</string>
     <string name="gesture_horizontal">Horizontal</string>
     <string name="gesture_vertical">Vertical</string>
