@@ -13,6 +13,30 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class JobCompletionInstrumentedTest {
+    @Test fun everySchedulingPathCarriesItsOwnStableGeneration() {
+        WeatherHostFixture().use { host ->
+            RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture offline") }
+            host.configure(WidgetConfig(listOf(Location("Token", "Fixture", 18.2345, 78.2345))))
+            val scheduler = host.context.getSystemService(JobScheduler::class.java)
+            host.await("Failed forecast schedules a retry") { scheduler.getPendingJob(WeatherRuntime.RETRY) != null }
+            host.instrumentation.runOnMainSync {
+                fun generation(job: JobInfo) = checkNotNull(job.extras.getString(RefreshExecutionKey.GENERATION))
+                val periodic = scheduler.allPendingJobs.single { it.isPeriodic }
+                val retry = scheduler.getPendingJob(WeatherRuntime.RETRY)!!
+                WeatherRuntime.ensurePeriodic(host.context)
+                assertEquals(generation(periodic), generation(scheduler.getPendingJob(periodic.id)!!))
+                WeatherRuntime.refresh(host.context, force = true)
+                val immediate = scheduler.getPendingJob(WeatherRuntime.IMMEDIATE)!!
+                assertTrue(immediate.extras.getBoolean("force"))
+                WeatherRuntime.refresh(host.context, force = true)
+                val replacement = scheduler.getPendingJob(WeatherRuntime.IMMEDIATE)!!
+                val generations = listOf(periodic, retry, immediate, replacement).map(::generation)
+                assertTrue(generations.all { it.isNotBlank() })
+                assertEquals("Every new schedule gets a distinct token", 4, generations.toSet().size)
+            }
+        }
+    }
+
     @Test fun absentForecastUncheckedFailureBacksOffAndLaterLocationRefreshes() = uncheckedFailureBacksOff(stale = false)
 
     @Test fun staleForecastUncheckedFailureBacksOffAndLaterLocationRefreshes() = uncheckedFailureBacksOff(stale = true)

@@ -18,7 +18,7 @@ import java.time.Clock
 import android.os.Handler
 import android.os.Looper
 import java.util.concurrent.Executors
-import java.util.concurrent.Future
+import java.util.UUID
 
 class WeatherWidgetProvider : AppWidgetProvider() {
     override fun onEnabled(context: Context) { WidgetReconciler.reconcile(context, ReconcileReason.UPDATE) }
@@ -60,12 +60,16 @@ object WeatherRuntime {
     internal fun alarmIntent(context: Context): PendingIntent = PendingIntent.getBroadcast(context, 0,
         Intent(context, WeatherWidgetProvider::class.java).setAction(REFRESH), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
+    private fun jobExtras() = android.os.PersistableBundle().apply {
+        putString(RefreshExecutionKey.GENERATION, UUID.randomUUID().toString())
+    }
+
     internal fun ensurePeriodic(context: Context) {
         if (ids(context).isEmpty()) return
         val scheduler = context.getSystemService(JobScheduler::class.java)
         if (scheduler.getPendingJob(PERIODIC) == null) scheduler.schedule(JobInfo.Builder(PERIODIC,
             ComponentName(context, RefreshJobService::class.java)).setPeriodic(60 * 60 * 1000L)
-            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPersisted(false).build())
+            .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY).setPersisted(false).setExtras(jobExtras()).build())
     }
 
     fun cancel(context: Context) {
@@ -87,7 +91,7 @@ object WeatherRuntime {
         }.minOrNull()
         val scheduler = context.getSystemService(JobScheduler::class.java)
         if (force || next != null) {
-            val extras = android.os.PersistableBundle().apply { putBoolean("force", force) }
+            val extras = jobExtras().apply { putBoolean("force", force) }
             val jobId = if (force) IMMEDIATE else RETRY
             val latency = if (force) 0 else java.time.Duration.between(now, next).toMillis().coerceAtLeast(0)
             val pending = scheduler.getPendingJob(jobId)
@@ -109,28 +113,26 @@ class RefreshJobService : JobService() {
         @Volatile internal var fetcher: (Location, Boolean, String) -> String = OpenMeteo::forecast
     }
     private val executor = Executors.newSingleThreadExecutor()
-    private val tasks = mutableMapOf<Int, Future<*>>()
-    override fun onStartJob(params: JobParameters): Boolean {
-        tasks[params.jobId] = executor.submit {
+    private val main = Handler(Looper.getMainLooper())
+    private val executions = RefreshJobExecutions(executor) { completion -> main.post { completion() } }
+    private fun key(params: JobParameters) = RefreshExecutionKey(params.jobId, params.extras.getString(RefreshExecutionKey.GENERATION))
+
+    override fun onStartJob(params: JobParameters): Boolean = executions.start(key(params), work = {
             try {
                 ForecastRefresher.refresh(this, params.extras.getBoolean("force"), fetcher, WidgetReconciler.currentClock())
             } catch (error: RuntimeException) {
                 Log.w("KotatsuWeather", "Forecast refresh failed; keeping cached data", error)
-            } finally {
-                Handler(Looper.getMainLooper()).post {
-                    tasks.remove(params.jobId)
-                    jobFinished(params, false)
-                    WidgetReconciler.reconcile(this, ReconcileReason.JOB_DONE)
-                }
             }
-        }
-        return true
-    }
+        }, finished = {
+            jobFinished(params, false)
+            WidgetReconciler.reconcile(this, ReconcileReason.JOB_DONE)
+        })
+
     override fun onStopJob(params: JobParameters): Boolean {
-        tasks.remove(params.jobId)?.cancel(true)
+        executions.stop(key(params))
         return WeatherRuntime.ids(this).isNotEmpty()
     }
-    override fun onDestroy() { executor.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() { executions.stopAll(); executor.shutdownNow(); super.onDestroy() }
 }
 
 object ForecastRefresher {
