@@ -83,6 +83,46 @@ class HomeKeyFilterTest {
         assertTrue(f.results.isEmpty()); assertFalse(f.filter.up())
     }
 
+    @Test fun eligibilityLossCancelsActionButOwnsConsumedDownThroughUp() {
+        for (timerRuns in listOf(false, true)) {
+            val f = Fixture()
+            assertTrue(f.filter.down(0))
+            val stale = f.tasks.single().run
+            f.eligible = false
+            if (timerRuns) f.advance(500)
+            assertTrue("Repeats of an owned DOWN must stay consumed", f.filter.down(600, repeat = true))
+            assertTrue("A lone UP must not reach Android's Home handler", f.filter.up())
+            assertFalse(f.filter.up())
+            stale(); f.advance(1000)
+            assertTrue(f.results.isEmpty())
+            f.eligible = true
+            assertTrue(f.filter.down(1000)); assertTrue(f.filter.up())
+            f.advance(1500)
+            assertEquals(listOf("home"), f.results)
+        }
+    }
+
+    @Test fun eligibilityLossOnUpConsumesOnlyAnOwnedPair() {
+        val f = Fixture()
+        assertTrue(f.filter.down(0))
+        f.eligible = false
+        assertTrue(f.filter.up())
+        assertFalse(f.filter.up())
+        f.advance(1000)
+        assertTrue(f.results.isEmpty())
+        assertFalse(f.filter.down(1000)); assertFalse(f.filter.up())
+    }
+
+    @Test fun eligibilityLossOnUnownedUpCancelsTheReleasedSingle() {
+        val f = Fixture()
+        f.filter.down(0); f.filter.up()
+        f.eligible = false
+        assertFalse(f.filter.up())
+        f.eligible = true
+        f.advance(1000)
+        assertTrue(f.results.isEmpty())
+    }
+
     @Test fun recentAppsOffPassesEveryHomeEventAndCancelsPendingSingle() {
         val f = Fixture()
         f.filter.down(0); f.filter.up()

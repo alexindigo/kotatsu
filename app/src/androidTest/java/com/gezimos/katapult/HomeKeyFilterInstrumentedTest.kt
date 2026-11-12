@@ -42,6 +42,29 @@ class HomeKeyFilterInstrumentedTest {
         }
     }
 
+    @Test fun eligibilityLossAfterNativeDownDoesNotLeakALoneUpToAndroid() = RecentOverlayFixture().use { fixture ->
+        fixture.settings()
+        val origin = fixture.resumedTask()
+        val keyboard = Regex("/dev/input/event[0-9]+").find(
+            shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
+        val marker = "ELIGIBILITY ${SystemClock.uptimeMillis()}"
+        android.util.Log.i("KotatsuHomeProbe", marker)
+        shell("su 0 sendevent $keyboard 1 172 1"); shell("su 0 sendevent $keyboard 0 0 0")
+        try {
+            ui.await("HOME DOWN was not consumed") {
+                shell("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(marker)
+                    .lineSequence().any { it.contains("action=0 consumed=true") }
+            }
+            main { fixture.home.viewModel.prefs.homeButtonRecentApps = false }
+            SystemClock.sleep(600)
+        } finally {
+            shell("su 0 sendevent $keyboard 1 172 0"); shell("su 0 sendevent $keyboard 0 0 0")
+        }
+        SystemClock.sleep(650)
+        assertEquals("An owned UP must not trigger Android's Home handler", origin, fixture.resumedTask())
+        assertFalse(fixture.overlay.windowVisible())
+    }
+
     @Test fun connectedFilterShowsOverlayWithoutActivityOrFocusChangeAndPreservesEveryServiceInfo() {
         val enabled = shell("settings get secure enabled_accessibility_services")
         val accessibility = shell("settings get secure accessibility_enabled")

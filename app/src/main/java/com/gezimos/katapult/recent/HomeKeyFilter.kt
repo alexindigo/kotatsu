@@ -10,13 +10,14 @@ class HomeKeyFilter(
 ) : AutoCloseable {
     companion object { const val DOUBLE_PRESS_MS = 500L }
     private var firstDown: Long? = null
+    // Owning DOWN also owns its matching UP, even after action eligibility is lost.
     private var held = false
     private var expired = false
     private var timer: AutoCloseable? = null
     private var generation = 0L
 
     fun down(eventTime: Long, repeat: Boolean = false): Boolean {
-        if (!eligible()) { close(); return false }
+        if (!eligible()) { clearPending(); return held }
         if (repeat) return held
         if (held) return true
         val first = firstDown
@@ -36,7 +37,7 @@ class HomeKeyFilter(
         val token = ++generation
         timer = schedule((eventTime + DOUBLE_PRESS_MS - clock()).coerceAtLeast(0)) {
             if (token == generation && firstDown != null) {
-                if (!eligible()) close()
+                if (!eligible()) clearPending()
                 else {
                     expired = true
                     if (!held) { clearPending(); single() }
@@ -47,11 +48,11 @@ class HomeKeyFilter(
     }
 
     fun up(): Boolean {
-        if (!eligible()) { close(); return false }
-        if (!held) return false
+        val consumed = held
         held = false
-        if (expired) { clearPending(); single() }
-        return true
+        if (!eligible()) clearPending()
+        else if (consumed && expired) { clearPending(); single() }
+        return consumed
     }
 
     private fun clearPending() {
