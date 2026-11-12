@@ -95,6 +95,8 @@ class HomeKeyFilter(
 
     fun volumeDown(repeat: Boolean = false): Boolean {
         if (!allowed()) { clearPending(); cancelHold(); return volumeHeld }
+        // Volume cancels menu intent even when Android, not the screenshot chord, owns it.
+        if (held) cancelHold()
         if (volumeHeld) return true
         if (!screenshotEnabled() || !held || chord || menuShown || repeat) return false
         clearPending()

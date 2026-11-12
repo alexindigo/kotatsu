@@ -4,6 +4,7 @@ import android.app.UiAutomation
 import android.content.Intent
 import android.content.ContentUris
 import android.graphics.Bitmap
+import android.media.AudioManager
 import android.os.SystemClock
 import android.provider.MediaStore
 import androidx.test.platform.app.InstrumentationRegistry
@@ -193,6 +194,73 @@ class HomeMenuInstrumentedTest {
             (pictures() - before).forEach { id -> context.contentResolver.delete(
                 ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id), null, null) }
         }
+    }
+
+    @Test fun volumeWithScreenshotOffCancelsHeldMenuChangesVolumeAndReleasesToHome() = fixture { f ->
+        val audio = context.getSystemService(AudioManager::class.java)
+        val stream = AudioManager.STREAM_MUSIC
+        val before = audio.getStreamVolume(stream)
+        fun withAudioSettings(change: () -> Unit) {
+            val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+            automation.adoptShellPermissionIdentity(android.Manifest.permission.MODIFY_AUDIO_SETTINGS)
+            try { change() }
+            finally { automation.dropShellPermissionIdentity() }
+        }
+        fun setVolume(value: Int) = withAudioSettings { audio.setStreamVolume(stream, value, 0) }
+        fun volumePanelVisible(): Boolean {
+            val window = Regex("Window #[0-9]+ Window\\{[^\\n]* VolumeDialogImpl\\}:([\\s\\S]*?)(?=\\n  Window #|\\z)")
+                .find(f.shell("dumpsys window"))?.value ?: return false
+            return window.contains("isVisible=true") && window.contains("Surface: shown=true")
+        }
+        val keyboard = f.shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
+        val path = Regex("/dev/input/event[0-9]+").find(keyboard)!!.value
+        val native = File(context.getExternalFilesDir(null), "home-menu-volume.sh")
+        try {
+            for (recent in listOf(false, true)) {
+                main {
+                    val prefs = PrefsManager(context)
+                    prefs.homeButtonScreenshot = false; prefs.homeButtonRecentApps = recent
+                }
+                f.settings()
+                setVolume(5)
+                f.ui.await("Media volume did not settle") { audio.getStreamVolume(stream) == 5 }
+                // Android 12's first idle-media key shows the panel without adjusting volume.
+                withAudioSettings { audio.adjustStreamVolume(stream, AudioManager.ADJUST_SAME, AudioManager.FLAG_SHOW_UI) }
+                f.ui.await("Volume panel did not become visible") { volumePanelVisible() }
+                native.writeText("set -e\n" +
+                    "sendevent $path 1 172 1\nsendevent $path 0 0 0\nsleep 0.15\n" +
+                    "sendevent $path 1 114 1\nsendevent $path 0 0 0\n" +
+                    "sendevent $path 1 114 0\nsendevent $path 0 0 0\nsleep 1.2\n")
+                try {
+                    assertEquals("", f.shell("su 0 sh ${native.absolutePath}"))
+                    assertFalse("Volume must cancel the held-Home menu", menu.windowVisible())
+                    assertTrue("Home must wait for release", f.ui.has("Brightness level"))
+                    assertTrue("Unowned Volume must still change Android volume", audio.getStreamVolume(stream) < 5)
+                } finally {
+                    f.shell("su 0 sendevent $path 1 172 0"); f.shell("su 0 sendevent $path 0 0 0")
+                    f.shell("su 0 sendevent $path 1 114 0"); f.shell("su 0 sendevent $path 0 0 0")
+                }
+                val defaultHome = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+                    android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)!!.activityInfo.packageName
+                f.ui.await("Interrupted hold must release as a plain Home press") { f.ui.packageVisible(defaultHome) }
+                assertFalse(menu.windowVisible())
+                f.ui.await("Home release left the volume panel open") { !volumePanelVisible() }
+            }
+        } finally {
+            try {
+                setVolume(before)
+                f.ui.await("Media volume did not restore") { audio.getStreamVolume(stream) == before }
+                f.ui.await("Volume panel did not close during cleanup") { !volumePanelVisible() }
+            } finally { native.delete() }
+        }
+    }
+
+    @Test fun missingShellCommandFailsWithinItsDeadline() {
+        val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+        val start = SystemClock.elapsedRealtime()
+        val failure = runCatching { automation.boundedShell("/system/bin/kotatsu_missing_test_command", 1) }.exceptionOrNull()
+        assertNotNull("A missing command must fail instead of hanging on its output pipe", failure)
+        assertTrue("The shell deadline must bound missing-command reads", SystemClock.elapsedRealtime() - start < 5000)
     }
 
     @Test fun allThreeTogglesOffPassesHomeAndMenuDefaultImportsAsBoolean() = fixture { f ->

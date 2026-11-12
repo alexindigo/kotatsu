@@ -264,6 +264,27 @@ class HomeKeyFilterTest {
         }
     }
 
+    @Test fun volumeWithoutScreenshotCancelsMenuButPassesThroughAndLeavesHomeOnRelease() {
+        for (recent in listOf(false, true)) for (repeat in listOf(false, true))
+            for (homeFirst in listOf(false, true)) for (at in listOf(100L, 999L)) {
+                val f = Fixture(); f.menu = true; f.recentApps = recent
+                assertTrue(f.filter.down(0))
+                val staleHold = f.tasks.single { it.at == HomeKeyFilter.HOME_MENU_HOLD_MS }.run
+                f.advance(at)
+                assertFalse(f.filter.volumeDown(repeat))
+                assertFalse(f.filter.volumeDown(repeat = true))
+                if (!homeFirst) assertFalse(f.filter.volumeUp())
+                staleHold(); f.advance(1200)
+                assertTrue("Volume must cancel the menu even after its release", f.results.isEmpty())
+                assertTrue(f.filter.up())
+                if (homeFirst) assertFalse(f.filter.volumeUp())
+                assertEquals(listOf("home"), f.results)
+                assertTrue(f.filter.down(1200))
+                f.advance(2200); assertTrue(f.filter.up())
+                assertEquals("A later Home hold must still open the menu", listOf("home", "menu"), f.results)
+            }
+    }
+
     @Test fun screenshotBeforeHoldWinsAndVolumeAfterMenuDoesNotCapture() {
         for (at in listOf(100L, 999L)) {
             val f = Fixture(); f.menu = true; f.screenshot = true

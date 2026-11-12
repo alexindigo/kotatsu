@@ -22,9 +22,9 @@ class HomeKeyFilterInstrumentedTest {
     private val ui = PlatformUiDriver(instrumentation)
     private val overlay = PlatformUiDriver(instrumentation, context.getString(R.string.recent_apps))
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
-    private fun shell(command: String) = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+    private fun shell(command: String) =
         instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-            .executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
+            .boundedShell(command)
 
     private fun hardwareHome(count: Int = 1, scan: Int = 172) {
         // InputManager's shell keyevent injection skips InputReader's accessibility filter.

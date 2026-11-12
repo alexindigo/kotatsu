@@ -1,7 +1,6 @@
 package com.gezimos.katapult
 
 import android.content.Intent
-import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.lockscreen.LockscreenWidgetService
@@ -36,9 +35,9 @@ internal class RecentOverlayFixture : AutoCloseable {
             ui.await("Action Service did not connect", 15000) { HomeKeyFilterState.active && instance.get(null) != null }
         } catch (failure: Throwable) { close(); throw failure }
     }
-    fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
+    fun shell(command: String): String =
         instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-            .executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
+            .boundedShell(command)
     fun settings() {
         // One cross-app handoff can stamp the old app's pause and Settings' resume
         // in the same millisecond. Settle Settings first, then enter Display in a

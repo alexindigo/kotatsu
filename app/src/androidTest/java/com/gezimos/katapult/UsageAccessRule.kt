@@ -2,7 +2,6 @@ package com.gezimos.katapult
 
 import android.app.AppOpsManager
 import android.app.UiAutomation
-import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
@@ -33,9 +32,8 @@ class UsageAccessRule : TestRule {
                     AppOpsManager.MODE_FOREGROUND -> "foreground"
                     else -> error("Unsupported usage AppOp mode $value")
                 }
-                ParcelFileDescriptor.AutoCloseInputStream(instrumentation.getUiAutomation(
-                    UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES).executeShellCommand(
-                    "appops set ${context.packageName} GET_USAGE_STATS $name")).bufferedReader().use { it.readText() }
+                instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+                    .boundedShell("appops set ${context.packageName} GET_USAGE_STATS $name")
                 val deadline = SystemClock.uptimeMillis() + 5000
                 while (mode() != value && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(25)
                 check(mode() == value) { "Usage AppOp did not become $name" }

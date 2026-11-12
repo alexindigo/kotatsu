@@ -3,7 +3,6 @@ package com.gezimos.katapult
 import android.app.KeyguardManager
 import android.app.UiAutomation
 import android.hardware.display.DisplayManager
-import android.os.ParcelFileDescriptor
 import android.os.PowerManager
 import android.os.SystemClock
 import android.view.Display
@@ -22,8 +21,7 @@ class NativeKeyguardFixture(private val unlockBeforeClear: NativeKeyguardFixture
     private val disabled = shell("locksettings get-disabled")
     private var pinSet = false
 
-    private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(
-        automation.executeShellCommand(NativeFixtureCommand.checked(command))).bufferedReader().use { it.readText().trim() }
+    private fun shell(command: String) = automation.boundedShell(NativeFixtureCommand.checked(command))
 
     private fun await(message: String, ready: () -> Boolean) {
         val end = SystemClock.elapsedRealtime() + 15_000

@@ -42,8 +42,7 @@ class ScreenshotInstrumentedTest {
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
     private val ui = PlatformUiDriver(instrumentation)
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
-    private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command))
-        .bufferedReader().use { it.readText().trim() }
+    private fun shell(command: String) = automation.boundedShell(command)
     private fun capture(name: String) {
         val bitmap = automation.takeScreenshot()
         png(bitmap, name)
