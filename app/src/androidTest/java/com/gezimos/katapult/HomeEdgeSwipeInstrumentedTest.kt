@@ -114,6 +114,19 @@ class HomeEdgeSwipeInstrumentedTest {
         ui.await("Widget return did not close side screen") { ui.has(context.getString(R.string.all_apps)) }
     }
 
+    @Test fun homeRequestClosesSideScreenWithoutPausingTheActivity() = withHome { model, _, activity ->
+        for (edge in ScreenEdge.entries) {
+            model.prefs.edgeActions.setAction(edge, EdgeAction.SIDE_SCREEN)
+            if (edge == ScreenEdge.LEFT) swipe(.005f, .65f) else swipe(.995f, .35f)
+            ui.await("Side screen did not open") { ui.has(context.getString(R.string.side_close)) }
+            instrumentation.runOnMainSync {
+                assertEquals(androidx.lifecycle.Lifecycle.State.RESUMED, activity.lifecycle.currentState)
+                model.onHomeIntent()
+            }
+            ui.await("HOME must close the side screen without a pause") { ui.has(context.getString(R.string.all_apps)) }
+        }
+    }
+
     @Test fun cameraAndNothingFollowBothEdgeSettingsAndTheMasterSwitch() = withHome { model, _, _ ->
         val normal = instrumentation.addMonitor(IntentFilter(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA),
             Instrumentation.ActivityResult(0, null), true)

@@ -116,7 +116,7 @@ fun HomeScreen(
     var showMenu by remember { mutableStateOf(false) }
     var pickerSlot by remember { mutableStateOf<String?>(null) }
     val policyRefresh = viewModel.policyRefresh
-    var sideEdge by remember { mutableStateOf<ScreenEdge?>(null) }
+    var sideEdge by remember(viewModel.sheetDismissSignal) { mutableStateOf<ScreenEdge?>(null) }
     sideEdge?.let { edge ->
         HomeSideScreen(viewModel.prefs.lockscreenWidgetStore.screens().first(), edge) { sideEdge = null }
         return
