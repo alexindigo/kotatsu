@@ -127,6 +127,9 @@ class ScreenshotInstrumentedTest {
         else -> null
     }
 
+    private fun capturePreview(service: LockscreenWidgetService, wm: WindowManager) =
+        ScreenshotPreviewWindow(service, ControlledPreviewExpiry(), wm)
+
     @Test fun lockScreenNotificationWidgetStaysLightInBothThemes() = withService { service, activity ->
         val prefs = com.gezimos.katapult.util.PrefsManager(context)
         val build = LockscreenWidgetService::class.java.getDeclaredMethod("buildWidget", List::class.java, Int::class.javaPrimitiveType)
@@ -158,10 +161,14 @@ class ScreenshotInstrumentedTest {
         }
         ui.await("Origin app missing") { ui.has("Brightness level") }
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
-        val window = ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), wm)
+        val expiry = ControlledPreviewExpiry()
+        val window = ScreenshotPreviewWindow(service, expiry, wm)
         val sample = Bitmap.createBitmap(48, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
         try {
             main { window.saved(sample) }
+            // The appearance/capture fixture deliberately outlives the real production deadline.
+            SystemClock.sleep(ScreenshotPreviewWindow.DURATION_MS + 100)
+            assertTrue("Capture fixture must still own its preview", wm.view!!.isAttachedToWindow)
             for (dark in listOf(false, true)) {
                 main { prefs.themeMode = if (dark) com.gezimos.katapult.util.PrefsManager.THEME_DARK else com.gezimos.katapult.util.PrefsManager.THEME_LIGHT }
                 val palette = if (dark) com.gezimos.katapult.ui.PaperPalette.Dark(context) else com.gezimos.katapult.ui.PaperPalette.Light(context)
@@ -172,7 +179,9 @@ class ScreenshotInstrumentedTest {
                 val prefix = InstrumentationRegistry.getArguments().getString("appearanceCapturePrefix", "appearance")
                 capture("$prefix-${if (dark) "dark" else "light"}-screenshot-preview.png")
             }
-        } finally { main { window.close() }; sample.recycle() }
+            main { expiry.expireNow() }
+            ui.await("Controlled expiry did not remove the preview") { !wm.view!!.isAttachedToWindow }
+        } finally { main { window.close(); expiry.close() }; sample.recycle() }
     }
 
     @Test fun previewHasOneWindowReplacesInPlaceAndExpiresThreeSecondsAfterLatestResult() = withService { service, _ ->
@@ -238,7 +247,7 @@ class ScreenshotInstrumentedTest {
         try {
             main {
                 pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true },
-                    ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), wm)) { bitmap ->
+                    capturePreview(service, wm)) { bitmap ->
                     assertNotEquals(Looper.getMainLooper(), Looper.myLooper())
                     assertNotEquals(Bitmap.Config.HARDWARE, bitmap.config)
                     if (calls.incrementAndGet() == 1) { firstSave.countDown(); assertTrue(release.await(10, TimeUnit.SECONDS)) }
@@ -266,7 +275,7 @@ class ScreenshotInstrumentedTest {
             SystemClock.sleep(400)
             main {
                 pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true },
-                    ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), late)) {
+                    capturePreview(service, late)) {
                     started.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); completed.countDown()
                 }
                 pipeline.capture()
@@ -287,7 +296,7 @@ class ScreenshotInstrumentedTest {
         try {
             main {
                 pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true },
-                    ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), wm)) {
+                    capturePreview(service, wm)) {
                     calls.incrementAndGet(); throw FileNotFoundException("ENOSPC")
                 }
                 cleanup = pipeline::close
