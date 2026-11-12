@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 
 /** Actual provider -> RemoteViews -> host ImageView, with all fixture-owned state restored. */
-internal class WeatherHostFixture : AutoCloseable {
+internal class WeatherHostFixture(private val drainIngress: (HeldRefreshIngress) -> Unit = { it.drain() }) : AutoCloseable {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val context = instrumentation.targetContext
     private val prefs = context.getSharedPreferences("weather", 0)
@@ -85,18 +85,19 @@ internal class WeatherHostFixture : AutoCloseable {
     }
 
     override fun close() {
-        val ingress = HeldRefreshIngress()
-        instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
-        WeatherStore(context).delete(id)
-        ingress.drain()
-        instrumentation.uiAutomation.dropShellPermissionIdentity()
-        val edit = prefs.edit()
-        (prefs.all.keys - before.keys).forEach(edit::remove)
-        before.forEach { (key, value) -> if (value is String) edit.putString(key, value) }
-        assertTrue(edit.commit())
-        assertEquals(before, prefs.all)
-        assertEquals(initialIds, host.appWidgetIds.toSet())
-        ingress.close()
-        RefreshJobService.fetcher = previousFetcher
+        try {
+            HeldRefreshIngress().use {
+                instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
+                WeatherStore(context).delete(id)
+                drainIngress(it)
+                instrumentation.uiAutomation.dropShellPermissionIdentity()
+                val edit = prefs.edit()
+                (prefs.all.keys - before.keys).forEach(edit::remove)
+                before.forEach { (key, value) -> if (value is String) edit.putString(key, value) }
+                assertTrue(edit.commit())
+                assertEquals(before, prefs.all)
+                assertEquals(initialIds, host.appWidgetIds.toSet())
+            }
+        } finally { RefreshJobService.fetcher = previousFetcher }
     }
 }
