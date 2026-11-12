@@ -369,9 +369,10 @@ fun SettingsScreen(
         onEnabled = { requested ->
             val serviceOn = LockscreenWidgetService.isEnabled(context)
             viewModel.observeActionService(serviceOn)
-            if (!requested || serviceOn) edgeStore.enabled = requested
-            else viewModel.requestActionService(AccessibilityFeature.EDGE_SWIPES)
-        }, onHomeEnabled = { edgeStore.homeEnabled = it }, onAction = edgeStore::setAction,
+            edgeStore.enabled = requested
+            if (requested && !serviceOn) viewModel.requestActionService(AccessibilityFeature.EDGE_SWIPES)
+        },
+        onHomeEnabled = { edgeStore.homeEnabled = it }, onAction = edgeStore::setAction,
         onSideScreen = { navigation.push("side-screen") })
     val screensaver = screensaverCategory(screensaverEnabled, screensaverShowClock, screensaverShowNotifications,
         screensaverEinkRefresh, screensaverWallpaper, screensaverWallpaperPath != null,

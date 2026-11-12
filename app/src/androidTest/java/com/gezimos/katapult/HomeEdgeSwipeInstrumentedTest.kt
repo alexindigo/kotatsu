@@ -127,6 +127,59 @@ class HomeEdgeSwipeInstrumentedTest {
         }
     }
 
+    @Test fun settingsCanEnableHomeEdgesWithoutActionService() = withHome { model, _, _ ->
+        assertFalse("This test requires Action Service off", LockscreenWidgetService.isEnabled(context))
+        // Exercise the production Kompakt-only settings route on the stock emulator.
+        val deviceModel = android.os.Build::class.java.getDeclaredField("MODEL").apply { isAccessible = true }
+        val previousModel = deviceModel.get(null)
+        deviceModel.set(null, "Kompakt")
+        try {
+            instrumentation.runOnMainSync {
+                model.prefs.edgeActions.enabled = false
+                model.observeActionService(true) // A switch must reconcile even a stale service observation.
+                model.settingsPageRequest = "edges"
+                model.navigateTo(Screen.SETTINGS)
+            }
+            ui.await("Actual edge settings did not open") { ui.has(context.getString(R.string.edge_home_enabled)) }
+            fun toggleMaster() {
+                val toggle = ui.findAncestor(context.getString(R.string.edge_swipes_help)) { it.isCheckable }
+                assertNotNull("Master edge switch missing", toggle)
+                assertTrue(toggle!!.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+            }
+            toggleMaster()
+            ui.await("Master edge switch must persist without Action Service") { model.prefs.edgeActions.enabled }
+            ui.await("Enabling edges must still guide lock-screen setup") {
+                model.actionServiceSetup?.feature == com.gezimos.katapult.util.AccessibilityFeature.EDGE_SWIPES &&
+                    ui.has(context.getString(R.string.a11y_setup_title))
+            }
+            assertFalse("Switch must refresh the service observation", model.actionServiceNotice.serviceOn)
+            assertFalse(LockscreenWidgetService.isEnabled(context))
+            ui.back()
+            ui.await("Dismiss setup without disabling Home edges") {
+                model.actionServiceSetup == null && ui.has(context.getString(R.string.edge_home_enabled))
+            }
+            assertTrue(model.prefs.edgeActions.enabled)
+            toggleMaster()
+            ui.await("Master edge switch must turn Off") { !model.prefs.edgeActions.enabled }
+            instrumentation.waitForIdleSync()
+            assertNull("Turning edges Off must never request service setup", model.actionServiceSetup)
+            assertFalse(ui.has(context.getString(R.string.a11y_setup_title)))
+            toggleMaster()
+            ui.await("Turning edges back On must persist and request setup") {
+                model.prefs.edgeActions.enabled &&
+                    model.actionServiceSetup?.feature == com.gezimos.katapult.util.AccessibilityFeature.EDGE_SWIPES &&
+                    ui.has(context.getString(R.string.a11y_setup_title))
+            }
+            ui.back()
+            ui.await("Setup did not dismiss") { model.actionServiceSetup == null }
+            instrumentation.runOnMainSync { model.onHomeIntent() }
+            ui.await("Home not restored") { ui.has(context.getString(R.string.all_apps)) }
+            model.prefs.edgeActions.setAction(ScreenEdge.LEFT, EdgeAction.SIDE_SCREEN)
+            swipe(.005f, .65f)
+            ui.await("Home edge must work without Action Service") { ui.has(context.getString(R.string.side_close)) }
+        } finally { deviceModel.set(null, previousModel) }
+    }
+
     @Test fun cameraAndNothingFollowBothEdgeSettingsAndTheMasterSwitch() = withHome { model, _, _ ->
         val normal = instrumentation.addMonitor(IntentFilter(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA),
             Instrumentation.ActivityResult(0, null), true)
