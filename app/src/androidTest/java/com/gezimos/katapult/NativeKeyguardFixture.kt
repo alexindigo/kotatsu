@@ -12,7 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 
 /** Owns native wake/input readiness and, when requested, the isolated emulator's PIN/policy. */
-class NativeKeyguardFixture : AutoCloseable {
+class NativeKeyguardFixture(private val unlockBeforeClear: NativeKeyguardFixture.() -> Unit = { unlock() }) : AutoCloseable {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
@@ -104,12 +104,15 @@ class NativeKeyguardFixture : AutoCloseable {
         fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
         } }
-        restore {
-            if (pinSet) {
-                if (keyguard.isKeyguardLocked) unlock()
+        if (pinSet) {
+            restore { if (keyguard.isKeyguardLocked) unlockBeforeClear() }
+            restore {
                 assertEquals("Lock credential cleared", shell("su 0 locksettings clear --old 2468"))
                 await("PIN credential restored") { !keyguard.isDeviceSecure }
                 pinSet = false
+                // SystemUI can retain the old PIN bouncer after LockSettings clears its
+                // credential. A new wake reconciles that window with the restored policy.
+                sleep()
             }
         }
         restore {

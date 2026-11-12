@@ -9,6 +9,23 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NativeKeyguardFixtureInstrumentedTest {
+    @Test fun failedUnlockStillClearsOwnedPinAndPreservesFailure() {
+        val keyguard = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(KeyguardManager::class.java)
+        val expected = AssertionError("Injected unlock failure")
+        var failUnlock = true
+        val fixture = NativeKeyguardFixture {
+            if (failUnlock) { failUnlock = false; throw expected }
+            unlock()
+        }
+        try {
+            fixture.setPin()
+            fixture.sleep()
+            fixture.showPin()
+            assertSame(expected, runCatching { fixture.close() }.exceptionOrNull())
+            assertFalse("Teardown must clear its PIN even when unlock fails", keyguard.isDeviceSecure)
+        } finally { fixture.close() }
+    }
+
     @Test fun automationCommandsRejectShellSeparatorsRatherThanInjectingExtraKeys() {
         val command = "input keyevent KEYCODE_WAKEUP"
         assertEquals(command, NativeFixtureCommand.checked(command))
