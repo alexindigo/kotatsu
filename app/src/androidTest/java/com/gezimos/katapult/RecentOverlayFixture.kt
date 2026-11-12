@@ -71,14 +71,20 @@ internal class RecentOverlayFixture : AutoCloseable {
     fun focusedWindow(): String = shell("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }.trim()
     override fun close() {
         try {
-            shell(if (enabled == "null") "settings delete secure enabled_accessibility_services" else "settings put secure enabled_accessibility_services $enabled")
-            shell(if (accessibility == "null") "settings delete secure accessibility_enabled" else "settings put secure accessibility_enabled $accessibility")
+            try { restoreSecureSetting("enabled_accessibility_services", enabled, ::shell) }
+            finally { restoreSecureSetting("accessibility_enabled", accessibility, ::shell) }
             ui.await("Action Service did not unbind", 15000) { !HomeKeyFilterState.active }
             ui.await("Unbind left Recent apps attached") { !overlay.windowVisible() }
+            ui.await("Accessibility settings did not restore") {
+                shell("settings get secure enabled_accessibility_services") == enabled &&
+                    shell("settings get secure accessibility_enabled") == accessibility
+            }
             awaitActionServiceSettingsPersisted(enabled, ::shell)
         } finally {
-            if (::home.isInitialized) instrumentation.runOnMainSync { home.finish() }
-            prefs.edit().apply { before.forEach { (key, value) -> if (value == null) remove(key) else putBoolean(key, value as Boolean) } }.commit()
+            try { if (::home.isInitialized) instrumentation.runOnMainSync { home.finish() } }
+            finally {
+                prefs.edit().apply { before.forEach { (key, value) -> if (value == null) remove(key) else putBoolean(key, value as Boolean) } }.commit()
+            }
         }
     }
 }

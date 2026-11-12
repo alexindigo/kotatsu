@@ -5,6 +5,15 @@ import android.content.ComponentName
 import android.util.Xml
 import org.xmlpull.v1.XmlPullParser
 
+/** UiAutomation splits argv itself, so shell quotes would become literal setting data. */
+internal fun restoreSecureSetting(key: String, original: String, shell: (String) -> String) {
+    shell(when (original) {
+        "null" -> "settings delete secure $key"
+        "" -> "content call --uri content://settings/secure --method PUT_secure --arg $key --extra value:s:"
+        else -> "settings put secure $key $original"
+    })
+}
+
 /** SettingsProvider readback is cached; a fixture must also leave its owned service disabled on
  * the next emulator boot. Observe the persisted record before the gate stops the runtime. */
 internal fun awaitActionServiceSettingsPersisted(original: String, shell: (String) -> String) {

@@ -174,11 +174,9 @@ class HomeKeyFilterInstrumentedTest {
             } finally {
                 try {
                     try {
-                        if (enabled == "null") shell("settings delete secure enabled_accessibility_services")
-                        else shell("settings put secure enabled_accessibility_services $enabled")
+                        restoreSecureSetting("enabled_accessibility_services", enabled, ::shell)
                     } finally {
-                        if (accessibility == "null") shell("settings delete secure accessibility_enabled")
-                        else shell("settings put secure accessibility_enabled $accessibility")
+                        restoreSecureSetting("accessibility_enabled", accessibility, ::shell)
                     }
                     ui.await("Key-filter active state leaked after unbind", 15000) { !HomeKeyFilterState.active }
                     awaitActionServiceSettingsPersisted(enabled, ::shell)
