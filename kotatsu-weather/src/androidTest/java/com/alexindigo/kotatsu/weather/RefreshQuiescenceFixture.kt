@@ -63,7 +63,7 @@ internal class HeldRefreshIngress(
     private val held = ConcurrentHashMap.newKeySet<Thread>()
     private val staged = mutableListOf<Thread>()
     private val replies = ConcurrentHashMap<Thread, String>()
-    private val failures = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
+    private val failures = RefreshDrainFailures()
     private var drained = false
 
     init {
@@ -131,7 +131,7 @@ internal class HeldRefreshIngress(
         assertTrue("Competing reply cannot finish inside DOWN publication", thread.isAlive)
     }
 
-    internal fun workerFailed(error: Throwable) { failures.add(error) }
+    internal fun workerFailed(error: Throwable) { failures.record(error) }
 
     fun drain() {
         if (drained) return
@@ -140,18 +140,19 @@ internal class HeldRefreshIngress(
         // Cancellation can return before onStopJob/onDestroy or a fetch's final status write.
         // Observe service destruction (executor.shutdownNow) AND the end of every refresh
         // stack, including the worker's jobFinished/reconcile post, before restoring state.
-        await("Refresh service/worker did not finish before fixture restoration") {
-            // Android O+ keeps this public debug API for the caller's own services.
-            @Suppress("DEPRECATION")
-            val services = context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE)
-            services.none { it.service.className == RefreshJobService::class.java.name } &&
-                Thread.getAllStackTraces().values.none(::worker)
+        failures.drain {
+            await("Refresh service/worker did not finish before fixture restoration") {
+                // Android O+ keeps this public debug API for the caller's own services.
+                @Suppress("DEPRECATION")
+                val services = context.getSystemService(ActivityManager::class.java).getRunningServices(Int.MAX_VALUE)
+                services.none { it.service.className == RefreshJobService::class.java.name } &&
+                    Thread.getAllStackTraces().values.none(::worker)
+            }
+            instrumentation.waitForIdleSync()
+            WeatherRuntime.cancel(context)
+            staged.forEach { it.join(5000); assertFalse("Controlled refresh worker finished", it.isAlive) }
+            instrumentation.waitForIdleSync()
         }
-        instrumentation.waitForIdleSync()
-        WeatherRuntime.cancel(context)
-        staged.forEach { it.join(5000); assertFalse("Controlled refresh worker finished", it.isAlive) }
-        instrumentation.waitForIdleSync()
-        failures.peek()?.let { throw AssertionError("Controlled refresh worker failed", it) }
         drained = true
     }
 
@@ -160,5 +161,24 @@ internal class HeldRefreshIngress(
         // fixture state. A failed teardown must fail the run, not silently leak a late writer.
         drain()
         RefreshJobService.fetcher = previous
+    }
+}
+
+/** Collect worker errors independently of native quiescence, including when that wait fails. */
+internal class RefreshDrainFailures {
+    private val workers = java.util.concurrent.ConcurrentLinkedQueue<Throwable>()
+
+    fun record(error: Throwable) { workers.add(error) }
+
+    fun drain(quiesce: () -> Unit) {
+        val quiescence = runCatching(quiesce).exceptionOrNull()
+        val recorded = workers.toList()
+        if (quiescence == null && recorded.isEmpty()) return
+        val cause = recorded.firstOrNull() ?: quiescence!!
+        throw AssertionError(if (quiescence == null) "Controlled refresh worker failed"
+            else "Refresh ingress did not quiesce", cause).apply {
+            recorded.drop(1).forEach(::addSuppressed)
+            if (quiescence != null && quiescence !== cause) addSuppressed(quiescence)
+        }
     }
 }

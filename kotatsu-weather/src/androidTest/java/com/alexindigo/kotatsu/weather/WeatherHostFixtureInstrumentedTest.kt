@@ -26,6 +26,59 @@ class WeatherHostFixtureInstrumentedTest {
 
     @Test fun failedBodyAndCloseKeepIngressClosedAndPreserveBothFailures() = assertFailedClose(true)
 
+    @Test fun multipleWorkerFailuresAreAllReportedByRealDrain() {
+        val original = RefreshJobService.fetcher
+        val first = AssertionError("First controlled worker failed")
+        val second = AssertionError("Second controlled worker failed")
+        try {
+            RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture response") }
+            var heldFetcher: ((Location, Boolean, String) -> String)? = null
+            val fixture = WeatherHostFixture { ingress ->
+                heldFetcher = RefreshJobService.fetcher
+                ingress.workerFailed(first)
+                ingress.workerFailed(second)
+            }
+            val failure = runCatching { fixture.close() }.exceptionOrNull()!!
+            assertSame(first, failure.cause)
+            assertEquals(listOf(second), failure.suppressed.toList())
+            assertSame("Any worker failure keeps ingress held", heldFetcher, RefreshJobService.fetcher)
+        } finally {
+            RefreshJobService.fetcher = original
+            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
+        }
+    }
+
+    @Test fun bodyQuiescenceAndEveryWorkerFailureArePreserved() {
+        val first = AssertionError("First worker failure")
+        val second = AssertionError("Second worker failure")
+        val quiescence = AssertionError("Native service remains bound")
+        val body = AssertionError("Body failed")
+        val errors = RefreshDrainFailures()
+        errors.record(first)
+        var restored = false
+        val held = AutoCloseable {
+            errors.drain {
+                // Also cover an error recorded while quiescence is being awaited.
+                errors.record(second)
+                throw quiescence
+            }
+            restored = true
+        }
+        val failure = runCatching { held.use { throw body } }.exceptionOrNull()!!
+        assertSame(body, failure)
+        val drain = failure.suppressed.single()
+        assertSame(first, drain.cause)
+        assertEquals(listOf(second, quiescence), drain.suppressed.toList())
+        assertFalse("Failed quiescence must not reach restoration", restored)
+    }
+
+    @Test fun quiescenceFailureWithoutWorkerErrorsHasANonNullCause() {
+        val quiescence = AssertionError("Native service remains bound")
+        val failure = runCatching { RefreshDrainFailures().drain { throw quiescence } }.exceptionOrNull()!!
+        assertSame(quiescence, failure.cause)
+        assertTrue(failure.suppressed.isEmpty())
+    }
+
     private fun assertFailedClose(failBody: Boolean) {
         val original = RefreshJobService.fetcher
         try {
