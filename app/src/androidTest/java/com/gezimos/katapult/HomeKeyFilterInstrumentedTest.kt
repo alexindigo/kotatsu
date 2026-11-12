@@ -145,10 +145,14 @@ class HomeKeyFilterInstrumentedTest {
             }
             val defaultHome = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
                 android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)!!.activityInfo.packageName
-            val start = SystemClock.uptimeMillis()
+            val singleMarker = "SINGLE HOME ${SystemClock.uptimeMillis()}"
+            android.util.Log.i("KotatsuHomeProbe", singleMarker)
             hardwareHome()
             ui.await("Single key did not reach Home") { ui.packageVisible(defaultHome) }
-            assertTrue("Single Home must wait for its timer", SystemClock.uptimeMillis() - start >= 450)
+            val singleTrace = shell("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(singleMarker)
+            val down = checkNotNull(Regex("eventTime=([0-9]+) action=0 consumed=true").find(singleTrace)).groupValues[1].toLong()
+            val dispatched = checkNotNull(Regex("path=key single uptime=([0-9]+)").find(singleTrace)).groupValues[1].toLong()
+            assertTrue("Single Home must wait from native DOWN, not device discovery", dispatched - down >= 500)
             SystemClock.sleep(600)
             main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
