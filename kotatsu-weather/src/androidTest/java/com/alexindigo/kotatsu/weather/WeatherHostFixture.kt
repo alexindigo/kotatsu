@@ -85,10 +85,10 @@ internal class WeatherHostFixture : AutoCloseable {
     }
 
     override fun close() {
-        WeatherRuntime.cancel(context)
+        val ingress = HeldRefreshIngress()
         instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
         WeatherStore(context).delete(id)
-        RefreshJobService.fetcher = previousFetcher
+        ingress.drain()
         instrumentation.uiAutomation.dropShellPermissionIdentity()
         val edit = prefs.edit()
         (prefs.all.keys - before.keys).forEach(edit::remove)
@@ -96,5 +96,7 @@ internal class WeatherHostFixture : AutoCloseable {
         assertTrue(edit.commit())
         assertEquals(before, prefs.all)
         assertEquals(initialIds, host.appWidgetIds.toSet())
+        ingress.close()
+        RefreshJobService.fetcher = previousFetcher
     }
 }

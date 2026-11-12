@@ -487,7 +487,7 @@ class SideScreenInstrumentedTest {
         assertFalse("Requires the isolated emulator's credential-free starting state", keyguard.isDeviceSecure)
         val enabled = shell("settings get secure enabled_accessibility_services")
         val accessibility = shell("settings get secure accessibility_enabled")
-        val disabled = shell("locksettings get-disabled")
+        val nativeKeyguard = com.gezimos.katapult.NativeKeyguardFixture()
         val instance = LockscreenWidgetService::class.java.getDeclaredField("instance").apply { isAccessible = true }
         val launchField = LockscreenWidgetService::class.java.getDeclaredField("widgetLaunch").apply { isAccessible = true }
         var service: LockscreenWidgetService? = null
@@ -495,7 +495,6 @@ class SideScreenInstrumentedTest {
         var launch: WidgetActivityLaunch? = null
         var page: EdgePageWindow? = null
         var inspection: AndroidLockscreenInspection? = null
-        var pinSet = false
         var sends = 0
         var pageRemoved = false
         var failure: Throwable? = null
@@ -523,16 +522,7 @@ class SideScreenInstrumentedTest {
         fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
         } }
-        fun pinVisible() = automation().findFocus(android.view.accessibility.AccessibilityNodeInfo.FOCUS_INPUT)
-            ?.let { it.packageName?.toString() == "com.android.systemui" && it.className?.contains("EditText") == true } == true
-        fun unlock() {
-            shell("input keyevent KEYCODE_WAKEUP")
-            ui.await("Wake did not expose the keyguard input destination") { power.isInteractive && (pinVisible() || ui.packageVisible("com.android.systemui")) }
-            if (!pinVisible()) shell("input swipe 240 680 240 120 250")
-            ui.await("Native PIN input absent") { pinVisible() }
-            shell("input text 2468"); shell("input keyevent KEYCODE_ENTER")
-            ui.await("Native credential did not unlock") { !keyguard.isKeyguardLocked }
-        }
+        fun pinVisible() = nativeKeyguard.pinVisible()
         fun gateAlive(): Boolean {
             var alive = false
             main { alive = listOf(androidx.test.runner.lifecycle.Stage.RESUMED, androidx.test.runner.lifecycle.Stage.STARTED,
@@ -544,11 +534,7 @@ class SideScreenInstrumentedTest {
         WidgetHostTestFixture(context).use { fixture ->
             val id = fixture.bind(fixture.providers.singleProvider(instrumentation.context.packageName))
             try {
-                pinSet = true
-                assertEquals("Pin set to '2468'", shell("su 0 locksettings set-pin 2468"))
-                ui.await("Fixture PIN is not secure in both credential and keyguard services") {
-                    keyguard.isDeviceSecure && keyguard.isKeyguardSecure
-                }
+                nativeKeyguard.setPin()
                 val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
                 shell("settings put secure enabled_accessibility_services ${if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component"}")
                 shell("settings put secure accessibility_enabled 1")
@@ -575,9 +561,9 @@ class SideScreenInstrumentedTest {
                 }
                 fun open() {
                     main { pageRemoved = false }
-                    shell("input keyevent KEYCODE_SLEEP")
+                    nativeKeyguard.sleep()
                     ui.await("Fixture screen did not sleep") { !power.isInteractive }
-                    shell("input keyevent KEYCODE_WAKEUP")
+                    nativeKeyguard.wake()
                     ui.await("Fixture keyguard not locked/awake") { power.isInteractive && keyguard.isKeyguardLocked }
                     ui.await("Fixture keyguard not observed bare") { var bare = false; main { bare = !inspection!!.covered() }; bare }
                     main { page!!.settle(ScreenEdge.LEFT) }
@@ -607,7 +593,7 @@ class SideScreenInstrumentedTest {
                 main { assertEquals(1, sends); assertTrue(page!!.opened) }
                 assertTrue(keyguard.isKeyguardLocked); assertFalse(pinVisible()); assertFalse(gateAlive())
                 ui.click("Hosted item 0")
-                routed(); unlock()
+                routed(); nativeKeyguard.unlock()
                 ui.await("Original collection fill-in did not reach visible target") { ui.has("Payload: row-0") && ui.has("Deliveries: 1") }
                 ui.await("Successful gate retained its Activity") { !gateAlive() }
                 main { assertEquals(2, sends) }
@@ -622,21 +608,16 @@ class SideScreenInstrumentedTest {
                 open()
                 ui.await("Cancelled launch was resent or not delivered") { ui.has("Launches 2") }
                 ui.click("Hosted item 0"); routed()
-                shell("input keyevent KEYCODE_SLEEP")
+                nativeKeyguard.sleep()
                 ui.await("Screen-off cancellation did not finish gate") { !power.isInteractive && !gateAlive() }
                 main { assertFalse(page!!.opened); assertEquals(4, sends) }
-                unlock()
+                nativeKeyguard.unlock()
                 ui.await("Cancellation did not return HOME underneath keyguard") { ui.packageVisible(home) }
             } catch (error: Throwable) { failure = error }
             finally {
                 restore { main { lifecycle.removeLifecycleCallback(focusProbe) } }
                 restore { main { page?.close(); launch?.close(); inspection?.close(); if (service != null) launchField.set(service, original) } }
-                restore {
-                    if (pinSet && keyguard.isKeyguardLocked) unlock()
-                    if (pinSet) assertEquals("Lock credential cleared", shell("su 0 locksettings clear --old 2468"))
-                    assertFalse(keyguard.isDeviceSecure)
-                }
-                restore { shell("locksettings set-disabled $disabled"); shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard") }
+                restore { nativeKeyguard.close(); assertFalse(keyguard.isDeviceSecure) }
                 restore {
                     // Remove the test counterpart's retained task after cancellation, from unlocked UI.
                     context.startActivity(Intent().setComponent(android.content.ComponentName(instrumentation.context.packageName, SideTestTarget::class.java.name))

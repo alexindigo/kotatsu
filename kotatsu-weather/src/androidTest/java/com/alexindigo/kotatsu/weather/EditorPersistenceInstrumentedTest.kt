@@ -12,6 +12,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*
 import org.junit.Test
+import org.junit.Rule
 import org.junit.runner.RunWith
 import androidx.test.espresso.Espresso.onView
 import androidx.test.espresso.action.ViewActions.*
@@ -21,6 +22,8 @@ import androidx.test.espresso.matcher.RootMatchers.isDialog
 /** Real editor instances over a bound provider, including Android saved-state recreation. */
 @RunWith(AndroidJUnit4::class)
 class EditorPersistenceInstrumentedTest {
+    private val refreshFixture = RefreshQuiescenceFixture()
+    @get:Rule val refresh: org.junit.rules.TestRule = refreshFixture
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val store get() = WeatherStore(context)
@@ -44,7 +47,7 @@ class EditorPersistenceInstrumentedTest {
             addCurrentThroughUi(active)
             val current = store.config(id)!!.locations.single { it.label == "Here" }
             val clock = WidgetReconciler.currentClock()
-            val now = clock.instant()
+            val now = java.time.Instant.ofEpochMilli(clock.millis())
             val start = now.atZone(clock.zone).toLocalDate().atStartOfDay(clock.zone).toInstant()
             val forecast = Parsed.Valid(ForecastSeries((0..72).map { hour ->
                 HourSample(start.plusSeconds(hour * 3600L), 58.0, 2, null)
@@ -62,10 +65,17 @@ class EditorPersistenceInstrumentedTest {
                 val fahrenheit = store.config(id)!!.fahrenheit
                 accepted = forecasts.accept(current, fahrenheit, forecast, now, clock.zone)
                 failureWritten = forecasts.recordFailure(current, fahrenheit, RefreshOutcome.HTTP(503), now, clock.zone)
+                refreshFixture.attemptRefreshWhileHeld(current, fahrenheit,
+                    Parsed.Valid(forecast.series.copy(samples = forecast.series.samples.dropLast(1))), now.plusMillis(1), clock.zone)
                 rowsRetained = beforeFirst != null && beforeHere != null &&
                     beforeFirst === find(active.window.decorView, "First") &&
                     beforeHere === find(active.window.decorView, "Here")
-                val status = WeatherPresentation.editor(context, forecasts.snapshot(current, fahrenheit, clock.zone), clock.zone)
+                // Compare the consumer with the one revision this publication owns, never
+                // a second mutable global-store read after an independent worker can write.
+                val injected = ForecastStore.Snapshot(forecast.series.copy(fetchedAt = now),
+                    RefreshPolicy.after(RefreshStatus(lastSuccessAt = now, lastAttemptAt = now, lastOutcome = RefreshOutcome.OK), RefreshOutcome.HTTP(503), now))
+                assertEquals(injected, forecasts.snapshot(current, fahrenheit, clock.zone))
+                val status = WeatherPresentation.editor(context, injected, clock.zone)
                 statusRebound = find(active.window.decorView, status) != null &&
                     status.contains(context.getString(R.string.refresh_server_error, 503)) &&
                     status.contains(WeatherPresentation.lastUpdated(context, now, clock.zone))

@@ -64,20 +64,17 @@ class LockscreenEpochInstrumentedTest {
     @Test fun sleepWakeWithPinNeverShowsAnUnobservedOverlay() {
         val enabled = shell("settings get secure enabled_accessibility_services").trim()
         val accessibility = shell("settings get secure accessibility_enabled").trim()
-        val disabled = shell("locksettings get-disabled").trim()
+        val nativeKeyguard = com.gezimos.katapult.NativeKeyguardFixture()
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         assertFalse("Fixture must start without a credential", context.getSystemService(KeyguardManager::class.java).isDeviceSecure)
-        var pinSet = false
         var failure: Throwable? = null
         fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
         } }
         try {
             PrefsManager(context).lockscreenMessage = "Epoch test"
-            pinSet = true
-            assertEquals("Pin set to '2468'", shell("su 0 locksettings set-pin 2468").trim())
-            await("PIN credential active") { context.getSystemService(KeyguardManager::class.java).isDeviceSecure }
+            nativeKeyguard.setPin()
             val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
             val list = if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component"
             shell("settings put secure enabled_accessibility_services $list")
@@ -86,12 +83,12 @@ class LockscreenEpochInstrumentedTest {
             awaitActionServiceSettingsPersisted(component, ::shell)
             val service = service()!!
             val first = main { visibility(service).epoch }
-            shell("input keyevent KEYCODE_SLEEP")
+            nativeKeyguard.sleep()
             await("Screen off observed by service") {
                 !context.getSystemService(PowerManager::class.java).isInteractive && !main { visibility(service).visible }
             }
             assertFalse(main { visibility(service).visible })
-            shell("input keyevent KEYCODE_WAKEUP")
+            nativeKeyguard.wake()
             await("New screen-on epoch") { main { visibility(service).epoch > first } }
             // Some API31 images also expose notification_panel. A positive observation is allowed,
             // but neither a visible state nor an attached overlay may precede this epoch's proof.
@@ -108,7 +105,7 @@ class LockscreenEpochInstrumentedTest {
                 }
                 Thread.sleep(25)
             }
-            shell("input swipe 240 680 240 120 200")
+            nativeKeyguard.showPin()
             await("PIN pad input focused") {
                 val focus = automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
                 try { focus?.className?.contains("EditText") == true } finally { @Suppress("DEPRECATION") focus?.recycle() }
@@ -123,25 +120,7 @@ class LockscreenEpochInstrumentedTest {
         } catch (error: Throwable) {
             failure = error
         } finally {
-            restore {
-                // Clearing the stored credential does not dismiss an already displayed PIN bouncer.
-                // Unlock through that credential first, then remove it and restore the old policy.
-                if (pinSet && context.getSystemService(KeyguardManager::class.java).isKeyguardLocked) {
-                    shell("input keyevent KEYCODE_WAKEUP")
-                    shell("input keyevent KEYCODE_MENU")
-                    await("Restoration PIN input focused") {
-                        val focus = automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                        try { focus?.className?.contains("EditText") == true } finally { @Suppress("DEPRECATION") focus?.recycle() }
-                    }
-                    shell("input text 2468")
-                    shell("input keyevent KEYCODE_ENTER")
-                    await("Restoration unlocked keyguard") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
-                }
-                if (pinSet) assertEquals("Lock credential cleared", shell("su 0 locksettings clear --old 2468").trim())
-                await("PIN credential restored") { !context.getSystemService(KeyguardManager::class.java).isDeviceSecure }
-            }
-            restore { shell("locksettings set-disabled $disabled") }
-            restore { shell("input keyevent KEYCODE_WAKEUP"); shell("wm dismiss-keyguard") }
+            restore { nativeKeyguard.close() }
             for ((key, value) in listOf("enabled_accessibility_services" to enabled, "accessibility_enabled" to accessibility)) {
                 restore {
                 shell(if (value == "null") "settings delete secure $key" else "settings put secure $key $value")
@@ -155,7 +134,6 @@ class LockscreenEpochInstrumentedTest {
             assertTrue(edit.commit())
             }
             restore {
-            assertEquals(disabled, shell("locksettings get-disabled").trim())
             await("Keyguard restored unlocked") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
             await("Service disconnected after restoration") { service() == null }
             }
