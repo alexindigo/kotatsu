@@ -14,14 +14,15 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 /** A non-focusable service page: the underlying Activity never leaves its task. */
-internal class RecentAppsOverlay(context: Context, private val handler: Handler, private val eligible: () -> Boolean) : AutoCloseable {
+internal class RecentAppsOverlay(context: Context, private val handler: Handler, private val eligible: () -> Boolean,
+    requestStop: (String) -> Unit, launching: (String) -> Unit) : AutoCloseable {
     private lateinit var closeForeground: (() -> Unit) -> Unit
     fun onForegroundClose(action: (() -> Unit) -> Unit) { closeForeground = action }
     private val heldKeys = mutableSetOf<Int>()
     private var pendingToggle = false
     private var pendingShow = false
     private var worker: ExecutorService? = null
-    private val model: RecentApps = RecentApps(AndroidRecentApps(context), context.packageName, ::hideWindow,
+    private val model: RecentApps = RecentApps(AndroidRecentApps(context, requestStop, launching), context.packageName, ::hideWindow,
         load = { action ->
             val executor = worker ?: Executors.newSingleThreadExecutor().also { worker = it }
             executor.execute(action)

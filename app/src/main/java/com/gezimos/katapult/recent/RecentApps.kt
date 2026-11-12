@@ -24,7 +24,9 @@ interface RecentAppsSource {
     fun openAccess(): Boolean
 }
 
-class AndroidRecentApps(private val context: Context) : RecentAppsSource {
+class AndroidRecentApps(private val context: Context,
+    private val requestStop: (String) -> Unit = { context.getSystemService(ActivityManager::class.java).killBackgroundProcesses(it) },
+    private val launching: (String) -> Unit = {}) : RecentAppsSource {
     private val store = context.getSharedPreferences("recent_apps", Context.MODE_PRIVATE)
     private val prefs = PrefsManager(context)
     override fun available() = UsageHelper.collectionAllowed(context)
@@ -40,13 +42,13 @@ class AndroidRecentApps(private val context: Context) : RecentAppsSource {
     }
     override fun closed() = store.all.mapNotNull { (key, value) -> (value as? Long)?.let { key to it } }.toMap()
     override fun close(packages: List<String>, at: Long) {
-        val manager = context.getSystemService(ActivityManager::class.java)
         val edit = store.edit()
-        packages.forEach { manager.killBackgroundProcesses(it); edit.putLong(it, at) }
+        packages.forEach { requestStop(it); edit.putLong(it, at) }
         edit.apply()
     }
     override fun launch(packageName: String) {
         context.packageManager.getLaunchIntentForPackage(packageName)?.let {
+            launching(packageName)
             context.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
     }

@@ -405,7 +405,11 @@ class LockscreenWidgetService :
         val delivery = AndroidEventDelivery(this)
         delivery.apply(delivery.currentInfo())
         HomeKeyFilterState.connected(this)
-        recentPage = RecentAppsOverlay(this, mainHandler, ::homeKeyEligible)
+        recentAppClose?.close()
+        val close = RecentAppClose(this, mainHandler)
+        recentAppClose = close
+        recentPage = RecentAppsOverlay(this, mainHandler, ::homeKeyEligible, close::requestStop, close::launching)
+        recentPage?.onForegroundClose(close::start)
         homeMenu = HomeMenuOverlay(this, mainHandler) { homeKeyEligible() && prefs.homeButtonMenu }
         screenshots = com.gezimos.katapult.screenshot.ScreenshotCapture(this, mainHandler, {
             homeKeyEligible() && prefs.homeButtonScreenshot
@@ -428,8 +432,6 @@ class LockscreenWidgetService :
                     else -> Unit
                 }
             }, { sidePage?.cancelPreview() }, { delta -> widgetsContent?.rotation?.swipe(delta) })
-        recentAppClose = RecentAppClose(this, mainHandler)
-        recentPage?.onForegroundClose { recentAppClose?.start(it) }
         SensitiveAccess.initialize(this)
         SensitiveAccess.accessibilityConnection(true)
         policySubscription = SensitiveAccess.subscribe { mainHandler.post { syncWeatherLease(); evaluate() } }
@@ -468,6 +470,7 @@ class LockscreenWidgetService :
 
     override fun onInterrupt() {
         homeMenu?.close()
+        recentAppClose?.cancel()
         homeKeys.close()
         recentPage?.close(); recentBackHeld = false
         screenshots?.clear()
@@ -526,6 +529,7 @@ class LockscreenWidgetService :
 
     override fun onUnbind(intent: Intent?): Boolean {
         homeMenu?.close()
+        recentAppClose?.close(); recentAppClose = null
         homeKeys.close()
         recentPage?.close(); recentBackHeld = false
         screenshots?.clear()

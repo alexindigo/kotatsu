@@ -1,14 +1,28 @@
 package com.gezimos.katapult.lockscreen
 
 import android.accessibilityservice.AccessibilityService
+import android.app.ActivityManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Handler
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityWindowInfo
+import com.gezimos.katapult.recent.BackgroundStopRequests
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
-/** Owns the bounded Home transition before a foreground app's background-stop request. */
+/** Owns the Home handoff and bounded, off-thread background-stop requests. */
 internal class RecentAppClose(private val service: AccessibilityService, private val handler: Handler) : AutoCloseable {
+    private var closed = false
+    private val worker = Executors.newSingleThreadScheduledExecutor()
+    private val stops = BackgroundStopRequests({ delay, action ->
+        val task = worker.schedule({ action() }, delay, TimeUnit.MILLISECONDS)
+        AutoCloseable { task.cancel(false) }
+    }, { packageName ->
+        service.getSystemService(ActivityManager::class.java).killBackgroundProcesses(packageName)
+    })
+    fun requestStop(packageName: String) = stops.request(packageName)
+    fun launching(packageName: String) = stops.cancel(packageName)
     private var pending: (() -> Unit)? = null
     private var home: String? = null
     private val delivery = AndroidEventDelivery.scoped(service)
@@ -18,17 +32,18 @@ internal class RecentAppClose(private val service: AccessibilityService, private
         finish()
     }
 
-    fun start(stopped: () -> Unit) {
+    fun start(requestStop: () -> Unit) {
+        if (closed) return
         val previous = pending
         if (previous != null) {
-            pending = { previous(); stopped() }
+            pending = { previous(); requestStop() }
             service.performGlobalAction(AccessibilityService.GLOBAL_ACTION_HOME)
             confirm()
             return
         }
         home = service.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
             PackageManager.MATCH_DEFAULT_ONLY)?.activityInfo?.packageName
-        pending = stopped
+        pending = requestStop
         handler.postDelayed(timeout, 1500L)
         try { lease = delivery.begin() }
         catch (error: RuntimeException) { android.util.Log.w("RecentAppClose", "Home observation unavailable", error) }
@@ -69,10 +84,19 @@ internal class RecentAppClose(private val service: AccessibilityService, private
         action?.invoke()
     }
 
-    override fun close() {
+    fun cancel() {
         pending = null
         handler.removeCallbacks(timeout)
         lease?.let(delivery::end)
         lease = null
+        stops.cancelAll()
+    }
+
+    override fun close() {
+        if (closed) return
+        closed = true
+        cancel()
+        stops.close()
+        worker.shutdown()
     }
 }
