@@ -7,7 +7,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
-import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
@@ -66,24 +65,16 @@ class WeatherFeedInstrumentedTest {
     }
 
     @Test fun blockedProviderQueryDoesNotDelayServiceEvaluationOrHostDelivery() {
-        val uri = Uri.parse("content://com.alexindigo.kotatsu.debug.test.sleepingweather/current")
-        val source = WeatherFeed.Source(Any(), {
-            context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                check(cursor.moveToFirst())
-                Weather(cursor.getInt(0), "C", WeatherCondition.FEW_CLOUDS, false)
-            }
-        }, { AutoCloseable { } })
-        fun release() { context.contentResolver.call(uri, "release", null, null) }
-        exerciseService(source, releaseSource = ::release) { feed ->
-            await("remote provider query started") {
-                (context.contentResolver.call(uri, "state", null, null)?.getInt("entered") ?: 0) > 0
-            }
+      SleepingWeatherFixture(context).use { provider ->
+        val source = WeatherFeed.Source(provider, provider::read, { AutoCloseable { } })
+        exerciseService(source, releaseSource = provider::release) { feed ->
+            provider.awaitBlocked()
             assertEquals(WeatherFeed.State.Unavailable, feed.state)
             evaluatePromptly()
             assertEquals("Service evaluation waited for the sleeping provider", WeatherFeed.State.Unavailable, feed.state)
             verifyHostReceivesRemoteViews()
             assertEquals("Host delivery did not wait for the sleeping provider", WeatherFeed.State.Unavailable, feed.state)
-            release()
+            provider.release()
             await("weather arrives on main after blocked query") {
                 main {
                     val service = service()!!
@@ -91,6 +82,7 @@ class WeatherFeedInstrumentedTest {
                 }
             }
         }
+      }
     }
 
     @Test fun observerRegistrationFailureLeavesTheServiceAndRealWidgetHostUsable() {
