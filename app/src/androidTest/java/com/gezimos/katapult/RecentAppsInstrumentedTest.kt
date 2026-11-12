@@ -214,20 +214,20 @@ class RecentAppsInstrumentedTest {
         }
         val store = context.getSharedPreferences("recent_apps", 0)
         val saved = store.all
-        store.edit().clear().commit()
-        val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
-        val label = context.packageManager.resolveActivity(launch, 0)!!.loadLabel(context.packageManager).toString()
-        val home = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
-            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)!!.activityInfo.packageName
-        fun closeRow(text: String) {
-            val row = Rect().also { fixture.overlay.find(text)!!.getBoundsInScreen(it) }
-            val close = fixture.overlay.find { node ->
-                val bounds = Rect().also(node::getBoundsInScreen)
-                node.text?.toString() == "Close" && bounds.centerY() in row.top..row.bottom
-            }!!
-            assertTrue(close.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
-        }
         try {
+            store.edit().clear().commit()
+            val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
+            val label = context.packageManager.resolveActivity(launch, 0)!!.loadLabel(context.packageManager).toString()
+            val home = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
+                android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)!!.activityInfo.packageName
+            fun closeRow(text: String) {
+                val row = Rect().also { fixture.overlay.find(text)!!.getBoundsInScreen(it) }
+                val close = fixture.overlay.find { node ->
+                    val bounds = Rect().also(node::getBoundsInScreen)
+                    node.text?.toString() == "Close" && bounds.centerY() in row.top..row.bottom
+                }!!
+                assertTrue(close.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+            }
             main { context.startActivity(launch) }
             ui.await("Close target not foreground") { ui.packageVisible(target) }
             ui.await("Foreground target not newest in history") {
