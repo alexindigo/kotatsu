@@ -486,8 +486,7 @@ class SideScreenInstrumentedTest {
         val keyguard = context.getSystemService(android.app.KeyguardManager::class.java)
         val power = context.getSystemService(android.os.PowerManager::class.java)
         assertFalse("Requires the isolated emulator's credential-free starting state", keyguard.isDeviceSecure)
-        val enabled = shell("settings get secure enabled_accessibility_services")
-        val accessibility = shell("settings get secure accessibility_enabled")
+        var accessibility: com.gezimos.katapult.ActionServiceSettingsFixture? = null
         val nativeKeyguard = com.gezimos.katapult.NativeKeyguardFixture()
         val instance = LockscreenWidgetService::class.java.getDeclaredField("instance").apply { isAccessible = true }
         val launchField = LockscreenWidgetService::class.java.getDeclaredField("widgetLaunch").apply { isAccessible = true }
@@ -536,11 +535,8 @@ class SideScreenInstrumentedTest {
             val id = fixture.bind(fixture.providers.singleProvider(instrumentation.context.packageName))
             try {
                 nativeKeyguard.setPin()
-                val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
-                shell("settings put secure enabled_accessibility_services ${if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component"}")
-                shell("settings put secure accessibility_enabled 1")
+                accessibility = com.gezimos.katapult.ActionServiceSettingsFixture.on()
                 ui.await("Action Service did not connect", 15000) { instance.get(null) != null }
-                awaitActionServiceSettingsPersisted(component, ::shell)
                 service = instance.get(null) as LockscreenWidgetService
                 lateinit var baseline: android.accessibilityservice.AccessibilityServiceInfo
                 main {
@@ -626,11 +622,7 @@ class SideScreenInstrumentedTest {
                     ui.await("Counterpart cleanup UI absent") { ui.find { it.text?.toString()?.equals("Finish fixture", true) == true } != null }
                     ui.click(ui.find { it.text?.toString()?.equals("Finish fixture", true) == true }!!.text.toString())
                 }
-                for ((key, value) in listOf("enabled_accessibility_services" to enabled, "accessibility_enabled" to accessibility)) restore {
-                    shell(if (value == "null") "settings delete secure $key" else "settings put secure $key $value")
-                    assertEquals(value, shell("settings get secure $key"))
-                }
-                restore { ui.await("Action Service did not disconnect") { instance.get(null) == null }; awaitActionServiceSettingsPersisted(enabled, ::shell) }
+                restore { accessibility?.close() }
             }
         }
         failure?.let { throw it }

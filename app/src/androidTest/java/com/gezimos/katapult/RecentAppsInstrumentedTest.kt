@@ -26,6 +26,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecentAppsInstrumentedTest {
+    @get:Rule val accessibility = ActionServiceOffRule()
     @get:Rule val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
@@ -106,28 +107,12 @@ class RecentAppsInstrumentedTest {
     }
 
     @Test fun overlayFixtureRestoresEmptyAccessibilitySettings() {
-        val enabled = shell("settings get secure enabled_accessibility_services")
-        val accessibility = shell("settings get secure accessibility_enabled")
-        fun restore(key: String, value: String) {
-            shell(when (value) {
-                "null" -> "settings delete secure $key"
-                "" -> "content call --uri content://settings/secure --method PUT_secure --arg $key --extra value:s:"
-                else -> "settings put secure $key $value"
-            })
-        }
-        try {
-            for (savedAccessibility in listOf("0", "")) {
-                restore("enabled_accessibility_services", "")
-                restore("accessibility_enabled", savedAccessibility)
-                assertEquals("Empty fixture precondition", "", shell("settings get secure enabled_accessibility_services"))
-                assertEquals(savedAccessibility, shell("settings get secure accessibility_enabled"))
+        for (savedAccessibility in listOf("0", "")) {
+            ActionServiceSettingsFixture.exact("", savedAccessibility).use { settings ->
+                assertEquals(ActionServiceSettingsFixture.Values("", savedAccessibility), settings.values())
                 RecentOverlayFixture().use { assertTrue(HomeKeyFilterState.active) }
-                assertEquals("", shell("settings get secure enabled_accessibility_services"))
-                assertEquals(savedAccessibility, shell("settings get secure accessibility_enabled"))
+                assertEquals(ActionServiceSettingsFixture.Values("", savedAccessibility), settings.values())
             }
-        } finally {
-            try { restore("enabled_accessibility_services", enabled) }
-            finally { restore("accessibility_enabled", accessibility) }
         }
     }
 

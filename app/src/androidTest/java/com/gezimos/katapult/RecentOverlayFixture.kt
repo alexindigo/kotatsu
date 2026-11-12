@@ -16,23 +16,17 @@ internal class RecentOverlayFixture : AutoCloseable {
     private val prefs = context.getSharedPreferences("katapult_prefs", 0)
     private val keys = listOf("home_button_recent_apps", "home_button_screenshot", "home_button_menu")
     private val before = keys.associateWith { prefs.all[it] }
-    private val enabled = shell("settings get secure enabled_accessibility_services")
-    private val accessibility = shell("settings get secure accessibility_enabled")
-    private val instance = LockscreenWidgetService::class.java.getDeclaredField("instance").apply { isAccessible = true }
-    val service: LockscreenWidgetService get() = instance.get(null) as LockscreenWidgetService
+    private var accessibility: ActionServiceSettingsFixture? = null
+    val service: LockscreenWidgetService get() = checkNotNull(accessibility).service
     lateinit var home: MainActivity
         private set
     init {
-        assertFalse("Fixture must not replace an enabled Action Service", enabled.contains(LockscreenWidgetService::class.java.name))
         try {
             prefs.edit().putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false)
                 .putBoolean("home_button_menu", false).commit()
             home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             instrumentation.runOnMainSync { home.viewModel.screen = Screen.HOME }
-            val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
-            shell("settings put secure enabled_accessibility_services " + if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component")
-            shell("settings put secure accessibility_enabled 1")
-            ui.await("Action Service did not connect", 15000) { HomeKeyFilterState.active && instance.get(null) != null }
+            accessibility = ActionServiceSettingsFixture.on()
         } catch (failure: Throwable) { close(); throw failure }
     }
     fun shell(command: String): String =
@@ -71,15 +65,9 @@ internal class RecentOverlayFixture : AutoCloseable {
     fun focusedWindow(): String = shell("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }.trim()
     override fun close() {
         try {
-            try { restoreSecureSetting("enabled_accessibility_services", enabled, ::shell) }
-            finally { restoreSecureSetting("accessibility_enabled", accessibility, ::shell) }
-            ui.await("Action Service did not unbind", 15000) { !HomeKeyFilterState.active }
+            try { accessibility?.let { instrumentation.runOnMainSync { it.service.onInterrupt() } } }
+            finally { accessibility?.close() }
             ui.await("Unbind left Recent apps attached") { !overlay.windowVisible() }
-            ui.await("Accessibility settings did not restore") {
-                shell("settings get secure enabled_accessibility_services") == enabled &&
-                    shell("settings get secure accessibility_enabled") == accessibility
-            }
-            awaitActionServiceSettingsPersisted(enabled, ::shell)
         } finally {
             try { if (::home.isInitialized) instrumentation.runOnMainSync { home.finish() } }
             finally {

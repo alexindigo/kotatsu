@@ -62,14 +62,11 @@ class ScreenshotInstrumentedTest {
     }
 
     private fun withService(test: (LockscreenWidgetService, MainActivity) -> Unit) {
-        val enabled = shell("settings get secure enabled_accessibility_services")
-        val accessibility = shell("settings get secure accessibility_enabled")
-        assertFalse("Preserve an already-enabled service", enabled.contains(LockscreenWidgetService::class.java.name))
+        var accessibility: ActionServiceSettingsFixture? = null
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         val animationScales = listOf("window_animation_scale", "transition_animation_scale", "animator_duration_scale")
             .associateWith { shell("settings get global $it") }
-        val field = LockscreenWidgetService::class.java.getDeclaredField("instance").apply { isAccessible = true }
         var activity: MainActivity? = null
         try {
             // Compare captures of a stable app, not two different phases of Android's entry animation.
@@ -81,32 +78,27 @@ class ScreenshotInstrumentedTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             activity = home
             main { home.viewModel.screen = Screen.HOME }
-            val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
-            shell("settings put secure enabled_accessibility_services " + if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component")
-            shell("settings put secure accessibility_enabled 1")
-            ui.await("Screenshot service did not connect", 15000) { HomeKeyFilterState.active && field.get(null) != null }
-            val service = field.get(null) as LockscreenWidgetService
+            accessibility = ActionServiceSettingsFixture.on()
+            val service = accessibility.service
             assertTrue(service.serviceInfo.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT != 0)
             test(service, home)
         } finally {
-            main { activity?.finish() }
-            if (enabled == "null") shell("settings delete secure enabled_accessibility_services")
-            else shell("settings put secure enabled_accessibility_services $enabled")
-            if (accessibility == "null") shell("settings delete secure accessibility_enabled")
-            else shell("settings put secure accessibility_enabled $accessibility")
-            ui.await("Screenshot service did not disconnect", 15000) { !HomeKeyFilterState.active }
-            awaitActionServiceSettingsPersisted(enabled, ::shell)
-            raw.edit().clear().apply { before.forEach { (key, value) -> when (value) {
+          try { main { activity?.finish() } } finally {
+           try { accessibility?.close() } finally {
+            try { raw.edit().clear().apply { before.forEach { (key, value) -> when (value) {
                 is Boolean -> putBoolean(key, value)
                 is Int -> putInt(key, value)
                 is Long -> putLong(key, value)
                 is Float -> putFloat(key, value)
                 is String -> putString(key, value)
                 is Set<*> -> putStringSet(key, value.filterIsInstance<String>().toSet())
-            } } }.commit()
+            } } }.commit() } finally {
             animationScales.forEach { (key, value) ->
                 if (value == "null") shell("settings delete global $key") else shell("settings put global $key $value")
             }
+            }
+           }
+          }
         }
     }
 

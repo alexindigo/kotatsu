@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class PaperIndexSettingsInstrumentedTest {
+    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
     private fun withSettings(test: (MainActivity, MainViewModel, PrefsManager, PlatformUiDriver) -> Unit) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

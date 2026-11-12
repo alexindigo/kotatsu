@@ -26,6 +26,7 @@ import org.junit.Test
 
 /** Real Home input -> shared settings -> the existing side surface / Android camera handoff. */
 class HomeEdgeSwipeInstrumentedTest {
+    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

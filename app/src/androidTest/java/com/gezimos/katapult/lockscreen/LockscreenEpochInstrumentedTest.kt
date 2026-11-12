@@ -14,7 +14,7 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.WidgetHostTestFixture
 import com.gezimos.katapult.WeatherHostViewProbe
-import com.gezimos.katapult.awaitActionServiceSettingsPersisted
+import com.gezimos.katapult.ActionServiceSettingsFixture
 import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import org.junit.Test
@@ -62,8 +62,7 @@ class LockscreenEpochInstrumentedTest {
     }
 
     @Test fun sleepWakeWithPinNeverShowsAnUnobservedOverlay() {
-        val enabled = shell("settings get secure enabled_accessibility_services").trim()
-        val accessibility = shell("settings get secure accessibility_enabled").trim()
+        var accessibility: ActionServiceSettingsFixture? = null
         val nativeKeyguard = com.gezimos.katapult.NativeKeyguardFixture()
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
@@ -75,12 +74,8 @@ class LockscreenEpochInstrumentedTest {
         try {
             PrefsManager(context).lockscreenMessage = "Epoch test"
             nativeKeyguard.setPin()
-            val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
-            val list = if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component"
-            shell("settings put secure enabled_accessibility_services $list")
-            shell("settings put secure accessibility_enabled 1")
+            accessibility = ActionServiceSettingsFixture.on()
             await("Service connected") { service() != null }
-            awaitActionServiceSettingsPersisted(component, ::shell)
             val service = service()!!
             val first = main { visibility(service).epoch }
             nativeKeyguard.sleep()
@@ -121,12 +116,7 @@ class LockscreenEpochInstrumentedTest {
             failure = error
         } finally {
             restore { nativeKeyguard.close() }
-            for ((key, value) in listOf("enabled_accessibility_services" to enabled, "accessibility_enabled" to accessibility)) {
-                restore {
-                shell(if (value == "null") "settings delete secure $key" else "settings put secure $key $value")
-                assertEquals(value, shell("settings get secure $key").trim())
-                }
-            }
+            restore { accessibility?.close() }
             restore {
             val edit = raw.edit()
             if (before.containsKey("lockscreen_message")) edit.putString("lockscreen_message", before["lockscreen_message"] as String)
@@ -135,9 +125,7 @@ class LockscreenEpochInstrumentedTest {
             }
             restore {
             await("Keyguard restored unlocked") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
-            await("Service disconnected after restoration") { service() == null }
             }
-            restore { awaitActionServiceSettingsPersisted(enabled, ::shell) }
         }
         failure?.let { throw it }
     }

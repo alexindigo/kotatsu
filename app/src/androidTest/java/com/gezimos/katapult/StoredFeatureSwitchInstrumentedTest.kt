@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class StoredFeatureSwitchInstrumentedTest {
+    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
     @Test fun notificationsCanBeTurnedOffWithoutService() = checkSwitch(
         R.string.cat_lockscreen, R.string.lockscreen_widget, R.string.lockscreen_widget_desc, "lockscreen_widget",
         { lockscreenWidget }, { lockscreenWidget = it },

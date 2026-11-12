@@ -66,9 +66,7 @@ class HomeKeyFilterInstrumentedTest {
     }
 
     @Test fun connectedFilterShowsOverlayWithoutActivityOrFocusChangeAndPreservesEveryServiceInfo() {
-        val enabled = shell("settings get secure enabled_accessibility_services")
-        val accessibility = shell("settings get secure accessibility_enabled")
-        assertFalse("Preserve an already-enabled Action Service", enabled.contains(LockscreenWidgetService::class.java.name))
+        var accessibility: ActionServiceSettingsFixture? = null
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
         val keys = listOf("onboarding_complete", "collect_usage_stats", "home_button_recent_apps", "home_button_screenshot", "home_button_menu")
         val previous = keys.associateWith { prefs.all[it] }
@@ -90,10 +88,7 @@ class HomeKeyFilterInstrumentedTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             val model = home.viewModel
             main { model.screen = Screen.HOME }
-            val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
-            val value = if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component"
-            shell("settings put secure enabled_accessibility_services $value")
-            shell("settings put secure accessibility_enabled 1")
+            accessibility = ActionServiceSettingsFixture.on()
             ui.await("Key filter did not connect", 15000) { HomeKeyFilterState.active && field.get(null) != null }
             val service = field.get(null) as LockscreenWidgetService
             main {
@@ -197,13 +192,7 @@ class HomeKeyFilterInstrumentedTest {
                 finally { main { home?.finish() } }
             } finally {
                 try {
-                    try {
-                        restoreSecureSetting("enabled_accessibility_services", enabled, ::shell)
-                    } finally {
-                        restoreSecureSetting("accessibility_enabled", accessibility, ::shell)
-                    }
-                    ui.await("Key-filter active state leaked after unbind", 15000) { !HomeKeyFilterState.active }
-                    awaitActionServiceSettingsPersisted(enabled, ::shell)
+                    accessibility?.close()
                 } finally {
                     prefs.edit().apply { previous.forEach { (key, value) ->
                         if (value == null) remove(key) else putBoolean(key, value as Boolean)

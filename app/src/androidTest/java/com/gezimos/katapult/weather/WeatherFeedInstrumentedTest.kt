@@ -170,10 +170,10 @@ class WeatherFeedInstrumentedTest {
     }
 
     private fun exerciseService(source: WeatherFeed.Source, releaseSource: () -> Unit = {}, exercise: (WeatherFeed) -> Unit) {
+      com.gezimos.katapult.ActionServiceSettingsFixture.off().use {
         val singleton = WeatherFeed::class.java.getDeclaredField("instance").apply { isAccessible = true }
         val originalFeed = singleton.get(null)
-        val enabled = shell("settings get secure enabled_accessibility_services")
-        val accessibility = shell("settings get secure accessibility_enabled")
+        var accessibility: com.gezimos.katapult.ActionServiceSettingsFixture? = null
         val raw = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
         val before = raw.all["lockscreen_weather"]
         val worker = Executors.newSingleThreadExecutor()
@@ -187,21 +187,14 @@ class WeatherFeedInstrumentedTest {
             assertNull("Fixture requires no existing service", main { service() })
             singleton.set(null, feed)
             assertTrue(raw.edit().putBoolean("lockscreen_weather", true).commit())
-            val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"
-            shell("settings put secure enabled_accessibility_services ${if (enabled == "null" || enabled.isBlank()) component else "$enabled:$component"}")
-            shell("settings put secure accessibility_enabled 1")
+            accessibility = com.gezimos.katapult.ActionServiceSettingsFixture.on()
             await("Service connected with injected feed") { main { service() != null } }
-            awaitActionServiceSettingsPersisted(component, ::shell)
             exercise(feed)
         } catch (error: Throwable) {
             failure = error
         } finally {
             restore(releaseSource)
-            for ((key, value) in listOf("enabled_accessibility_services" to enabled, "accessibility_enabled" to accessibility)) restore {
-                shell(if (value == "null") "settings delete secure $key" else "settings put secure $key $value")
-                assertEquals(value, shell("settings get secure $key"))
-            }
-            restore { await("Service disconnected") { main { service() == null } } }
+            restore { accessibility?.close() }
             restore {
                 val edit = raw.edit()
                 if (before == null) edit.remove("lockscreen_weather") else edit.putBoolean("lockscreen_weather", before as Boolean)
@@ -209,10 +202,10 @@ class WeatherFeedInstrumentedTest {
             }
             restore { feed.close() }
             restore { worker.shutdown(); assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }
-            restore { awaitActionServiceSettingsPersisted(enabled, ::shell) }
             restore { singleton.set(null, originalFeed) }
         }
         failure?.let { throw it }
+      }
     }
 
     private fun verifyHostReceivesRemoteViews() {
