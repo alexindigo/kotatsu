@@ -23,7 +23,7 @@ Paths below are relative to the repository root. `kit/` in the tables means
 |---|---|---|
 | 1 | `paper-ui/src/main/java/com/gezimos/katapult/ui/PaperTokens.kt` | Bundled Lato family, `LocalInk`, `LocalSurface` |
 | 2 | `kit/PaperIndex.kt` | Headers, index tracks, entries, groups, Notice, pagers, page frames, choices, checkbox drawing, help |
-| 3 | `kit/PaperActions.kt` | Text actions, wrapping action bars, independently actionable name/value tracks |
+| 3 | `kit/PaperActions.kt` | Independently actionable name/value tracks (`PaperActionEntry`) |
 | 4 | `kit/PaperCard.kt` | Bracket cards, compact widget content, reorder presentation and gesture ownership |
 | 5 | `kit/SettingsModel.kt` | Entry types, categories, groups, choices, whole-group allocation, Action Service reminder state |
 | 6 | `kit/SettingsNavigation.kt` | Saveable destination stack; only the top page is rendered |
@@ -107,15 +107,13 @@ the implementation, not from measuring an image.
 | 9 | Notice action/dismiss | Action minimum 64.5 x 48 dp, 14 sp Bold underlined; dismiss 48 x 48 dp, `×` 22.5 sp | `Notice` |
 | 10 | Close vector | 18 dp square, 2.25 dp strokes from 20% to 80% of bounds; separate from Notice's text `×` | `CloseMark` |
 | 11 | Plain full-row action | Minimum 48 dp high, 18/21.75 sp Regular, left aligned; no invented value/leader | `SheetAction` |
-| 12 | Compact text action | Minimum 48 x 48 dp, centred 18/21.75 sp Bold, one line | `PaperTextAction` in `PaperActions.kt` |
-| 13 | Inline action bar | 16 dp side inset; 18/21.75 sp Bold label; actions 9 dp apart; wrapping `FlowRow`; 2 dp rule below | `PaperActionBar` |
-| 14 | Two-target action entry | Name/help and trailing action each minimum 48 dp; help 14/18 sp; action 18/21.75 sp Bold; shared index tracks | `PaperActionEntry` |
-| 15 | Bracket card | Full measured content height; 2 dp bracket strokes, 7.5 dp caps; horizontal 14 dp and vertical 6 dp padding | `PaperCard` |
-| 16 | Card text | Name 18/21.75 sp Bold; help 14/18 sp Regular; size 14/18 sp Bold; tracks stacked without extra gaps; minimum content height 48 dp | `PaperCardEntry` |
-| 17 | Card external action | Independent minimum 48 x 48 dp target, top-end aligned; `Open ↗` 18/21.75 sp Bold; 7.5 dp leader gaps, 9 dp minimum leader allocation | `PaperCardEntry` |
-| 18 | Card list | 12 dp between cards; whole held card becomes black with white ink, including bracket lanes | `PaperCardList`, `PaperCard(moving = true)` |
-| 19 | Hide/Notify matrix | 64 dp wide outer control columns and minimum 64 dp row/cell height; 6 dp between columns; labels 14/17.25 sp Regular in 64 dp columns | App `VisibilityRow`, `ColumnLabel` in `AppChecklistPage.kt` |
-| 20 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
+| 12 | Two-target action entry | Name/help and trailing action each minimum 48 dp; help 14/18 sp; action 18/21.75 sp Bold; shared index tracks | `PaperActionEntry` |
+| 13 | Bracket card | Full measured content height; 2 dp bracket strokes, 7.5 dp caps; horizontal 14 dp and vertical 6 dp padding | `PaperCard` |
+| 14 | Card text | Name 18/21.75 sp Bold; help 14/18 sp Regular; size 14/18 sp Bold; tracks stacked without extra gaps; minimum content height 48 dp | `PaperCardEntry` |
+| 15 | Card external action | Independent minimum 48 x 48 dp target, top-end aligned; `Open ↗` 18/21.75 sp Bold; 7.5 dp leader gaps, 9 dp minimum leader allocation | `PaperCardEntry` |
+| 16 | Card list | 12 dp between cards; whole held card becomes black with white ink, including bracket lanes | `PaperCardList`, `PaperCard(moving = true)` |
+| 17 | Hide/Notify matrix | 64 dp wide outer control columns and minimum 64 dp row/cell height; 6 dp between columns; labels 14/17.25 sp Regular in 64 dp columns | App `VisibilityRow`, `ColumnLabel` in `AppChecklistPage.kt` |
+| 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
 
 Targets must be at least 48 dp in both dimensions. A value word or a check
 drawing is not its own tiny target: the surrounding row or independent control
@@ -599,7 +597,7 @@ differences rather than quietly turning them into a second house style.
 |---|---|---|
 | 1 | Edge swipes | A full-width rule has no group label, with blank space where the label would be. `EdgeSwipesCategory.kt` passes an empty group title to `GroupHeading`, which still reserves heading space and draws the rule. Unlike the named chapter groups, the rule has no visible section name |
 | 2 | Theme mode, Icon size, Wallpaper, Order apps, Lock screen sort and Clock format choice pages | These use plain left labels and a light check inset from the chapter value edge, not the Bold name/leader/value line. Current `ChoiceOption` intentionally makes only the selected label Bold and centres its 21 dp / 1.5 dp-stroke check in a 48 dp trailing slot. This is the implemented choice-specific exception, not a reason to add leaders or heavier marks locally |
-| 3 | Lock screen message editor | Save and Cancel are separate plain Regular rows below the field, rather than the Bold action/value emphasis used by entries and `PaperTextAction`. They currently use `SheetAction`; no action-bar redesign is implied |
+| 3 | Lock screen message editor | Save and Cancel are separate plain Regular rows below the field, rather than the Bold action/value emphasis used by entries. They currently use `SheetAction`; no action-bar redesign is implied |
 | 4 | Lock screen notification apps | Deselect all is a plain Regular header action above Bold app labels and trailing checkboxes. It uses `SheetAction`, so its typography differs from the main entry/action vocabulary |
 | 5 | Gestures and Order apps | Values include `Edit Shortcut`, `Most Recent` and `Most Used`, mixing title case with sentence-style labels. `Lock Phone` is also an existing gesture choice. These are legacy copy differences, not the writing model for new labels |
 | 6 | Lock screen notification apps | The long header ends in an ellipsis. This follows `PageHeader`'s one-line overflow behaviour but loses the full visible destination name. Purpose labels and semantics still need to identify the page; its accessibility result needs a runtime check |
