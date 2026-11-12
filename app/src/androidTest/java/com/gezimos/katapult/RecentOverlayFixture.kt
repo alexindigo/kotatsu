@@ -75,6 +75,7 @@ internal class RecentOverlayFixture : AutoCloseable {
             shell(if (accessibility == "null") "settings delete secure accessibility_enabled" else "settings put secure accessibility_enabled $accessibility")
             ui.await("Action Service did not unbind", 15000) { !HomeKeyFilterState.active }
             ui.await("Unbind left Recent apps attached") { !overlay.windowVisible() }
+            awaitActionServiceSettingsPersisted(enabled, ::shell)
         } finally {
             if (::home.isInitialized) instrumentation.runOnMainSync { home.finish() }
             prefs.edit().apply { before.forEach { (key, value) -> if (value == null) remove(key) else putBoolean(key, value as Boolean) } }.commit()
