@@ -221,16 +221,23 @@ class LockscreenWidgetService :
         mainHandler.post {
             if (homeKeyEligible()) {
                 recentPage?.close()
+                homeMenu?.close()
                 val sent = performGlobalAction(GLOBAL_ACTION_HOME)
                 if (BuildConfig.DEBUG) android.util.Log.d("KotatsuHome", "path=key single uptime=${SystemClock.uptimeMillis()} sent=$sent")
             }
         }
     }, {
         mainHandler.post {
-            if (homeKeyEligible() && prefs.homeButtonRecentApps) recentPage?.toggle()
+            if (homeKeyEligible() && prefs.homeButtonRecentApps) { homeMenu?.close(); recentPage?.toggle() }
         }
     }, { ::prefs.isInitialized && prefs.homeButtonRecentApps },
-        { ::prefs.isInitialized && prefs.homeButtonScreenshot }, { screenshots?.capture() })
+        { ::prefs.isInitialized && prefs.homeButtonScreenshot }, { screenshots?.capture() },
+        { ::prefs.isInitialized && prefs.homeButtonMenu }, {
+            mainHandler.post {
+                if (homeKeyEligible() && prefs.homeButtonMenu) { recentPage?.close(); homeMenu?.show() }
+            }
+        })
+    private var homeMenu: HomeMenuOverlay? = null
     private var screenshots: com.gezimos.katapult.screenshot.ScreenshotCapture? = null
     private var recentPage: RecentAppsOverlay? = null
     private var recentBackHeld = false
@@ -241,13 +248,14 @@ class LockscreenWidgetService :
         recentPage?.observeKey(event)
         if (recentPage?.visible == true && !homeKeyEligible()) recentPage?.close()
         if (event.keyCode == KeyEvent.KEYCODE_BACK) {
-            if (event.action == KeyEvent.ACTION_DOWN && recentPage?.visible == true) {
+            if (event.action == KeyEvent.ACTION_DOWN && (recentPage?.visible == true || homeMenu?.visible == true)) {
                 recentBackHeld = true
                 return true
             }
             if (event.action == KeyEvent.ACTION_UP && recentBackHeld) {
                 recentBackHeld = false
                 recentPage?.back()
+                homeMenu?.close()
                 return true
             }
         }
@@ -359,7 +367,7 @@ class LockscreenWidgetService :
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 Intent.ACTION_SCREEN_OFF -> {
-                    homeKeys.close(); screenshots?.clear(); recentPage?.close(); recentBackHeld = false
+                    homeKeys.close(); screenshots?.clear(); recentPage?.close(); homeMenu?.close(); recentBackHeld = false
                     widgetsContent?.hide()
                     visibility.invalidate()
                     maybeStartScreensaver()
@@ -398,6 +406,7 @@ class LockscreenWidgetService :
         delivery.apply(delivery.currentInfo())
         HomeKeyFilterState.connected(this)
         recentPage = RecentAppsOverlay(this, mainHandler, ::homeKeyEligible)
+        homeMenu = HomeMenuOverlay(this, mainHandler) { homeKeyEligible() && prefs.homeButtonMenu }
         screenshots = com.gezimos.katapult.screenshot.ScreenshotCapture(this, mainHandler, {
             homeKeyEligible() && prefs.homeButtonScreenshot
         })
@@ -442,6 +451,7 @@ class LockscreenWidgetService :
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         recentAppClose?.event(event)
+        if (homeMenu?.visible == true && !homeKeyEligible()) homeMenu?.close()
         if (recentPage?.visible == true && getSystemService(KeyguardManager::class.java).isKeyguardLocked) recentPage?.close()
         widgetLaunch?.event(event)
         edgeGestures?.event(event)
@@ -457,6 +467,7 @@ class LockscreenWidgetService :
     }
 
     override fun onInterrupt() {
+        homeMenu?.close()
         homeKeys.close()
         recentPage?.close(); recentBackHeld = false
         screenshots?.clear()
@@ -476,6 +487,7 @@ class LockscreenWidgetService :
     }
 
     override fun onDestroy() {
+        homeMenu?.close(); homeMenu = null
         homeKeys.close()
         recentPage?.close(); recentPage = null; recentBackHeld = false
         screenshots?.close(); screenshots = null
@@ -513,6 +525,7 @@ class LockscreenWidgetService :
     }
 
     override fun onUnbind(intent: Intent?): Boolean {
+        homeMenu?.close()
         homeKeys.close()
         recentPage?.close(); recentBackHeld = false
         screenshots?.clear()
@@ -846,6 +859,7 @@ class LockscreenWidgetService :
 
     private fun evaluate() {
         if (!::prefs.isInitialized) return
+        if (homeMenu?.visible == true && (!homeKeyEligible() || !prefs.homeButtonMenu)) homeMenu?.close()
         if (recentPage?.visible == true && !homeKeyEligible()) recentPage?.close()
         applyClockCover(launcherForeground || screensaverForeground)
         if (!SensitiveAccess.accessibility() ||

@@ -64,6 +64,7 @@
 
     <string name="section_appearance">Appearance</string>
     <string name="section_home">Home Screen</string>
+    <string name="kotatsu_title">Kotatsu</string>
     <string name="section_all_apps">All Apps</string>
     <string name="section_gestures">Gestures</string>
     <string name="section_notifications">Notifications</string>
@@ -452,4 +453,6 @@
     <plurals name="recent_minutes"><item quantity="one">%d min ago</item><item quantity="other">%d min ago</item></plurals>
     <plurals name="recent_hours"><item quantity="one">%d h ago</item><item quantity="other">%d h ago</item></plurals>
     <plurals name="recent_days"><item quantity="one">%d day ago</item><item quantity="other">%d days ago</item></plurals>
+    <string name="home_button_menu">Home menu</string>
+    <string name="home_button_menu_help">Hold Home to open the Home menu</string>
 </resources>

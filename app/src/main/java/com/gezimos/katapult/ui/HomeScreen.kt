@@ -39,7 +39,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Battery0Bar
 import androidx.compose.material.icons.rounded.Battery1Bar
 import androidx.compose.material.icons.rounded.Battery2Bar
@@ -55,9 +54,6 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Stop
-import androidx.compose.material.icons.rounded.Bedtime
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Wallpaper
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -468,26 +464,12 @@ fun HomeScreen(
 
     if (showMenu) {
         BottomSheet(onDismiss = { showMenu = false }) {
-            BottomSheetOption(stringResource(R.string.settings), icon = Icons.Rounded.Settings) {
-                showMenu = false
-                viewModel.navigateTo(Screen.SETTINGS)
-            }
-            if (viewModel.prefs.hideAllAppsButton) {
-                BottomSheetOption(stringResource(R.string.all_apps), icon = Icons.Rounded.Apps) {
-                    showMenu = false
-                    viewModel.navigateTo(Screen.ALL_APPS)
-                }
-            }
-            BottomSheetOption(stringResource(R.string.wallpaper), icon = Icons.Rounded.Wallpaper) {
-                showMenu = false
-                viewModel.openWallpaperSettings()
-            }
-            if (viewModel.prefs.screensaverEnabled) {
-                BottomSheetOption(stringResource(R.string.screensaver), icon = Icons.Rounded.Bedtime) {
-                    showMenu = false
-                    viewModel.startScreensaver(context)
-                }
-            }
+            HomeMenu(viewModel.wallpaperSource,
+                onSettings = { showMenu = false; viewModel.navigateTo(Screen.SETTINGS) },
+                onWallpaper = { showMenu = false; viewModel.openWallpaperSettings() },
+                onAllApps = if (viewModel.prefs.hideAllAppsButton) {
+                    { showMenu = false; viewModel.navigateTo(Screen.ALL_APPS) }
+                } else null)
         }
     }
 

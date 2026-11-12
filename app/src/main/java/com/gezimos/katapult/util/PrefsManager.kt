@@ -415,6 +415,10 @@ class PrefsManager(context: Context) {
         get() = boolPref(KEY_HOME_BUTTON_SCREENSHOT, true)
         set(value) = prefs.edit().putBoolean(KEY_HOME_BUTTON_SCREENSHOT, value).apply()
 
+    var homeButtonMenu: Boolean
+        get() = boolPref(KEY_HOME_BUTTON_MENU, true)
+        set(value) = prefs.edit().putBoolean(KEY_HOME_BUTTON_MENU, value).apply()
+
     var lockscreenWidget: Boolean
         get() = boolPref(KEY_LOCKSCREEN_WIDGET, false)
         set(value) = prefs.edit().putBoolean(KEY_LOCKSCREEN_WIDGET, value).apply()
@@ -732,7 +736,7 @@ class PrefsManager(context: Context) {
         EdgeActionStore.HOME_ENABLED -> true
         EdgeActionStore.LEFT, EdgeActionStore.RIGHT -> ""
         KEY_WIDGET_ROTATION -> WidgetRotation.WAKE.name
-        KEY_WIDGET_SWIPE, KEY_HOME_BUTTON_RECENT_APPS, KEY_HOME_BUTTON_SCREENSHOT -> true
+        KEY_WIDGET_SWIPE, KEY_HOME_BUTTON_RECENT_APPS, KEY_HOME_BUTTON_SCREENSHOT, KEY_HOME_BUTTON_MENU -> true
         KEY_NOTIFICATION_INDICATORS, KEY_SHOW_BATTERY, KEY_SHOW_ALARM, KEY_SHOW_WEATHER, KEY_WEATHER_CELSIUS,
         KEY_ROUNDED_ICONS, KEY_DARK_MODE, KEY_HIDE_STATUS_BAR, KEY_HIDE_STATUS_BAR_CLOCK,
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
@@ -892,6 +896,7 @@ class PrefsManager(context: Context) {
         private const val KEY_VERTICAL_APP_GESTURES = "vertical_app_gestures"
         private const val KEY_HOME_BUTTON_RECENT_APPS = "home_button_recent_apps"
         private const val KEY_HOME_BUTTON_SCREENSHOT = "home_button_screenshot"
+        private const val KEY_HOME_BUTTON_MENU = "home_button_menu"
         private const val KEY_LOCKSCREEN_WIDGET = "lockscreen_widget"
         private const val KEY_LOCKSCREEN_MUSIC_WIDGET = "lockscreen_music_widget"
         private const val KEY_LOCKSCREEN_WEATHER = "lockscreen_weather"

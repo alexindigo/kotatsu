@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.paper.R
@@ -58,18 +59,19 @@ internal fun Modifier.inkFocus(): Modifier {
 /** The three tracks share a real text baseline. The leader never occupies either text's bounds. */
 @Composable
 fun IndexLine(title: String, value: String, modifier: Modifier = Modifier, root: Boolean = false,
-    external: Boolean = false) {
+    external: Boolean = false, leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current) {
     val ink = LocalInk.current
     IndexTracks(modifier, title = { IndexName(title, root) }, value = {
         Row(horizontalArrangement = Arrangement.spacedBy(7.5.dp)) {
             Text(value, fontFamily = LatoFamily, fontSize = if (root) 14.sp else 18.sp,
                 lineHeight = if (root) 17.25.sp else 21.75.sp,
                 fontWeight = if (root) FontWeight.Normal else FontWeight.Bold, color = ink,
-                modifier = Modifier.alignByBaseline())
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false).alignByBaseline())
             if (external) Text("↗", fontFamily = LatoFamily, fontSize = 18.75.sp,
                 fontWeight = FontWeight.Bold, color = ink, modifier = Modifier.alignByBaseline())
         }
-    })
+    }, leaderColor = leaderColor)
 }
 
 @Composable
@@ -82,11 +84,12 @@ internal fun IndexName(title: String, root: Boolean = false) {
 /** The name owns the leader baseline; text values align to it. */
 @Composable
 internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit,
-    leadingTarget: (@Composable () -> Unit)? = null) {
+    leadingTarget: (@Composable () -> Unit)? = null,
+    leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current) {
     Layout(modifier = modifier.fillMaxWidth(), content = {
         title()
         value()
-        IndexLeader()
+        IndexLeader(leaderColor)
         leadingTarget?.invoke()
     }) { children, constraints ->
         val gap = 7.5.dp.roundToPx()
@@ -115,8 +118,7 @@ internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () ->
 }
 
 @Composable
-internal fun IndexLeader() {
-    val ink = LocalInk.current
+internal fun IndexLeader(ink: androidx.compose.ui.graphics.Color = LocalInk.current) {
     Canvas(Modifier) {
         drawLine(ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
             strokeWidth = size.height, cap = StrokeCap.Round,
@@ -161,9 +163,9 @@ fun ChapterHeader(title: String, help: SettingsHelp?, onBack: () -> Unit, onHelp
 /** One heading structure: owners inject navigation and action content, never their identity. */
 @Composable
 fun PageHeader(title: String, leading: (@Composable () -> Unit)? = null,
-    trailing: (@Composable () -> Unit)? = null) {
+    trailing: (@Composable () -> Unit)? = null, startInset: Dp = 16.dp) {
     Row(Modifier.fillMaxWidth().heightIn(min = 57.dp)
-        .padding(start = if (leading == null) 16.dp else 6.dp, end = 12.dp, top = 9.dp),
+        .padding(start = if (leading == null) startInset else 6.dp, end = 12.dp, top = 9.dp),
         verticalAlignment = Alignment.CenterVertically) {
         leading?.invoke()
         Text(title, fontFamily = LatoFamily, fontSize = 26.sp, lineHeight = 31.5.sp,
@@ -233,7 +235,8 @@ fun Notice(content: NoticeContent) {
 
 @Composable
 fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
-    minimumHeight: androidx.compose.ui.unit.Dp = if (entry.help.isEmpty()) 48.dp else 67.5.dp) {
+    minimumHeight: androidx.compose.ui.unit.Dp = if (entry.help.isEmpty()) 48.dp else 67.5.dp,
+    leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current) {
     val on = stringResource(R.string.paper_on)
     val off = stringResource(R.string.paper_off)
     val open = stringResource(R.string.paper_open)
@@ -259,7 +262,7 @@ fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
             if (entry is SettingsEntry.Value) contentDescription = "${entry.title}, ${entry.value}"
         }.padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
         if (value.isEmpty()) IndexName(entry.title)
-        else IndexLine(entry.title, value, external = entry is SettingsEntry.Open && entry.external)
+        else IndexLine(entry.title, value, external = entry is SettingsEntry.Open && entry.external, leaderColor = leaderColor)
         if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
             lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
         if (entry is SettingsEntry.Open && entry.summary.isNotEmpty()) Text(entry.summary,

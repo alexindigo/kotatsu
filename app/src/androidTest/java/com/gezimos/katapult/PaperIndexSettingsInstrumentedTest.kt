@@ -27,7 +27,7 @@ class PaperIndexSettingsInstrumentedTest {
             instrumentation.runOnMainSync {
                 shared.edit().putBoolean("notice_action_service_dismissed", false)
                     .putInt("theme_mode", PrefsManager.THEME_LIGHT).putBoolean("hide_app_names", false)
-                    .remove("home_button_recent_apps").remove("home_button_screenshot").commit()
+                    .remove("home_button_recent_apps").remove("home_button_screenshot").remove("home_button_menu").commit()
             }
             activity = instrumentation.startActivitySync(Intent(Intent.ACTION_MAIN).apply {
                 setClassName(context.packageName, MainActivity::class.java.name)
@@ -157,8 +157,10 @@ class PaperIndexSettingsInstrumentedTest {
         assertFalse(com.gezimos.katapult.lockscreen.LockscreenWidgetService.isEnabled(context))
         assertTrue(prefs.homeButtonRecentApps)
         assertTrue(prefs.homeButtonScreenshot)
+        assertTrue(prefs.homeButtonMenu)
         val title = context.getString(R.string.recent_apps)
         val screenshot = context.getString(R.string.home_button_screenshot)
+        val homeMenu = context.getString(R.string.home_button_menu)
         fun capture(name: String) {
             val bitmap = instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES).takeScreenshot()
             java.io.File(context.getExternalFilesDir(null), name).outputStream().use {
@@ -169,7 +171,7 @@ class PaperIndexSettingsInstrumentedTest {
         val groups = linkedMapOf(
             context.getString(R.string.paper_group_app_pages) to listOf(R.string.swipe_up_all_apps, R.string.app_gesture_direction),
             context.getString(R.string.paper_group_on_home) to listOf(R.string.double_tap_action, R.string.home_long_press),
-            context.getString(R.string.paper_group_home_button) to listOf(R.string.recent_apps, R.string.home_button_screenshot),
+            context.getString(R.string.paper_group_home_button) to listOf(R.string.home_button_menu, R.string.recent_apps, R.string.home_button_screenshot),
         ).mapValues { (_, entries) -> entries.map { context.getString(it) } }
         fun firstPage() {
             instrumentation.waitForIdleSync()
@@ -232,10 +234,13 @@ class PaperIndexSettingsInstrumentedTest {
         ui.await("Recent apps Off not saved or exposed") { !prefs.homeButtonRecentApps && ui.checked(title) == false }
         ui.click(screenshot)
         ui.await("Screenshot Off not saved or exposed") { !prefs.homeButtonScreenshot && ui.checked(screenshot) == false }
+        ui.click(homeMenu)
+        ui.await("Home menu Off not saved or exposed") { !prefs.homeButtonMenu && ui.checked(homeMenu) == false }
         assertFalse(PrefsManager(context).homeButtonRecentApps)
         assertFalse(PrefsManager(context).homeButtonScreenshot)
         assertFalse(org.json.JSONObject(prefs.exportToJson(context)).getBoolean("home_button_recent_apps"))
         assertFalse(org.json.JSONObject(prefs.exportToJson(context)).getBoolean("home_button_screenshot"))
+        assertFalse(org.json.JSONObject(prefs.exportToJson(context)).getBoolean("home_button_menu"))
         instrumentation.runOnMainSync { activity.setContent { androidx.compose.material3.Text("Closed settings") } }
         instrumentation.waitForIdleSync()
         instrumentation.runOnMainSync {
@@ -244,10 +249,13 @@ class PaperIndexSettingsInstrumentedTest {
         openHomeButtons()
         ui.await("Recent apps Off lost on reopening") { ui.checked(title) == false }
         assertFalse(ui.checked(screenshot)!!)
+        assertFalse(ui.checked(homeMenu)!!)
         ui.click(title)
         ui.await("Recent apps On not saved") { prefs.homeButtonRecentApps && ui.checked(title) == true }
         ui.click(screenshot)
         ui.await("Screenshot On not saved") { prefs.homeButtonScreenshot && ui.checked(screenshot) == true }
+        ui.click(homeMenu)
+        ui.await("Home menu On not saved") { prefs.homeButtonMenu && ui.checked(homeMenu) == true }
         ui.click(context.getString(R.string.paper_notice_dismiss))
         ui.await("Shared Notice did not stay dismissed") { prefs.noticeActionServiceDismissed && !ui.has(context.getString(R.string.paper_service_off)) }
         assertMeasuredPages(false, "gestures-home-button-no-notice")

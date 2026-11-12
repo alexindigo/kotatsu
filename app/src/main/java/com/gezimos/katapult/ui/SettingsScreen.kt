@@ -181,6 +181,7 @@ fun SettingsScreen(
     var verticalAppGestures by remember { mutableStateOf(prefs.verticalAppGestures) }
     var homeButtonRecentApps by remember { mutableStateOf(prefs.homeButtonRecentApps) }
     var homeButtonScreenshot by remember { mutableStateOf(prefs.homeButtonScreenshot) }
+    var homeButtonMenu by remember { mutableStateOf(prefs.homeButtonMenu) }
     var lockscreenWidget by remember { mutableStateOf(prefs.lockscreenWidget) }
     var lockscreenMusicWidget by remember { mutableStateOf(prefs.lockscreenMusicWidget) }
     var lockscreenWeather by remember { mutableStateOf(prefs.lockscreenWeather) }
@@ -320,7 +321,7 @@ fun SettingsScreen(
         onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
         onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
         onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
-    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress, homeButtonRecentApps, homeButtonScreenshot,
+    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
         onSwipe = { swipeUpAllApps = it; prefs.swipeUpAllApps = it },
         onVertical = { verticalAppGestures = it; prefs.verticalAppGestures = it },
         onDoubleTap = {
@@ -329,7 +330,8 @@ fun SettingsScreen(
                 viewModel.requestActionService(AccessibilityFeature.DOUBLE_TAP_LOCK)
         }, onLongPress = { homeLongPress = it; prefs.homeLongPressAction = it },
         onRecentApps = { homeButtonRecentApps = it; prefs.homeButtonRecentApps = it },
-        onScreenshot = { homeButtonScreenshot = it; prefs.homeButtonScreenshot = it })
+        onScreenshot = { homeButtonScreenshot = it; prefs.homeButtonScreenshot = it },
+        onHomeMenu = { homeButtonMenu = it; prefs.homeButtonMenu = it })
     val notificationAccess = NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName)
     val notifications = notificationsCategory(notificationIndicators, notificationAccess,
         onIndicators = { requested ->

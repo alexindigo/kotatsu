@@ -31,13 +31,15 @@ Paths below are relative to the repository root. `kit/` in the tables means
 | 8 | `app/src/main/java/com/gezimos/katapult/ui/SettingsScreen.kt` | Settings routing, parent page retention, permissions, editors and external handoffs |
 | 9 | `app/src/main/java/com/gezimos/katapult/ui/settings/AppChecklistPage.kt` | Hidden/System apps matrix and notification-app selection |
 | 10 | `app/src/main/java/com/gezimos/katapult/ui/settings/LockscreenWidgetsPage.kt` | Widget controls, Widgets section, Add widget and management destinations |
+| 11 | `kit/PaperSheet.kt` | Shared bottom sheet drawing and heading; Activity and Action Service hosts own window lifetime and Back |
 
 ## Principles
 
 Use the appearance owner's palette: black ink on white paper in Light, white
 ink on black paper in Dark. Read `LocalInk` and `LocalSurface`, not hardcoded
-per-screen colours. Muted is `#777777` in both palettes; Weather uses it for
-stale/status marks. Do not add other greys, opacity, gradients or shadows.
+per-screen colours. Muted is `#777777` in both palettes; Home menu leaders and
+Weather's stale/status marks use it. Do not add other greys, opacity,
+gradients or shadows.
 Ordinary antialiasing is rasterization, not an additional semantic colour.
 
 Leave honest blank space. A sparse Screensaver page with one setting is valid.
@@ -137,6 +139,8 @@ the implementation, not from measuring an image.
 | 16 | Card list | 12 dp between cards; whole held card becomes black with white ink, including bracket lanes | `PaperCardList`, `PaperCard(moving = true)` |
 | 17 | Hide/Notify matrix | 64 dp wide outer control columns and minimum 64 dp row/cell height; 6 dp between columns; labels 14/17.25 sp Regular in 64 dp columns | App `VisibilityRow`, `ColumnLabel` in `AppChecklistPage.kt` |
 | 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
+| 19 | Bottom sheet | Bottom anchored, paper fill; 2 dp ink outline on top and sides, no bottom edge; 18 dp top corners; 16 dp side and 10 dp bottom content padding, navigation-bar padding | `PaperSheet` |
+| 20 | Sheet heading | Normal page header with zero start inset inside the sheet's content inset, followed by a 2 dp ink rule | `PaperSheetHeading` |
 
 Targets must be at least 48 dp in both dimensions. A value word or a check
 drawing is not its own tiny target: the surrounding row or independent control
@@ -344,6 +348,24 @@ uses IME padding. Save passes trimmed text to the owner; Cancel and Back
 leave without applying the draft. The keyboard is Android-owned, not a
 Kotatsu surface to restyle. See the inconsistencies section before treating
 the current action rows as a model for visual emphasis elsewhere.
+
+### Home menu: transient actions
+
+The Home menu uses the shared `PaperSheet`, not a secondary destination page.
+It is bottom anchored with paper fill and an ink outline on the top and both
+sides, open at the bottom. There is no scrim, shadow or animation. Back or a
+tap above closes it without passing that tap to the app below. Activity dialogs
+and Action Service overlays host the same drawing; each host owns Back and
+the window lifetime.
+
+`HomeMenu` shares its content between Home and the held-Home menu over the
+current app. Its heading uses the normal page-header grammar and a rule.
+Rows use chapter entries: Bold names, muted dotted leaders and Bold values,
+without icons. Settings says **Open**; Wallpaper shows the current wallpaper.
+When the All Apps button is hidden, both menus also offer All Apps.
+Destination rows over another app
+carry the external-handoff mark because they open Kotatsu; rows on Home do
+not. Menu leaders use the palette's muted token; labels and values stay ink.
 
 ## Values and interaction vocabulary
 

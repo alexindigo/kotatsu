@@ -9,6 +9,7 @@ class HomeKeyFilterTest {
         var eligible = true
         var recentApps = true
         var screenshot = false
+        var menu = false
         val results = mutableListOf<String>()
         class Task(val at: Long, val run: () -> Unit) { var cancelled = false }
         val tasks = mutableListOf<Task>()
@@ -16,7 +17,8 @@ class HomeKeyFilterTest {
             val task = Task(now + delay, action)
             tasks += task
             AutoCloseable { task.cancelled = true }
-        }, { eligible }, { results += "home" }, { results += "double" }, { recentApps }, { screenshot }, { results += "screenshot" })
+        }, { eligible }, { results += "home" }, { results += "double" }, { recentApps }, { screenshot }, { results += "screenshot" },
+            { menu }, { results += "menu" })
         fun advance(at: Long) {
             while (true) {
                 val next = tasks.filter { !it.cancelled && it.at <= at }.minByOrNull { it.at } ?: break
@@ -249,5 +251,53 @@ class HomeKeyFilterTest {
         val f = Fixture(); f.screenshot = true
         f.filter.down(0); f.filter.up(); f.advance(140); f.filter.down(140); f.filter.up()
         f.advance(1000); assertEquals(listOf("double"), f.results)
+    }
+
+    @Test fun heldHomeOpensMenuAtOneSecondAndReleaseNeverSendsHome() {
+        for (recent in listOf(false, true)) {
+            val f = Fixture(); f.menu = true; f.recentApps = recent
+            assertTrue(f.filter.down(0))
+            f.advance(999); assertTrue(f.results.isEmpty())
+            f.advance(HomeKeyFilter.HOME_MENU_HOLD_MS); assertEquals(listOf("menu"), f.results)
+            assertTrue(f.filter.down(1100, true)); assertTrue(f.filter.up())
+            f.advance(2000); assertEquals(listOf("menu"), f.results)
+        }
+    }
+
+    @Test fun screenshotBeforeHoldWinsAndVolumeAfterMenuDoesNotCapture() {
+        for (at in listOf(100L, 999L)) {
+            val f = Fixture(); f.menu = true; f.screenshot = true
+            f.filter.down(0); f.advance(at); assertTrue(f.filter.volumeDown())
+            f.advance(1200); f.filter.up(); f.filter.volumeUp()
+            assertEquals(listOf("screenshot"), f.results)
+        }
+        val f = Fixture(); f.menu = true; f.screenshot = true
+        f.filter.down(0); f.advance(1000); assertFalse(f.filter.volumeDown()); f.filter.up()
+        assertEquals(listOf("menu"), f.results)
+    }
+
+    @Test fun releasePairDisconnectEligibilityAndToggleCancelHold() {
+        for (cancel in listOf("release", "pair", "close", "eligibility", "toggle")) {
+            val f = Fixture(); f.menu = true; f.filter.down(0)
+            f.advance(100)
+            when (cancel) {
+                "release" -> f.filter.up()
+                "pair" -> { f.filter.up(); f.advance(140); f.filter.down(140); f.filter.up() }
+                "close" -> f.filter.close()
+                "eligibility" -> f.eligible = false
+                "toggle" -> f.menu = false
+            }
+            f.advance(2000)
+            assertFalse(cancel, f.results.contains("menu"))
+        }
+    }
+
+    @Test fun holdingTheSecondPressStillBecomesMenuAndConsumesRelease() {
+        val f = Fixture(); f.menu = true
+        f.filter.down(0); f.filter.up(); f.advance(140); f.filter.down(140)
+        f.advance(1140)
+        assertEquals(listOf("double", "menu"), f.results)
+        f.filter.up(); f.advance(2500)
+        assertEquals(listOf("double", "menu"), f.results)
     }
 }

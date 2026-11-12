@@ -43,6 +43,10 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val REQUEST_CONFIGURE_WIDGET = 0x4B54
         const val ACTION_SENSITIVE_ACCESS = BuildConfig.APPLICATION_ID + ".SENSITIVE_ACCESS"
+        const val EXTRA_HOME_MENU = "com.gezimos.katapult.HOME_MENU"
+        const val HOME_MENU_SETTINGS = "settings"
+        const val HOME_MENU_WALLPAPER = "wallpaper"
+        const val HOME_MENU_ALL_APPS = "all_apps"
     }
 
     private fun openRequestedSettings(intent: Intent) {
@@ -50,6 +54,16 @@ class MainActivity : ComponentActivity() {
             viewModel.settingsPageRequest = "sensitive"
             viewModel.screen = Screen.SETTINGS
         }
+    }
+
+    private fun openHomeMenuDestination(intent: Intent) {
+        if (!viewModel.prefs.onboardingComplete) return
+        when (intent.getStringExtra(EXTRA_HOME_MENU)) {
+            HOME_MENU_SETTINGS -> viewModel.navigateTo(Screen.SETTINGS)
+            HOME_MENU_WALLPAPER -> viewModel.openWallpaperSettings()
+            HOME_MENU_ALL_APPS -> viewModel.navigateTo(Screen.ALL_APPS)
+        }
+        intent.removeExtra(EXTRA_HOME_MENU)
     }
 
     private var einkHelper: EinkHelper? = null
@@ -165,6 +179,7 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) {
             if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) viewModel.onHomeIntent()
             openRequestedSettings(intent)
+            openHomeMenuDestination(intent)
         }
     }
 
@@ -221,6 +236,7 @@ class MainActivity : ComponentActivity() {
             viewModel.onHomeIntent()
         else viewModel.onLauncherIntent()
         openRequestedSettings(intent)
+        openHomeMenuDestination(intent)
 
         val savedMode = viewModel.prefs.einkHelperMode
         if (savedMode != EinkHelper.MEINK_MODE_DISABLED) {

@@ -15,7 +15,7 @@ internal class RecentOverlayFixture : AutoCloseable {
     val ui = PlatformUiDriver(instrumentation)
     val overlay = PlatformUiDriver(instrumentation, context.getString(R.string.recent_apps))
     private val prefs = context.getSharedPreferences("katapult_prefs", 0)
-    private val keys = listOf("home_button_recent_apps", "home_button_screenshot")
+    private val keys = listOf("home_button_recent_apps", "home_button_screenshot", "home_button_menu")
     private val before = keys.associateWith { prefs.all[it] }
     private val enabled = shell("settings get secure enabled_accessibility_services")
     private val accessibility = shell("settings get secure accessibility_enabled")
@@ -26,7 +26,8 @@ internal class RecentOverlayFixture : AutoCloseable {
     init {
         assertFalse("Fixture must not replace an enabled Action Service", enabled.contains(LockscreenWidgetService::class.java.name))
         try {
-            prefs.edit().putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false).commit()
+            prefs.edit().putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false)
+                .putBoolean("home_button_menu", false).commit()
             home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             instrumentation.runOnMainSync { home.viewModel.screen = Screen.HOME }
             val component = "${context.packageName}/${LockscreenWidgetService::class.java.name}"

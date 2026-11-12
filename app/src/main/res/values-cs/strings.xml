@@ -1,4 +1,5 @@
 <resources>
+    <string name="kotatsu_title">Kotatsu</string>
     <string name="app_name">Kotatsu</string>
 
     <string name="save">Uložit</string>
@@ -450,4 +451,6 @@
     <plurals name="recent_minutes"><item quantity="one">P&#345;ed %d min</item><item quantity="few">P&#345;ed %d min</item><item quantity="many">P&#345;ed %d min</item><item quantity="other">P&#345;ed %d min</item></plurals>
     <plurals name="recent_hours"><item quantity="one">P&#345;ed %d h</item><item quantity="few">P&#345;ed %d h</item><item quantity="many">P&#345;ed %d h</item><item quantity="other">P&#345;ed %d h</item></plurals>
     <plurals name="recent_days"><item quantity="one">P&#345;ed %d dnem</item><item quantity="few">P&#345;ed %d dny</item><item quantity="many">P&#345;ed %d dne</item><item quantity="other">P&#345;ed %d dny</item></plurals>
+    <string name="home_button_menu">Nabídka plochy</string>
+    <string name="home_button_menu_help">Podržením tlačítka Domů otevřete nabídku plochy</string>
 </resources>

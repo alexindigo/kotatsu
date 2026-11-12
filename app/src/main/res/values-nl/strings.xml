@@ -1,4 +1,5 @@
 <resources>
+    <string name="kotatsu_title">Kotatsu</string>
     <string name="app_name">Kotatsu</string>
 
     <string name="save">Opslaan</string>
@@ -450,4 +451,6 @@
     <plurals name="recent_minutes"><item quantity="one">%d min geleden</item><item quantity="other">%d min geleden</item></plurals>
     <plurals name="recent_hours"><item quantity="one">%d u geleden</item><item quantity="other">%d u geleden</item></plurals>
     <plurals name="recent_days"><item quantity="one">%d dag geleden</item><item quantity="other">%d dagen geleden</item></plurals>
+    <string name="home_button_menu">Startmenu</string>
+    <string name="home_button_menu_help">Houd Home ingedrukt om het startmenu te openen</string>
 </resources>

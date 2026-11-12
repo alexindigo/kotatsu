@@ -1,4 +1,5 @@
 <resources>
+    <string name="kotatsu_title">Kotatsu</string>
     <string name="app_name">Kotatsu</string>
 
     <string name="save">Salva</string>
@@ -450,4 +451,6 @@
     <plurals name="recent_minutes"><item quantity="one">%d min fa</item><item quantity="other">%d min fa</item></plurals>
     <plurals name="recent_hours"><item quantity="one">%d h fa</item><item quantity="other">%d h fa</item></plurals>
     <plurals name="recent_days"><item quantity="one">%d giorno fa</item><item quantity="other">%d giorni fa</item></plurals>
+    <string name="home_button_menu">Menu Home</string>
+    <string name="home_button_menu_help">Tieni premuto Home per aprire il menu Home</string>
 </resources>

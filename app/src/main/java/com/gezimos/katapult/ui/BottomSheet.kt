@@ -17,17 +17,8 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import androidx.activity.ComponentDialog
 import androidx.activity.addCallback
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionContext
 import androidx.compose.runtime.DisposableEffect
@@ -40,19 +31,14 @@ import androidx.compose.runtime.rememberCompositionContext
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.ViewRootForInspector
-import androidx.compose.ui.semantics.dialog
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.findViewTreeLifecycleOwner
@@ -93,34 +79,11 @@ fun BottomSheet(
             hideStatusBar = statusBarHidden,
         ).apply {
             setContent(composition) {
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .then(if (currentImePadding) Modifier.imePadding() else Modifier)
-                        .semantics { dialog() },
-                    contentAlignment = Alignment.BottomCenter,
-                ) {
-                    Box(
-                        Modifier.fillMaxSize().clickable { currentOnDismiss() },
-                    )
-                    Column(
-                        Modifier
-                             .fillMaxWidth()
-                             .background(LocalSurface.current)
-                             .navigationBarsPadding()
-                             .clickable { /* The sheet body consumes background taps. */ }
-                    ) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .height(2.5.dp)
-                                .background(LocalInk.current)
-                        )
-                        Column(Modifier.padding(16.dp)) {
-                            currentContent()
-                        }
-                    }
-                }
+                com.gezimos.katapult.ui.settings.PaperSheet(
+                    onDismiss = { currentOnDismiss() },
+                    modifier = if (currentImePadding) Modifier.imePadding() else Modifier,
+                    content = currentContent,
+                )
             }
         }
     }
