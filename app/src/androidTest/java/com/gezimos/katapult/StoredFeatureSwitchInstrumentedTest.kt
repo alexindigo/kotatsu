@@ -79,10 +79,10 @@ class StoredFeatureSwitchInstrumentedTest {
             if (!ui.has(label)) ui.click(context.getString(R.string.paper_next_page))
             ui.await("Chapter did not expose the stored feature row") { ui.has(label) }
             ui.await("Stored-on ${context.getString(title)} was shown off without the service") { ui.checked(label) == true }
-            ui.click(label)
+            ui.toggleSwitch(label, true, false) { !prefs.read() }
             ui.await("Turning off did not persist false") { !prefs.read() && ui.checked(label) == false }
             shared.registerOnSharedPreferenceChangeListener(listener)
-            ui.click(label)
+            ui.toggleSwitch(label, false, null) { ui.has(context.getString(R.string.a11y_setup_step_shortcut)) }
             // Turning on without the service first explains the setup (steps, shortcut warning), then opens Android's list.
             ui.await("Turning on without service did not show the setup sheet") {
                 ui.has(context.getString(R.string.a11y_setup_step_shortcut))

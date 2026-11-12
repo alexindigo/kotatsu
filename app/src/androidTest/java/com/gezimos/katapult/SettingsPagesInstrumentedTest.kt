@@ -136,10 +136,10 @@ class SettingsPagesInstrumentedTest {
         // The production toggle is the actual entry point; it also covers the OFF page.
         ui.click(text(R.string.section_screensaver))
         ui.await("Screensaver chapter not ready") { ui.has(text(R.string.screensaver_enable_desc)) }
-        if (!ui.has(text(R.string.screensaver_customization))) ui.click(text(R.string.screensaver_enable_desc))
+        if (!ui.has(text(R.string.screensaver_customization))) ui.toggleSwitch(text(R.string.screensaver_enable_desc), false, true) { model.prefs.screensaverEnabled }
         ui.click(text(R.string.screensaver_customization))
         val before = model.prefs.screensaverShowClock
-        ui.click(text(R.string.screensaver_show_clock))
+        ui.toggleSwitch(text(R.string.screensaver_show_clock), before, !before) { model.prefs.screensaverShowClock == !before }
         ui.await("Multi-select value did not persist in place") {
             model.prefs.screensaverShowClock == !before && ui.checked(text(R.string.screensaver_show_clock)) == !before
         }

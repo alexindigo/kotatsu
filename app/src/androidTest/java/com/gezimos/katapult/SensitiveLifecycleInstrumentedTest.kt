@@ -149,7 +149,7 @@ class SensitiveLifecycleInstrumentedTest {
             ui.await("Choice/status separation missing") { ui.has("Collect SMS badges") && ui.has("Direct source unsupported on this device") }
             assertTrue("Default missing SMS choice did not render enabled", ui.checked("Collect SMS badges") == prefs.sensitiveChoice(SensitiveChoice.SMS_BADGES))
             val before = prefs.sensitiveChoice(SensitiveChoice.SMS_BADGES)
-            ui.click("Collect SMS badges")
+            ui.toggleSwitch("Collect SMS badges", before, !before) { prefs.sensitiveChoice(SensitiveChoice.SMS_BADGES) == !before }
             ui.await("Public choice did not reach stored preference and visible switch") {
                 prefs.sensitiveChoice(SensitiveChoice.SMS_BADGES) == !before && ui.checked("Collect SMS badges") == !before
             }

@@ -217,10 +217,10 @@ class PaperIndexChaptersInstrumentedTest {
             if (!ui.has(title)) ui.click(context.getString(R.string.paper_next_page))
             assertFalse(ui.has("Text backgrounds"))
             ui.await("Positive music state must be On for stored disable=false") { ui.checked(title) == true }
-            ui.click(title)
+            ui.toggleSwitch(title, true, false) { prefs.disableMusicWidget }
             ui.await("Music Off must persist disable=true") { prefs.disableMusicWidget && ui.checked(title) == false }
             assertTrue(org.json.JSONObject(prefs.exportToJson(context)).getBoolean("disable_music_widget"))
-            ui.click(title)
+            ui.toggleSwitch(title, false, true) { !prefs.disableMusicWidget }
             ui.await("Music On must persist disable=false") { !prefs.disableMusicWidget && ui.checked(title) == true }
         } finally {
             instrumentation.runOnMainSync {

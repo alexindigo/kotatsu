@@ -95,6 +95,16 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
 
     fun checked(label: String): Boolean? = findAncestor(label) { it.isCheckable }?.isChecked
 
+    /** Own both published states, or an explicit destination when switching opens another page. */
+    fun toggleSwitch(label: String, from: Boolean, to: Boolean? = !from, settled: () -> Boolean = { true }) {
+        await("Switch has not published its starting state: $label") { checked(label) == from }
+        val control = checkNotNull(findAncestor(label) { it.isCheckable })
+        check(control.performAction(AccessibilityNodeInfo.ACTION_CLICK)) { "Switch rejected its action: $label" }
+        await("Switch transition did not reach its consumer: $label") {
+            (to == null || checked(label) == to) && settled()
+        }
+    }
+
     fun scrollTo(label: String) {
         repeat(12) {
             if (has(label)) return

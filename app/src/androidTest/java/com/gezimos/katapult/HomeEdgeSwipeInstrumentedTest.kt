@@ -142,12 +142,10 @@ class HomeEdgeSwipeInstrumentedTest {
                 model.navigateTo(Screen.SETTINGS)
             }
             ui.await("Actual edge settings did not open") { ui.has(context.getString(R.string.edge_home_enabled)) }
-            fun toggleMaster() {
-                val toggle = ui.findAncestor(context.getString(R.string.edge_swipes_help)) { it.isCheckable }
-                assertNotNull("Master edge switch missing", toggle)
-                assertTrue(toggle!!.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+            val master = context.getString(R.string.edge_swipes_help)
+            ui.toggleSwitch(master, false, null) {
+                model.prefs.edgeActions.enabled && ui.has(context.getString(R.string.a11y_setup_title))
             }
-            toggleMaster()
             ui.await("Master edge switch must persist without Action Service") { model.prefs.edgeActions.enabled }
             ui.await("Enabling edges must still guide lock-screen setup") {
                 model.actionServiceSetup?.feature == com.gezimos.katapult.util.AccessibilityFeature.EDGE_SWIPES &&
@@ -160,12 +158,14 @@ class HomeEdgeSwipeInstrumentedTest {
                 model.actionServiceSetup == null && ui.has(context.getString(R.string.edge_home_enabled))
             }
             assertTrue(model.prefs.edgeActions.enabled)
-            toggleMaster()
+            ui.toggleSwitch(master, true, false) { !model.prefs.edgeActions.enabled }
             ui.await("Master edge switch must turn Off") { !model.prefs.edgeActions.enabled }
             instrumentation.waitForIdleSync()
             assertNull("Turning edges Off must never request service setup", model.actionServiceSetup)
             assertFalse(ui.has(context.getString(R.string.a11y_setup_title)))
-            toggleMaster()
+            ui.toggleSwitch(master, false, null) {
+                model.prefs.edgeActions.enabled && ui.has(context.getString(R.string.a11y_setup_title))
+            }
             ui.await("Turning edges back On must persist and request setup") {
                 model.prefs.edgeActions.enabled &&
                     model.actionServiceSetup?.feature == com.gezimos.katapult.util.AccessibilityFeature.EDGE_SWIPES &&
@@ -241,7 +241,7 @@ class HomeEdgeSwipeInstrumentedTest {
         val label = context.getString(R.string.edge_home_enabled)
         fun state() = ui.findAncestor(label) { it.isCheckable }?.stateDescription?.toString()
         ui.await("Home switch must display On by default") { state() == context.getString(com.gezimos.katapult.paper.R.string.paper_on) }
-        ui.click(label)
+        ui.toggleSwitch(label, true, false) { !store.homeEnabled }
         ui.await("Home switch did not display/persist Off") {
             !store.homeEnabled && state() == context.getString(com.gezimos.katapult.paper.R.string.paper_off)
         }

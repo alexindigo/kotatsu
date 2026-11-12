@@ -161,10 +161,10 @@ class PaperIndexSheetsInstrumentedTest {
             }
         }
         ui.await("Multi-choice not rendered") { ui.checked("First option") == true && ui.checked("Second option") == false }
-        ui.click("Second option")
+        ui.toggleSwitch("Second option", false, true) { second }
         ui.await("Second checkbox did not change") { ui.checked("Second option") == true }
         assertTrue(first); assertTrue(second); assertFalse(dismissed)
-        ui.click("First option")
+        ui.toggleSwitch("First option", true, false) { !first }
         ui.await("First checkbox did not change independently") { ui.checked("First option") == false }
         assertFalse(first); assertTrue(second); assertFalse(dismissed)
         ui.back()

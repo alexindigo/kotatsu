@@ -18,6 +18,26 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PaperIndexSettingsInstrumentedTest {
     @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @Test fun nativeSwitchTransitionWaitsForPublishedStateBeforeAnotherAction() = withSettings { activity, _, _, ui ->
+        val instrumentation = InstrumentationRegistry.getInstrumentation()
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val published = androidx.compose.runtime.mutableStateOf(true)
+        var stored = true
+        val requests = mutableListOf<Boolean>()
+        try {
+            instrumentation.runOnMainSync { activity.setContent {
+                com.gezimos.katapult.ui.settings.Entry(com.gezimos.katapult.ui.settings.SettingsEntry.Switch(
+                    "owned", "Owned switch", "", published.value, { value ->
+                        stored = value; requests += value
+                        handler.postDelayed({ published.value = value }, 120)
+                    }))
+            } }
+            ui.toggleSwitch("Owned switch", true, false) { !stored }
+            ui.toggleSwitch("Owned switch", false, true) { stored }
+            assertEquals(listOf(false, true), requests)
+            assertEquals(true, ui.checked("Owned switch"))
+        } finally { handler.removeCallbacksAndMessages(null) }
+    }
     private fun withSettings(test: (MainActivity, MainViewModel, PrefsManager, PlatformUiDriver) -> Unit) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -145,7 +165,7 @@ class PaperIndexSettingsInstrumentedTest {
         ui.click(context.getString(R.string.section_appearance))
         val title = context.getString(R.string.hide_app_names)
         ui.await("Switch lacks an accessible off state") { ui.checked(title) == false }
-        ui.click(title)
+        ui.toggleSwitch(title, false, true) { prefs.hideAppNames }
         ui.await("Switch did not persist or announce on state") {
             prefs.hideAppNames && ui.checked(title) == true &&
                 ui.findAncestor(title) { it.isCheckable }?.stateDescription == context.getString(R.string.paper_on)
@@ -231,11 +251,11 @@ class PaperIndexSettingsInstrumentedTest {
         assertFalse(ui.has(context.getString(R.string.paper_next_page)))
         assertTrue(ui.has(context.getString(R.string.paper_service_off)))
         capture("gestures-home-button-2.png")
-        ui.click(title)
+        ui.toggleSwitch(title, true, false) { !prefs.homeButtonRecentApps }
         ui.await("Recent apps Off not saved or exposed") { !prefs.homeButtonRecentApps && ui.checked(title) == false }
-        ui.click(screenshot)
+        ui.toggleSwitch(screenshot, true, false) { !prefs.homeButtonScreenshot }
         ui.await("Screenshot Off not saved or exposed") { !prefs.homeButtonScreenshot && ui.checked(screenshot) == false }
-        ui.click(homeMenu)
+        ui.toggleSwitch(homeMenu, true, false) { !prefs.homeButtonMenu }
         ui.await("Home menu Off not saved or exposed") { !prefs.homeButtonMenu && ui.checked(homeMenu) == false }
         assertFalse(PrefsManager(context).homeButtonRecentApps)
         assertFalse(PrefsManager(context).homeButtonScreenshot)
@@ -251,11 +271,11 @@ class PaperIndexSettingsInstrumentedTest {
         ui.await("Recent apps Off lost on reopening") { ui.checked(title) == false }
         assertFalse(ui.checked(screenshot)!!)
         assertFalse(ui.checked(homeMenu)!!)
-        ui.click(title)
+        ui.toggleSwitch(title, false, true) { prefs.homeButtonRecentApps }
         ui.await("Recent apps On not saved") { prefs.homeButtonRecentApps && ui.checked(title) == true }
-        ui.click(screenshot)
+        ui.toggleSwitch(screenshot, false, true) { prefs.homeButtonScreenshot }
         ui.await("Screenshot On not saved") { prefs.homeButtonScreenshot && ui.checked(screenshot) == true }
-        ui.click(homeMenu)
+        ui.toggleSwitch(homeMenu, false, true) { prefs.homeButtonMenu }
         ui.await("Home menu On not saved") { prefs.homeButtonMenu && ui.checked(homeMenu) == true }
         ui.click(context.getString(R.string.paper_notice_dismiss))
         ui.await("Shared Notice did not stay dismissed") { prefs.noticeActionServiceDismissed && !ui.has(context.getString(R.string.paper_service_off)) }
