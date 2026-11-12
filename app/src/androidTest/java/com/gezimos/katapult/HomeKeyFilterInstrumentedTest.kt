@@ -164,17 +164,26 @@ class HomeKeyFilterInstrumentedTest {
             }
             ui.await("Held Home did not reach Home on UP") { ui.packageVisible(defaultHome) }
         } finally {
-            instrumentation.removeMonitor(monitor)
-            main { home?.finish() }
-            if (enabled == "null") shell("settings delete secure enabled_accessibility_services")
-            else shell("settings put secure enabled_accessibility_services $enabled")
-            if (accessibility == "null") shell("settings delete secure accessibility_enabled")
-            else shell("settings put secure accessibility_enabled $accessibility")
-            ui.await("Key-filter active state leaked after unbind", 15000) { !HomeKeyFilterState.active }
-            awaitActionServiceSettingsPersisted(enabled, ::shell)
-            prefs.edit().apply { previous.forEach { (key, value) ->
-                if (value == null) remove(key) else putBoolean(key, value as Boolean)
-            } }.commit()
+            try {
+                try { instrumentation.removeMonitor(monitor) }
+                finally { main { home?.finish() } }
+            } finally {
+                try {
+                    try {
+                        if (enabled == "null") shell("settings delete secure enabled_accessibility_services")
+                        else shell("settings put secure enabled_accessibility_services $enabled")
+                    } finally {
+                        if (accessibility == "null") shell("settings delete secure accessibility_enabled")
+                        else shell("settings put secure accessibility_enabled $accessibility")
+                    }
+                    ui.await("Key-filter active state leaked after unbind", 15000) { !HomeKeyFilterState.active }
+                    awaitActionServiceSettingsPersisted(enabled, ::shell)
+                } finally {
+                    prefs.edit().apply { previous.forEach { (key, value) ->
+                        if (value == null) remove(key) else putBoolean(key, value as Boolean)
+                    } }.commit()
+                }
+            }
         }
     }
 }
