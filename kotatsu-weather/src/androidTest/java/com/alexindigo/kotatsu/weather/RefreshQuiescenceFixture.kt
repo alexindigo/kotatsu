@@ -54,10 +54,11 @@ internal class RefreshQuiescenceFixture : ExternalResource() {
 
 /** One owner of fetcher replacement and the complete native JobService worker lifetime.
  * Host fixtures acquire this only during teardown, so their real-job assertions are unchanged. */
-internal class HeldRefreshIngress : AutoCloseable {
+internal class HeldRefreshIngress(
+    private val previous: (Location, Boolean, String) -> String = RefreshJobService.fetcher,
+) : AutoCloseable {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
-    private val previous = RefreshJobService.fetcher
     private val release = CountDownLatch(1)
     private val held = ConcurrentHashMap.newKeySet<Thread>()
     private val staged = mutableListOf<Thread>()
@@ -119,7 +120,7 @@ internal class HeldRefreshIngress : AutoCloseable {
                 assertEquals(ForecastStore.Result.INCOMPLETE, ForecastStore(context).accept(
                     location, fahrenheit, OpenMeteoParser.parse(response), now, zone))
             }
-            catch (error: Throwable) { failures.add(error) }
+            catch (error: Throwable) { workerFailed(error) }
         }, "fixture-competing-refresh")
         replies[thread] = org.json.JSONObject().put("hourly", hourly).toString()
         staged += thread
@@ -129,6 +130,8 @@ internal class HeldRefreshIngress : AutoCloseable {
         assertTrue("Competing refresh reached the fixture-owned ingress", thread in held)
         assertTrue("Competing reply cannot finish inside DOWN publication", thread.isAlive)
     }
+
+    internal fun workerFailed(error: Throwable) { failures.add(error) }
 
     fun drain() {
         if (drained) return

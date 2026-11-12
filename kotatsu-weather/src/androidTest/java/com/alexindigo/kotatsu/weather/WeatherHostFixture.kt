@@ -85,19 +85,17 @@ internal class WeatherHostFixture(private val drainIngress: (HeldRefreshIngress)
     }
 
     override fun close() {
-        try {
-            HeldRefreshIngress().use {
-                instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
-                WeatherStore(context).delete(id)
-                drainIngress(it)
-                instrumentation.uiAutomation.dropShellPermissionIdentity()
-                val edit = prefs.edit()
-                (prefs.all.keys - before.keys).forEach(edit::remove)
-                before.forEach { (key, value) -> if (value is String) edit.putString(key, value) }
-                assertTrue(edit.commit())
-                assertEquals(before, prefs.all)
-                assertEquals(initialIds, host.appWidgetIds.toSet())
-            }
-        } finally { RefreshJobService.fetcher = previousFetcher }
+        HeldRefreshIngress(previousFetcher).use {
+            instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
+            WeatherStore(context).delete(id)
+            drainIngress(it)
+            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            val edit = prefs.edit()
+            (prefs.all.keys - before.keys).forEach(edit::remove)
+            before.forEach { (key, value) -> if (value is String) edit.putString(key, value) }
+            assertTrue(edit.commit())
+            assertEquals(before, prefs.all)
+            assertEquals(initialIds, host.appWidgetIds.toSet())
+        }
     }
 }
