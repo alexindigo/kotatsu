@@ -26,6 +26,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.dialog
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTag
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
@@ -46,6 +48,7 @@ fun PaperSheetHost(sheetVisible: Boolean, modifier: Modifier = Modifier,
 }
 
 /** Window-independent sheet. The Activity/service host owns Back and the window lifetime. */
+@OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
 fun PaperSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit) {
@@ -56,7 +59,11 @@ fun PaperSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier,
         Box(Modifier.fillMaxSize().clearAndSetSemantics {}
             .focusProperties { canFocus = false }.clickable(onClick = onDismiss))
         Column(Modifier.fillMaxWidth()
-            .semantics { isTraversalGroup = true }
+            .semantics {
+                isTraversalGroup = true
+                testTag = "paper_sheet_surface"
+                testTagsAsResourceId = true
+            }
             .focusRequester(focus)
             .focusProperties { onExit = { cancelFocusChange() } }
             .focusGroup()

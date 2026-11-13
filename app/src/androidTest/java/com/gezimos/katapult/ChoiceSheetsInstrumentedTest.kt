@@ -177,10 +177,8 @@ class ChoiceSheetsInstrumentedTest {
             ui.click("Test choice")
             ui.await("Options missing") { (0 until count).all { ui.checked("Option $it") != null } }
             assertEquals(0, chosen.get())
-            // The sheet is bottom anchored; a page starts below the chapter-sized header.
-            val bounds = android.graphics.Rect().also { ui.find("Option 0")!!.getBoundsInScreen(it) }
-            if (count == 4 && !dynamic) assertTrue("Short static list did not use a sheet", bounds.top > 200)
-            else assertTrue("Long/app-built list became a sheet", bounds.top < 200)
+            val sheet = ui.findAncestor("Option 0") { it.viewIdResourceName == "paper_sheet_surface" }
+            assertEquals("Only short static lists use the sheet surface", count == 4 && !dynamic, sheet != null)
             ui.back(); closed(ui)
             assertTrue(ui.has("Fixture chapter"))
             assertEquals(0, chosen.get())
