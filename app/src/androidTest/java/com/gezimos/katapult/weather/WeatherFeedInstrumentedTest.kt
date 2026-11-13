@@ -187,6 +187,7 @@ class WeatherFeedInstrumentedTest {
         } finally {
             restore(releaseSource)
             restore { accessibility?.close() }
+            restore { await("Service destroyed before closing injected feed") { main { service() == null } } }
             restore {
                 val edit = raw.edit()
                 if (before == null) edit.remove("lockscreen_weather") else edit.putBoolean("lockscreen_weather", before as Boolean)
