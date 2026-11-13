@@ -68,7 +68,13 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
         attempt { await("Action Service connection did not reach the owned state") {
             HomeKeyFilterState.active == contains(value.enabled)
         } }
-        attempt { await("Accessibility pair did not restore exactly") { values() == value } }
+        attempt { await("Accessibility pair did not restore exactly") {
+            if (values() == value) true else {
+                // Android can rewrite this flag while processing the enabled-service change.
+                restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell)
+                false
+            }
+        } }
         attempt { await("Accessibility pair did not persist exactly") {
             val stored = persistedSecureSettings(::shell)
             (stored[ENABLED] ?: "null") == value.enabled && (stored[ACCESSIBILITY] ?: "null") == value.accessibility

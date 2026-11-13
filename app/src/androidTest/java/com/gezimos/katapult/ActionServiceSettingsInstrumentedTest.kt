@@ -10,7 +10,7 @@ import org.junit.runner.RunWith
 class ActionServiceSettingsInstrumentedTest {
     @Test fun nativeOwnerRestoresMissingAndEmptyPairsEvenWhenTheBodyThrows() {
         ActionServiceSettingsFixture.off().use {
-            for ((enabled, accessibility) in listOf("null" to "0", "" to "0", "" to "")) {
+            for ((enabled, accessibility) in listOf("null" to "null", "" to "null", "null" to "0", "" to "0", "" to "")) {
                 ActionServiceSettingsFixture.exact(enabled, accessibility).use { original ->
                     val before = original.values()
                     val expected = IllegalStateException("owned body failure")
