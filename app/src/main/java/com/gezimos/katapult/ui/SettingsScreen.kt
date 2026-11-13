@@ -69,7 +69,6 @@ import com.gezimos.katapult.weather.WeatherSources
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.toggleableState
 import androidx.compose.ui.state.ToggleableState
 import com.gezimos.katapult.ui.settings.SettingsEntry
@@ -96,6 +95,7 @@ import com.gezimos.katapult.ui.settings.systemCategory
 import com.gezimos.katapult.ui.settings.aboutCategory
 import com.gezimos.katapult.ui.settings.SettingsPage
 import com.gezimos.katapult.ui.settings.ChoiceSurface
+import com.gezimos.katapult.ui.settings.PaperSheetHost
 import com.gezimos.katapult.ui.settings.HelpPage
 import com.gezimos.katapult.ui.settings.rememberSettingsNavigation
 import com.gezimos.katapult.ui.settings.SheetText
@@ -437,15 +437,16 @@ fun SettingsScreen(
     }
     val visibleDestination = if (activeChoice?.usesSheet == true) navigation.previous else navigation.current
 
-    Box(
+    PaperSheetHost(
+        sheetVisible = activeChoice?.usesSheet == true,
         modifier = Modifier
             .fillMaxSize()
             .background(LocalSurface.current)
             .statusBarsPadding()
             .navigationBarsPadding(),
-    ) {
+        background = {
       pageStates.SaveableStateProvider(visibleDestination) {
-       Box(if (activeChoice?.usesSheet == true) Modifier.clearAndSetSemantics {} else Modifier) {
+        Box {
         val destination = visibleDestination
         if (destination == "root") {
             val entries = chapters.map { (id, chapter) ->
@@ -848,7 +849,8 @@ fun SettingsScreen(
     }
       }
        }
-      if (activeChoice != null) ChoiceSurface(activeChoice, popPage)
+       }) {
+        if (activeChoice != null) ChoiceSurface(activeChoice, popPage)
     }
 }
 

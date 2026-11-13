@@ -338,9 +338,9 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
         return
     }
     val groups = category.groups.filter { it.visibleEntries.isNotEmpty() }
-    Box(modifier.fillMaxSize()) {
+    PaperSheetHost(choice != null, modifier.fillMaxSize(), background = {
     PageFrame(category.title, if (choice == null) onBack else navigation::pop,
-        modifier = if (choice == null) Modifier else Modifier.clearAndSetSemantics {}, help = category.help,
+        help = category.help,
         onHelp = onHelp ?: { navigation.push("help") }) {
         // The body constraint is independent of the current page's footer. Measure the same
         // footer grammar for each candidate, including wrapped/localized Notice text.
@@ -398,7 +398,8 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
         }
         LaunchedEffect(page) { scroll.scrollTo(0) }
     }
-    if (choice != null) ChoiceSurface(choice, navigation::pop)
+    }) {
+        if (choice != null) ChoiceSurface(choice, navigation::pop)
     }
 }
 

@@ -187,6 +187,34 @@ class ChoiceSheetsInstrumentedTest {
         }
     }
 
+    @Test fun retainedChapterCannotReceiveAccessibilityOrKeyboardFocus() = fixture { activity, _, _, ui, _ ->
+        main { activity.setContent {
+            val entry = SettingsEntry.Value("value", "Test choice", "Choice help", "Option 0",
+                List(3) { SettingsChoice(it.toString(), "Option $it") }, {}, "0")
+            PaperIndexRenderer(SettingsCategory("fixture", "Fixture chapter",
+                listOf(SettingsGroup("group", "Group", listOf(entry)))), {})
+        } }
+        ui.click("Test choice")
+        ui.await("Options missing") { ui.checked("Option 0") != null }
+        assertFalse("Retained chapter is exposed to accessibility", ui.has("Fixture chapter"))
+        assertNull("Retained choice entry is exposed to accessibility",
+            ui.find { it.text?.toString() == "Test choice" && !it.isHeading })
+        for (reverse in listOf(false, true)) repeat(12) {
+            val time = android.os.SystemClock.uptimeMillis()
+            val meta = if (reverse) android.view.KeyEvent.META_SHIFT_ON else 0
+            for (action in listOf(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.ACTION_UP)) {
+                instrumentation.sendKeySync(android.view.KeyEvent(time, time, action, android.view.KeyEvent.KEYCODE_TAB, 0, meta))
+            }
+            instrumentation.waitForIdleSync()
+            ui.await("Keyboard focus escaped the sheet after Tab ${it + 1}, reverse=$reverse") {
+                ui.find { node -> node.isFocused && node.isCheckable } != null
+            }
+        }
+        ui.back(); closed(ui)
+        assertTrue("Dismissal did not restore chapter accessibility", ui.has("Fixture chapter"))
+        assertTrue("Dismissal did not restore choice accessibility", ui.has("Test choice"))
+    }
+
     @Test fun timedChoicePopsBeforeOpeningItsEditorAndHomeHelpIsLocalized() = fixture { _, _, prefs, ui, _ ->
         ui.click(label(R.string.section_screensaver)); reveal(ui, R.string.screensaver_update_mode)
         ui.click(label(R.string.screensaver_update_mode)); options(ui, R.string.screensaver_mode_interval)
