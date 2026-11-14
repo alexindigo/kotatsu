@@ -32,6 +32,7 @@ Paths below are relative to the repository root. `kit/` in the tables means
 | 9 | `app/src/main/java/com/gezimos/katapult/ui/settings/AppChecklistPage.kt` | Hidden/System apps matrix and notification-app selection |
 | 10 | `app/src/main/java/com/gezimos/katapult/ui/settings/LockscreenWidgetsPage.kt` | Widget controls, Widgets section, Add widget and management destinations |
 | 11 | `kit/PaperSheet.kt` | Shared bottom sheet drawing and heading; Activity and Action Service hosts own window lifetime and Back |
+| 12 | `kit/PaperTileAction.kt`, `kit/PaperShortcutEntry.kt` | Home-proportioned action tiles and independent shortcut launch/app-icon targets |
 
 ## Principles
 
@@ -96,8 +97,8 @@ the implementation, not from measuring an image.
 | 2 | Page title | 26 sp Bold, 31.5 sp line height; one line, ellipsis | `PageHeader` |
 | 3 | Header structure | Minimum 57 dp high; top 9 dp, end 12 dp; start 6 dp with a leading action, otherwise 16 dp | `PageHeader` |
 | 4 | Header action | Centred drawing inside a 48 x 48 dp button; help `?` is 22.5 sp Bold | `HeaderAction`, `ChapterHeader` |
-| 5 | Back/next chevron | 18 x 21 dp drawing, 2.25 dp stroke; x positions 0.33/0.71, y positions 0.22/0.50/0.78 of its bounds | Private `Chevron` |
-| 6 | Group heading | 14 sp Bold, 17.25 sp line height; 3 dp top padding, 5.25 dp before a 2 dp full-width rule | `GroupHeading` |
+| 5 | Back/next chevron | 18 x 21 dp drawing, 2.25 dp stroke; x positions 0.33/0.71, y positions 0.22/0.50/0.78 of its bounds | Internal `Chevron` |
+| 6 | Group heading | 14 sp Bold, 17.25 sp line height; 3 dp top padding, 5.25 dp before a 2 dp full-width rule; app-menu groups use a 1 dp rule and may supply a trailing Regular column label | `GroupHeading` |
 | 7 | Root name | 21 sp Bold, 25.5 sp line height; one line, ellipsis | `IndexName(root = true)` |
 | 8 | Root summary | 14 sp Regular, 17.25 sp line height | `IndexLine(root = true)` |
 | 9 | Entry name/value | 18 sp Bold, 21.75 sp line height; name one line with ellipsis | `IndexName`, `IndexLine` |
@@ -140,10 +141,11 @@ the implementation, not from measuring an image.
 | 17 | Hide/Notify matrix | 64 dp wide outer control columns and minimum 64 dp row/cell height; 6 dp between columns; labels 14/17.25 sp Regular in 64 dp columns | App `VisibilityRow`, `ColumnLabel` in `AppChecklistPage.kt` |
 | 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
 | 19 | Bottom sheet | Bottom anchored, paper fill; 2 dp ink outline on top and sides, no bottom edge; 18 dp top corners; 16 dp side and 10 dp bottom content padding, navigation-bar padding | `PaperSheet` |
-| 20 | Sheet heading | Normal page header with zero start inset inside the sheet's content inset, followed by a 2 dp ink rule | `PaperSheetHeading` |
+| 20 | Sheet heading | 21/25.5 sp Lato Bold, one line with ellipsis; 3 dp vertical padding; trailing 18 dp close drawing in a 48 dp target; optional leading page-back chevron in a 48 dp target; no title rule | `PaperSheetHeading` |
 | 21 | Choice-sheet help | Entry help 14/16.5 sp Regular; 1.5 dp top and 4.5 dp bottom padding | `ChoiceSurface` |
 | 22 | Choice-sheet option | 18/21.75 sp, selected Bold otherwise Regular; minimum 48 dp without help or 67.5 dp with help; 9 dp vertical padding; optional full-width 14/16.5 sp help with 1.5 dp top gap | Private `ChoiceSheetOption` |
 | 23 | Choice-sheet tracks | Shared baseline leader geometry in muted; value cell centred on the name track; 20 dp checkbox, chosen ink fill/paper check, unchosen 2.5 dp muted outline; external mark before box with 7.5 dp gap | `IndexTracks`, `IndexCheckbox` |
+| 24 | Tile action | 54 dp square, 2 dp ink border, 14 dp corners; 38 dp vector drawing box with approximately 1.5/24-unit strokes; 14/17.25 sp Lato Regular label 4 dp below, one line; whole tile and label form one button | `PaperTileAction` |
 
 Targets must be at least 48 dp in both dimensions. A value word or a check
 drawing is not its own tiny target: the surrounding row or independent control
@@ -362,13 +364,52 @@ and Action Service overlays host the same drawing; each host owns Back and
 the window lifetime.
 
 `HomeMenu` shares its content between Home and the held-Home menu over the
-current app. Its heading uses the normal page-header grammar and a rule.
+current app. Its heading uses the shared smaller sheet title and dismiss
+control, without a rule beneath the title.
 Rows use chapter entries: Bold names, muted dotted leaders and Bold values,
 without icons. Settings says **Open**; Wallpaper shows the current wallpaper.
 When the All Apps button is hidden, both menus also offer All Apps.
 Destination rows over another app
 carry the external-handoff mark because they open Kotatsu; rows on Home do
 not. Menu leaders use the palette's muted token; labels and values stay ink.
+
+### App menu: shortcuts first
+
+Holding an app on Home or in the app grid opens the same paper sheet,
+titled with the app's label. App shortcuts appear first when the app
+publishes them; apps without shortcuts have no empty group or message.
+The group heading is **App shortcuts**, with the state column **App icon**
+at the end. Each row has two independent targets: the shortcut name with a
+handoff mark launches it, and the checkbox adds or removes its own app icon.
+The name and leader share a baseline; the checkbox is centred on that row.
+Checkbox columns name a state, not a command such as Add as icon.
+
+Below the shortcuts, evenly distributed Home-style tiles open **Kotatsu**,
+**Android** and **Move**. On Home, **Change** replaces Move and opens the
+existing picker for that exact spot. Holding an app always opens this menu;
+there is no Long-press app on Home setting. Tile glyphs are sliders, an info
+circle, four-way arrows and opposing swap arrows respectively. The whole
+tile and label expose one button named by the label, not separate targets.
+
+Kotatsu and Android replace the content inside the same sheet. Their
+heading keeps the app label and dismiss control, with a leading back
+chevron. The chevron or device Back returns one level; dismiss or a tap
+above closes the entire menu. Rows read "what it is ..... what to do":
+
+| # | List | Name | Value or action | Availability |
+|---|---|---|---|---|
+| 1 | Kotatsu | Name | Current app label | Opens the name editor |
+| 2 | Kotatsu | App icon | Change | Opens the existing icon picker |
+| 3 | Kotatsu | App icon | Hide | Where hiding is offered |
+| 4 | Kotatsu | Notification dot | Clear | Only while a badge can be cleared, including direct calls |
+| 5 | Android | App info | Open with handoff mark | Opens Android app details |
+| 6 | Android | Notifications | Open with handoff mark | Opens Android notification settings |
+| 7 | Android | Uninstall | Open with handoff mark | Non-system apps only |
+
+An added shortcut icon has a smaller menu titled with its own label:
+**App icon ..... Remove**, followed only by Move or Home's Change tile.
+Remove and unticking the original shortcut use the same removal owner.
+It has no shortcut group or Kotatsu/Android tiles.
 
 ### Short choices: a sheet over the chapter
 
@@ -378,8 +419,8 @@ list currently has few items. `SettingsEntry.Value.usesSheet` owns this
 decision; every value consumer uses `ChoiceSurface`. There is no rolling
 selector or long-press interaction.
 
-The sheet uses `PaperSheetHeading`: the normal 26 sp Bold page title and
-rule, not a separate smaller title. Entry help is 14 sp above the options.
+The sheet uses `PaperSheetHeading`: a 21 sp Bold title with a dismiss
+control and no title rule. Entry help is 14 sp above the options.
 Each option has an 18 sp ink name, Regular unless chosen (Bold), a flexible
 muted dotted leader and a checkbox at the value edge. Chosen is ink-filled
 with the paper check; unchosen has an empty muted outline. The box is
@@ -678,7 +719,7 @@ differences rather than quietly turning them into a second house style.
 | 2 | Long or app-built choice pages | These keep plain left labels and a light check inset from the chapter value edge, not the short sheet's name/leader/box line. `ChoiceOption` intentionally makes only the selected label Bold and centres its 21 dp / 1.5 dp-stroke check in a 48 dp trailing slot. This remains the implemented page-specific exception, not a reason to add leaders or heavier marks locally |
 | 3 | Lock screen message editor | Save and Cancel are separate plain Regular rows below the field, rather than the Bold action/value emphasis used by entries. They currently use `SheetAction`; no action-bar redesign is implied |
 | 4 | Lock screen notification apps | Deselect all is a plain Regular header action above Bold app labels and trailing checkboxes. It uses `SheetAction`, so its typography differs from the main entry/action vocabulary |
-| 5 | Gestures and Order apps | Values include `Edit Shortcut`, `Most Recent` and `Most Used`, mixing title case with sentence-style labels. `Lock Phone` is also an existing gesture choice. These are legacy copy differences, not the writing model for new labels |
+| 5 | Order apps | Values include `Most Recent` and `Most Used`, mixing title case with sentence-style labels. These are legacy copy differences, not the writing model for new labels |
 | 6 | Lock screen notification apps | The long header ends in an ellipsis. This follows `PageHeader`'s one-line overflow behaviour but loses the full visible destination name. Purpose labels and semantics still need to identify the page; its accessibility result needs a runtime check |
 
 Notifications, Screensaver and About can have single-page compositions. Page

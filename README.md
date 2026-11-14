@@ -82,12 +82,19 @@ On Kompakt, open launcher Settings → Lockscreen → Lock-screen widgets, enabl
 | # | Action | How |
 |---|---|---|
 | 1 | Open Settings | Long-press an empty area of Home |
-| 2 | Replace a home shortcut | Long-press Phone, SMS or an extra-row shortcut |
-| 3 | Assign clock/date shortcuts | Long-press the clock or date |
-| 4 | Change an app | Long-press it in All Apps for Rename, Change Icon, Hide or Reorder |
-| 5 | Reorder | Tap another app to swap, then Save; Reset edits the draft |
+| 2 | Replace a home shortcut | Hold the Home app, then choose Change |
+| 3 | Assign clock/date shortcuts | Hold the clock or date; choose Change if an app is already assigned |
+| 4 | App menu | Hold an app on Home or in the app grid for its shortcuts, then Kotatsu, Android and Move (Change on Home) |
+| 5 | Move | Tap another app to swap, then Save; Reset edits the draft |
 
 Back exits a nondefault launcher preview after internal navigation and dialogs are resolved. Clock and date formats can follow Android's System setting or use a chosen format. If Action Service access is lost, Kotatsu names the affected features and offers to turn them off.
+
+The app menu lists quick actions first. Tap a name to launch it; tick its
+App icon box to add it as an icon of its own. Kotatsu opens Name, App icon
+Change/Hide and, while a dot is present, Notification dot Clear. Android
+opens App info, Notifications and Uninstall for non-system apps. Change on
+Home opens the picker for that spot. There is no separate long-press app
+setting. Added shortcut icons offer App icon Remove and Move or Change.
 
 Double-press Home within 400 ms to open Recent apps. The newest app sits at the bottom; scroll up for older apps.
 Tap an app name to switch to it. Close, or swipe a row left by at least a third of its width, to stop its background
