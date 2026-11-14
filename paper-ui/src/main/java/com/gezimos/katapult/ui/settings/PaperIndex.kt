@@ -140,7 +140,7 @@ fun GroupHeading(title: String) {
 }
 
 @Composable
-private fun Chevron(next: Boolean, modifier: Modifier = Modifier) {
+internal fun Chevron(next: Boolean, modifier: Modifier = Modifier) {
     val ink = LocalInk.current
     Canvas(modifier.size(18.dp, 21.dp)) {
         val path = Path().apply {
@@ -554,7 +554,7 @@ fun ChoiceSurface(entry: SettingsEntry.Value, onDismiss: () -> Unit) {
         return
     }
     PaperSheet(onDismiss) {
-        PaperSheetHeading(entry.title)
+        PaperSheetHeading(entry.title, onDismiss)
         if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
             lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp, bottom = 4.5.dp))
         entry.choices.forEach { choice ->

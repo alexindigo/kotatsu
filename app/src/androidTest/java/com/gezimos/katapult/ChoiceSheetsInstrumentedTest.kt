@@ -205,7 +205,8 @@ class ChoiceSheetsInstrumentedTest {
             }
             instrumentation.waitForIdleSync()
             ui.await("Keyboard focus escaped the sheet after Tab ${it + 1}, reverse=$reverse") {
-                ui.find { node -> node.isFocused && node.isCheckable } != null
+                ui.find { node -> node.isFocused && (node.isCheckable ||
+                    node.contentDescription?.toString() == context.getString(com.gezimos.katapult.paper.R.string.paper_dismiss)) } != null
             }
         }
         ui.back(); closed(ui)

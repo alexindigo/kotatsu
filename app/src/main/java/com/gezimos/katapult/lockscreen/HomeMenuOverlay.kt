@@ -31,6 +31,7 @@ internal class HomeMenuOverlay(private val context: Context, private val handler
                         Appearance.Provide(Appearance.Surface.APP) {
                             PaperSheet(::close, Modifier.semantics { paneTitle = context.getString(R.string.home_button_menu) }) {
                                 HomeMenu(prefs.wallpaperSource, external = true,
+                                    onDismiss = ::close,
                                     onSettings = { open(MainActivity.HOME_MENU_SETTINGS) },
                                     onWallpaper = { open(MainActivity.HOME_MENU_WALLPAPER) },
                                     onAllApps = if (prefs.hideAllAppsButton) {

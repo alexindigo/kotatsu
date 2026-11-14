@@ -18,7 +18,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
 
-/** Observes the rendered separator, not just a decorative semantics marker. */
+/** Observes the absence of a title rule in the rendered heading band. */
 internal fun assertSheetHeading(ui: PlatformUiDriver, title: String, first: String, dark: Boolean) {
     val instrumentation = InstrumentationRegistry.getInstrumentation()
     val context = instrumentation.targetContext
@@ -35,7 +35,7 @@ internal fun assertSheetHeading(ui: PlatformUiDriver, title: String, first: Stri
     val palette = if (dark) PaperPalette.Dark(context) else PaperPalette.Light(context)
     // Semantics and even a decor-frame callback can precede framebuffer publication.
     // The pixel contract itself owns readiness; a missing or wrong rule still times out.
-    ui.await("A contiguous full-width 2 dp ink rule must render between heading and rows") {
+    ui.await("The sheet heading must not draw a full-width title rule") {
         val bitmap = instrumentation.platformAutomation.takeScreenshot()
         try {
             val left = (16 * density).roundToInt()
@@ -43,7 +43,7 @@ internal fun assertSheetHeading(ui: PlatformUiDriver, title: String, first: Stri
             val lines = (heading.bottom until row.top).filter { y ->
                 (left until right).all { x -> bitmap.getPixel(x, y) == palette.inkArgb }
             }
-            lines.size == (2 * density).roundToInt() && lines.last() - lines.first() + 1 == lines.size
+            lines.isEmpty()
         } finally { bitmap.recycle() }
     }
 }
@@ -53,7 +53,7 @@ class PaperSheetHeadingInstrumentedTest {
     private val context = instrumentation.targetContext
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
 
-    @Test fun sharedHeadingAndRuleUsePageGrammarInBothPalettes() {
+    @Test fun sharedHeadingHasDismissAndNoRuleInBothPalettes() {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         var activity: MainActivity? = null
@@ -67,13 +67,14 @@ class PaperSheetHeadingInstrumentedTest {
                 main {
                     current.setContent {
                         PaperSheet({}) {
-                            PaperSheetHeading(context.getString(R.string.theme_mode))
+                            PaperSheetHeading(context.getString(R.string.theme_mode), {})
                             Entry(SettingsEntry.Open("system", context.getString(R.string.theme_system), "", {}))
                         }
                     }
                 }
                 val ui = PlatformUiDriver(instrumentation)
                 ui.await("Heading fixture missing") { ui.has(context.getString(R.string.theme_system)) }
+                ui.await("Sheet dismiss missing") { ui.find("Dismiss")?.isClickable == true }
                 val committed = CountDownLatch(1)
                 main {
                     current.window.decorView.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }

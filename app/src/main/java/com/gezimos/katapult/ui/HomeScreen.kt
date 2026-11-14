@@ -465,6 +465,7 @@ fun HomeScreen(
     if (showMenu) {
         BottomSheet(onDismiss = { showMenu = false }) {
             HomeMenu(viewModel.wallpaperSource,
+                onDismiss = { showMenu = false },
                 onSettings = { showMenu = false; viewModel.navigateTo(Screen.SETTINGS) },
                 onWallpaper = { showMenu = false; viewModel.openWallpaperSettings() },
                 onAllApps = if (viewModel.prefs.hideAllAppsButton) {

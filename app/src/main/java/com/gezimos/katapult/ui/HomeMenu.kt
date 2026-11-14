@@ -11,9 +11,9 @@ import com.gezimos.katapult.util.WallpaperSource
 /** Both hosts supply destinations; this content knows neither the Activity nor the service. */
 @Composable
 fun HomeMenu(wallpaper: WallpaperSource, external: Boolean = false,
-    onSettings: () -> Unit, onWallpaper: () -> Unit, onAllApps: (() -> Unit)? = null) {
+    onDismiss: () -> Unit, onSettings: () -> Unit, onWallpaper: () -> Unit, onAllApps: (() -> Unit)? = null) {
     val muted = LocalPalette.current.muted
-    PaperSheetHeading(stringResource(R.string.kotatsu_title))
+    PaperSheetHeading(stringResource(R.string.kotatsu_title), onDismiss)
     Entry(SettingsEntry.Open("settings", stringResource(R.string.settings), "", onSettings,
         external = external), leaderColor = muted)
     if (onAllApps != null) Entry(SettingsEntry.Open("apps", stringResource(R.string.all_apps), "", onAllApps,

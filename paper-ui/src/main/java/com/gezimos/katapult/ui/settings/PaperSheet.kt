@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.material3.Text
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -24,11 +25,18 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.dialog
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.gezimos.katapult.paper.R
+import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 
@@ -93,9 +101,12 @@ fun PaperSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier,
 
 /** Page-header grammar within the sheet's existing content inset and scroll owner. */
 @Composable
-fun PaperSheetHeading(title: String) {
-    Column(Modifier.fillMaxWidth()) {
-        PageHeader(title, startInset = 0.dp)
-        Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
+fun PaperSheetHeading(title: String, onDismiss: () -> Unit, onBack: (() -> Unit)? = null) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (onBack != null) HeaderAction(stringResource(R.string.paper_back), onBack) { Chevron(false) }
+        Text(title, fontFamily = LatoFamily, fontSize = 21.sp, lineHeight = 25.5.sp,
+            fontWeight = FontWeight.Bold, color = LocalInk.current, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f).semantics { heading() })
+        HeaderAction(stringResource(R.string.paper_dismiss), onDismiss) { CloseMark() }
     }
 }
