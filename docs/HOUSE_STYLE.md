@@ -391,7 +391,9 @@ shortcuts and the Hide/Notify matrix; full-row choice sheets use the same
 drawing tracks with their existing selectable row target.
 
 Below the shortcuts, evenly distributed Home-style tiles open **Kotatsu**,
-**Android** and **Move**. On Home, **Change** replaces Move and opens the
+**Android** and, only in manual All Apps sort mode, **Move**. Recent and
+Most Used show only Kotatsu and Android, with no disabled Move tile.
+On Home, **Change** replaces Move and opens the
 existing picker for that exact spot. Holding an app always opens this menu;
 there is no Long-press app on Home setting. Tile glyphs are sliders, an info
 circle, four-way arrows and opposing swap arrows respectively. The whole
@@ -414,6 +416,7 @@ above closes the entire menu. Rows read "what it is ..... what to do":
 
 An added shortcut icon has a smaller menu titled with its own label:
 **App icon ..... Remove**, followed only by Move or Home's Change tile.
+In Recent and Most Used All Apps modes, it has no tiles or empty tile row.
 Remove and unticking the original shortcut use the same removal owner.
 It has no shortcut group or Kotatsu/Android tiles.
 

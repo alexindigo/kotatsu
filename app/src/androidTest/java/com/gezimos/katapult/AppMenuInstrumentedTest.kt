@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.model.AppModel
 import com.gezimos.katapult.ui.App
+import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.ShortcutHelper
 import org.junit.Assert.*
 import org.junit.Test
@@ -133,6 +134,31 @@ class AppMenuInstrumentedTest {
         ui.click("Move")
         ui.await("Move did not select its app") { model.reorderMode &&
             model.orderedApps.getOrNull(model.reorderHighlightIndex)?.key == calculator.key }
+    }
+
+    @Test fun allAppsMoveIsAvailableOnlyInManualSortForAppsAndShortcuts() = fixture { _, model ->
+        main { model.setShortcutEnabled(camera.packageName, "camera", "Camera", true) }
+        ui.await("Added shortcut missing from All Apps") { ui.has("Camera") }
+        val move = context.getString(R.string.menu_move)
+        val kotatsu = context.getString(R.string.kotatsu_title)
+        val android = context.getString(R.string.menu_android)
+        val remove = context.getString(R.string.menu_remove)
+        for (mode in listOf(PrefsManager.APP_SORT_MANUAL, PrefsManager.APP_SORT_RECENT, PrefsManager.APP_SORT_USED)) {
+            main { model.prefs.appSortMode = mode; model.loadApps() }
+            ui.click(calculator.label, longPress = true)
+            ui.await("App menu missing in sort mode $mode") { ui.has(kotatsu) && ui.has(android) }
+            assertEquals("Move availability for app in sort mode $mode", mode == PrefsManager.APP_SORT_MANUAL, ui.has(move))
+            ui.back()
+            ui.await("App menu did not dismiss") { model.contextMenuApp == null }
+            ui.click("Camera", longPress = true)
+            ui.await("Added shortcut menu missing in sort mode $mode") { ui.has(remove) }
+            assertEquals("Move availability for shortcut in sort mode $mode", mode == PrefsManager.APP_SORT_MANUAL, ui.has(move))
+            assertFalse(ui.has(kotatsu))
+            assertFalse(ui.has(android))
+            assertFalse(model.reorderMode)
+            ui.back()
+            ui.await("Shortcut menu did not dismiss") { model.contextMenuApp == null }
+        }
     }
 
     @Test fun shortcutNamesLaunchAndCheckboxesOwnSavedIcons() = fixture { _, model ->

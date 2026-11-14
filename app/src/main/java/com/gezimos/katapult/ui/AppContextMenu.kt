@@ -97,13 +97,15 @@ fun AppContextMenu(
                                 onToggle = { enabled -> viewModel.setShortcutEnabled(app.packageName, id, label, enabled) })
                         }
                     }
-                    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceAround) {
-                        if (app.shortcutId.isEmpty()) {
-                            PaperTileAction(stringResource(R.string.kotatsu_title), com.gezimos.katapult.paper.R.drawable.paper_tile_kotatsu) { page = AppMenuPage.KOTATSU }
-                            PaperTileAction(stringResource(R.string.menu_android), com.gezimos.katapult.paper.R.drawable.paper_tile_android) { page = AppMenuPage.ANDROID }
+                    if (app.shortcutId.isEmpty() || onChange != null || showReorder) {
+                        Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                            if (app.shortcutId.isEmpty()) {
+                                PaperTileAction(stringResource(R.string.kotatsu_title), com.gezimos.katapult.paper.R.drawable.paper_tile_kotatsu) { page = AppMenuPage.KOTATSU }
+                                PaperTileAction(stringResource(R.string.menu_android), com.gezimos.katapult.paper.R.drawable.paper_tile_android) { page = AppMenuPage.ANDROID }
+                            }
+                            if (onChange != null) PaperTileAction(stringResource(R.string.menu_change), com.gezimos.katapult.paper.R.drawable.paper_tile_change, onChange)
+                            else if (showReorder) PaperTileAction(stringResource(R.string.menu_move), com.gezimos.katapult.paper.R.drawable.paper_tile_move) { viewModel.enterReorderMode(app) }
                         }
-                        if (onChange != null) PaperTileAction(stringResource(R.string.menu_change), com.gezimos.katapult.paper.R.drawable.paper_tile_change, onChange)
-                        else if (showReorder) PaperTileAction(stringResource(R.string.menu_move), com.gezimos.katapult.paper.R.drawable.paper_tile_move) { viewModel.enterReorderMode(app) }
                     }
                 }
                 AppMenuPage.KOTATSU -> {
