@@ -109,13 +109,6 @@
     <string name="hide_app_names_desc">Ocultar rótulos sob os ícones</string>
     <string name="hide_arrow_buttons">Ocultar setas</string>
     <string name="hide_arrow_buttons_desc">Ocultar setas de página e pontos em Todas as Apps</string>
-    <string name="home_long_press">Premir a app no ecrã principal</string>
-    <string name="home_long_press_desc">O que acontece ao premir uma app no ecrã principal</string>
-    <string name="home_long_press_app_info">Informações da app</string>
-    <string name="home_long_press_menu">Menu de contexto</string>
-    <string name="home_long_press_clear">Limpar notificações</string>
-    <string name="home_long_press_edit">Editar atalho</string>
-    <string name="home_long_press_none">Desativado</string>
     <string name="hide_all_apps_button">Ocultar botão Todas as Apps</string>
     <string name="hide_all_apps_button_desc">Substituir o botão Todas as Apps por um atalho</string>
     <string name="contacts">Contactos</string>

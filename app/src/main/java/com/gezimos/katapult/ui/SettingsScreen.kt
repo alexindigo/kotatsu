@@ -169,7 +169,6 @@ fun SettingsScreen(
     var showKatapultIcon by remember { mutableStateOf(prefs.showKatapultIcon) }
     var hideAppNames by remember { mutableStateOf(prefs.hideAppNames) }
     var hideArrowButtons by remember { mutableStateOf(prefs.hideArrowButtons) }
-    var homeLongPress by remember { mutableIntStateOf(prefs.homeLongPressAction) }
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
     var swipeUpAllApps by remember { mutableStateOf(prefs.swipeUpAllApps) }
@@ -316,14 +315,14 @@ fun SettingsScreen(
         onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
         onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
         onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
-    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeLongPress, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
+    val gestures = gesturesCategory(swipeUpAllApps, verticalAppGestures, doubleTapAction, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
         onSwipe = { swipeUpAllApps = it; prefs.swipeUpAllApps = it },
         onVertical = { verticalAppGestures = it; prefs.verticalAppGestures = it },
         onDoubleTap = {
             doubleTapAction = it; prefs.doubleTapAction = it
             if (it == PrefsManager.DOUBLE_TAP_LOCK && !LockscreenWidgetService.isEnabled(context))
                 viewModel.requestActionService(AccessibilityFeature.DOUBLE_TAP_LOCK)
-        }, onLongPress = { homeLongPress = it; prefs.homeLongPressAction = it },
+        },
         onRecentApps = { homeButtonRecentApps = it; prefs.homeButtonRecentApps = it },
         onScreenshot = { homeButtonScreenshot = it; prefs.homeButtonScreenshot = it },
         onHomeMenu = { homeButtonMenu = it; prefs.homeButtonMenu = it })

@@ -64,7 +64,7 @@ class ConfigImportInstrumentedTest {
 
     @Test fun allDeclaredIntegersRejectFractionalOverflowAndWrongTypes() = withPrefs { prefs, raw ->
         val keys = listOf("icon_size", "theme_mode", "eink_helper_mode", "double_tap_action",
-            "last_brightness", "home_long_press", "app_sort_mode", "lockscreen_widget_y",
+            "last_brightness", "app_sort_mode", "lockscreen_widget_y",
             "lockscreen_widget_rows", "screensaver_update_mode", "screensaver_update_minutes")
         for (key in keys) {
             assertFalse(raw.contains(key))
@@ -92,6 +92,20 @@ class ConfigImportInstrumentedTest {
             val roundTrip = JSONObject(prefs.exportToJson(context))
             assertFalse(roundTrip.has("home_islands"))
             assertFalse(roundTrip.has("screensaver_islands"))
+        }
+    }
+
+    @Test fun homeLongPressChoiceIsRemovedOnUpgradeAndIgnoredInBackups() = withPrefs { _, raw ->
+        val owner = object : ContextWrapper(context) {
+            override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = raw
+        }
+        for (oldValue in 0..4) {
+            assertTrue(raw.edit().putInt("home_long_press", oldValue).commit())
+            val prefs = PrefsManager(owner)
+            assertFalse("Upgrade kept the removed dispatch choice", raw.contains("home_long_press"))
+            assertTrue(prefs.importFromJson(config().put("home_long_press", oldValue).toString()))
+            assertFalse("An old backup restored the removed choice", raw.contains("home_long_press"))
+            assertFalse(JSONObject(prefs.exportToJson(context)).has("home_long_press"))
         }
     }
 

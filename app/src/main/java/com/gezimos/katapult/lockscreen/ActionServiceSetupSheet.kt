@@ -57,9 +57,7 @@ fun ActionServiceSetupSheet(
     else BottomSheet(onDismiss) {
         // Home recovery is outside Settings navigation; preserve its original modal presentation.
         Column(Modifier.fillMaxWidth().heightIn(max = 500.dp).verticalScroll(rememberScrollState())) {
-            Text(stringResource(R.string.a11y_setup_title), fontFamily = LatoFamily, fontSize = 21.sp,
-                lineHeight = 25.5.sp, fontWeight = FontWeight.Bold, color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 10.5.dp).semantics { heading() })
+            com.gezimos.katapult.ui.settings.PaperSheetHeading(stringResource(R.string.a11y_setup_title), onDismiss)
             content()
         }
     }

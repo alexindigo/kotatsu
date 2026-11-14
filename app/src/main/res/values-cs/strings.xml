@@ -109,13 +109,6 @@
     <string name="hide_app_names_desc">Skrýt popisky pod ikonami aplikací</string>
     <string name="hide_arrow_buttons">Skrýt tlačítka šipek</string>
     <string name="hide_arrow_buttons_desc">Skrýt šipky stránek a tečky v Aplikacích</string>
-    <string name="home_long_press">Dlouhé stisknutí aplikace v domovské</string>
-    <string name="home_long_press_desc">Co se stane při dlouhém stisknutí aplikace v domovské obrazovce</string>
-    <string name="home_long_press_app_info">Info o aplikaci</string>
-    <string name="home_long_press_menu">Kontextová nabídka</string>
-    <string name="home_long_press_clear">Vymazat oznámení</string>
-    <string name="home_long_press_edit">Upravit zástupce</string>
-    <string name="home_long_press_none">Vypnuto</string>
     <string name="hide_all_apps_button">Skrýt tlačítko Všechny aplikace</string>
     <string name="hide_all_apps_button_desc">Nahradit tlačítko Všechny aplikace zkratkou</string>
     <string name="swipe_up_all_apps">Přejetí pro aplikace</string>

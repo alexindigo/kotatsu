@@ -698,7 +698,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.clearIconOverride(key)
         deleteOverrideFile(existing)
         IconUtility.clearCacheFor(key)
-        ShortcutHelper.syncPins(ctx, prefs, packageName)
     }
 
     fun applyStatusBar(context: Context) {

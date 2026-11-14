@@ -277,13 +277,7 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
 
     if (showResetConfirm) {
         BottomSheet(onDismiss = { showResetConfirm = false }) {
-            Text(
-                text = stringResource(R.string.reset_order_confirm),
-                fontSize = 18.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 16.dp),
-            )
+            com.gezimos.katapult.ui.settings.PaperSheetHeading(stringResource(R.string.reset_order_confirm), onDismiss = { showResetConfirm = false })
             BottomSheetOption(stringResource(R.string.reset), icon = Icons.Rounded.RestartAlt) {
                 viewModel.resetOrder()
                 showResetConfirm = false

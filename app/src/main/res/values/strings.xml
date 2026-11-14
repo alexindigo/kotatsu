@@ -124,13 +124,6 @@
     <string name="hide_app_names_desc">Hide labels under app icons</string>
     <string name="hide_arrow_buttons">Hide arrow buttons</string>
     <string name="hide_arrow_buttons_desc">Hide page arrows and dots in All Apps</string>
-    <string name="home_long_press">Long-press app on Home</string>
-    <string name="home_long_press_desc">What happens when you long-press an app on Home</string>
-    <string name="home_long_press_app_info">App Info</string>
-    <string name="home_long_press_menu">Context Menu</string>
-    <string name="home_long_press_clear">Clear Notifications</string>
-    <string name="home_long_press_edit">Edit Shortcut</string>
-    <string name="home_long_press_none">Disabled</string>
     <string name="hide_all_apps_button">Hide All Apps button</string>
     <string name="hide_all_apps_button_desc">Replace the All Apps button with a shortcut</string>
     <string name="swipe_up_all_apps">Swipe for All Apps</string>

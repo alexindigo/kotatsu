@@ -62,6 +62,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
@@ -111,6 +112,7 @@ fun HomeScreen(
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     var pickerSlot by remember { mutableStateOf<String?>(null) }
+    var contextMenuSlot by rememberSaveable { mutableStateOf<String?>(null) }
     val policyRefresh = viewModel.policyRefresh
     var sideEdge by remember(viewModel.sheetDismissSignal) { mutableStateOf<ScreenEdge?>(null) }
     sideEdge?.let { edge ->
@@ -133,18 +135,9 @@ fun HomeScreen(
         val pkg = viewModel.getShortcutPackage(slot)
         if (pkg == null) {
             pickerSlot = slot
-        } else when (viewModel.prefs.homeLongPressAction) {
-            PrefsManager.HOME_LONG_PRESS_EDIT -> pickerSlot = slot
-            PrefsManager.HOME_LONG_PRESS_APP_INFO -> viewModel.launchIntent(
-                context,
-                Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.parse("package:$pkg")
-                },
-            )
-            PrefsManager.HOME_LONG_PRESS_MENU ->
-                viewModel.contextMenuApp = slotAsApp(slot)
-            PrefsManager.HOME_LONG_PRESS_CLEAR -> onClearBadge(pkg)
-            else -> {}
+        } else {
+            contextMenuSlot = slot
+            viewModel.contextMenuApp = slotAsApp(slot)
         }
     }
 
@@ -507,8 +500,14 @@ fun HomeScreen(
             iconPicker = iconPicker,
             showReorder = false,
             showHide = false,
+            onChange = contextMenuSlot?.let { slot -> {
+                viewModel.contextMenuApp = null
+                contextMenuSlot = null
+                pickerSlot = slot
+            } },
             onDismiss = {
                 viewModel.contextMenuApp = null
+                contextMenuSlot = null
                 viewModel.shortcutRefresh++
             },
         )
@@ -535,14 +534,7 @@ private fun AppPickerDialog(
     val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
-        Text(
-            text = title,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
+        com.gezimos.katapult.ui.settings.PaperSheetHeading(title, onDismiss)
         Column(
             modifier = Modifier
                 .pointerInput(page, totalPages) {

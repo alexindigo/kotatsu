@@ -65,6 +65,7 @@ class HomeSlotPickerInstrumentedTest {
             assertEquals(listOf(visible.key), model.orderedApps.map { it.key })
             assertTrue(ui.findAncestor("A hidden app") { it.isLongClickable }!!
                 .performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK))
+            ui.click(context.getString(R.string.menu_change))
             ui.await("Home-slot picker did not open") { ui.has(context.getString(R.string.set_left_app)) }
             assertTrue("Visible grid app absent from picker", ui.has("B available app"))
             assertFalse("Hidden grid app still offered by picker", ui.has("A hidden app"))
@@ -84,6 +85,7 @@ class HomeSlotPickerInstrumentedTest {
             assertEquals(hidden.activityName, model.prefs.loadShortcut("phone")?.second)
             assertTrue(ui.findAncestor("A hidden app") { it.isLongClickable }!!
                 .performAction(AccessibilityNodeInfo.ACTION_LONG_CLICK))
+            ui.click(context.getString(R.string.menu_change))
             ui.await("Picker did not reopen") { ui.has(context.getString(R.string.set_left_app)) }
             ui.click("B available app")
             ui.await("Picking a visible app did not reach the Home slot") {

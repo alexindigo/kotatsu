@@ -188,4 +188,38 @@ class AppMenuInstrumentedTest {
         }
     }
 
+    @Test fun holdingHomeAppAlwaysOpensChangeAndChangeOpensItsSpotPicker() = fixture { _, model ->
+        main {
+            model.prefs.setAppRename(camera.key, camera.label)
+            model.saveShortcut("phone", camera.packageName, camera.activityName)
+            model.navigateTo(Screen.HOME)
+        }
+        ui.await("Assigned Home app missing") { ui.has(camera.label) }
+        ui.click(camera.label, longPress = true)
+        ui.await("Home app menu missing Change") { ui.has("Change") && ui.has("Kotatsu") && ui.has("Android") }
+        assertFalse(ui.has("Move"))
+        capture("home")
+        ui.click("Change")
+        ui.await("Change did not open this spot's picker") { ui.has(context.getString(R.string.set_left_app)) }
+        ui.click(calculator.label)
+        ui.await("Picked app did not reach the Home spot") {
+            model.getShortcutPackage("phone") == calculator.packageName && !ui.has(context.getString(R.string.set_left_app))
+        }
+        assertEquals(calculator.packageName, model.prefs.loadShortcut("phone")?.first)
+    }
+
+    @Test fun homeShortcutMenuHasRemoveAndChangeOnly() = fixture { _, model ->
+        main {
+            model.setShortcutEnabled(camera.packageName, "camera", "Camera", true)
+            model.saveShortcut("phone", camera.packageName, camera.activityName, "camera")
+            model.navigateTo(Screen.HOME)
+        }
+        ui.await("Home shortcut icon missing") { ui.has("Camera") }
+        ui.click("Camera", longPress = true)
+        ui.await("Home shortcut menu missing") { ui.has("Remove") && ui.has("Change") }
+        assertFalse(ui.has("Move")); assertFalse(ui.has("Kotatsu")); assertFalse(ui.has("Android"))
+        capture("home-added-shortcut")
+        ui.click("Change")
+        ui.await("Home shortcut Change lost its spot") { ui.has(context.getString(R.string.set_left_app)) }
+    }
 }

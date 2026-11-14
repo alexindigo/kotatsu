@@ -31,7 +31,11 @@ class PrefsManager(context: Context) {
         changeListeners.forEach { it(key) }
     }
 
-    init { seedDefaultsOnce() }
+    init {
+        seedDefaultsOnce()
+        // Retire the old dispatch choice once; imports cannot recreate it either.
+        if (prefs.contains("home_long_press")) prefs.edit().remove("home_long_press").apply()
+    }
 
     fun sensitiveChoice(choice: SensitiveChoice): Boolean = boolPref(choice.key, true)
 
@@ -382,14 +386,6 @@ class PrefsManager(context: Context) {
     var hideArrowButtons: Boolean
         get() = boolPref(KEY_HIDE_ARROW_BUTTONS, false)
         set(value) = prefs.edit().putBoolean(KEY_HIDE_ARROW_BUTTONS, value).apply()
-
-    var homeLongPressAction: Int
-        get() = intPref(
-            KEY_HOME_LONG_PRESS,
-            if (boolPref(KEY_DISABLE_HOME_EDITING, false)) HOME_LONG_PRESS_APP_INFO
-            else HOME_LONG_PRESS_EDIT,
-        )
-        set(value) = prefs.edit().putInt(KEY_HOME_LONG_PRESS, value).apply()
 
     var appSortMode: Int
         get() = intPref(KEY_APP_SORT_MODE, APP_SORT_MANUAL)
@@ -748,7 +744,7 @@ class PrefsManager(context: Context) {
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
         KEY_THEME_MODE -> DEFAULT_THEME_MODE
         KEY_ICON_SIZE, KEY_EINK_HELPER_MODE, KEY_DOUBLE_TAP_ACTION,
-        KEY_LAST_BRIGHTNESS, KEY_HOME_LONG_PRESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
+        KEY_LAST_BRIGHTNESS, KEY_APP_SORT_MODE, KEY_LOCKSCREEN_WIDGET_Y,
         KEY_LOCKSCREEN_WIDGET_ROWS, KEY_SCREENSAVER_UPDATE_MODE, KEY_SCREENSAVER_UPDATE_MINUTES -> 0
         KEY_CLOCK_FORMAT, KEY_DATE_FORMAT, KEY_LOCKSCREEN_MESSAGE, KEY_WALLPAPER_PATH, KEY_WALLPAPER_SOURCE,
         KEY_SCREENSAVER_WALLPAPER_PATH, KEY_APP_ORDER, KEY_PINNED_SHORTCUTS -> ""
@@ -839,7 +835,7 @@ class PrefsManager(context: Context) {
         private const val CONFIG_TYPE = "katapult_config"
 
         // Removed presentation settings are tolerated in older backups, never restored or exported.
-        private val RETIRED_KEYS = setOf("home_islands", "screensaver_islands")
+        private val RETIRED_KEYS = setOf("home_islands", "screensaver_islands", "home_long_press")
 
         val HOME_SLOTS = listOf(
             "clock", "calendar", "phone", "center", "sms",
@@ -890,7 +886,6 @@ class PrefsManager(context: Context) {
         private const val KEY_HIDE_APP_NAMES = "hide_app_names"
         private const val KEY_HIDE_ARROW_BUTTONS = "hide_arrow_buttons"
         private const val KEY_DISABLE_HOME_EDITING = "disable_home_editing"
-        private const val KEY_HOME_LONG_PRESS = "home_long_press"
         private const val KEY_HIDE_ALL_APPS_BUTTON = "hide_all_apps_button"
         private const val KEY_SWIPE_UP_ALL_APPS = "swipe_up_all_apps"
         private const val KEY_VERTICAL_APP_GESTURES = "vertical_app_gestures"
@@ -923,11 +918,6 @@ class PrefsManager(context: Context) {
         const val SCREENSAVER_MODE_INTERVAL = 1
         const val SCREENSAVER_MODE_STATIC = 2
 
-        const val HOME_LONG_PRESS_APP_INFO = 0
-        const val HOME_LONG_PRESS_MENU = 1
-        const val HOME_LONG_PRESS_CLEAR = 2
-        const val HOME_LONG_PRESS_EDIT = 3
-        const val HOME_LONG_PRESS_NONE = 4
 
         const val DOUBLE_TAP_OFF = 0
         const val DOUBLE_TAP_BRIGHTNESS = 1
