@@ -242,7 +242,8 @@ class IconPickerInstrumentedTest {
                 }
                 for (collection in IconCollection.entries) {
                     ui.click(target.label, longPress = true)
-                    ui.click("Change Icon")
+                    ui.click("Kotatsu")
+                    ui.click("Change")
                     ui.await("Curated tabs not rendered") { ui.has("Simple Icons") && ui.has("Tabler") && ui.has("Material Icons") }
                     val title = when (collection) { IconCollection.SIMPLE -> "Simple Icons"; IconCollection.TABLER -> "Tabler"; IconCollection.MATERIAL -> "Material Icons" }
                     ui.click(title)
@@ -293,7 +294,8 @@ class IconPickerInstrumentedTest {
                     model.roundedIcons = true
                 }
                 ui.click(target.label, longPress = true)
-                ui.click("Change Icon")
+                ui.click("Kotatsu")
+                ui.click("Change")
                 ui.await("Dark picker missing") { ui.has("Search icons") }
                 ui.click("Material Icons")
                 setSearch(state.getString("selectedId"))
@@ -344,7 +346,8 @@ class IconPickerInstrumentedTest {
                 assertTrue("Cold saved choice did not reach icon bitmap consumer", image!!.sameAs(expected))
                 capture("grid-selected-cold")
                 ui.click(state.getString("label"), longPress = true)
-                ui.click("Change Icon")
+                ui.click("Kotatsu")
+                ui.click("Change")
                 ui.await("Cold manual override reset control absent") { ui.has("Reset to Default") }
                 ui.click("Reset to Default")
                 ui.await("Reset did not restore automatic/original resolution") { model.prefs.getIconOverride(key) == null }

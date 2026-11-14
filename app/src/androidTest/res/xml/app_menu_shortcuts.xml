@@ -1,0 +1,17 @@
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut android:shortcutId="camera" android:enabled="true" android:shortcutShortLabel="@string/fixture_camera_shortcut">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.alexindigo.kotatsu.debug.test" android:targetClass="com.gezimos.katapult.AppMenuShortcutTarget" />
+    </shortcut>
+    <shortcut android:shortcutId="gallery" android:enabled="true" android:shortcutShortLabel="@string/fixture_gallery_shortcut">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.alexindigo.kotatsu.debug.test" android:targetClass="com.gezimos.katapult.AppMenuShortcutTarget" />
+    </shortcut>
+    <shortcut android:shortcutId="video" android:enabled="true" android:shortcutShortLabel="@string/fixture_video_shortcut">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.alexindigo.kotatsu.debug.test" android:targetClass="com.gezimos.katapult.AppMenuShortcutTarget" />
+    </shortcut>
+    <shortcut android:shortcutId="selfie" android:enabled="true" android:shortcutShortLabel="@string/fixture_selfie_shortcut">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.alexindigo.kotatsu.debug.test" android:targetClass="com.gezimos.katapult.AppMenuShortcutTarget" />
+    </shortcut>
+    <shortcut android:shortcutId="settings" android:enabled="true" android:shortcutShortLabel="@string/fixture_settings_shortcut">
+        <intent android:action="android.intent.action.VIEW" android:targetPackage="com.alexindigo.kotatsu.debug.test" android:targetClass="com.gezimos.katapult.AppMenuShortcutTarget" />
+    </shortcut>
+</shortcuts>

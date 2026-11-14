@@ -268,7 +268,7 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
             viewModel = viewModel,
             app = menuApp,
             iconPicker = iconPicker,
-            showReorder = viewModel.prefs.appSortMode == PrefsManager.APP_SORT_MANUAL,
+            showReorder = true,
             showHide = true,
             onDismiss = { viewModel.contextMenuApp = null },
         )

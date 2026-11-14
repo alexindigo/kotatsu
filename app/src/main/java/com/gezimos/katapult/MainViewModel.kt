@@ -671,10 +671,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun removeShortcut(app: AppModel) {
-        forgetShortcut(app.packageName, app.shortcutId)
+        setShortcutEnabled(app.packageName, app.shortcutId, app.label, false)
         contextMenuApp = null
-        shortcutRefresh++
-        loadApps()
     }
 
     fun setShortcutEnabled(packageName: String, shortcutId: String, label: String, enabled: Boolean) {
@@ -682,8 +680,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             prefs.addSavedShortcut(packageName, shortcutId, label)
             prefs.unhideApp("$packageName|$shortcutId")
         } else {
-            prefs.removeSavedShortcut(packageName, shortcutId)
-            prefs.clearSlotsForShortcut(packageName, shortcutId)
+            forgetShortcut(packageName, shortcutId)
         }
         ShortcutHelper.syncPins(ctx, prefs, packageName)
         shortcutRefresh++

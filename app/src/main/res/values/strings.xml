@@ -6,7 +6,6 @@
     <string name="cancel">Cancel</string>
     <string name="reset">Reset</string>
     <string name="finish">Finish</string>
-    <string name="rename">Rename</string>
 
     <string name="phone">Phone</string>
     <string name="sms">SMS</string>
@@ -49,9 +48,8 @@
     <string name="set_extra_right_app">Set extra right app</string>
     <string name="choose_app">Choose App</string>
 
-    <string name="reorder">Reorder</string>
     <string name="hide">Hide</string>
-    <string name="app_info">App Info</string>
+    <string name="app_info">App info</string>
     <string name="notifications">Notifications</string>
     <string name="clear_notifications">Clear Notifications</string>
     <string name="uninstall">Uninstall</string>
@@ -80,7 +78,6 @@
     <string name="theme_system">System</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
-    <string name="change_icon">Change Icon</string>
     <string name="import_icon">Import Icon</string>
     <string name="katapult_icons">Kotatsu Icons</string>
     <string name="material_icons">Material Icons</string>
@@ -162,10 +159,7 @@
     <string name="config_exported">Config exported</string>
     <string name="config_export_failed">Export failed</string>
     <string name="config_import_failed">Import failed, not a valid config file</string>
-    <string name="app_shortcuts">App Shortcuts</string>
-    <string name="remove_shortcut">Remove Shortcut</string>
-    <string name="no_app_shortcuts">No shortcuts available. Kotatsu must be the default launcher.</string>
-    <string name="no_app_shortcuts_app">This app has no shortcuts.</string>
+    <string name="app_shortcuts">App shortcuts</string>
     <string name="shortcut_pinned">%1$s added to All Apps</string>
     <string name="shortcut_already_added">%1$s is already in All Apps</string>
     <string name="permissions">Permissions</string>

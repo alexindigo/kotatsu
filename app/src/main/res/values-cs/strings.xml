@@ -7,7 +7,6 @@
     <string name="cancel">Zrušit</string>
     <string name="reset">Obnovit</string>
     <string name="finish">Dokončit</string>
-    <string name="rename">Přejmenovat</string>
 
     <string name="phone">Telefon</string>
     <string name="sms">SMS</string>
@@ -50,7 +49,6 @@
     <string name="set_extra_right_app">Nastavit extra pravou aplikaci</string>
     <string name="choose_app">Vybrat aplikaci</string>
 
-    <string name="reorder">Změnit pořadí</string>
     <string name="hide">Skrýt</string>
     <string name="app_info">Informace o aplikaci</string>
     <string name="notifications">Oznámení</string>
@@ -65,7 +63,6 @@
     <string name="icon_shape">Tvar ikon</string>
     <string name="icon_shape_rounded">Zaoblený</string>
     <string name="icon_shape_circle">Kruh</string>
-    <string name="change_icon">Změnit ikonu</string>
     <string name="import_icon">Importovat ikonu</string>
     <string name="katapult_icons">Ikony Kotatsu</string>
     <string name="material_icons">Ikony Material</string>
@@ -146,9 +143,6 @@
     <string name="config_export_failed">Export se nezdařil</string>
     <string name="config_import_failed">Import se nezdařil, neplatný soubor nastavení</string>
     <string name="app_shortcuts">Zkratky aplikace</string>
-    <string name="remove_shortcut">Odebrat zkratku</string>
-    <string name="no_app_shortcuts">Žádné zkratky nejsou k dispozici. Kotatsu musí být výchozí launcher.</string>
-    <string name="no_app_shortcuts_app">Tato aplikace nemá žádné zkratky.</string>
     <string name="shortcut_pinned">%1$s přidáno do aplikací</string>
     <string name="shortcut_already_added">%1$s už je v aplikacích</string>
 

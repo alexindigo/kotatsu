@@ -60,7 +60,7 @@ class LauncherPreviewInstrumentedTest {
         var generatedIcon: Pair<com.gezimos.katapult.model.AppModel, java.io.File>? = null
         try {
         ui.click(first.label, longPress = true)
-        ui.click("Reorder")
+        ui.click("Move")
         ui.await("Reorder mode missing") { model.reorderMode }
         ui.click(second.label)
         ui.await("Public swap did not reach rendered model") { model.orderedApps[0].key == second.key }
@@ -103,7 +103,7 @@ class LauncherPreviewInstrumentedTest {
         assertEquals("Discard wrote saved order", saved, model.prefs.loadAppOrder())
 
         ui.click(first.label, longPress = true)
-        ui.click("Reorder")
+        ui.click("Move")
         ui.click(second.label)
         ui.back()
         ui.click("Save")
@@ -112,7 +112,7 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Saved order did not reach the visible grid") { ui.has(first.label) && ui.has(second.label) }
 
         ui.click(second.label, longPress = true)
-        ui.click("Reorder")
+        ui.click("Move")
         ui.await("Clean editor did not render before Back") { model.reorderMode && ui.has("SAVE") }
         ui.back()
         ui.await("Clean reorder exit prompted or stayed editing") { !model.reorderMode && !model.showReorderExit }
@@ -128,7 +128,7 @@ class LauncherPreviewInstrumentedTest {
             val label = model.orderedApps[0].label
             ui.await("Grid is not ready to enter editor") { ui.has(label) && !model.reorderMode }
             ui.click(label, longPress = true)
-            ui.click("Reorder")
+            ui.click("Move")
             ui.await("Editor footer missing") { model.reorderMode && ui.has("SAVE") }
         }
         fun case(name: String) { Log.i("KotatsuAcceptance", "PASS $name") }
@@ -307,7 +307,8 @@ class LauncherPreviewInstrumentedTest {
         ui.await("Controlled draft Discard failed") { !model.reorderMode }
         ui.await("Grid missing before restoring the synthetic icon") { ui.has(iconApp.label) }
         ui.click(iconApp.label, longPress = true)
-        ui.click("Change Icon")
+        ui.click("Kotatsu")
+        ui.click("Change")
         ui.click("Reset to Default")
         ui.await("Public reset did not restore the original icon") {
             model.contextMenuApp == null && model.prefs.getIconOverride(iconApp.key) == null && !fixtureIcon.exists()
@@ -318,7 +319,8 @@ class LauncherPreviewInstrumentedTest {
         // IME Back is handled before dismissing the rename dialog or leaving the grid.
         val renameLabel = model.orderedApps[0].label
         ui.click(renameLabel, longPress = true)
-        ui.click("Rename")
+        ui.click("Kotatsu")
+        ui.click("Name")
         ui.await("Rename IME did not render") { model.showRenameDialog && ui.imeVisible() }
         ui.back()
         ui.await("IME Back dismissed the dialog") { !ui.imeVisible() && model.showRenameDialog }

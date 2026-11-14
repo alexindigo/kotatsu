@@ -7,7 +7,6 @@
     <string name="cancel">Anuluj</string>
     <string name="reset">Resetuj</string>
     <string name="finish">Zakończ</string>
-    <string name="rename">Zmień nazwę</string>
 
     <string name="phone">Telefon</string>
     <string name="sms">SMS</string>
@@ -50,7 +49,6 @@
     <string name="set_extra_right_app">Ustaw dodatkową prawą aplikację</string>
     <string name="choose_app">Wybierz aplikację</string>
 
-    <string name="reorder">Zmień kolejność</string>
     <string name="hide">Ukryj</string>
     <string name="app_info">Info o aplikacji</string>
     <string name="notifications">Powiadomienia</string>
@@ -65,7 +63,6 @@
     <string name="icon_shape">Kształt ikony</string>
     <string name="icon_shape_rounded">Zaokrąglony</string>
     <string name="icon_shape_circle">Koło</string>
-    <string name="change_icon">Zmień ikonę</string>
     <string name="import_icon">Importuj ikonę</string>
     <string name="katapult_icons">Ikony Kotatsu</string>
     <string name="material_icons">Ikony Material</string>
@@ -141,9 +138,6 @@
     <string name="config_export_failed">Eksport nie powiódł się</string>
     <string name="config_import_failed">Import nie powiódł się, nieprawidłowy plik konfiguracji</string>
     <string name="app_shortcuts">Skróty aplikacji</string>
-    <string name="remove_shortcut">Usuń skrót</string>
-    <string name="no_app_shortcuts">Brak dostępnych skrótów. Kotatsu musi być domyślnym launcherem.</string>
-    <string name="no_app_shortcuts_app">Ta aplikacja nie ma skrótów.</string>
     <string name="shortcut_pinned">%1$s dodano do aplikacji</string>
     <string name="shortcut_already_added">%1$s jest już w aplikacjach</string>
 

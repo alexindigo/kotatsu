@@ -3,53 +3,29 @@ package com.gezimos.katapult.ui
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AppShortcut
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Image
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.NotificationsOff
-import androidx.compose.material.icons.rounded.RestartAlt
 import androidx.compose.material.icons.rounded.Restore
-import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.material.icons.rounded.Upload
-import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.produceState
@@ -57,25 +33,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.MainViewModel
 import com.gezimos.katapult.R
-import com.gezimos.katapult.Screen
 import com.gezimos.katapult.model.AppModel
-import com.gezimos.katapult.service.DirectBadgeHelper
-import com.gezimos.katapult.util.DeviceHelper
-import com.gezimos.katapult.util.IconUtility
 import com.gezimos.katapult.util.ShortcutHelper
-import kotlin.math.abs
+import com.gezimos.katapult.ui.settings.*
 
 
 @Composable
@@ -87,110 +56,79 @@ fun AppContextMenu(
     showHide: Boolean,
     onDismiss: () -> Unit,
     onClearBadge: (String) -> Unit,
+    onChange: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     var changeIconApp by remember { mutableStateOf<AppModel?>(null) }
-    var shortcutsApp by remember { mutableStateOf<AppModel?>(null) }
+    var page by remember(app.key) { mutableStateOf(AppMenuPage.MAIN) }
     val policyRefresh = viewModel.policyRefresh
+    val shortcuts = remember(app.key) {
+        if (app.shortcutId.isEmpty()) ShortcutHelper.queryShortcuts(context, app.packageName)
+            .filter { it.isDynamic || it.isDeclaredInManifest }
+            .map { it.id to ShortcutHelper.label(it) }.sortedBy { it.second.lowercase() }
+        else emptyList()
+    }
+    val enabledIds = remember(viewModel.shortcutRefresh) {
+        viewModel.prefs.getSavedShortcuts().filter { it.packageName == app.packageName }.map { it.shortcutId }.toSet()
+    }
+    val isSystemApp = remember(app.packageName) {
+        try { context.packageManager.getApplicationInfo(app.packageName, 0).flags and
+            android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0 } catch (_: Exception) { true }
+    }
+    val back = { if (page == AppMenuPage.MAIN) onDismiss() else page = AppMenuPage.MAIN }
 
     if (!viewModel.showRenameDialog && !viewModel.reorderMode &&
-        changeIconApp == null && shortcutsApp == null
+        changeIconApp == null
     ) {
-        BottomSheet(onDismiss = onDismiss) {
-            Text(
-                text = app.label,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            if (showReorder) {
-                BottomSheetOption(stringResource(R.string.reorder), icon = Icons.Rounded.SwapVert) {
-                    viewModel.enterReorderMode(app)
-                }
-            }
-            BottomSheetOption(stringResource(R.string.rename), icon = Icons.Rounded.Edit) {
-                viewModel.beginRename(app)
-            }
-            if (app.shortcutId.isNotEmpty()) {
-                BottomSheetOption(stringResource(R.string.change_icon), icon = Icons.Rounded.Image) {
-                    changeIconApp = app
-                }
-                if (showHide) {
-                    BottomSheetOption(stringResource(R.string.hide), icon = Icons.Rounded.VisibilityOff) {
-                        viewModel.hideApp(app.key)
+        BottomSheet(onDismiss = onDismiss, onBack = back) {
+            PaperSheetHeading(app.label, onDismiss, if (page == AppMenuPage.MAIN) null else back)
+            when (page) {
+                AppMenuPage.MAIN -> {
+                    if (app.shortcutId.isNotEmpty()) {
+                        AppMenuEntry(R.string.menu_app_icon, stringResource(R.string.menu_remove)) {
+                            viewModel.removeShortcut(app); onDismiss()
+                        }
+                    } else if (shortcuts.isNotEmpty()) {
+                        Spacer(Modifier.height(9.dp))
+                        GroupHeading(stringResource(R.string.app_shortcuts), stringResource(R.string.menu_app_icon), 1.dp)
+                        shortcuts.forEach { (id, label) ->
+                            PaperShortcutEntry(label, stringResource(R.string.menu_app_icon), id in enabledIds,
+                                onOpen = { onDismiss(); ShortcutHelper.launch(context, app.packageName, id) },
+                                onToggle = { enabled -> viewModel.setShortcutEnabled(app.packageName, id, label, enabled) })
+                        }
+                    }
+                    Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.SpaceAround) {
+                        if (app.shortcutId.isEmpty()) {
+                            PaperTileAction(stringResource(R.string.kotatsu_title), com.gezimos.katapult.paper.R.drawable.paper_tile_kotatsu) { page = AppMenuPage.KOTATSU }
+                            PaperTileAction(stringResource(R.string.menu_android), com.gezimos.katapult.paper.R.drawable.paper_tile_android) { page = AppMenuPage.ANDROID }
+                        }
+                        if (onChange != null) PaperTileAction(stringResource(R.string.menu_change), com.gezimos.katapult.paper.R.drawable.paper_tile_change, onChange)
+                        else if (showReorder) PaperTileAction(stringResource(R.string.menu_move), com.gezimos.katapult.paper.R.drawable.paper_tile_move) { viewModel.enterReorderMode(app) }
                     }
                 }
-                BottomSheetOption(stringResource(R.string.app_info), icon = Icons.Rounded.Info) {
-                    onDismiss()
-                    viewModel.launchIntent(context, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.parse("package:${app.packageName}")
-                    })
-                }
-                BottomSheetOption(stringResource(R.string.remove_shortcut), icon = Icons.Rounded.Delete) {
-                    viewModel.removeShortcut(app)
-                }
-            } else {
-                BottomSheetOption(stringResource(R.string.change_icon), icon = Icons.Rounded.Image) {
-                    changeIconApp = app
-                }
-                if (showHide) {
-                    BottomSheetOption(stringResource(R.string.hide), icon = Icons.Rounded.VisibilityOff) {
-                        viewModel.hideApp(app.key)
+                AppMenuPage.KOTATSU -> {
+                    GroupHeading(stringResource(R.string.kotatsu_title), ruleWidth = 1.dp)
+                    AppMenuEntry(R.string.menu_name, app.label) { viewModel.beginRename(app) }
+                    AppMenuEntry(R.string.menu_app_icon, stringResource(R.string.menu_change)) { changeIconApp = app }
+                    if (showHide) AppMenuEntry(R.string.menu_app_icon, stringResource(R.string.hide)) { viewModel.hideApp(app.key); onDismiss() }
+                    if (viewModel.canClearBadge(app.packageName)) AppMenuEntry(R.string.menu_notification_dot, stringResource(R.string.menu_clear)) {
+                        onClearBadge(app.packageName); onDismiss()
                     }
                 }
-                BottomSheetOption(stringResource(R.string.app_shortcuts), icon = Icons.Rounded.AppShortcut) {
-                    shortcutsApp = app
-                }
-                BottomSheetOption(stringResource(R.string.app_info), icon = Icons.Rounded.Info) {
-                    onDismiss()
-                    viewModel.launchIntent(context, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                        data = Uri.parse("package:${app.packageName}")
-                    })
-                }
-                BottomSheetOption(stringResource(R.string.notifications), icon = Icons.Rounded.Notifications) {
-                    onDismiss()
-                    viewModel.launchIntent(context, Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
-                        putExtra(Settings.EXTRA_APP_PACKAGE, app.packageName)
-                    })
-                }
-                val canClear = viewModel.canClearBadge(app.packageName)
-                if (canClear) {
-                    BottomSheetOption(
-                        stringResource(if (viewModel.badgeSource(app.packageName) == com.gezimos.katapult.util.BadgeSource.DIRECT_CALLS)
-                            R.string.acknowledge_calls else R.string.clear_notifications),
-                        icon = Icons.Rounded.NotificationsOff,
-                    ) {
-                        onClearBadge(app.packageName)
-                        onDismiss()
+                AppMenuPage.ANDROID -> {
+                    GroupHeading(stringResource(R.string.menu_android), ruleWidth = 1.dp)
+                    AppMenuEntry(R.string.app_info, stringResource(com.gezimos.katapult.paper.R.string.paper_open), true) {
+                        onDismiss(); viewModel.launchIntent(context, Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply { data = Uri.parse("package:${app.packageName}") })
                     }
-                }
-                val isSystemApp = try {
-                    val appInfo = context.packageManager.getApplicationInfo(app.packageName, 0)
-                    appInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
-                } catch (_: Exception) { true }
-                if (!isSystemApp) {
-                    BottomSheetOption(stringResource(R.string.uninstall), icon = Icons.Rounded.Delete) {
-                        onDismiss()
-                        viewModel.launchIntent(context, Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply {
-                            data = Uri.parse("package:${app.packageName}")
-                        })
+                    AppMenuEntry(R.string.notifications, stringResource(com.gezimos.katapult.paper.R.string.paper_open), true) {
+                        onDismiss(); viewModel.launchIntent(context, Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply { putExtra(Settings.EXTRA_APP_PACKAGE, app.packageName) })
+                    }
+                    if (!isSystemApp) AppMenuEntry(R.string.uninstall, stringResource(com.gezimos.katapult.paper.R.string.paper_open), true) {
+                        onDismiss(); viewModel.launchIntent(context, Intent(Intent.ACTION_UNINSTALL_PACKAGE).apply { data = Uri.parse("package:${app.packageName}") })
                     }
                 }
             }
         }
-    }
-
-    shortcutsApp?.let { target ->
-        AppShortcutsDialog(
-            viewModel = viewModel,
-            app = target,
-            onDismiss = {
-                shortcutsApp = null
-                onDismiss()
-            },
-        )
     }
 
     val renameDraft = viewModel.renameDraft
@@ -229,6 +167,14 @@ fun AppContextMenu(
     }
 }
 
+private enum class AppMenuPage { MAIN, KOTATSU, ANDROID }
+
+@Composable
+private fun AppMenuEntry(name: Int, action: String, external: Boolean = false, onClick: () -> Unit) {
+    Entry(SettingsEntry.Open("$name:$action", stringResource(name), "", onClick,
+        actionLabel = action, external = external), leaderColor = LocalPalette.current.muted)
+}
+
 @Composable
 private fun RenameDialog(
     textFieldValue: androidx.compose.ui.text.input.TextFieldValue,
@@ -239,14 +185,7 @@ private fun RenameDialog(
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
 
     BottomSheet(onDismiss = onDismiss, imePadding = true) {
-        Text(
-            text = stringResource(R.string.rename),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
+        PaperSheetHeading(stringResource(R.string.menu_name), onDismiss)
         BasicTextField(
             value = textFieldValue,
             onValueChange = onValueChange,
@@ -319,32 +258,11 @@ private fun ChangeIconDialog(
     }
 
     BottomSheet(onDismiss = onDismiss, imePadding = true) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = app.label,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.weight(1f),
-            )
-            if (hasOverride) {
-                Icon(
-                    imageVector = Icons.Rounded.Restore,
-                    contentDescription = stringResource(R.string.reset_icon),
-                    tint = LocalInk.current,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable {
-                            viewModel.clearIconOverride(app.key)
-                            onDismiss()
-                        },
-                )
+        PaperSheetHeading(app.label, onDismiss)
+        if (hasOverride) {
+            BottomSheetOption(stringResource(R.string.reset_icon), icon = Icons.Rounded.Restore) {
+                viewModel.clearIconOverride(app.key)
+                onDismiss()
             }
         }
 
@@ -399,185 +317,6 @@ private fun PickerPageBar(page: Int, totalPages: Int, onPrev: () -> Unit, onNext
             ArrowButton(iconRes = R.drawable.ic_arrow_right, onClick = onNext)
         } else {
             Spacer(Modifier.size(ArrowSize))
-        }
-    }
-}
-
-@Composable
-private fun AppShortcutsDialog(
-    viewModel: MainViewModel,
-    app: AppModel,
-    onDismiss: () -> Unit,
-) {
-    val context = LocalContext.current
-    val hasPermission = remember { ShortcutHelper.hasHostPermission(context) }
-    val saved = remember(app.packageName) {
-        viewModel.prefs.getSavedShortcuts().filter { it.packageName == app.packageName }
-    }
-    val initial = remember(app.packageName) {
-        val all = ShortcutHelper.queryShortcuts(context, app.packageName)
-        val liveIds = all.map { it.id }.toSet()
-        val published = all.filter { it.isDynamic || it.isDeclaredInManifest }
-            .map { Pair(it.id, ShortcutHelper.label(it)) }
-        val stale = if (hasPermission) saved.filterNot { it.shortcutId in liveIds } else emptyList()
-        Pair(
-            (published + stale.map { Pair(it.shortcutId, it.label) }).sortedBy { it.second.lowercase() },
-            stale.map { it.shortcutId }.toSet(),
-        )
-    }
-    var shortcuts by remember(app.packageName) { mutableStateOf(initial.first) }
-    val staleIds = initial.second
-    var enabledIds by remember {
-        mutableStateOf(saved.map { it.shortcutId }.toSet())
-    }
-    val itemsPerPage = 6
-    var page by remember { mutableIntStateOf(0) }
-    val totalPages = ((shortcuts.size + itemsPerPage - 1) / itemsPerPage).coerceAtLeast(1)
-    val pageShortcuts = remember(page, shortcuts) {
-        val start = page * itemsPerPage
-        val end = minOf(start + itemsPerPage, shortcuts.size)
-        if (start < shortcuts.size) shortcuts.subList(start, end) else emptyList()
-    }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
-    val iconShape = appIconShape(viewModel.roundedIcons)
-
-    BottomSheet(onDismiss = onDismiss) {
-        Text(
-            text = stringResource(R.string.app_shortcuts),
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = LatoFamily,
-            color = LocalInk.current,
-            modifier = Modifier.padding(bottom = 12.dp),
-        )
-        if (shortcuts.isEmpty()) {
-            Text(
-                text = stringResource(
-                    if (hasPermission) R.string.no_app_shortcuts_app else R.string.no_app_shortcuts,
-                ),
-                fontSize = 14.sp,
-                fontFamily = LatoFamily,
-                color = LocalInk.current,
-                modifier = Modifier.padding(bottom = 12.dp),
-            )
-            return@BottomSheet
-        }
-        Column(
-            modifier = Modifier
-                .pointerInput(page, totalPages) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragAccumulator = 0f },
-                        onDragEnd = {
-                            if (abs(dragAccumulator) > 80f) {
-                                if (dragAccumulator < 0 && page < totalPages - 1) page++
-                                else if (dragAccumulator > 0 && page > 0) page--
-                            }
-                        },
-                        onHorizontalDrag = { _, amount -> dragAccumulator += amount },
-                    )
-                },
-        ) {
-            for (i in 0 until itemsPerPage) {
-                if (i < pageShortcuts.size) {
-                    val (id, label) = pageShortcuts[i]
-                    val isEnabled = id in enabledIds
-                    val sizePx = remember { (36 * context.resources.displayMetrics.density).toInt() }
-                    val bitmap = remember(id) {
-                        if (id in staleIds) IconUtility.loadIcon(context, app.packageName, "", sizePx)
-                        else IconUtility.loadShortcutIcon(context, app.packageName, id, sizePx)
-                    }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                viewModel.setShortcutEnabled(app.packageName, id, label, !isEnabled)
-                                enabledIds = if (isEnabled) enabledIds - id else enabledIds + id
-                                if (isEnabled && id in staleIds) {
-                                    shortcuts = shortcuts.filterNot { it.first == id }
-                                    if (page > 0 && page * itemsPerPage >= shortcuts.size) page--
-                                }
-                            }
-                            .padding(vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        AppIconCircle(bitmap = bitmap, size = 36.dp, borderWidth = 1.5.dp, shape = iconShape)
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            label,
-                            fontSize = 18.sp,
-                            fontFamily = LatoFamily,
-                            color = LocalInk.current,
-                            maxLines = 1,
-                            modifier = Modifier.weight(1f),
-                        )
-                        val checkShape = RoundedCornerShape(4.dp)
-                        Box(
-                            modifier = Modifier
-                                .size(20.dp)
-                                .then(
-                                    if (isEnabled) Modifier.background(LocalInk.current, checkShape)
-                                    else Modifier.border(2.5.dp, LocalInk.current, checkShape)
-                                ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (isEnabled) {
-                                Text(
-                                    text = "✓",
-                                    color = LocalSurface.current,
-                                    fontSize = 14.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            }
-                        }
-                    }
-                } else if (totalPages > 1) {
-                    Row(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
-                        Box(Modifier.size(36.dp))
-                        Spacer(Modifier.width(12.dp))
-                        Text("", fontSize = 18.sp)
-                    }
-                }
-            }
-            if (totalPages > 1) {
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    if (page > 0) {
-                        ArrowButton(
-                            iconRes = R.drawable.ic_arrow_left,
-                            onClick = { page-- },
-                        )
-                    } else {
-                        Spacer(Modifier.size(ArrowSize))
-                    }
-                    Row(
-                        Modifier.weight(1f),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        for (i in 0 until totalPages) {
-                            Box(
-                                Modifier
-                                    .padding(horizontal = 2.dp)
-                                    .size(6.dp)
-                                    .then(
-                                        if (i == page) Modifier.background(LocalInk.current, CircleShape)
-                                        else Modifier.border(1.5.dp, LocalInk.current, CircleShape)
-                                    )
-                            )
-                        }
-                    }
-                    if (page < totalPages - 1) {
-                        ArrowButton(
-                            iconRes = R.drawable.ic_arrow_right,
-                            onClick = { page++ },
-                        )
-                    } else {
-                        Spacer(Modifier.size(ArrowSize))
-                    }
-                }
-            }
         }
     }
 }

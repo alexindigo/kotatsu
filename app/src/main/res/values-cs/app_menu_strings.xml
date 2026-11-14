@@ -1,0 +1,10 @@
+<resources>
+    <string name="menu_app_icon">Ikona aplikace</string>
+    <string name="menu_android">Android</string>
+    <string name="menu_move">Přesunout</string>
+    <string name="menu_change">Změnit</string>
+    <string name="menu_name">Název</string>
+    <string name="menu_remove">Odebrat</string>
+    <string name="menu_notification_dot">Tečka oznámení</string>
+    <string name="menu_clear">Vymazat</string>
+</resources>

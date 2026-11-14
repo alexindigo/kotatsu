@@ -7,7 +7,6 @@
     <string name="cancel">Annuleren</string>
     <string name="reset">Herstellen</string>
     <string name="finish">Voltooien</string>
-    <string name="rename">Hernoemen</string>
 
     <string name="phone">Telefoon</string>
     <string name="sms">SMS</string>
@@ -50,7 +49,6 @@
     <string name="set_extra_right_app">Extra rechter app instellen</string>
     <string name="choose_app">Kies app</string>
 
-    <string name="reorder">Herordenen</string>
     <string name="hide">Verbergen</string>
     <string name="app_info">App-info</string>
     <string name="notifications">Meldingen</string>
@@ -65,7 +63,6 @@
     <string name="icon_shape">Pictogramvorm</string>
     <string name="icon_shape_rounded">Afgerond</string>
     <string name="icon_shape_circle">Cirkel</string>
-    <string name="change_icon">Pictogram wijzigen</string>
     <string name="import_icon">Pictogram importeren</string>
     <string name="katapult_icons">Kotatsu-pictogrammen</string>
     <string name="material_icons">Material-iconen</string>
@@ -141,9 +138,6 @@
     <string name="config_export_failed">Exporteren mislukt</string>
     <string name="config_import_failed">Importeren mislukt, geen geldig configuratiebestand</string>
     <string name="app_shortcuts">App-snelkoppelingen</string>
-    <string name="remove_shortcut">Snelkoppeling verwijderen</string>
-    <string name="no_app_shortcuts">Geen snelkoppelingen beschikbaar. Kotatsu moet de standaard launcher zijn.</string>
-    <string name="no_app_shortcuts_app">Deze app heeft geen snelkoppelingen.</string>
     <string name="shortcut_pinned">%1$s toegevoegd aan apps</string>
     <string name="shortcut_already_added">%1$s staat al in apps</string>
 

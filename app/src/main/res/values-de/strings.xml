@@ -7,7 +7,6 @@
     <string name="cancel">Abbrechen</string>
     <string name="reset">Zurücksetzen</string>
     <string name="finish">Fertig</string>
-    <string name="rename">Umbenennen</string>
 
     <string name="phone">Telefon</string>
     <string name="sms">SMS</string>
@@ -50,7 +49,6 @@
     <string name="set_extra_right_app">Extra rechte App festlegen</string>
     <string name="choose_app">App auswählen</string>
 
-    <string name="reorder">Neu anordnen</string>
     <string name="hide">Ausblenden</string>
     <string name="app_info">App-Info</string>
     <string name="notifications">Benachrichtigungen</string>
@@ -65,7 +63,6 @@
     <string name="icon_shape">Symbolform</string>
     <string name="icon_shape_rounded">Abgerundet</string>
     <string name="icon_shape_circle">Kreis</string>
-    <string name="change_icon">Symbol ändern</string>
     <string name="import_icon">Symbol importieren</string>
     <string name="katapult_icons">Kotatsu-Symbole</string>
     <string name="material_icons">Material-Icons</string>
@@ -141,9 +138,6 @@
     <string name="config_export_failed">Export fehlgeschlagen</string>
     <string name="config_import_failed">Import fehlgeschlagen, keine gültige Konfigurationsdatei</string>
     <string name="app_shortcuts">App-Verknüpfungen</string>
-    <string name="remove_shortcut">Verknüpfung entfernen</string>
-    <string name="no_app_shortcuts">Keine Verknüpfungen verfügbar. Kotatsu muss der Standard-Launcher sein.</string>
-    <string name="no_app_shortcuts_app">Diese App hat keine Verknüpfungen.</string>
     <string name="shortcut_pinned">%1$s zu Alle Apps hinzugefügt</string>
     <string name="shortcut_already_added">%1$s ist bereits in Alle Apps</string>
 

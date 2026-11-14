@@ -130,12 +130,16 @@ internal fun IndexLeader(ink: androidx.compose.ui.graphics.Color = LocalInk.curr
 }
 
 @Composable
-fun GroupHeading(title: String) {
+fun GroupHeading(title: String, columnLabel: String? = null, ruleWidth: Dp = 2.dp) {
     Column(Modifier.fillMaxWidth().padding(top = 3.dp)) {
-        Text(title, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 17.25.sp,
-            fontWeight = FontWeight.Bold, color = LocalInk.current)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text(title, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 17.25.sp,
+                fontWeight = FontWeight.Bold, color = LocalInk.current)
+            if (columnLabel != null) Text(columnLabel, fontFamily = LatoFamily, fontSize = 14.sp,
+                lineHeight = 17.25.sp, color = LocalInk.current)
+        }
         Spacer(Modifier.height(5.25.dp))
-        Box(Modifier.fillMaxWidth().height(2.dp).background(LocalInk.current))
+        Box(Modifier.fillMaxWidth().height(ruleWidth).background(LocalInk.current))
     }
 }
 

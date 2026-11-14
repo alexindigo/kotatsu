@@ -41,7 +41,8 @@ class DraftsAndPickersInstrumentedTest {
         ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
             fun open() {
                 scenario.onActivity { it.viewModel.screen = Screen.HOME; it.viewModel.contextMenuApp = fixture }
-                ui.click(context.getString(R.string.rename))
+                ui.click(context.getString(R.string.kotatsu_title))
+                ui.click(context.getString(R.string.menu_name))
                 ui.await("Rename sheet not rendered") { ui.has(context.getString(R.string.save)) }
             }
             open()

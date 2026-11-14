@@ -1,0 +1,8 @@
+<resources>
+    <string name="fixture_app_menu_label">Open Camera</string>
+    <string name="fixture_camera_shortcut">Camera</string>
+    <string name="fixture_gallery_shortcut">Gallery</string>
+    <string name="fixture_video_shortcut">Record video</string>
+    <string name="fixture_selfie_shortcut">Selfie</string>
+    <string name="fixture_settings_shortcut">Settings</string>
+</resources>

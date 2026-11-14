@@ -1,0 +1,10 @@
+<resources>
+    <string name="menu_app_icon">App-Symbol</string>
+    <string name="menu_android">Android</string>
+    <string name="menu_move">Verschieben</string>
+    <string name="menu_change">Ändern</string>
+    <string name="menu_name">Name</string>
+    <string name="menu_remove">Entfernen</string>
+    <string name="menu_notification_dot">Benachrichtigungspunkt</string>
+    <string name="menu_clear">Löschen</string>
+</resources>

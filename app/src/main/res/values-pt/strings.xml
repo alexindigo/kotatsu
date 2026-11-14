@@ -7,7 +7,6 @@
     <string name="cancel">Cancelar</string>
     <string name="reset">Repor</string>
     <string name="finish">Concluir</string>
-    <string name="rename">Renomear</string>
 
     <string name="phone">Telefone</string>
     <string name="sms">SMS</string>
@@ -50,7 +49,6 @@
     <string name="set_extra_right_app">Definir app extra direita</string>
     <string name="choose_app">Escolher app</string>
 
-    <string name="reorder">Reordenar</string>
     <string name="hide">Ocultar</string>
     <string name="app_info">Info da app</string>
     <string name="notifications">Notificações</string>
@@ -65,7 +63,6 @@
     <string name="icon_shape">Forma do ícone</string>
     <string name="icon_shape_rounded">Arredondado</string>
     <string name="icon_shape_circle">Círculo</string>
-    <string name="change_icon">Alterar ícone</string>
     <string name="import_icon">Importar ícone</string>
     <string name="katapult_icons">Ícones Kotatsu</string>
     <string name="material_icons">Ícones Material</string>
@@ -141,9 +138,6 @@
     <string name="config_export_failed">Falha ao exportar</string>
     <string name="config_import_failed">Falha ao importar, ficheiro de configuração inválido</string>
     <string name="app_shortcuts">Atalhos da app</string>
-    <string name="remove_shortcut">Remover atalho</string>
-    <string name="no_app_shortcuts">Sem atalhos disponíveis. O Kotatsu tem de ser o launcher predefinido.</string>
-    <string name="no_app_shortcuts_app">Esta app não tem atalhos.</string>
     <string name="shortcut_pinned">%1$s adicionado às apps</string>
     <string name="shortcut_already_added">%1$s já está nas apps</string>
 

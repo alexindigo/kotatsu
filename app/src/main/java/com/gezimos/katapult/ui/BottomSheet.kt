@@ -55,6 +55,7 @@ import java.util.UUID
 fun BottomSheet(
     onDismiss: () -> Unit,
     imePadding: Boolean = false,
+    onBack: () -> Unit = onDismiss,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val view = LocalView.current
@@ -63,6 +64,7 @@ fun BottomSheet(
     val composition = rememberCompositionContext()
     val currentContent by rememberUpdatedState(content)
     val currentOnDismiss by rememberUpdatedState(onDismiss)
+    val currentOnBack by rememberUpdatedState(onBack)
     val currentImePadding by rememberUpdatedState(imePadding)
     val dialogId = rememberSaveable { UUID.randomUUID() }
     val statusBarHidden = remember {
@@ -73,6 +75,7 @@ fun BottomSheet(
     val sheetDialog = remember(view, density) {
         BottomSheetDialog(
             onDismiss = onDismiss,
+            onBack = { currentOnBack() },
             composeView = view,
             layoutDirection = layoutDirection,
             dialogId = dialogId,
@@ -142,6 +145,7 @@ private class BottomSheetDialogLayout(
 
 private class BottomSheetDialog(
     private var onDismiss: () -> Unit,
+    private val onBack: () -> Unit,
     composeView: View,
     layoutDirection: LayoutDirection,
     dialogId: UUID,
@@ -214,7 +218,7 @@ private class BottomSheetDialog(
         }
 
         onBackPressedDispatcher.addCallback(this) {
-            onDismiss()
+            onBack()
         }
     }
 
