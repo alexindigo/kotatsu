@@ -1,8 +1,12 @@
 package com.gezimos.katapult
 
 import android.content.Intent
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Rect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.setPaperContent as setContent
 import com.gezimos.katapult.ui.PaperPalette
@@ -14,6 +18,7 @@ import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import kotlin.math.roundToInt
@@ -53,7 +58,13 @@ class PaperSheetHeadingInstrumentedTest {
     private val context = instrumentation.targetContext
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
 
-    @Test fun sharedHeadingHasDismissAndNoRuleInBothPalettes() {
+    @Test fun sharedHeadingHasDismissAndNoRuleInBothPalettes() = sharedHeading(Locale.ENGLISH)
+
+    @Test fun sharedHeadingUsesLocalizedDismissInBothPalettes() = sharedHeading(Locale.FRENCH)
+
+    private fun sharedHeading(locale: Locale) {
+        val configuration = Configuration(context.resources.configuration).apply { setLocale(locale) }
+        val context = this.context.createConfigurationContext(configuration)
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         var activity: MainActivity? = null
@@ -66,15 +77,19 @@ class PaperSheetHeadingInstrumentedTest {
                 val current = activity!!
                 main {
                     current.setContent {
-                        PaperSheet({}) {
-                            PaperSheetHeading(context.getString(R.string.theme_mode), {})
-                            Entry(SettingsEntry.Open("system", context.getString(R.string.theme_system), "", {}))
+                        CompositionLocalProvider(LocalContext provides context, LocalConfiguration provides configuration) {
+                            PaperSheet({}) {
+                                PaperSheetHeading(context.getString(R.string.theme_mode), {})
+                                Entry(SettingsEntry.Open("system", context.getString(R.string.theme_system), "", {}))
+                            }
                         }
                     }
                 }
                 val ui = PlatformUiDriver(instrumentation)
                 ui.await("Heading fixture missing") { ui.has(context.getString(R.string.theme_system)) }
-                ui.await("Sheet dismiss missing") { ui.find("Dismiss")?.isClickable == true }
+                ui.await("Sheet dismiss missing") {
+                    ui.find(context.getString(com.gezimos.katapult.paper.R.string.paper_dismiss))?.isClickable == true
+                }
                 val committed = CountDownLatch(1)
                 main {
                     current.window.decorView.viewTreeObserver.registerFrameCommitCallback { committed.countDown() }
