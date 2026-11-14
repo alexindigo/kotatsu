@@ -70,23 +70,14 @@ private fun VisibilityRow(label: String, hidden: Boolean, notify: NotifyCell, on
             .semantics { contentDescription = hideLabel }, contentAlignment = Alignment.Center) {
             IndexCheckbox(hidden, true)
         }
-        Box(Modifier.weight(1f).heightIn(min = 64.dp).fillMaxHeight()
-            .clickable(role = Role.Checkbox, onClick = onHide).semantics(mergeDescendants = true) {
-                toggleableState = if (hidden) ToggleableState.On else ToggleableState.Off
-            }, contentAlignment = Alignment.CenterStart) { IndexLine(label, "") }
-        Box(Modifier.width(64.dp).heightIn(min = 64.dp).fillMaxHeight()
-            // Even a blank/disabled cell owns the entire independent touch column.
-            .clickable { if (notify == NotifyCell.ON || notify == NotifyCell.OFF) onNotify() }
-            .semantics {
-                if (notify != NotifyCell.NONE) {
-                    contentDescription = notifyLabel
-                    role = Role.Checkbox
-                    toggleableState = if (notify == NotifyCell.ON) ToggleableState.On else ToggleableState.Off
-                }
-                if (notify == NotifyCell.DISABLED) { disabled(); stateDescription = unavailable }
-                if (notify == NotifyCell.NONE) { disabled(); stateDescription = notApplicable }
-            }, contentAlignment = Alignment.Center) {
-            if (notify != NotifyCell.NONE) IndexCheckbox(notify == NotifyCell.ON, notify != NotifyCell.DISABLED)
-        }
+        PaperCheckboxEntry(label, notifyLabel, notify == NotifyCell.ON, onHide, onNotify,
+            Modifier.weight(1f).heightIn(min = 64.dp), nameChecked = hidden, controlColumnWidth = 64.dp,
+            checkboxVisible = notify != NotifyCell.NONE,
+            checkboxEnabled = notify == NotifyCell.ON || notify == NotifyCell.OFF,
+            checkboxStateDescription = when (notify) {
+                NotifyCell.NONE -> notApplicable
+                NotifyCell.DISABLED -> unavailable
+                else -> null
+            })
     }
 }

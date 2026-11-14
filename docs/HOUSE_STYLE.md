@@ -103,7 +103,7 @@ the implementation, not from measuring an image.
 | 8 | Root summary | 14 sp Regular, 17.25 sp line height | `IndexLine(root = true)` |
 | 9 | Entry name/value | 18 sp Bold, 21.75 sp line height; name one line with ellipsis | `IndexName`, `IndexLine` |
 | 10 | External glyph | 18.75 sp Bold after a value, separated by 7.5 dp | `IndexLine(external = true)` |
-| 11 | Name/value tracks | 7.5 dp gap on each side of leader; 9 dp minimum leader allocation; value measured first, at most half the row width; shared first baseline | Internal `IndexTracks` |
+| 11 | Name/value tracks | 7.5 dp gap on each side of leader; 9 dp minimum leader allocation; visible value measured first, at most half the row width; input regions measured separately; shared first baseline | Internal `IndexTracks` |
 | 12 | Dotted leader | 1.5 dp high/stroke; round caps; dash pattern 0.1 raw pixel on, 3 dp off | Internal `IndexLeader`, allocated by `IndexTracks` |
 | 13 | Chapter entry | Minimum 48 dp without help, 67.5 dp with help; 9 dp vertical padding inside the target; grows with content | `Entry` |
 | 14 | Entry help/extra summary | 14 sp, 16.5 sp line height; 1.5 dp above each line/block; help Regular, Open summary Bold | `Entry` |
@@ -138,7 +138,7 @@ the implementation, not from measuring an image.
 | 14 | Card text | Name 18/21.75 sp Bold; help 14/18 sp Regular; size 14/18 sp Bold; tracks stacked without extra gaps; minimum content height 48 dp | `PaperCardEntry` |
 | 15 | Card external action | Independent minimum 48 x 48 dp target, top-end aligned; `Open ↗` 18/21.75 sp Bold; 7.5 dp leader gaps, 9 dp minimum leader allocation | `PaperCardEntry` |
 | 16 | Card list | 12 dp between cards; whole held card becomes black with white ink, including bracket lanes | `PaperCardList`, `PaperCard(moving = true)` |
-| 17 | Hide/Notify matrix | 64 dp wide outer control columns and minimum 64 dp row/cell height; 6 dp between columns; labels 14/17.25 sp Regular in 64 dp columns | App `VisibilityRow`, `ColumnLabel` in `AppChecklistPage.kt` |
+| 17 | Hide/Notify matrix | 64 dp outer drawing columns and minimum 64 dp row/cell height; 6 dp after Hide; labels 14/17.25 sp Regular in 64 dp columns; Notify's target includes its leader without moving the centred box | App `VisibilityRow`, shared `PaperCheckboxEntry`, `ColumnLabel` in `AppChecklistPage.kt` |
 | 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
 | 19 | Bottom sheet | Bottom anchored, paper fill; 2 dp ink outline on top and sides, no bottom edge; 18 dp top corners; 16 dp side and 10 dp bottom content padding, navigation-bar padding | `PaperSheet` |
 | 20 | Sheet heading | 21/25.5 sp Lato Bold, one line with ellipsis; 3 dp vertical padding; trailing 18 dp close drawing in a 48 dp target; optional leading page-back chevron in a 48 dp target; no title rule | `PaperSheetHeading` |
@@ -383,6 +383,12 @@ at the end. Each row has two independent targets: the shortcut name with a
 handoff mark launches it, and the checkbox adds or removes its own app icon.
 The name and leader share a baseline; the checkbox is centred on that row.
 Checkbox columns name a state, not a command such as Add as icon.
+The leader ends 7.5 dp before the visible checkbox, not before an invisible
+touch slot. `IndexTracks` measures drawings independently from input regions.
+For two-target rows, the name owns one minimum-48-dp target; the leader and
+checkbox share the other. `PaperCheckboxEntry` owns this structure for app
+shortcuts and the Hide/Notify matrix; full-row choice sheets use the same
+drawing tracks with their existing selectable row target.
 
 Below the shortcuts, evenly distributed Home-style tiles open **Kotatsu**,
 **Android** and **Move**. On Home, **Change** replaces Move and opens the

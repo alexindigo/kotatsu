@@ -86,34 +86,51 @@ internal fun IndexName(title: String, root: Boolean = false) {
 @Composable
 internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () -> Unit, value: @Composable () -> Unit,
     leadingTarget: (@Composable () -> Unit)? = null,
+    trailingTarget: (@Composable () -> Unit)? = null, controlColumnWidth: Dp = 0.dp,
     leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current, valueHasBaseline: Boolean = true) {
     Layout(modifier = modifier.fillMaxWidth(), content = {
         title()
         value()
         IndexLeader(leaderColor)
         leadingTarget?.invoke()
+        trailingTarget?.invoke()
     }) { children, constraints ->
         val gap = 7.5.dp.roundToPx()
         val leaderMin = 9.dp.roundToPx()
         val width = constraints.maxWidth
         val valuePlaceable = children[1].measure(Constraints(maxWidth = width / 2))
-        val titlePlaceable = children[0].measure(Constraints(maxWidth = (width - valuePlaceable.width - 2 * gap - leaderMin).coerceAtLeast(1)))
+        // Value geometry belongs to the drawing, never to its input target. A matrix
+        // may centre that drawing in a named control column without shortening the leader.
+        val column = max(valuePlaceable.width, controlColumnWidth.roundToPx())
+        val valueX = width - (column + valuePlaceable.width) / 2
+        val touch = 48.dp.roundToPx()
+        val titleMax = minOf(valueX - 2 * gap - leaderMin,
+            width - if (trailingTarget == null) 0 else max(touch, column)).coerceAtLeast(1)
+        val titlePlaceable = children[0].measure(Constraints(
+            minWidth = if (leadingTarget != null && trailingTarget != null) minOf(touch, titleMax) else 0,
+            maxWidth = titleMax))
         val baseline = if (valueHasBaseline) max(titlePlaceable[FirstBaseline], valuePlaceable[FirstBaseline])
             else titlePlaceable[FirstBaseline]
-        val height = if (valueHasBaseline) max(baseline - titlePlaceable[FirstBaseline] + titlePlaceable.height,
+        val drawingHeight = if (valueHasBaseline) max(baseline - titlePlaceable[FirstBaseline] + titlePlaceable.height,
             baseline - valuePlaceable[FirstBaseline] + valuePlaceable.height) else max(titlePlaceable.height, valuePlaceable.height)
+        val height = maxOf(drawingHeight, constraints.minHeight,
+            if (trailingTarget != null) touch else 0).coerceAtMost(constraints.maxHeight)
         val titleY = if (valueHasBaseline) baseline - titlePlaceable[FirstBaseline] else (height - titlePlaceable.height) / 2
         val valueY = if (valueHasBaseline) baseline - valuePlaceable[FirstBaseline] else (height - valuePlaceable.height) / 2
         val leader = children[2].measure(Constraints.fixed(
-            (width - titlePlaceable.width - valuePlaceable.width - 2 * gap).coerceAtLeast(0), 1.5.dp.roundToPx()))
-        // The leading target owns the entire row except the measured value cell.
-        // Its bounds are structural; the text/leader keep their existing geometry.
+            (valueX - titlePlaceable.width - 2 * gap).coerceAtLeast(0), 1.5.dp.roundToPx()))
+        // With two actions the name owns its measured track; the second target owns
+        // the leader and value. Both hit regions are independent of the visible tracks.
+        val split = if (trailingTarget == null) width - valuePlaceable.width else titlePlaceable.width
         val target = if (leadingTarget == null) null else children[3].measure(
-            Constraints.fixed((width - valuePlaceable.width).coerceAtLeast(0), height))
+            Constraints.fixed(split.coerceAtLeast(0), height))
+        val trailing = if (trailingTarget == null) null else children[if (leadingTarget == null) 3 else 4].measure(
+            Constraints.fixed(width - if (leadingTarget == null) 0 else split, height))
         layout(width, height) {
             target?.placeRelative(0, 0)
+            trailing?.placeRelative(if (leadingTarget == null) 0 else split, 0)
             titlePlaceable.placeRelative(0, titleY)
-            valuePlaceable.placeRelative(width - valuePlaceable.width, valueY)
+            valuePlaceable.placeRelative(valueX, valueY)
             leader.placeRelative(titlePlaceable.width + gap,
                 titleY + titlePlaceable[FirstBaseline] - leader.height / 2)
         }
@@ -122,7 +139,7 @@ internal fun IndexTracks(modifier: Modifier = Modifier, title: @Composable () ->
 
 @Composable
 internal fun IndexLeader(ink: androidx.compose.ui.graphics.Color = LocalInk.current) {
-    Canvas(Modifier) {
+    Canvas(Modifier.semantics { testTag = "paper_index_leader" }) {
         drawLine(ink, Offset(0f, size.height / 2), Offset(size.width, size.height / 2),
             strokeWidth = size.height, cap = StrokeCap.Round,
             pathEffect = PathEffect.dashPathEffect(floatArrayOf(.1f, 3.dp.toPx())))
@@ -642,7 +659,8 @@ fun IndexCheckbox(checked: Boolean, enabled: Boolean, modifier: Modifier = Modif
     val shape = RoundedCornerShape(3.75.dp)
     val ink = LocalInk.current
     val paper = LocalSurface.current
-    Box(modifier.size(20.dp).border(if (enabled) 2.5.dp else 1.dp, outlineColor, shape)
+    Box(modifier.size(20.dp).semantics { testTag = "paper_index_checkbox" }
+        .border(if (enabled) 2.5.dp else 1.dp, outlineColor, shape)
         .then(if (checked) Modifier.background(ink, shape) else Modifier), contentAlignment = Alignment.Center) {
         if (checked) Box(Modifier.size(14.dp), contentAlignment = Alignment.Center) { CheckMark(paper) }
     }

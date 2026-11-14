@@ -61,12 +61,16 @@ class HiddenAppsNotifyInstrumentedTest {
             assertTrue(AppVisibility.isHidden(app, prefs.getHiddenApps(), prefs.getShownDefaultHiddenApps()))
             assertFalse(app.packageName in prefs.getNotifyWhileHiddenApps())
 
-            // Headers and their cells must share centerlines, with a full-height 64dp touch column.
+            // The drawing stays centred in its 64dp matrix column; its independent
+            // hit region now also owns the leader, rather than shortening the leader.
             val header = Rect().also { ui.find(context.getString(R.string.hidden_apps_notify_column))!!.getBoundsInScreen(it) }
             val cell = Rect().also { ui.find(notify)!!.getBoundsInScreen(it) }
             val row = Rect().also { ui.findAncestor(app.label) { it.isClickable }!!.getBoundsInScreen(it) }
-            assertEquals(header.exactCenterX(), cell.exactCenterX(), 1f)
-            assertEquals(64f * context.resources.displayMetrics.density, cell.width().toFloat(), 1f)
+            val box = indexDrawingBounds("paper_index_checkbox").filter {
+                it.center.y >= cell.top && it.center.y <= cell.bottom
+            }.maxBy { it.right }
+            assertEquals(header.exactCenterX(), box.center.x, 1f)
+            assertTrue("Notify target must retain its entire column", cell.width() >= 64f * context.resources.displayMetrics.density - 1f)
             assertEquals(row.height(), cell.height())
             assertTrue("Notify cell is shorter than 64dp", cell.height() >= 64f * context.resources.displayMetrics.density - 1f)
             val hide = context.getString(R.string.paper_hide_app, app.label)
