@@ -218,7 +218,7 @@ class HomeEdgeSwipeInstrumentedTest {
         swipe(.75f, .25f, vertical = true)
         ui.await("Middle vertical swipe changed") { model.screen == Screen.ALL_APPS }
         instrumentation.runOnMainSync {
-            model.screen = Screen.HOME; model.prefs.verticalAppGestures = false
+            model.screen = Screen.HOME; model.prefs.hideArrowButtons = false
             model.prefs.swipeAllApps = com.gezimos.katapult.util.HomeAppSwipe.LEFT
         }
         ui.await("Home not restored") { ui.has(context.getString(R.string.all_apps)) }

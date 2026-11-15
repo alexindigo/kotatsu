@@ -151,9 +151,6 @@
     <string name="swipe_apps_up">W górę</string>
     <string name="swipe_apps_left">W lewo</string>
     <string name="swipe_apps_up_left">W górę i w lewo</string>
-    <string name="app_gesture_direction">Kierunek gestów</string>
-    <string name="gesture_horizontal">Poziomy</string>
-    <string name="gesture_vertical">Pionowy</string>
     <string name="theme_mode">Tryb motywu</string>
     <string name="theme_mode_desc">Jasny, ciemny lub jak system</string>
     <string name="theme_system">System</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">Tryb aktualizacji określa, jak często się odświeża: Statyczny nigdy się nie aktualizuje (najlepszy do tapet), Automatyczny w czasie rzeczywistym, a Czasowy co kilka minut. To nie jest prawdziwe Always On Display, telefon nie przechodzi naprawdę w stan bezczynności, więc nie zostawiaj go włączonego cały czas, może zużywać więcej energii niż całkowicie wyłączony ekran.</string>
     <string name="eink_readme_intro">Tryb E-Ink zmienia sposób odświeżania ekranu. Panele E-Ink zachowują ostatni obraz bez zasilania i przerysowują tylko w razie potrzeby, więc te tryby regulują kompromis między ostrością tekstu a częstotliwością aktualizacji.</string>
     <string name="eink_readme_modes">Wyłączony jest domyślny dla aplikacji innych firm i pozostawia odświeżanie systemowi. Kontrast to tryb, którego Mudita używa dla własnych aplikacji. Wyczyść i Czytanie odświeżają bardziej agresywnie dla ostrzejszego tekstu, więc możesz widzieć miganie lub częstsze aktualizacje ekranu.</string>
-    <string name="gestures_readme_nav">Domyślnie strony Wszystkich aplikacji obsługują poziome przesunięcia lub przyciski strzałek. Jeśli chcesz, możesz zmienić kierunek gestów na pionowy i ukryć strzałki.</string>
+    <string name="gestures_readme_nav">Zmieniaj strony Wszystkich aplikacji gestami w lewo/prawo lub przyciskami strzalek. Gdy strzalki sa ukryte, przesuwaj w gore/dol.</string>
     <string name="gestures_readme_apps">Przesun, aby otworzyc aplikacje ustawia gest na ekranie glownym niezaleznie od kierunku przewijania stron aplikacji.</string>
     <string name="search_settings">Szukaj w ustawieniach</string>
     <string name="search_settings_desc">Znajdź ustawienie w ustawieniach systemu Android</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Sposób wyświetlania daty</string>
     <string name="paper_music_widget">Widżet muzyki</string>
     <string name="paper_music_widget_help">Pokaż widżet sterowania multimediami</string>
-    <string name="paper_gesture_direction_help">Kierunek przesuwania stron aplikacji</string>
     <string name="paper_double_tap_help">Co się dzieje po podwójnym dotknięciu ekranu głównego</string>
     <string name="paper_about_gestures">O gestach</string>
     <string name="paper_about_notifications">O powiadomieniach</string>

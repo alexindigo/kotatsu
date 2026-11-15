@@ -151,9 +151,6 @@
     <string name="swipe_apps_up">Arriba</string>
     <string name="swipe_apps_left">Izquierda</string>
     <string name="swipe_apps_up_left">Arriba e izquierda</string>
-    <string name="app_gesture_direction">Dirección de gestos</string>
-    <string name="gesture_horizontal">Horizontal</string>
-    <string name="gesture_vertical">Vertical</string>
     <string name="theme_mode">Modo de tema</string>
     <string name="theme_mode_desc">Claro, oscuro o seguir al sistema</string>
     <string name="theme_system">Sistema</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">El Modo de actualización define con qué frecuencia se actualiza: Estático nunca se actualiza (ideal para fondos), Automático se actualiza en tiempo real y Temporizado cada pocos minutos. Esto no es una pantalla siempre activa real, el teléfono no entra en reposo, así que no lo dejes encendido todo el tiempo, puede gastar más energía que la pantalla totalmente apagada.</string>
     <string name="eink_readme_intro">El Modo E-Ink cambia cómo se actualiza la pantalla. Los paneles E-Ink mantienen la última imagen sin energía y solo se redibujan cuando es necesario, así que estos modos ajustan el equilibrio entre texto nítido y frecuencia de actualización.</string>
     <string name="eink_readme_modes">Desactivado es el valor predeterminado para apps de terceros y deja la actualización al sistema. Contraste es el modo que Mudita usa para sus propias apps. Limpio y Lectura se actualizan de forma más agresiva para un texto más nítido, así que puedes ver la pantalla parpadear o actualizarse más a menudo.</string>
-    <string name="gestures_readme_nav">De forma predeterminada, las páginas de Todas las apps usan deslizamientos horizontales o los botones de flecha. Si lo prefieres, puedes cambiar la dirección de los gestos a vertical y ocultar las flechas.</string>
+    <string name="gestures_readme_nav">Pasa las paginas de Todas las apps deslizando a izquierda/derecha o con los botones de flecha. Con las flechas ocultas, desliza arriba/abajo.</string>
     <string name="gestures_readme_apps">Deslizar para todas las apps elige el gesto de Inicio por separado de la direccion de las paginas de apps.</string>
     <string name="search_settings">Buscar ajustes</string>
     <string name="search_settings_desc">Encuentra un ajuste en los ajustes del sistema Android</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Cómo se muestra la fecha</string>
     <string name="paper_music_widget">Widget de música</string>
     <string name="paper_music_widget_help">Mostrar el widget de controles multimedia</string>
-    <string name="paper_gesture_direction_help">Dirección de deslizamiento entre páginas de apps</string>
     <string name="paper_double_tap_help">Qué ocurre al tocar dos veces en inicio</string>
     <string name="paper_about_gestures">Acerca de los gestos</string>
     <string name="paper_about_notifications">Acerca de las notificaciones</string>

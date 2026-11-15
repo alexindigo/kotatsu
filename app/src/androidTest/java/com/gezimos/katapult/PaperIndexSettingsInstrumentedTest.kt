@@ -190,7 +190,7 @@ class PaperIndexSettingsInstrumentedTest {
             bitmap.recycle()
         }
         val groups = linkedMapOf(
-            context.getString(R.string.paper_group_app_pages) to listOf(R.string.swipe_up_all_apps, R.string.app_gesture_direction),
+            context.getString(R.string.paper_group_app_pages) to listOf(R.string.swipe_up_all_apps),
             context.getString(R.string.paper_group_on_home) to listOf(R.string.double_tap_action),
             context.getString(R.string.paper_group_home_button) to listOf(R.string.home_button_menu, R.string.recent_apps, R.string.home_button_screenshot),
         ).mapValues { (_, entries) -> entries.map { context.getString(it) } }

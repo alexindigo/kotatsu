@@ -151,9 +151,6 @@
     <string name="swipe_apps_up">Omhoog</string>
     <string name="swipe_apps_left">Links</string>
     <string name="swipe_apps_up_left">Omhoog en links</string>
-    <string name="app_gesture_direction">Richting app-gebaren</string>
-    <string name="gesture_horizontal">Horizontaal</string>
-    <string name="gesture_vertical">Verticaal</string>
     <string name="theme_mode">Themamodus</string>
     <string name="theme_mode_desc">Licht, donker of systeem volgen</string>
     <string name="theme_system">Systeem</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">Bijwerkmodus bepaalt hoe vaak het ververst: Statisch werkt nooit bij (het beste voor achtergronden), Automatisch werkt in realtime bij en Getimed om de paar minuten. Dit is geen echte Always On Display, de telefoon gaat niet echt in ruststand, dus laat het niet de hele tijd aan staan, het kan meer stroom verbruiken dan een volledig uitgeschakeld scherm.</string>
     <string name="eink_readme_intro">E-Ink-modus verandert hoe het scherm ververst. E-Ink-panelen behouden het laatste beeld zonder stroom en tekenen alleen opnieuw wanneer nodig, dus deze modi stemmen de balans af tussen scherpe tekst en hoe vaak het scherm bijwerkt.</string>
     <string name="eink_readme_modes">Uitgeschakeld is de standaard voor apps van derden en laat het verversen aan het systeem over. Contrast is de modus die Mudita voor de eigen apps gebruikt. Helder en Lezen verversen agressiever voor scherpere tekst, dus je ziet het scherm mogelijk vaker knipperen of bijwerken.</string>
-    <string name="gestures_readme_nav">Standaard gebruiken de pagina\'s van Alle apps horizontale veegbewegingen of de pijlknoppen. Als je wilt, kun je de gebaarrichting op verticaal zetten en de pijlen verbergen.</string>
+    <string name="gestures_readme_nav">Blader door Alle apps met veegbewegingen naar links/rechts of de pijlknoppen. Veeg omhoog/omlaag als de pijlknoppen verborgen zijn.</string>
     <string name="gestures_readme_apps">Vegen voor alle apps kiest de veegbeweging op het startscherm los van de bladerrichting van de apps.</string>
     <string name="search_settings">Instellingen doorzoeken</string>
     <string name="search_settings_desc">Zoek een instelling in de Android-systeeminstellingen</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Hoe de datum wordt weergegeven</string>
     <string name="paper_music_widget">Muziekwidget</string>
     <string name="paper_music_widget_help">Toon de widget voor mediabediening</string>
-    <string name="paper_gesture_direction_help">Veegrichting van app-pagina\'s</string>
     <string name="paper_double_tap_help">Wat er gebeurt bij dubbeltikken op het startscherm</string>
     <string name="paper_about_gestures">Over gebaren</string>
     <string name="paper_about_notifications">Over meldingen</string>

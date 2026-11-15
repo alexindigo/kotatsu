@@ -117,9 +117,6 @@
     <string name="swipe_apps_up">Nahoru</string>
     <string name="swipe_apps_left">Doleva</string>
     <string name="swipe_apps_up_left">Nahoru a doleva</string>
-    <string name="app_gesture_direction">Směr gest aplikací</string>
-    <string name="gesture_horizontal">Vodorovně</string>
-    <string name="gesture_vertical">Svisle</string>
     <string name="contacts">Kontakty</string>
     <string name="set_center_app">Nastavit prostřední aplikaci</string>
     <string name="app_notifications">Oznámení aplikací</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">Režim aktualizace určuje, jak často se obnovuje: Statické se nikdy neaktualizuje (nejlepší pro tapety), Automaticky se aktualizuje v reálném čase a Časované každých několik minut. Toto není skutečné AOD, telefon ve skutečnosti nepřejde do klidu, proto jej nenechávejte zapnutý pořád, může spotřebovat více energie než zcela vypnutý displej.</string>
     <string name="eink_readme_intro">Režim E-Ink mění, jak se obrazovka obnovuje. E-Ink panely udrží poslední obraz bez napájení a překreslují jen v případě potřeby, takže tyto režimy ladí kompromis mezi ostrostí textu a četností aktualizací.</string>
     <string name="eink_readme_modes">Vypnuto je výchozí pro aplikace třetích stran a obnovování nechává na systému. Kontrast je režim, který Mudita používá pro vlastní aplikace. Vyčistit a Čtení obnovují agresivněji pro ostřejší text, takže můžete vidět blikání nebo častější aktualizace obrazovky.</string>
-    <string name="gestures_readme_nav">Ve výchozím nastavení se mezi stránkami Všech aplikací pohybujete vodorovným přejetím nebo pomocí tlačítek se šipkami. Pokud chcete, můžete směr gest změnit na svislý a šipky skrýt.</string>
+    <string name="gestures_readme_nav">Stranky Vsech aplikaci otacejte prejetim vlevo/vpravo nebo tlacitky se sipkami. Se skrytymi sipkami prejizdejte nahoru/dolu.</string>
     <string name="gestures_readme_apps">Prejeti pro aplikace nastavuje gesto na domovske obrazovce nezavisle na smeru listovani aplikacemi.</string>
     <string name="search_settings">Hledat v nastavení</string>
     <string name="search_settings_desc">Najít položku v systémovém nastavení Androidu</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Jak se zobrazuje datum</string>
     <string name="paper_music_widget">Hudební widget</string>
     <string name="paper_music_widget_help">Zobrazit widget ovládání médií</string>
-    <string name="paper_gesture_direction_help">Směr přejetí mezi stránkami aplikací</string>
     <string name="paper_double_tap_help">Co se stane při dvojitém klepnutí na domovskou obrazovku</string>
     <string name="paper_about_gestures">O gestech</string>
     <string name="paper_about_notifications">O oznámeních</string>

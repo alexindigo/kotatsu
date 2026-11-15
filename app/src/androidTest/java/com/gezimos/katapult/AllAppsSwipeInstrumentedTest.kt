@@ -21,9 +21,8 @@ class AllAppsSwipeInstrumentedTest {
                 putBoolean("onboarding_complete", true)
                 putInt("theme_mode", PrefsManager.THEME_LIGHT)
                 putInt("icon_size", 80)
-                putBoolean("vertical_app_gestures", vertical)
                 putBoolean("infinite_scroll", false)
-                putBoolean("hide_arrow_buttons", false)
+                putBoolean("hide_arrow_buttons", vertical)
                 putString("swipe_all_apps", HomeAppSwipe.UP_AND_LEFT.id)
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
@@ -82,5 +81,27 @@ class AllAppsSwipeInstrumentedTest {
             assertPage(model, model.totalPages - 1)
             forward(); assertPage(model, model.totalPages - 1)
         }
+    }
+
+    @Test fun hideArrowButtonsChangesTheLiveAxisWithoutRestart() = withApps(false) { model ->
+        val prefs = PrefsManager(context)
+        val arrows = context.getString(R.string.hide_arrow_buttons)
+        main { model.navigateTo(Screen.SETTINGS) }
+        ui.click(context.getString(R.string.section_all_apps))
+        if (!ui.has(arrows)) ui.click(context.getString(R.string.paper_next_page))
+        ui.await("Hide arrow buttons must start Off") { ui.checked(arrows) == false }
+        ui.toggleSwitch(arrows, false, true) { prefs.hideArrowButtons }
+        ui.back(); ui.back()
+        ui.await("Settings did not return Home") { model.screen == Screen.HOME }
+        main { model.navigateTo(Screen.ALL_APPS) }
+        assertPage(model, 0)
+        swipe(380, 360, 100, 360); assertPage(model, 0)
+        swipe(240, 600, 240, 220); assertPage(model, 1)
+
+        // A second preference owner updates the already mounted pager as well.
+        main { model.showPage(0); prefs.hideArrowButtons = false }
+        assertPage(model, 0)
+        swipe(240, 600, 240, 220); assertPage(model, 0)
+        swipe(380, 360, 100, 360); assertPage(model, 1)
     }
 }

@@ -172,7 +172,6 @@ fun SettingsScreen(
     var appSortMode by remember { mutableIntStateOf(prefs.appSortMode) }
     var hideAllAppsButton by remember { mutableStateOf(prefs.hideAllAppsButton) }
     var swipeAllApps by remember { mutableStateOf(prefs.swipeAllApps) }
-    var verticalAppGestures by remember { mutableStateOf(prefs.verticalAppGestures) }
     var homeButtonRecentApps by remember { mutableStateOf(prefs.homeButtonRecentApps) }
     var homeButtonScreenshot by remember { mutableStateOf(prefs.homeButtonScreenshot) }
     var homeButtonMenu by remember { mutableStateOf(prefs.homeButtonMenu) }
@@ -315,9 +314,8 @@ fun SettingsScreen(
         onHidden = { navigation.push("hidden") }, onSystem = { navigation.push("system-apps") },
         onButton = { hideAllAppsButton = it; prefs.hideAllAppsButton = it },
         onInfinite = { infiniteScroll = it; prefs.infiniteScroll = it }, onArrows = { hideArrowButtons = it; prefs.hideArrowButtons = it })
-    val gestures = gesturesCategory(swipeAllApps, verticalAppGestures, doubleTapAction, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
+    val gestures = gesturesCategory(swipeAllApps, doubleTapAction, homeButtonRecentApps, homeButtonScreenshot, homeButtonMenu,
         onSwipe = { swipeAllApps = it; prefs.swipeAllApps = it },
-        onVertical = { verticalAppGestures = it; prefs.verticalAppGestures = it },
         onDoubleTap = {
             doubleTapAction = it; prefs.doubleTapAction = it
             if (it == PrefsManager.DOUBLE_TAP_LOCK && !LockscreenWidgetService.isEnabled(context))

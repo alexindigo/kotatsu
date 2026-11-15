@@ -197,7 +197,7 @@ class LauncherPreviewInstrumentedTest {
         val controlledDraft = model.orderedApps.map { it.key }
         assertFalse("Swipe-to-HOME case needs retained non-wrapping configuration", model.prefs.infiniteScroll)
         assertEquals(0, model.currentPage)
-        ui.swipeToHome(model.prefs.verticalAppGestures)
+        ui.swipeToHome(model.prefs.hideArrowButtons)
         ui.await("Dirty swipe silently navigated") { ui.has("Save app order changes?") }
         ui.click("Cancel")
         ui.await("Swipe Cancel lost editor") { model.reorderMode && !model.showReorderExit }

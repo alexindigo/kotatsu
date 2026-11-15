@@ -132,9 +132,6 @@
     <string name="swipe_apps_up">Up</string>
     <string name="swipe_apps_left">Left</string>
     <string name="swipe_apps_up_left">Up and left</string>
-    <string name="app_gesture_direction">App gesture direction</string>
-    <string name="gesture_horizontal">Horizontal</string>
-    <string name="gesture_vertical">Vertical</string>
     <string name="contacts">Contacts</string>
     <string name="set_center_app">Set center app</string>
     <string name="app_notifications">App notifications</string>
@@ -281,7 +278,7 @@
     <string name="screensaver_readme_modes">Update Mode sets how often it refreshes: Static never updates (best for wallpapers), Auto updates in real time, and Timed updates every few minutes. This is not a true AOD, the phone doesn\'t go idle, so don\'t leave it on all the time, it can use more power than the display being fully off.</string>
     <string name="eink_readme_intro">E-Ink Mode changes how the screen refreshes. E-Ink panels hold the last image with no power and only redraw when needed, so these modes tune the trade-off between crisp text and how often the screen updates.</string>
     <string name="eink_readme_modes">Disabled is the default for third-party apps and leaves refreshing to the system. Contrast is the mode Mudita uses for its own apps. Clear and Reading refresh more aggressively for sharper text, so you may see the screen flash or update more often.</string>
-    <string name="gestures_readme_nav">By default, All Apps pages use horizontal swipes or the arrow buttons. You can change the gesture direction to vertical and hide the arrows if you prefer.</string>
+    <string name="gestures_readme_nav">Turn All Apps pages with left/right swipes or the arrow buttons. With arrow buttons hidden, use up/down swipes.</string>
     <string name="gestures_readme_apps">Swipe for All Apps chooses the Home swipe separately from the app paging direction.</string>
     <string name="discard">Discard</string>
     <string name="reorder_unsaved">Save app order changes?</string>
@@ -381,7 +378,6 @@
     <string name="paper_date_format_help">How the date is displayed</string>
     <string name="paper_music_widget">Music widget</string>
     <string name="paper_music_widget_help">Show the media controls widget</string>
-    <string name="paper_gesture_direction_help">Direction of app-page swipes</string>
     <string name="paper_double_tap_help">What happens when you double-tap Home</string>
     <string name="paper_about_gestures">About gestures</string>
     <string name="paper_about_notifications">About notifications</string>

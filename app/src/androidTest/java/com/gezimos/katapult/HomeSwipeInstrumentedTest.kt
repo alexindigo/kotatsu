@@ -36,7 +36,7 @@ class HomeSwipeInstrumentedTest {
                 model = MainViewModel(TestApplication(context.applicationContext, fixture.raw))
                 owner.put("home-swipe", model)
                 model.screen = Screen.HOME
-                model.prefs.verticalAppGestures = vertical
+                model.prefs.hideArrowButtons = vertical
                 model.prefs.swipeAllApps = choice
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)

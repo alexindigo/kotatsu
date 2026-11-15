@@ -49,7 +49,7 @@ class ConfigImportInstrumentedTest {
             "rounded_icons", "dark_mode", "hide_status_bar", "hide_status_bar_clock", "eink_refresh_home",
             "double_tap_brightness", "infinite_scroll", "home_extra_row", "disable_music_widget",
             "show_katapult_icon", "hide_app_names", "hide_arrow_buttons", "disable_home_editing",
-            "hide_all_apps_button", "swipe_up_all_apps", "vertical_app_gestures",
+            "hide_all_apps_button", "swipe_up_all_apps",
             "lockscreen_widget", "lockscreen_music_widget", "lockscreen_weather", "lockscreen_widget_latest_first",
             "screensaver_enabled", "screensaver_wallpaper", "screensaver_show_clock",
             "screensaver_show_notifications", "screensaver_double_tap_brightness", "screensaver_eink_refresh",
@@ -106,6 +106,31 @@ class ConfigImportInstrumentedTest {
             assertTrue(prefs.importFromJson(config().put("home_long_press", oldValue).toString()))
             assertFalse("An old backup restored the removed choice", raw.contains("home_long_press"))
             assertFalse(JSONObject(prefs.exportToJson(context)).has("home_long_press"))
+        }
+    }
+
+    @Test fun appGestureDirectionIsRetiredButLegacyHomeSwipeStillResolves() = withPrefs { prefs, raw ->
+        val owner = object : ContextWrapper(context) {
+            override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = raw
+        }
+        for (vertical in listOf(false, true)) {
+            assertTrue(raw.edit().remove("swipe_all_apps").putBoolean("swipe_up_all_apps", true)
+                .putBoolean("vertical_app_gestures", vertical).commit())
+            val upgraded = PrefsManager(owner)
+            val expected = if (vertical) com.gezimos.katapult.util.HomeAppSwipe.UP else com.gezimos.katapult.util.HomeAppSwipe.LEFT
+            assertEquals(expected, upgraded.swipeAllApps)
+            assertFalse(raw.contains("vertical_app_gestures"))
+            assertEquals(expected, PrefsManager(owner).swipeAllApps)
+        }
+        // Export filters stale values even if another owner wrote them after migration.
+        assertTrue(raw.edit().putBoolean("vertical_app_gestures", true).commit())
+        assertFalse(JSONObject(prefs.exportToJson(context)).has("vertical_app_gestures"))
+        for (oldValue in listOf(true, false, "obsolete", JSONObject.NULL)) {
+            assertTrue(prefs.importFromJson(config().put("vertical_app_gestures", oldValue)
+                .put("hide_arrow_buttons", true).toString()))
+            assertTrue(prefs.hideArrowButtons)
+            assertFalse(raw.contains("vertical_app_gestures"))
+            assertFalse(JSONObject(prefs.exportToJson(context)).has("vertical_app_gestures"))
         }
     }
 

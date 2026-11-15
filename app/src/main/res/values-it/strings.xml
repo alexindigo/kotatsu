@@ -151,9 +151,6 @@
     <string name="swipe_apps_up">Su</string>
     <string name="swipe_apps_left">A sinistra</string>
     <string name="swipe_apps_up_left">Su e a sinistra</string>
-    <string name="app_gesture_direction">Direzione gesti app</string>
-    <string name="gesture_horizontal">Orizzontale</string>
-    <string name="gesture_vertical">Verticale</string>
     <string name="theme_mode">Modalità tema</string>
     <string name="theme_mode_desc">Chiaro, scuro o come il sistema</string>
     <string name="theme_system">Sistema</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">La Modalità aggiornamento imposta la frequenza di aggiornamento: Statico non si aggiorna mai (ideale per gli sfondi), Automatico si aggiorna in tempo reale e Temporizzato ogni pochi minuti. Questo non è un vero Always On Display, il telefono non va davvero in inattività, quindi non lasciarlo attivo tutto il tempo, può consumare più energia di un display completamente spento.</string>
     <string name="eink_readme_intro">La Modalità E-Ink cambia il modo in cui lo schermo si aggiorna. I pannelli E-Ink mantengono l\'ultima immagine senza alimentazione e ridisegnano solo quando serve, quindi queste modalità regolano il compromesso tra testo nitido e frequenza di aggiornamento.</string>
     <string name="eink_readme_modes">Disattivato è la scelta predefinita per le app di terze parti e lascia l\'aggiornamento al sistema. Contrasto è la modalità che Mudita usa per le proprie app. Nitido e Lettura si aggiornano in modo più aggressivo per un testo più nitido, quindi potresti vedere lo schermo lampeggiare o aggiornarsi più spesso.</string>
-    <string name="gestures_readme_nav">Per impostazione predefinita, le pagine di Tutte le app usano scorrimenti orizzontali o i pulsanti freccia. Se preferisci, puoi cambiare la direzione dei gesti in verticale e nascondere le frecce.</string>
+    <string name="gestures_readme_nav">Sfoglia le pagine di Tutte le app scorrendo a sinistra/destra o con i pulsanti freccia. Con le frecce nascoste, scorri verso l\'alto/basso.</string>
     <string name="gestures_readme_apps">Scorri per tutte le app sceglie il gesto sulla Home separatamente dalla direzione delle pagine delle app.</string>
     <string name="search_settings">Cerca nelle impostazioni</string>
     <string name="search_settings_desc">Trova un\'impostazione nelle impostazioni di sistema Android</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Come viene mostrata la data</string>
     <string name="paper_music_widget">Widget musica</string>
     <string name="paper_music_widget_help">Mostra il widget dei controlli multimediali</string>
-    <string name="paper_gesture_direction_help">Direzione degli scorrimenti tra pagine app</string>
     <string name="paper_double_tap_help">Cosa succede con un doppio tocco sulla Home</string>
     <string name="paper_about_gestures">Informazioni sui gesti</string>
     <string name="paper_about_notifications">Informazioni sulle notifiche</string>

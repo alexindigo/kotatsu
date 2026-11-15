@@ -48,6 +48,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -93,6 +94,13 @@ import androidx.compose.ui.unit.LayoutDirection
 fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<Array<String>>, onClearBadge: (String) -> Unit) {
     val context = LocalContext.current
     var showResetConfirm by remember { mutableStateOf(false) }
+    val prefs = viewModel.prefs
+    var hideArrowButtons by remember(prefs) { mutableStateOf(prefs.hideArrowButtons) }
+    DisposableEffect(prefs) {
+        val subscription = prefs.subscribeChanges { hideArrowButtons = prefs.hideArrowButtons }
+        onDispose { subscription.close() }
+    }
+    val axis = allAppsSwipeAxis(hideArrowButtons)
 
     var showReorderHint by remember { mutableStateOf(false) }
     LaunchedEffect(viewModel.reorderMode) {
@@ -116,8 +124,7 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
             )
             .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
             .padding(PagePadding)
-            .pointerInput(viewModel.prefs.verticalAppGestures) {
-                val axis = if (viewModel.prefs.verticalAppGestures) SwipeAxis.VERTICAL else SwipeAxis.HORIZONTAL
+            .pointerInput(axis) {
                 detectSwipeGestures(axis, 17.5.dp.toPx()) { direction ->
                     val wrap = viewModel.prefs.infiniteScroll
                     val page = viewModel.currentPage
@@ -217,7 +224,7 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
             }
         }
 
-        if (viewModel.reorderMode || (!viewModel.prefs.hideArrowButtons && viewModel.totalPages > 1)) {
+        if (viewModel.reorderMode || (!hideArrowButtons && viewModel.totalPages > 1)) {
             PageNavRow(viewModel, onResetOrder = { showResetConfirm = true })
         }
     }

@@ -151,9 +151,6 @@
     <string name="swipe_apps_up">Nach oben</string>
     <string name="swipe_apps_left">Nach links</string>
     <string name="swipe_apps_up_left">Nach oben und links</string>
-    <string name="app_gesture_direction">App-Gestenrichtung</string>
-    <string name="gesture_horizontal">Horizontal</string>
-    <string name="gesture_vertical">Vertikal</string>
     <string name="theme_mode">Designmodus</string>
     <string name="theme_mode_desc">Hell, dunkel oder wie das System</string>
     <string name="theme_system">System</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">Der Aktualisierungsmodus legt fest, wie oft er aktualisiert: Statisch aktualisiert nie (am besten für Hintergrundbilder), Automatisch in Echtzeit und Zeitgesteuert alle paar Minuten. Dies ist kein echtes AOD, das Telefon geht nicht wirklich in den Ruhezustand, lass es also nicht die ganze Zeit an, es kann mehr Strom verbrauchen als ein vollständig ausgeschaltetes Display.</string>
     <string name="eink_readme_intro">Der E-Ink-Modus ändert, wie der Bildschirm aktualisiert. E-Ink-Panels halten das letzte Bild ohne Strom und zeichnen nur bei Bedarf neu, daher steuern diese Modi den Kompromiss zwischen scharfem Text und Aktualisierungshäufigkeit.</string>
     <string name="eink_readme_modes">Deaktiviert ist die Standardeinstellung für Drittanbieter-Apps und überlässt die Aktualisierung dem System. Kontrast ist der Modus, den Mudita für die eigenen Apps verwendet. Klar und Lesen aktualisieren aggressiver für schärferen Text, daher kann der Bildschirm häufiger blinken oder aktualisieren.</string>
-    <string name="gestures_readme_nav">Standardmäßig navigierst du die Seiten von Alle Apps mit horizontalen Wischgesten oder den Pfeiltasten. Bei Bedarf kannst du die Gestenrichtung auf vertikal ändern und die Pfeile ausblenden.</string>
+    <string name="gestures_readme_nav">Blaettere in Alle Apps mit Wischgesten nach links/rechts oder den Pfeiltasten. Bei ausgeblendeten Pfeiltasten wische nach oben/unten.</string>
     <string name="gestures_readme_apps">Wischen fuer alle Apps legt die Wischgeste auf dem Startbildschirm getrennt von der Blaetterrichtung der Apps fest.</string>
     <string name="search_settings">Einstellungen durchsuchen</string>
     <string name="search_settings_desc">Eine Option in den Android-Systemeinstellungen finden</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Wie das Datum angezeigt wird</string>
     <string name="paper_music_widget">Musik-Widget</string>
     <string name="paper_music_widget_help">Widget zur Mediensteuerung anzeigen</string>
-    <string name="paper_gesture_direction_help">Wischrichtung der App-Seiten</string>
     <string name="paper_double_tap_help">Was beim Doppeltippen auf die Startseite passiert</string>
     <string name="paper_about_gestures">Über Gesten</string>
     <string name="paper_about_notifications">Über Benachrichtigungen</string>

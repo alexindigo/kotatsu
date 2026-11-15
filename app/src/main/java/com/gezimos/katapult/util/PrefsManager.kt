@@ -44,6 +44,8 @@ class PrefsManager(context: Context) {
             }
             // Retire the old dispatch choice once; imports cannot recreate it either.
             if (prefs.contains("home_long_press")) prefs.edit().remove("home_long_press").apply()
+            // Resolve legacy Home swipes above before retiring the old paging axis.
+            if (prefs.contains(KEY_VERTICAL_APP_GESTURES)) prefs.edit().remove(KEY_VERTICAL_APP_GESTURES).apply()
         }
     }
 
@@ -107,7 +109,6 @@ class PrefsManager(context: Context) {
         val editor = prefs.edit()
         if (prefs.all.isEmpty()) {
             editor.putBoolean(KEY_HOME_EXTRA_ROW, true)
-            editor.putBoolean(KEY_VERTICAL_APP_GESTURES, true)
             editor.putBoolean(KEY_HIDE_ARROW_BUTTONS, false)
             editor.putBoolean(KEY_ROUNDED_ICONS, true)
             editor.putBoolean(KEY_INFINITE_SCROLL, false)
@@ -408,10 +409,6 @@ class PrefsManager(context: Context) {
     var swipeAllApps: HomeAppSwipe
         get() = HomeAppSwipe.fromId(strPref(KEY_SWIPE_ALL_APPS, HomeAppSwipe.DEFAULT.id)) ?: HomeAppSwipe.DEFAULT
         set(value) = prefs.edit().putString(KEY_SWIPE_ALL_APPS, value.id).apply()
-
-    var verticalAppGestures: Boolean
-        get() = boolPref(KEY_VERTICAL_APP_GESTURES, false)
-        set(value) = prefs.edit().putBoolean(KEY_VERTICAL_APP_GESTURES, value).apply()
 
     var homeButtonRecentApps: Boolean
         get() = boolPref(KEY_HOME_BUTTON_RECENT_APPS, true)
@@ -753,7 +750,7 @@ class PrefsManager(context: Context) {
         KEY_EINK_REFRESH_HOME, KEY_DOUBLE_TAP_BRIGHTNESS, KEY_INFINITE_SCROLL, KEY_HOME_EXTRA_ROW,
         KEY_DISABLE_MUSIC_WIDGET, KEY_SHOW_KATAPULT_ICON, KEY_HIDE_APP_NAMES, KEY_HIDE_ARROW_BUTTONS,
         KEY_DISABLE_HOME_EDITING, KEY_HIDE_ALL_APPS_BUTTON, KEY_SWIPE_UP_ALL_APPS,
-        KEY_VERTICAL_APP_GESTURES, KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET, KEY_LOCKSCREEN_WEATHER, KEY_LOCKSCREEN_WIDGETS_ENABLED,
+        KEY_LOCKSCREEN_WIDGET, KEY_LOCKSCREEN_MUSIC_WIDGET, KEY_LOCKSCREEN_WEATHER, KEY_LOCKSCREEN_WIDGETS_ENABLED,
         KEY_LOCKSCREEN_WIDGET_LATEST_FIRST, KEY_SCREENSAVER_ENABLED,
         KEY_SCREENSAVER_WALLPAPER, KEY_SCREENSAVER_SHOW_CLOCK, KEY_SCREENSAVER_SHOW_NOTIFICATIONS,
         KEY_SCREENSAVER_DOUBLE_TAP_BRIGHTNESS, KEY_SCREENSAVER_EINK_REFRESH, KEY_SCREENSAVER_ON_POWER -> false
@@ -852,7 +849,7 @@ class PrefsManager(context: Context) {
         private const val CONFIG_TYPE = "katapult_config"
 
         // Removed presentation settings are tolerated in older backups, never restored or exported.
-        private val RETIRED_KEYS = setOf("home_islands", "screensaver_islands", "home_long_press")
+        private val RETIRED_KEYS = setOf("home_islands", "screensaver_islands", "home_long_press", KEY_VERTICAL_APP_GESTURES)
 
         val HOME_SLOTS = listOf(
             "clock", "calendar", "phone", "center", "sms",

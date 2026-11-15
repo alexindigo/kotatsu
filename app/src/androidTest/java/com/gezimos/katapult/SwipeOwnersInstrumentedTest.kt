@@ -19,7 +19,7 @@ class SwipeOwnersInstrumentedTest {
             preferences.reset {
                 putBoolean("onboarding_complete", true)
                 putInt("theme_mode", PrefsManager.THEME_LIGHT)
-                putBoolean("vertical_app_gestures", true)
+                putBoolean("hide_arrow_buttons", true)
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity

@@ -5,7 +5,7 @@ import org.junit.Test
 import java.io.File
 
 class ImportFieldListTest {
-    @Test fun everyDeclaredPreferenceKeyHasAnImportTypeOrLocalPreservation() {
+    @Test fun everyDeclaredPreferenceKeyHasAnImportTypeLocalPreservationOrRetirement() {
         // Inspect the declaration inventory independently of the hand-maintained
         // import list, without constructing Android SharedPreferences in a JVM test.
         val relative = "src/main/java/com/gezimos/katapult/util/PrefsManager.kt"
@@ -15,9 +15,10 @@ class ImportFieldListTest {
         val importTypes = source.substringAfter("private fun declaredImportDefault(key: String)")
             .substringBefore("private fun matchesStoredType")
         val localKeys = source.substringAfter("private val LOCAL_IMPORT_KEYS = setOf(").substringBefore(")")
-        val covered = Regex("\\bKEY_[A-Z_]+\\b").findAll(importTypes + localKeys)
+        val retiredKeys = source.substringAfter("private val RETIRED_KEYS = setOf(").substringBefore(")")
+        val covered = Regex("\\bKEY_[A-Z_]+\\b").findAll(importTypes + localKeys + retiredKeys)
             .map { it.value }.toSet()
         assertTrue("Preference declaration inventory was empty", declared.isNotEmpty())
-        assertEquals("Declared preferences missing from import types/local preservation", emptySet<String>(), declared - covered)
+        assertEquals("Declared preferences missing from import types/local preservation/retirement", emptySet<String>(), declared - covered)
     }
 }

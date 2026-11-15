@@ -151,9 +151,6 @@
     <string name="swipe_apps_up">Vers le haut</string>
     <string name="swipe_apps_left">Vers la gauche</string>
     <string name="swipe_apps_up_left">Vers le haut et la gauche</string>
-    <string name="app_gesture_direction">Direction des gestes</string>
-    <string name="gesture_horizontal">Horizontal</string>
-    <string name="gesture_vertical">Vertical</string>
     <string name="theme_mode">Mode de thème</string>
     <string name="theme_mode_desc">Clair, sombre ou selon le système</string>
     <string name="theme_system">Système</string>
@@ -238,7 +235,7 @@
     <string name="screensaver_readme_modes">Le Mode de mise à jour définit la fréquence de rafraîchissement : Statique ne se met jamais à jour (idéal pour les fonds d\'écran), Auto se met à jour en temps réel et Programmé toutes les quelques minutes. Ce n\'est pas un vrai affichage permanent, le téléphone ne se met pas vraiment en veille, donc ne le laissez pas activé en permanence, il peut consommer plus d\'énergie qu\'un écran complètement éteint.</string>
     <string name="eink_readme_intro">Le Mode E-Ink modifie la façon dont l\'écran se rafraîchit. Les dalles E-Ink conservent la dernière image sans alimentation et ne redessinent qu\'au besoin, ces modes ajustent donc le compromis entre netteté du texte et fréquence de mise à jour.</string>
     <string name="eink_readme_modes">Désactivé est la valeur par défaut pour les apps tierces et laisse le rafraîchissement au système. Contraste est le mode que Mudita utilise pour ses propres apps. Net et Lecture se rafraîchissent plus agressivement pour un texte plus net, vous pourriez donc voir l\'écran clignoter ou se mettre à jour plus souvent.</string>
-    <string name="gestures_readme_nav">Par défaut, les pages de Toutes les apps utilisent les balayages horizontaux ou les boutons fléchés. Si vous préférez, vous pouvez changer la direction des gestes en vertical et masquer les flèches.</string>
+    <string name="gestures_readme_nav">Tournez les pages de Toutes les apps par balayage gauche/droite ou avec les boutons fleches. Si les fleches sont masquees, balayez vers le haut/bas.</string>
     <string name="gestures_readme_apps">Balayer pour toutes les apps choisit le geste sur l\'accueil independamment du sens de navigation des pages d\'apps.</string>
     <string name="search_settings">Rechercher dans les paramètres</string>
     <string name="search_settings_desc">Trouver un réglage dans les paramètres système Android</string>
@@ -379,7 +376,6 @@
     <string name="paper_date_format_help">Comment la date est affichée</string>
     <string name="paper_music_widget">Widget musique</string>
     <string name="paper_music_widget_help">Afficher le widget de commandes multimédias</string>
-    <string name="paper_gesture_direction_help">Direction des balayages entre pages d\'apps</string>
     <string name="paper_double_tap_help">Ce qui se passe lors d\'un double appui à l\'accueil</string>
     <string name="paper_about_gestures">À propos des gestes</string>
     <string name="paper_about_notifications">À propos des notifications</string>

@@ -41,12 +41,14 @@ class SwipeAllAppsInstrumentedTest {
                     assertEquals(expected, prefs.swipeAllApps)
                     assertEquals(expected.id, raw.getString("swipe_all_apps", null))
                     assertFalse(raw.contains("swipe_up_all_apps"))
-                    prefs.verticalAppGestures = !prefs.verticalAppGestures
-                    assertEquals("App direction must not rerun migration", expected, PrefsManager(wrapped).swipeAllApps)
+                    assertFalse(raw.contains("vertical_app_gestures"))
+                    prefs.hideArrowButtons = !prefs.hideArrowButtons
+                    assertEquals("All Apps look must not rerun Home migration", expected, PrefsManager(wrapped).swipeAllApps)
                     for (choice in HomeAppSwipe.entries) {
                         prefs.swipeAllApps = choice
                         val exported = JSONObject(prefs.exportToJson(wrapped))
                         assertFalse(exported.has("swipe_up_all_apps"))
+                        assertFalse(exported.has("vertical_app_gestures"))
                         assertEquals(choice.id, exported.getString("swipe_all_apps"))
                         assertTrue(prefs.importFromJson(exported.toString()))
                         assertEquals(choice, prefs.swipeAllApps)
@@ -54,6 +56,7 @@ class SwipeAllAppsInstrumentedTest {
                     for (on in listOf(false, true)) for (axis in listOf(false, true)) {
                         val legacy = JSONObject().put("_type", "katapult_config").put("swipe_up_all_apps", on).put("vertical_app_gestures", axis)
                         assertTrue(prefs.importFromJson(legacy.toString()))
+                        assertFalse(raw.contains("vertical_app_gestures"))
                         assertEquals(if (!on) HomeAppSwipe.NONE else if (axis) HomeAppSwipe.UP else HomeAppSwipe.LEFT, prefs.swipeAllApps)
                         legacy.put("swipe_all_apps", HomeAppSwipe.UP_AND_LEFT.id)
                         assertTrue(prefs.importFromJson(legacy.toString()))
@@ -81,7 +84,7 @@ class SwipeAllAppsInstrumentedTest {
         var activity: MainActivity? = null
         try {
             main { raw.edit().putBoolean("onboarding_complete", true).putInt("theme_mode", PrefsManager.THEME_LIGHT)
-                .putString("swipe_all_apps", HomeAppSwipe.DEFAULT.id).putBoolean("vertical_app_gestures", false)
+                .putString("swipe_all_apps", HomeAppSwipe.DEFAULT.id).putBoolean("hide_arrow_buttons", false)
                 .putBoolean("notice_action_service_dismissed", true).commit() }
             activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             val current = activity
@@ -95,6 +98,7 @@ class SwipeAllAppsInstrumentedTest {
             val title = context.getString(R.string.swipe_up_all_apps)
             ui.click(context.getString(R.string.section_gestures))
             ui.await("Swipe choice missing") { ui.has(title) && ui.has(context.getString(R.string.swipe_up_all_apps_desc)) }
+            assertFalse("Removed app direction entry is still visible", ui.has("App gesture direction"))
             capture(current, "gestures-light")
             val ids = listOf(R.string.swipe_apps_none, R.string.swipe_apps_up, R.string.swipe_apps_left, R.string.swipe_apps_up_left)
             for ((index, choice) in HomeAppSwipe.entries.withIndex()) {
@@ -107,7 +111,7 @@ class SwipeAllAppsInstrumentedTest {
                     assertTrue("Static list of four must be bottom anchored", first.top > 200)
                     capture(current, "sheet-light")
                     ui.back()
-                    ui.await("Back did not restore chapter") { ui.has(context.getString(R.string.app_gesture_direction)) }
+                    ui.await("Back did not restore chapter") { ui.has(title) && ui.has(context.getString(R.string.swipe_up_all_apps_desc)) }
                     assertEquals(HomeAppSwipe.DEFAULT, prefs.swipeAllApps)
                     ui.click(title)
                     ui.await("Sheet did not reopen") { ids.all { ui.checked(context.getString(it)) != null } }
@@ -116,7 +120,7 @@ class SwipeAllAppsInstrumentedTest {
                 ui.await("Choice not persisted or sheet not dismissed") {
                     prefs.swipeAllApps == choice && ui.find { it.className == "android.widget.RadioButton" } == null
                 }
-                assertFalse(prefs.verticalAppGestures)
+                assertFalse(prefs.hideArrowButtons)
             }
         } finally {
             main {

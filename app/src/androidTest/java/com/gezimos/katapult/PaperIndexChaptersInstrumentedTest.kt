@@ -26,7 +26,7 @@ class PaperIndexChaptersInstrumentedTest {
         "appearance" to listOf(listOf("shape", "size", "names"), listOf("theme", "wallpaper", "status", "clock"), listOf("mode", "refresh")),
         "home" to listOf(listOf("clock_format", "date_format", "alarm", "battery"), listOf("weather", "celsius", "dock", "music")),
         "apps" to listOf(listOf("sort", "icon", "hidden", "system"), listOf("button", "infinite", "arrows")),
-        "gestures" to listOf(listOf("swipe", "direction", "double_tap"), listOf("home_menu", "recent_apps", "screenshot")),
+        "gestures" to listOf(listOf("swipe", "double_tap", "home_menu", "recent_apps", "screenshot")),
         "notifications" to listOf(listOf("indicators", "apps", "log", "history")),
         "lock" to listOf(listOf("notifications", "apps", "sort", "edges"), listOf("music", "weather", "widgets", "message")),
         "screensaver" to listOf(listOf("enabled", "system", "customization", "wallpaper"), listOf("brightness", "power", "icon", "mode")),
@@ -51,8 +51,8 @@ class PaperIndexChaptersInstrumentedTest {
             { record(it) }, { record(it) }, {}, {}, {}, {}, {}, {}),
         appsCategory(true, PrefsManager.APP_SORT_MANUAL, false, false, false, false,
             { record(it.toString()) }, {}, {}, {}, {}, {}, {}),
-        gesturesCategory(com.gezimos.katapult.util.HomeAppSwipe.DEFAULT, true, PrefsManager.DOUBLE_TAP_OFF, true, true, true,
-            {}, { record(it.toString()) }, { record(it.toString()) }, {}, {}, {}),
+        gesturesCategory(com.gezimos.katapult.util.HomeAppSwipe.DEFAULT, PrefsManager.DOUBLE_TAP_OFF, true, true, true,
+            {}, { record(it.toString()) }, {}, {}, {}),
         notificationsCategory(true, true, {}, {}, {}, {}),
         lockCategory(true, true, false, true, false, false, true, 1, {}, {}, { record(it.toString()) }, {}, {}, {}, {}),
         screensaverCategory(enabled, true, true, true, background, image, false, false, false, PrefsManager.SCREENSAVER_MODE_AUTO,
@@ -139,7 +139,7 @@ class PaperIndexChaptersInstrumentedTest {
                 if (page < pages.lastIndex) ui.click(context.getString(R.string.paper_next_page))
             }
         }
-        assertEquals("All thirteen Value entries must be exercised", 13, opened)
+        assertEquals("All twelve Value entries must be exercised", 12, opened)
     }
 
     @Test fun everyHelpPageReplacesItsChapterAndReturnsToItsPageNumber() = withActivity { activity, ui ->

@@ -8,13 +8,12 @@ import com.gezimos.katapult.util.HomeAppSwipe
 
 @Composable
 fun gesturesCategory(
-    swipeApps: HomeAppSwipe, vertical: Boolean, doubleTap: Int, recentApps: Boolean, screenshot: Boolean, homeMenu: Boolean,
-    onSwipe: (HomeAppSwipe) -> Unit, onVertical: (Boolean) -> Unit, onDoubleTap: (Int) -> Unit,
+    swipeApps: HomeAppSwipe, doubleTap: Int, recentApps: Boolean, screenshot: Boolean, homeMenu: Boolean,
+    onSwipe: (HomeAppSwipe) -> Unit, onDoubleTap: (Int) -> Unit,
     onRecentApps: (Boolean) -> Unit,
     onScreenshot: (Boolean) -> Unit,
     onHomeMenu: (Boolean) -> Unit,
 ): SettingsCategory {
-    val directions = listOf(SettingsChoice("horizontal", stringResource(R.string.gesture_horizontal)), SettingsChoice("vertical", stringResource(R.string.gesture_vertical)))
     val taps = listOf(PrefsManager.DOUBLE_TAP_OFF to R.string.double_tap_off, PrefsManager.DOUBLE_TAP_BRIGHTNESS to R.string.double_tap_brightness,
         PrefsManager.DOUBLE_TAP_LOCK to R.string.double_tap_lock).map { (id, label) ->
             SettingsChoice(id.toString(), stringResource(label), stringResource(when (id) {
@@ -23,7 +22,6 @@ fun gesturesCategory(
                 else -> R.string.double_tap_lock_help
             }))
         }
-    val direction = directions[if (vertical) 1 else 0]
     val swipes = HomeAppSwipe.entries.map { choice -> SettingsChoice(choice.id, stringResource(when (choice) {
         HomeAppSwipe.NONE -> R.string.swipe_apps_none
         HomeAppSwipe.UP -> R.string.swipe_apps_up
@@ -34,8 +32,6 @@ fun gesturesCategory(
         SettingsGroup("pages", stringResource(R.string.paper_group_app_pages), listOf(
             SettingsEntry.Value("swipe", stringResource(R.string.swipe_up_all_apps), stringResource(R.string.swipe_up_all_apps_desc),
                 swipes.single { it.id == swipeApps.id }.label, swipes, { onSwipe(requireNotNull(HomeAppSwipe.fromId(it))) }, swipeApps.id),
-            SettingsEntry.Value("direction", stringResource(R.string.app_gesture_direction), stringResource(R.string.paper_gesture_direction_help),
-                direction.label, directions, { onVertical(it == "vertical") }, direction.id),
         )),
         SettingsGroup("home", stringResource(R.string.paper_group_on_home), listOf(
             SettingsEntry.Value("double_tap", stringResource(R.string.double_tap_action), stringResource(R.string.paper_double_tap_help),
@@ -49,6 +45,6 @@ fun gesturesCategory(
             SettingsEntry.Switch("screenshot", stringResource(R.string.home_button_screenshot), stringResource(R.string.home_button_screenshot_help),
                 screenshot, onScreenshot),
         )),
-    ), summary = direction.label, help = SettingsHelp(stringResource(R.string.paper_about_gestures), stringResource(R.string.section_gestures),
+    ), summary = swipes.single { it.id == swipeApps.id }.label, help = SettingsHelp(stringResource(R.string.paper_about_gestures), stringResource(R.string.section_gestures),
         listOf(stringResource(R.string.gestures_readme_nav), stringResource(R.string.gestures_readme_apps))))
 }
