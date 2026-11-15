@@ -1,5 +1,8 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.ui.SwipeAxis
+import com.gezimos.katapult.ui.dominantSwipeAxis
+
 enum class WidgetRotation(val intervalMs: Long?) {
     WAKE(null), SECONDS_30(30_000), MINUTE_1(60_000), MINUTES_5(300_000), MINUTES_15(900_000);
 
@@ -82,6 +85,6 @@ internal class WidgetSlotRotation(
 
 /** Zero means replay after lift; leftward is next, rightward previous. No edge-distance threshold. */
 internal fun widgetSlotSwipe(dx: Float, dy: Float, slop: Float): Int =
-    if (kotlin.math.abs(dx) > slop && kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+    if (kotlin.math.abs(dx) > slop && dominantSwipeAxis(dx, dy) == SwipeAxis.HORIZONTAL) {
         if (dx < 0) 1 else -1
     } else 0

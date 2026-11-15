@@ -6,8 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -45,7 +43,8 @@ import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.LocalPalette
-import kotlin.math.abs
+import com.gezimos.katapult.ui.SwipeAxis
+import com.gezimos.katapult.ui.detectSwipeGestures
 import kotlin.math.max
 
 @Composable
@@ -365,12 +364,11 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
         onHelp = onHelp ?: { navigation.push("help") }) {
         // The body constraint is independent of the current page's footer. Measure the same
         // footer grammar for each candidate, including wrapped/localized Notice text.
-        var drag by remember { mutableFloatStateOf(0f) }
         val scroll = rememberScrollState()
         SubcomposeLayout(Modifier.fillMaxSize().pointerInput(page, count) {
-            detectVerticalDragGestures(onDragStart = { drag = 0f }, onDragEnd = {
-                if (abs(drag) > 80 && count > 1) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
-            }, onVerticalDrag = { _, amount -> drag += amount })
+            detectSwipeGestures(SwipeAxis.VERTICAL, 80f) { direction ->
+                if (count > 1) page = (page + if (direction.forward) 1 else -1).coerceIn(0, count - 1)
+            }
         }) { constraints ->
             val childConstraints = Constraints(maxWidth = constraints.maxWidth)
             val measured = groups.map { group ->
@@ -499,14 +497,12 @@ fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
 private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = true, content: @Composable () -> Unit) {
     var page by rememberSaveable { mutableIntStateOf(0) }
     var count by remember { mutableIntStateOf(1) }
-    var drag by remember { mutableFloatStateOf(0f) }
     val scroll = rememberScrollState()
     val renderedCount = count
     SubcomposeLayout(Modifier.fillMaxSize().then(if (swipePaging) Modifier.pointerInput(page, count) {
-            detectHorizontalDragGestures(
-                onDragStart = { drag = 0f }, onDragEnd = {
-                    if (abs(drag) > 80) page = (page + if (drag < 0) 1 else -1).coerceIn(0, count - 1)
-                }, onHorizontalDrag = { _, amount -> drag += amount })
+            detectSwipeGestures(SwipeAxis.HORIZONTAL, 80f) { direction ->
+                page = (page + if (direction.forward) 1 else -1).coerceIn(0, count - 1)
+            }
         } else Modifier)) { constraints ->
             val width = constraints.maxWidth
             val loose = Constraints(maxWidth = width)

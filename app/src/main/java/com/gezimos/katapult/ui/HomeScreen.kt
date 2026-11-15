@@ -11,11 +11,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,7 +56,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -148,7 +145,9 @@ fun HomeScreen(
             .pointerInput(viewModel.prefs.swipeAllApps) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    val swipe = SwipeGesture(viewConfiguration.touchSlop, 100f)
                     var swipeClaimed = false
+                    var childClaimed = false
                     val edges = viewModel.prefs.edgeActions
                     val edge = if (edges.enabled && edges.homeEnabled) EdgeSwipe.startingEdge(down.position.x, size.width,
                         EdgeSwipe.STRIP_DP.dp.toPx()) else null
@@ -159,8 +158,11 @@ fun HomeScreen(
                     var pinchFired = false
                     while (true) {
                         val event = awaitPointerEvent(if (edge != null) PointerEventPass.Initial else PointerEventPass.Main)
+                        if (event.changes.none { it.id == down.id }) swipe.cancel()
                         event.changes.firstOrNull { it.id == down.id }?.let { change ->
                             displacement = change.position - down.position
+                            if (change.isConsumed) childClaimed = true
+                            swipe.update(displacement.x, displacement.y, change.isConsumed, event.changes.size)
                             if (edge != null && !pinch &&
                                 EdgeSwipe.decide(edge, displacement.x, displacement.y, size.width, slop) != EdgeSwipeDecision.REPLAY) {
                                 change.consume()
@@ -184,7 +186,7 @@ fun HomeScreen(
                                     swipeClaimed = true
                                 // Claim movement, not the initial press: children keep clicks and
                                 // still presses, while their tap/long-press recognizers see cancellation.
-                                if (swipeClaimed) change.consume()
+                                if (swipeClaimed && !childClaimed) change.consume()
                             }
                         }
                     }
@@ -197,7 +199,7 @@ fun HomeScreen(
                             EdgeAction.NOTHING -> Unit
                         }
                     } else if (!pinch && (edge == null || decision == EdgeSwipeDecision.REPLAY) &&
-                        viewModel.prefs.swipeAllApps.opens(displacement.x, displacement.y)) {
+                        viewModel.prefs.swipeAllApps.opens(swipe.finish(displacement.x, displacement.y))) {
                         viewModel.navigateTo(Screen.ALL_APPS)
                     }
                 }
@@ -522,7 +524,6 @@ private fun AppPickerDialog(
         val end = minOf(start + itemsPerPage, apps.size)
         apps.subList(start, end)
     }
-    var dragAccumulator by remember { mutableFloatStateOf(0f) }
     val iconShape = appIconShape(viewModel.roundedIcons)
 
     BottomSheet(onDismiss = onDismiss) {
@@ -530,16 +531,10 @@ private fun AppPickerDialog(
         Column(
             modifier = Modifier
                 .pointerInput(page, totalPages) {
-                    detectHorizontalDragGestures(
-                        onDragStart = { dragAccumulator = 0f },
-                        onDragEnd = {
-                            if (kotlin.math.abs(dragAccumulator) > 80f) {
-                                if (dragAccumulator < 0 && page < totalPages - 1) page++
-                                else if (dragAccumulator > 0 && page > 0) page--
-                            }
-                        },
-                        onHorizontalDrag = { _, amount -> dragAccumulator += amount },
-                    )
+                    detectSwipeGestures(SwipeAxis.HORIZONTAL, 80f) { direction ->
+                        if (direction.forward && page < totalPages - 1) page++
+                        else if (!direction.forward && page > 0) page--
+                    }
                 },
         ) {
             for (i in 0 until itemsPerPage) {

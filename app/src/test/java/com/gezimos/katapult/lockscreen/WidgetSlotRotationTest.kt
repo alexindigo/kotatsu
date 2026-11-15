@@ -80,4 +80,13 @@ class WidgetSlotRotationTest {
         for ((x, y) in listOf(8f to 0f, 0f to -200f, 9f to -10f, 2f to 2f, 90f to 90f))
             assertEquals(0, widgetSlotSwipe(x, y, 8f))
     }
+    @Test fun sharedDominanceKeepsTheSlotSwipeDecisionTable() {
+        val travel = listOf(-200f, -9f, -8f, 0f, 8f, 9f, 200f)
+        for (dx in travel) for (dy in travel) {
+            val expected = if (kotlin.math.abs(dx) > 8f && kotlin.math.abs(dx) > kotlin.math.abs(dy)) {
+                if (dx < 0) 1 else -1
+            } else 0
+            assertEquals(expected, widgetSlotSwipe(dx, dy, 8f))
+        }
+    }
 }

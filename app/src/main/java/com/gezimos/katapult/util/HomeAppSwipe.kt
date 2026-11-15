@@ -1,15 +1,20 @@
 package com.gezimos.katapult.util
 
+import com.gezimos.katapult.ui.SwipeDirection
+
 /** Home's directions are independent of the All Apps paging direction. */
 enum class HomeAppSwipe(val id: String, private val up: Boolean, private val left: Boolean) {
     NONE("none", false, false), UP("up", true, false), LEFT("left", false, true),
     UP_AND_LEFT("up_left", true, true);
 
-    fun opens(dx: Float, dy: Float): Boolean = up && dy < -DISTANCE || left && dx < -DISTANCE
+    fun opens(direction: SwipeDirection?): Boolean = when (direction) {
+        SwipeDirection.UP -> up
+        SwipeDirection.LEFT -> left
+        else -> false
+    }
 
     companion object {
         val DEFAULT = UP_AND_LEFT
-        private const val DISTANCE = 100f
         fun fromId(id: String?) = entries.singleOrNull { it.id == id }
 
         fun resolve(id: String?, legacy: Boolean, enabled: Boolean? = null, vertical: Boolean? = null): HomeAppSwipe =

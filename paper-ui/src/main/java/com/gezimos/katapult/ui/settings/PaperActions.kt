@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
+import com.gezimos.katapult.ui.SwipeAxis
+import com.gezimos.katapult.ui.dominantSwipeAxis
 import kotlin.math.abs
 
 /** Name/help and the trailing action are independent targets on one measured text baseline. */
@@ -37,9 +39,10 @@ fun PaperActionEntry(name: String, help: String, action: String, onOpen: () -> U
                 if (event.changes.size != 1) break
                 val change = event.changes.single()
                 val delta = change.position - down.position
+                val axis = dominantSwipeAxis(delta.x, delta.y)
                 if (!claimed && (change.isConsumed ||
-                        (abs(delta.y) > viewConfiguration.touchSlop && abs(delta.y) > abs(delta.x)))) break
-                if (change.pressed && abs(delta.x) > viewConfiguration.touchSlop && abs(delta.x) > abs(delta.y)) claimed = true
+                        (abs(delta.y) > viewConfiguration.touchSlop && axis == SwipeAxis.VERTICAL))) break
+                if (change.pressed && abs(delta.x) > viewConfiguration.touchSlop && axis == SwipeAxis.HORIZONTAL) claimed = true
                 // Leave taps and sub-slop finger drift to the row/action click owner.
                 if (claimed) change.consume()
                 if (!change.pressed) {

@@ -4,6 +4,22 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EdgeSwipeTest {
+    @Test fun sharedDominancePreservesTheExistingEdgeDecisionAndCaptureTable() {
+        val travel = listOf(-400f, -160f, -8f, 0f, 8f, 160f, 400f)
+        for (edge in ScreenEdge.entries) for (dx in travel) for (dy in travel) {
+            val horizontal = kotlin.math.abs(dx) > kotlin.math.abs(dy)
+            val beyondSlop = kotlin.math.hypot(dx, dy) > 8f
+            val inward = if (edge == ScreenEdge.LEFT) dx > 0 else dx < 0
+            val expected = when {
+                !beyondSlop || !horizontal -> EdgeSwipeDecision.REPLAY
+                inward && kotlin.math.abs(dx) >= 160f -> EdgeSwipeDecision.ACTION
+                else -> EdgeSwipeDecision.DROP
+            }
+            assertEquals(expected, EdgeSwipe.decide(edge, dx, dy, 480, 8f))
+            assertEquals(beyondSlop && horizontal && !inward,
+                EdgeSwipe.capturesPageClose(edge, dx, dy, 8f))
+        }
+    }
     @Test fun onlyDownInsideTheSharedStripSelectsAnEdge() {
         assertEquals(ScreenEdge.LEFT, EdgeSwipe.startingEdge(0f, 480, 16f))
         assertEquals(ScreenEdge.LEFT, EdgeSwipe.startingEdge(15.99f, 480, 16f))

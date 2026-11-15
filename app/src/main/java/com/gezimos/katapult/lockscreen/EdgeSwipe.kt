@@ -1,5 +1,7 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.ui.SwipeAxis
+import com.gezimos.katapult.ui.dominantSwipeAxis
 import kotlin.math.abs
 import kotlin.math.hypot
 
@@ -21,7 +23,7 @@ object EdgeSwipe {
 
     fun decide(edge: ScreenEdge, dx: Float, dy: Float, width: Int, slop: Float): EdgeSwipeDecision {
         if (!dx.isFinite() || !dy.isFinite() || width <= 0) return EdgeSwipeDecision.DROP
-        if (hypot(dx, dy) <= slop || abs(dx) <= abs(dy)) return EdgeSwipeDecision.REPLAY
+        if (hypot(dx, dy) <= slop || dominantSwipeAxis(dx, dy) != SwipeAxis.HORIZONTAL) return EdgeSwipeDecision.REPLAY
         val inward = if (edge == ScreenEdge.LEFT) dx > 0 else dx < 0
         return if (inward && abs(dx) >= width / 3f) EdgeSwipeDecision.ACTION else EdgeSwipeDecision.DROP
     }
@@ -35,7 +37,8 @@ object EdgeSwipe {
 
     /** MOVE is only a hint. UP still makes the final decision using raw displacement. */
     fun previewStep(edge: ScreenEdge, dx: Float, dy: Float, width: Int, slop: Float): Int {
-        if (!dx.isFinite() || !dy.isFinite() || width <= 0 || hypot(dx, dy) <= slop || abs(dx) <= abs(dy)) return 0
+        if (!dx.isFinite() || !dy.isFinite() || width <= 0 || hypot(dx, dy) <= slop ||
+            dominantSwipeAxis(dx, dy) != SwipeAxis.HORIZONTAL) return 0
         val inward = if (edge == ScreenEdge.LEFT) dx else -dx
         return ((inward / (width / 3f)).coerceIn(0f, 1f) * 6).toInt()
     }
@@ -45,7 +48,7 @@ object EdgeSwipe {
 
     /** Input ownership starts at slop, not at the final action distance. */
     fun capturesPageClose(edge: ScreenEdge, dx: Float, dy: Float, slop: Float): Boolean =
-        dx.isFinite() && dy.isFinite() && hypot(dx, dy) > slop && abs(dx) > abs(dy) &&
+        dx.isFinite() && dy.isFinite() && hypot(dx, dy) > slop && dominantSwipeAxis(dx, dy) == SwipeAxis.HORIZONTAL &&
             if (edge == ScreenEdge.LEFT) dx < 0 else dx > 0
 }
 

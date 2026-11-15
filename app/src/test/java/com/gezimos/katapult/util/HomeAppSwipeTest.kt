@@ -1,5 +1,7 @@
 package com.gezimos.katapult.util
 
+import com.gezimos.katapult.ui.SwipeDirection
+import com.gezimos.katapult.ui.SwipeGesture
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -20,11 +22,20 @@ class HomeAppSwipeTest {
     @Test fun explicitChoiceWinsOverLegacyAndEachDirectionIsIndependent() {
         for (choice in HomeAppSwipe.entries) {
             assertEquals(choice, HomeAppSwipe.resolve(choice.id, true, false, true))
-            assertEquals(choice in listOf(HomeAppSwipe.UP, HomeAppSwipe.UP_AND_LEFT), choice.opens(0f, -150f))
-            assertEquals(choice in listOf(HomeAppSwipe.LEFT, HomeAppSwipe.UP_AND_LEFT), choice.opens(-150f, 0f))
-            assertFalse(choice.opens(150f, 150f))
-            assertFalse(choice.opens(-99f, -99f))
-            assertFalse(choice.opens(-100f, -100f))
+            assertEquals(choice in listOf(HomeAppSwipe.UP, HomeAppSwipe.UP_AND_LEFT), choice.opens(SwipeDirection.UP))
+            assertEquals(choice in listOf(HomeAppSwipe.LEFT, HomeAppSwipe.UP_AND_LEFT), choice.opens(SwipeDirection.LEFT))
+            assertFalse(choice.opens(SwipeDirection.RIGHT))
+            assertFalse(choice.opens(SwipeDirection.DOWN))
+            assertFalse(choice.opens(null))
         }
+    }
+    @Test fun minorUpOrLeftTravelCannotOpenFromADifferentDominantDirection() {
+        fun direction(dx: Float, dy: Float) = SwipeGesture(8f, 100f).finish(dx, dy)
+        assertFalse(HomeAppSwipe.UP.opens(direction(-280f, -140f)))
+        assertTrue(HomeAppSwipe.LEFT.opens(direction(-280f, -140f)))
+        assertFalse(HomeAppSwipe.LEFT.opens(direction(-140f, -380f)))
+        assertTrue(HomeAppSwipe.UP.opens(direction(-140f, -380f)))
+        assertFalse(HomeAppSwipe.UP_AND_LEFT.opens(direction(280f, -140f)))
+        assertFalse(HomeAppSwipe.UP_AND_LEFT.opens(direction(-140f, 380f)))
     }
 }
