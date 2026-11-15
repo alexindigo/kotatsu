@@ -163,6 +163,7 @@ class ChoiceSheetsInstrumentedTest {
             val requested = if (dark) PrefsManager.THEME_LIGHT else PrefsManager.THEME_DARK
             ui.click(label(if (dark) R.string.theme_light else R.string.theme_dark)); closed(ui)
             ui.await("Theme choice did not reach consumer") { prefs.themeMode == requested && vm.themeMode == requested }
+            ui.await("Applying theme lost the chapter's later page") { ui.has(label(R.string.theme_mode)) }
             ui.back()
             ui.await("Chapter Back did not return root") { ui.has(label(R.string.section_system)) }
         }

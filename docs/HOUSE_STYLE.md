@@ -526,7 +526,8 @@ accumulate a drag and change page after release beyond 80 raw pixels. These
 are implementation details, not dp design tokens. Never make swiping the
 only route: round previous/next controls remain available. Unavailable
 directions are omitted, not greyed out. Changing page resets body scroll to
-the top. Header Back returns to the parent, not the previous pagination page.
+the top. Returning from a child retains both the parent's page number and body
+scroll position. Header Back returns to the parent, not the previous pagination page.
 
 ## Notice contract
 

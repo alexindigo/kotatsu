@@ -344,12 +344,28 @@ private fun ChapterFooter(page: Int, count: Int, notice: NoticeContent?, onPage:
     }
 }
 
+/** A return restores the entire position; only moving to a different page starts at its top. */
+@Stable
+private class PagePosition(val page: MutableIntState, val count: MutableIntState, val scroll: ScrollState)
+
+@Composable
+private fun rememberPagePosition(vararg inputs: Any?): PagePosition {
+    val page = rememberSaveable(*inputs) { mutableIntStateOf(0) }
+    // Restore the measured allocation too: a temporary single-page viewport would
+    // clamp a restored offset before the pager's height is reserved again.
+    val count = rememberSaveable(*inputs) { mutableIntStateOf(1) }
+    val scroll = rememberSaveable(*inputs, page.intValue, saver = ScrollState.Saver) { ScrollState(0) }
+    return remember(page, count, scroll) { PagePosition(page, count, scroll) }
+}
+
 @Composable
 fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier: Modifier = Modifier,
     notice: NoticeContent? = null, noticeGroup: String? = null,
     onChoice: ((SettingsEntry.Value) -> Unit)? = null, onHelp: (() -> Unit)? = null) {
-    var page by rememberSaveable(category.id) { mutableIntStateOf(0) }
-    var count by remember(category.id) { mutableIntStateOf(1) }
+    val position = rememberPagePosition(category.id)
+    var page by position.page
+    val scroll = position.scroll
+    var count by position.count
     // Standalone consumers use the same stack contract as the Settings owner.
     val navigation = rememberSettingsNavigation("chapter")
     val values = category.groups.flatMap { it.visibleEntries }.filterIsInstance<SettingsEntry.Value>()
@@ -369,7 +385,6 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
         onHelp = onHelp ?: { navigation.push("help") }) {
         // The body constraint is independent of the current page's footer. Measure the same
         // footer grammar for each candidate, including wrapped/localized Notice text.
-        val scroll = rememberScrollState()
         SubcomposeLayout(Modifier.fillMaxSize().pointerInput(page, count) {
             detectSwipeGestures(SwipeAxis.VERTICAL, 80f) { direction ->
                 if (count > 1) page = (page + if (direction.forward) 1 else -1).coerceIn(0, count - 1)
@@ -420,7 +435,6 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
                 footer.placeRelative(0, contentHeight)
             }
         }
-        LaunchedEffect(page) { scroll.scrollTo(0) }
     }
     }) {
         if (choice != null) ChoiceSurface(choice, navigation::pop)
@@ -500,9 +514,10 @@ fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
 
 @Composable
 private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = true, content: @Composable () -> Unit) {
-    var page by rememberSaveable { mutableIntStateOf(0) }
-    var count by remember { mutableIntStateOf(1) }
-    val scroll = rememberScrollState()
+    val position = rememberPagePosition()
+    var page by position.page
+    var count by position.count
+    val scroll = position.scroll
     val renderedCount = count
     SubcomposeLayout(Modifier.fillMaxSize().then(if (swipePaging) Modifier.pointerInput(page, count) {
             detectSwipeGestures(SwipeAxis.HORIZONTAL, 80f) { direction ->
@@ -553,7 +568,6 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
                 footer?.placeRelative(0, constraints.maxHeight - footer.height)
             }
         }
-    LaunchedEffect(page) { scroll.scrollTo(0) }
 }
 
 @Composable
