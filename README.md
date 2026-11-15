@@ -89,6 +89,13 @@ On Kompakt, open launcher Settings → Lockscreen → Lock-screen widgets, enabl
 
 Back exits a nondefault launcher preview after internal navigation and dialogs are resolved. Clock and date formats can follow Android's System setting or use a chosen format. If Action Service access is lost, Kotatsu names the affected features and offers to turn them off.
 
+All Apps pages turn with left/right swipes or the arrow buttons. Turn on
+Settings > All Apps > Hide arrow buttons to hide the arrows and dots and
+turn pages with up/down swipes instead. With Infinite scroll Off, swiping
+backward on the first page returns Home: right with arrows shown, down with
+arrows hidden. Settings > Gestures > Swipe for All Apps separately controls
+how All Apps opens from Home: None, Up, Left, or Up and left.
+
 The app menu lists quick actions first. Tap a name to launch it; tick its
 App icon box to add it as an icon of its own. Kotatsu opens Name, App icon
 Change/Hide and, while a dot is present, Notification dot Clear. Android

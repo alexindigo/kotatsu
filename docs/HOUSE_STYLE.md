@@ -171,7 +171,7 @@ Settings
 Appearance ............. Rounded / Light / E-ink off
 Home Screen ...................... Alarm on / Dock +3
 All Apps .............................. Alphabetical
-Gestures .................................. Vertical
+Gestures ............................... Up and left
 Notifications ........................ Access granted
 Lock screen ................... 2 widgets configured
 Screensaver .................................... Off
@@ -315,13 +315,13 @@ directions. Side-screen widget rows use their existing separate presentation.
 ```text
 < Gestures
 
-By default, All Apps pages use horizontal swipes or
-the arrow buttons. You can change the gesture
-direction to vertical and hide the arrows if you
-prefer.
+Turn All Apps pages with left/right swipes or the
+arrow buttons. With arrow buttons hidden, use
+up/down swipes.
 
-Swipe for All Apps lets you swipe up or left to open
-the All Apps page, depending on the gesture direction.
+Swipe for All Apps controls how All Apps opens from
+Home: None, Up, Left, or Up and left. It is separate
+from turning pages in All Apps.
 
                   honest blank space
 ```
@@ -477,6 +477,14 @@ external-link character with a generated duplicate: that changes line metrics
 and breaks help spacing. Prefer the kit's existing external rendering path.
 
 ## Pagination and navigation
+
+All Apps paging follows its look: arrows and dots shown means left/right
+swipes; Settings > All Apps > Hide arrow buttons On means up/down swipes.
+Changing that setting updates the axis without a restart. There is no
+separate App gesture direction choice. With Infinite scroll Off, a backward
+swipe on the first page returns Home (right with arrows shown, down with
+arrows hidden); Infinite scroll On wraps pages. Swipe for All Apps under
+Gestures independently controls opening All Apps from Home.
 
 `PageFrame` is the full-height shell, not an allocator. System insets belong
 to its owner; do not add another status-bar inset in a child. The launcher
