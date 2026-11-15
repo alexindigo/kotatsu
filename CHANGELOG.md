@@ -2,6 +2,33 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.7.0] - 2026-11-14
+
+### Added
+- **Recent apps** opens over the current app on a double press of Home, with tap to switch and Close or a left swipe to close an app.
+- **Screenshot** captures the screen when you hold Home and press Volume down, saves it to Pictures/Screenshots and shows a brief preview.
+- **Home edge swipes** open the side screen or camera from Home as well as the lock screen, with an Enable on home screen switch.
+- **Home menu** opens in a bottom sheet, and holding Home opens the same menu over any app without leaving it when dismissed.
+- **Home button settings** provide separate Recent apps, Screenshot and Home menu switches, all on by default.
+
+### Changed
+- **Dark mode** uses one palette across launcher screens and overlays, with Theme mode defaulting to System while lock-screen surfaces, Weather and Notes stay light.
+- **Short settings choices** open in a bottom sheet with the selected option marked, while longer lists keep their full page.
+- **App menu** puts quick actions first, followed by Kotatsu, Android and Move tiles, with Change instead of Move on Home and an App icon checkbox to add or remove quick-action icons.
+- **Holding an app on Home** always opens its app menu, replacing the Long-press app on Home setting.
+- **Swipe for All Apps** offers None, Up, Left or Up and left, with Up and left for new installs and existing directions preserved.
+- **All Apps paging** follows its arrows: left/right with arrows shown, up/down with arrows hidden, replacing the App gesture direction setting.
+
+### Fixed
+- **Kotatsu Weather refreshes** no longer silently drop a new refresh when an older job stops.
+- **Swipe to Home** no longer mistakes a small sideways or vertical drift for an intentional return from All Apps.
+- **Slow Home swipes** no longer open the Home menu.
+- **Home button navigation** closes Home side screens when returning Home.
+- **Recent apps Close** retries briefly after returning Home so Android has time to make the app eligible to stop.
+- **Notes task lists** keep the bottom of the last task's letters fully visible.
+- **Settings paging** keeps scrolling within overflowing content until a paging swipe can take over.
+- **Imported settings** preserve the previous Home swipe direction when restoring an older backup.
+
 ## [0.6.1] — 2026-11-08
 
 ### Fixed
