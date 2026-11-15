@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -330,6 +331,10 @@ private fun IndexGroup(group: SettingsGroup, onChoice: (SettingsEntry.Value) -> 
     }
 }
 
+/** Only overflowing page content owns vertical input; otherwise the shared pager gets the stream. */
+private fun Modifier.pageContentScroll(scroll: ScrollState): Modifier =
+    verticalScroll(scroll, enabled = scroll.maxValue > 0)
+
 /** The same footer is measured for allocation and placed below the current page's content. */
 @Composable
 private fun ChapterFooter(page: Int, count: Int, notice: NoticeContent?, onPage: (Int) -> Unit) {
@@ -404,7 +409,7 @@ fun PaperIndexRenderer(category: SettingsCategory, onBack: () -> Unit, modifier:
             }.single().measure(childConstraints)
             val contentHeight = (constraints.maxHeight - footer.height).coerceAtLeast(0)
             val content = subcompose("content") {
-                Column(Modifier.fillMaxWidth().verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                Column(Modifier.fillMaxWidth().pageContentScroll(scroll), verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     range.forEach { index -> IndexGroup(groups[index]) {
                         onChoice?.invoke(it) ?: navigation.push("choice:${it.id}")
                     } }
@@ -514,7 +519,7 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
             // scroll viewport handles a genuinely oversized block (large text, or an editor's IME).
             // Allocation uses the full stable screen capacity, never the previous page's footer.
             val body = subcompose("body") {
-                Layout(content = content, modifier = Modifier.fillMaxWidth().verticalScroll(scroll)) { children, bodyConstraints ->
+                Layout(content = content, modifier = Modifier.fillMaxWidth().pageContentScroll(scroll)) { children, bodyConstraints ->
                     val blocks = children.map { it.measure(Constraints(maxWidth = (width - inset * 2).coerceAtLeast(0))) }
                     val heights = blocks.map { it.height }
                     val paged = blocks.size > 6 || heights.sum() > available
