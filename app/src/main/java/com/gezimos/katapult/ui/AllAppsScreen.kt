@@ -24,8 +24,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -89,7 +87,6 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
-import kotlin.math.abs
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
@@ -120,35 +117,19 @@ fun AllAppsScreen(viewModel: MainViewModel, iconPicker: ActivityResultLauncher<A
             .windowInsetsPadding(WindowInsets.navigationBarsIgnoringVisibility)
             .padding(PagePadding)
             .pointerInput(viewModel.prefs.verticalAppGestures) {
-                val threshold = 17.5.dp.toPx()
-                var accumulated = 0f
-                val onEnd = {
-                    if (abs(accumulated) > threshold) {
-                        val wrap = viewModel.prefs.infiniteScroll
-                        val page = viewModel.currentPage
-                        val last = viewModel.totalPages - 1
-                        if (accumulated < 0) {
-                            val next = if (page < last) page + 1 else if (wrap) 0 else page
-                            if (next != page) viewModel.showPage(next)
-                        } else if (!wrap && page == 0) {
-                            viewModel.navigateTo(Screen.HOME)
-                        } else {
-                            viewModel.showPage(if (page > 0) page - 1 else last)
-                        }
+                val axis = if (viewModel.prefs.verticalAppGestures) SwipeAxis.VERTICAL else SwipeAxis.HORIZONTAL
+                detectSwipeGestures(axis, 17.5.dp.toPx()) { direction ->
+                    val wrap = viewModel.prefs.infiniteScroll
+                    val page = viewModel.currentPage
+                    val last = viewModel.totalPages - 1
+                    if (direction.forward) {
+                        val next = if (page < last) page + 1 else if (wrap) 0 else page
+                        if (next != page) viewModel.showPage(next)
+                    } else if (!wrap && page == 0) {
+                        viewModel.navigateTo(Screen.HOME)
+                    } else {
+                        viewModel.showPage(if (page > 0) page - 1 else last)
                     }
-                }
-                if (viewModel.prefs.verticalAppGestures) {
-                    detectVerticalDragGestures(
-                        onDragStart = { accumulated = 0f },
-                        onDragEnd = onEnd,
-                        onVerticalDrag = { _, dragAmount -> accumulated += dragAmount },
-                    )
-                } else {
-                    detectHorizontalDragGestures(
-                        onDragStart = { accumulated = 0f },
-                        onDragEnd = onEnd,
-                        onHorizontalDrag = { _, dragAmount -> accumulated += dragAmount },
-                    )
                 }
             },
     ) {
