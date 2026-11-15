@@ -288,6 +288,56 @@ class ScreenshotInstrumentedTest {
         } finally { finish.countDown(); main { pipeline.close() } }
     }
 
+    @Test fun olderSaveCannotReplaceNewerCaptureFailureOrResurrectExpiredPreview() = withService { service, _ ->
+      for (expireFirst in listOf(false, true)) {
+        SystemClock.sleep(400) // Respect the native API's interval between the real first captures.
+        val started = CountDownLatch(1); val release = CountDownLatch(1)
+        val delivered = CountDownLatch(2)
+        val handler = object : Handler(Looper.getMainLooper()) {
+            override fun dispatchMessage(message: android.os.Message) {
+                try { super.dispatchMessage(message) } finally { delivered.countDown() }
+            }
+        }
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expiry = ControlledPreviewExpiry()
+        lateinit var pipeline: ScreenshotCapture
+        var cleanup: (() -> Unit)? = null
+        var requests = 0
+        try {
+            main {
+                pipeline = ScreenshotCapture(service, handler, { true }, ScreenshotPreviewWindow(service, expiry, wm),
+                    request = { callback ->
+                        if (++requests == 1) service.takeScreenshot(android.view.Display.DEFAULT_DISPLAY, service.mainExecutor, callback)
+                        else callback.onFailure(android.accessibilityservice.AccessibilityService.ERROR_TAKE_SCREENSHOT_INTERVAL_TIME_SHORT)
+                    }) {
+                    started.countDown(); assertTrue(release.await(10, TimeUnit.SECONDS))
+                }
+                cleanup = pipeline::close
+                pipeline.capture()
+            }
+            assertTrue(started.await(10, TimeUnit.SECONDS))
+            main { pipeline.capture() }
+            ui.await("Newer failure card missing") { hasText(wm.view, "Screenshot not saved") }
+            assertEquals(2, requests)
+            if (expireFirst) {
+                main { expiry.expireNow() }
+                ui.await("Failure did not expire") { wm.view?.isAttachedToWindow == false }
+            }
+            release.countDown()
+            assertTrue("Old save result was not delivered", delivered.await(10, TimeUnit.SECONDS))
+            main {
+                if (expireFirst) assertFalse("Old save resurrected an expired newer failure", wm.view!!.isAttachedToWindow)
+                else {
+                    assertTrue("Newer failure card was replaced", hasText(wm.view, "Screenshot not saved"))
+                    assertTrue(wm.view!!.isAttachedToWindow)
+                }
+                assertEquals(1, wm.adds)
+                assertEquals(if (expireFirst) 1 else 0, wm.removes)
+            }
+        } finally { release.countDown(); main { cleanup?.invoke(); expiry.close() } }
+      }
+    }
+
     @Test fun saveFailureShowsTheReasonWithoutRetrying() = withService { service, _ ->
         val calls = AtomicInteger()
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))

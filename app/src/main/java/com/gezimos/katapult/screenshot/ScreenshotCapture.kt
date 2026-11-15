@@ -7,22 +7,25 @@ import android.view.Display
 import java.util.concurrent.Executors
 import java.util.concurrent.RejectedExecutionException
 
-/** Each accepted chord captures once; saving is queued off main, never a gate on the next chord. */
+/** Each accepted chord captures once; saves never gate capture, and only the newest capture publishes. */
 class ScreenshotCapture(private val service: AccessibilityService, private val handler: Handler,
-                        private val eligible: () -> Boolean,
-                        private val preview: ScreenshotPreviewWindow = ScreenshotPreviewWindow(service, handler),
-                        private val save: (Bitmap) -> Unit = { ScreenshotStore(service.contentResolver).save(it); Unit }) : AutoCloseable {
+                         private val eligible: () -> Boolean,
+                         private val preview: ScreenshotPreviewWindow = ScreenshotPreviewWindow(service, handler),
+                         private val request: (AccessibilityService.TakeScreenshotCallback) -> Unit = {
+                             service.takeScreenshot(Display.DEFAULT_DISPLAY, service.mainExecutor, it)
+                         },
+                         private val save: (Bitmap) -> Unit = { ScreenshotStore(service.contentResolver).save(it); Unit }) : AutoCloseable {
     private val worker = Executors.newSingleThreadExecutor()
-    private var generation = 0L
+    private val order = ScreenshotCaptureOrder()
     private var closed = false
 
     fun capture() {
         if (closed || !eligible()) return
-        val token = generation
+        val token = order.begin()
         preview.beforeCapture {
-            if (closed || token != generation || !eligible()) { preview.captured(); return@beforeCapture }
+            if (closed || !order.isActive(token) || !eligible()) { preview.captured(); return@beforeCapture }
             try {
-                service.takeScreenshot(Display.DEFAULT_DISPLAY, service.mainExecutor, object : AccessibilityService.TakeScreenshotCallback {
+                request(object : AccessibilityService.TakeScreenshotCallback {
                     override fun onSuccess(result: AccessibilityService.ScreenshotResult) {
                         preview.captured()
                         val buffer = result.hardwareBuffer
@@ -37,7 +40,7 @@ class ScreenshotCapture(private val service: AccessibilityService, private val h
                                     save(software)
                                     bitmap = null
                                     if (!handler.post {
-                                        try { if (!closed && token == generation && eligible()) preview.saved(software) }
+                                        try { if (!closed && order.isLatest(token) && eligible()) preview.saved(software) }
                                         finally { software.recycle() }
                                     }) software.recycle()
                                 } catch (error: Exception) {
@@ -53,10 +56,10 @@ class ScreenshotCapture(private val service: AccessibilityService, private val h
         }
     }
 
-    private fun report(token: Long, reason: ScreenshotFailure) {
-        handler.post { if (!closed && token == generation && eligible()) preview.failed(reason) }
+    private fun report(token: ScreenshotCaptureOrder.Token, reason: ScreenshotFailure) {
+        handler.post { if (!closed && order.isLatest(token) && eligible()) preview.failed(reason) }
     }
 
-    fun clear() { generation++; preview.hide() }
+    fun clear() { order.clear(); preview.hide() }
     override fun close() { closed = true; clear(); worker.shutdown() }
 }
