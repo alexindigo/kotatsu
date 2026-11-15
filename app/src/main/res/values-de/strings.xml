@@ -239,7 +239,7 @@
     <string name="eink_readme_intro">Der E-Ink-Modus ändert, wie der Bildschirm aktualisiert. E-Ink-Panels halten das letzte Bild ohne Strom und zeichnen nur bei Bedarf neu, daher steuern diese Modi den Kompromiss zwischen scharfem Text und Aktualisierungshäufigkeit.</string>
     <string name="eink_readme_modes">Deaktiviert ist die Standardeinstellung für Drittanbieter-Apps und überlässt die Aktualisierung dem System. Kontrast ist der Modus, den Mudita für die eigenen Apps verwendet. Klar und Lesen aktualisieren aggressiver für schärferen Text, daher kann der Bildschirm häufiger blinken oder aktualisieren.</string>
     <string name="gestures_readme_nav">Standardmäßig navigierst du die Seiten von Alle Apps mit horizontalen Wischgesten oder den Pfeiltasten. Bei Bedarf kannst du die Gestenrichtung auf vertikal ändern und die Pfeile ausblenden.</string>
-    <string name="gestures_readme_apps">Wischen für alle Apps ermöglicht das Öffnen der Alle-Apps-Seite durch Wischen nach oben oder links, je nach Gestenrichtung.</string>
+    <string name="gestures_readme_apps">Wischen fuer alle Apps legt die Wischgeste auf dem Startbildschirm getrennt von der Blaetterrichtung der Apps fest.</string>
     <string name="search_settings">Einstellungen durchsuchen</string>
     <string name="search_settings_desc">Eine Option in den Android-Systemeinstellungen finden</string>
     <string name="permissions">Berechtigungen</string>

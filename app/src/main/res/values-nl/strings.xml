@@ -239,7 +239,7 @@
     <string name="eink_readme_intro">E-Ink-modus verandert hoe het scherm ververst. E-Ink-panelen behouden het laatste beeld zonder stroom en tekenen alleen opnieuw wanneer nodig, dus deze modi stemmen de balans af tussen scherpe tekst en hoe vaak het scherm bijwerkt.</string>
     <string name="eink_readme_modes">Uitgeschakeld is de standaard voor apps van derden en laat het verversen aan het systeem over. Contrast is de modus die Mudita voor de eigen apps gebruikt. Helder en Lezen verversen agressiever voor scherpere tekst, dus je ziet het scherm mogelijk vaker knipperen of bijwerken.</string>
     <string name="gestures_readme_nav">Standaard gebruiken de pagina\'s van Alle apps horizontale veegbewegingen of de pijlknoppen. Als je wilt, kun je de gebaarrichting op verticaal zetten en de pijlen verbergen.</string>
-    <string name="gestures_readme_apps">Vegen voor alle apps laat je omhoog of naar links vegen om de pagina Alle apps te openen, afhankelijk van de gebaarrichting.</string>
+    <string name="gestures_readme_apps">Vegen voor alle apps kiest de veegbeweging op het startscherm los van de bladerrichting van de apps.</string>
     <string name="search_settings">Instellingen doorzoeken</string>
     <string name="search_settings_desc">Zoek een instelling in de Android-systeeminstellingen</string>
     <string name="permissions">Machtigingen</string>

@@ -165,6 +165,15 @@ class PaperIndexChaptersInstrumentedTest {
         assertEquals("All five chapter help pages must be exercised", 5, opened)
     }
 
+    @Test fun gesturesHelpExplainsTheIndependentHomeSwipe() = withActivity { activity, ui ->
+        val definition = show(activity, "gestures")
+        val help = requireNotNull(definition.help)
+        val explanation = context.getString(R.string.gestures_readme_apps)
+        assertTrue(explanation in help.paragraphs)
+        ui.click(help.label)
+        ui.await("Gestures help must show the independent Home swipe explanation") { ui.has(explanation) }
+    }
+
     @Test fun lockNoticeIsOneSharedRegionAndNeverPerRow() = withActivity { activity, ui ->
         show(activity, "lock")
         for (page in 1..2) {

@@ -282,7 +282,7 @@
     <string name="eink_readme_intro">E-Ink Mode changes how the screen refreshes. E-Ink panels hold the last image with no power and only redraw when needed, so these modes tune the trade-off between crisp text and how often the screen updates.</string>
     <string name="eink_readme_modes">Disabled is the default for third-party apps and leaves refreshing to the system. Contrast is the mode Mudita uses for its own apps. Clear and Reading refresh more aggressively for sharper text, so you may see the screen flash or update more often.</string>
     <string name="gestures_readme_nav">By default, All Apps pages use horizontal swipes or the arrow buttons. You can change the gesture direction to vertical and hide the arrows if you prefer.</string>
-    <string name="gestures_readme_apps">Swipe for All Apps lets you swipe up or left to open the All Apps page, depending on the gesture direction.</string>
+    <string name="gestures_readme_apps">Swipe for All Apps chooses the Home swipe separately from the app paging direction.</string>
     <string name="discard">Discard</string>
     <string name="reorder_unsaved">Save app order changes?</string>
     <string name="onboarding_optional_desc">Setup is optional. You can use Kotatsu without access permissions or changing your default launcher.</string>

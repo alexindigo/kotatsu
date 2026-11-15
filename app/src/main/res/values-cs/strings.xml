@@ -239,7 +239,7 @@
     <string name="eink_readme_intro">Režim E-Ink mění, jak se obrazovka obnovuje. E-Ink panely udrží poslední obraz bez napájení a překreslují jen v případě potřeby, takže tyto režimy ladí kompromis mezi ostrostí textu a četností aktualizací.</string>
     <string name="eink_readme_modes">Vypnuto je výchozí pro aplikace třetích stran a obnovování nechává na systému. Kontrast je režim, který Mudita používá pro vlastní aplikace. Vyčistit a Čtení obnovují agresivněji pro ostřejší text, takže můžete vidět blikání nebo častější aktualizace obrazovky.</string>
     <string name="gestures_readme_nav">Ve výchozím nastavení se mezi stránkami Všech aplikací pohybujete vodorovným přejetím nebo pomocí tlačítek se šipkami. Pokud chcete, můžete směr gest změnit na svislý a šipky skrýt.</string>
-    <string name="gestures_readme_apps">Přejetí pro aplikace umožňuje přejetím nahoru nebo doleva otevřít stránku se všemi aplikacemi, podle směru gest.</string>
+    <string name="gestures_readme_apps">Prejeti pro aplikace nastavuje gesto na domovske obrazovce nezavisle na smeru listovani aplikacemi.</string>
     <string name="search_settings">Hledat v nastavení</string>
     <string name="search_settings_desc">Najít položku v systémovém nastavení Androidu</string>
     <string name="permissions">Oprávnění</string>

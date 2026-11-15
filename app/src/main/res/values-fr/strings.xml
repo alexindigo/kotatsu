@@ -239,7 +239,7 @@
     <string name="eink_readme_intro">Le Mode E-Ink modifie la façon dont l\'écran se rafraîchit. Les dalles E-Ink conservent la dernière image sans alimentation et ne redessinent qu\'au besoin, ces modes ajustent donc le compromis entre netteté du texte et fréquence de mise à jour.</string>
     <string name="eink_readme_modes">Désactivé est la valeur par défaut pour les apps tierces et laisse le rafraîchissement au système. Contraste est le mode que Mudita utilise pour ses propres apps. Net et Lecture se rafraîchissent plus agressivement pour un texte plus net, vous pourriez donc voir l\'écran clignoter ou se mettre à jour plus souvent.</string>
     <string name="gestures_readme_nav">Par défaut, les pages de Toutes les apps utilisent les balayages horizontaux ou les boutons fléchés. Si vous préférez, vous pouvez changer la direction des gestes en vertical et masquer les flèches.</string>
-    <string name="gestures_readme_apps">Balayer pour toutes les apps vous permet de balayer vers le haut ou la gauche pour ouvrir la page Toutes les apps, selon la direction des gestes.</string>
+    <string name="gestures_readme_apps">Balayer pour toutes les apps choisit le geste sur l\'accueil independamment du sens de navigation des pages d\'apps.</string>
     <string name="search_settings">Rechercher dans les paramètres</string>
     <string name="search_settings_desc">Trouver un réglage dans les paramètres système Android</string>
     <string name="permissions">Autorisations</string>

@@ -239,7 +239,7 @@
     <string name="eink_readme_intro">O Modo E-Ink altera a forma como o ecrã atualiza. Os painéis E-Ink mantêm a última imagem sem energia e só redesenham quando necessário, por isso estes modos ajustam o compromisso entre texto nítido e a frequência de atualização.</string>
     <string name="eink_readme_modes">Desativado é a predefinição para apps de terceiros e deixa a atualização ao sistema. Contraste é o modo que a Mudita usa nas próprias apps. Limpo e Leitura atualizam de forma mais agressiva para texto mais nítido, por isso pode ver o ecrã piscar ou atualizar com mais frequência.</string>
     <string name="gestures_readme_nav">Por predefinição, as páginas de Todas as apps usam deslizes horizontais ou os botões de seta. Se preferir, pode mudar a direção dos gestos para vertical e ocultar as setas.</string>
-    <string name="gestures_readme_apps">Deslizar para todas as apps permite deslizar para cima ou para a esquerda para abrir a página de todas as apps, consoante a direção dos gestos.</string>
+    <string name="gestures_readme_apps">Deslizar para todas as apps escolhe o gesto no ecra inicial separadamente da direcao das paginas de apps.</string>
     <string name="search_settings">Pesquisar definições</string>
     <string name="search_settings_desc">Encontrar uma definição nas definições do sistema Android</string>
     <string name="permissions">Permissões</string>

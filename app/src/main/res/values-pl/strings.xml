@@ -239,7 +239,7 @@
     <string name="eink_readme_intro">Tryb E-Ink zmienia sposób odświeżania ekranu. Panele E-Ink zachowują ostatni obraz bez zasilania i przerysowują tylko w razie potrzeby, więc te tryby regulują kompromis między ostrością tekstu a częstotliwością aktualizacji.</string>
     <string name="eink_readme_modes">Wyłączony jest domyślny dla aplikacji innych firm i pozostawia odświeżanie systemowi. Kontrast to tryb, którego Mudita używa dla własnych aplikacji. Wyczyść i Czytanie odświeżają bardziej agresywnie dla ostrzejszego tekstu, więc możesz widzieć miganie lub częstsze aktualizacje ekranu.</string>
     <string name="gestures_readme_nav">Domyślnie strony Wszystkich aplikacji obsługują poziome przesunięcia lub przyciski strzałek. Jeśli chcesz, możesz zmienić kierunek gestów na pionowy i ukryć strzałki.</string>
-    <string name="gestures_readme_apps">Przesuń, aby otworzyć aplikacje pozwala przesunąć w górę lub w lewo, aby otworzyć stronę wszystkich aplikacji, zależnie od kierunku gestów.</string>
+    <string name="gestures_readme_apps">Przesun, aby otworzyc aplikacje ustawia gest na ekranie glownym niezaleznie od kierunku przewijania stron aplikacji.</string>
     <string name="search_settings">Szukaj w ustawieniach</string>
     <string name="search_settings_desc">Znajdź ustawienie w ustawieniach systemu Android</string>
     <string name="permissions">Uprawnienia</string>
