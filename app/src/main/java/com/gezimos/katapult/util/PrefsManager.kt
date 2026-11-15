@@ -732,8 +732,7 @@ class PrefsManager(context: Context) {
                 )
             }
         }
-        val swipe = HomeAppSwipe.resolve(json.opt(KEY_SWIPE_ALL_APPS) as? String,
-            legacy = json.has(KEY_SWIPE_UP_ALL_APPS) || json.has(KEY_VERTICAL_APP_GESTURES),
+        val swipe = HomeAppSwipe.fromBackup(json.opt(KEY_SWIPE_ALL_APPS) as? String,
             enabled = json.opt(KEY_SWIPE_UP_ALL_APPS) as? Boolean,
             vertical = json.opt(KEY_VERTICAL_APP_GESTURES) as? Boolean)
         editor.putString(KEY_SWIPE_ALL_APPS, swipe.id)

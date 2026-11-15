@@ -61,8 +61,11 @@ class SwipeAllAppsInstrumentedTest {
                     }
                     assertTrue(raw.edit().remove("swipe_all_apps").commit())
                     assertEquals("Getter omission must use the declared default", HomeAppSwipe.DEFAULT, prefs.swipeAllApps)
-                    assertTrue(prefs.importFromJson("{\"_type\":\"katapult_config\"}"))
-                    assertEquals(HomeAppSwipe.DEFAULT, prefs.swipeAllApps)
+                    for (choice in HomeAppSwipe.entries) {
+                        prefs.swipeAllApps = choice
+                        assertTrue(prefs.importFromJson("{\"_type\":\"katapult_config\"}"))
+                        assertEquals("An old backup must use legacy defaults, not the current choice", HomeAppSwipe.LEFT, prefs.swipeAllApps)
+                    }
                     for (invalid in listOf("bad", true, 3, JSONObject.NULL)) {
                         val before = raw.all
                         assertFalse(prefs.importFromJson(JSONObject().put("_type", "katapult_config").put("swipe_all_apps", invalid).toString()))

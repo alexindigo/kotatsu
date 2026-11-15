@@ -6,9 +6,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class HomeAppSwipeTest {
-    @Test fun freshAndOmittedImportsShareOneDefault() {
+    @Test fun freshInstallKeepsItsIndependentDefault() {
         assertEquals(HomeAppSwipe.UP_AND_LEFT, HomeAppSwipe.DEFAULT)
         assertEquals(HomeAppSwipe.DEFAULT, HomeAppSwipe.resolve(null, false))
+    }
+    @Test fun backupsWithoutTheNewChoiceUseLegacyDefaultsForEveryOmittedKey() {
+        for (enabled in listOf<Boolean?>(null, false, true)) for (vertical in listOf<Boolean?>(null, false, true)) {
+            val expected = if (enabled == false) HomeAppSwipe.NONE else if (vertical == true) HomeAppSwipe.UP else HomeAppSwipe.LEFT
+            assertEquals("Backup enabled=$enabled vertical=$vertical", expected, HomeAppSwipe.fromBackup(null, enabled, vertical))
+        }
+        for (choice in HomeAppSwipe.entries) {
+            assertEquals(choice, HomeAppSwipe.fromBackup(choice.id, false, true))
+        }
     }
     @Test fun allLegacyCombinationsKeepTheirDirection() {
         for (enabled in listOf(false, true)) for (vertical in listOf(false, true)) {

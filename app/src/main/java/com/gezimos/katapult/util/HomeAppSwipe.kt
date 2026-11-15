@@ -17,6 +17,9 @@ enum class HomeAppSwipe(val id: String, private val up: Boolean, private val lef
         val DEFAULT = UP_AND_LEFT
         fun fromId(id: String?) = entries.singleOrNull { it.id == id }
 
+        fun fromBackup(id: String?, enabled: Boolean? = null, vertical: Boolean? = null): HomeAppSwipe =
+            resolve(id, legacy = true, enabled = enabled, vertical = vertical)
+
         fun resolve(id: String?, legacy: Boolean, enabled: Boolean? = null, vertical: Boolean? = null): HomeAppSwipe =
             fromId(id) ?: if (!legacy) DEFAULT else when {
                 enabled == false -> NONE
