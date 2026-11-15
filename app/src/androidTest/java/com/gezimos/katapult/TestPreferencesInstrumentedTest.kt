@@ -19,6 +19,29 @@ import java.util.concurrent.atomic.AtomicBoolean
 class TestPreferencesInstrumentedTest {
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
 
+    @Test fun applicationOwnerRestoresAllPreferenceTypesAndRemovesFixtureKeys() {
+        val raw = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
+        val before = raw.all
+        ApplicationPreferencesFixture(context).use { fixture ->
+            fixture.reset {
+                putBoolean("fixture_boolean", true)
+                putInt("fixture_int", 2)
+                putLong("fixture_long", 3L)
+                putFloat("fixture_float", 4.5f)
+                putString("fixture_string", "owned")
+                putStringSet("fixture_set", setOf("one", "two"))
+            }
+            assertTrue(raw.getBoolean("fixture_boolean", false))
+            assertEquals(2, raw.getInt("fixture_int", 0))
+            assertEquals(3L, raw.getLong("fixture_long", 0))
+            assertEquals(4.5f, raw.getFloat("fixture_float", 0f), 0f)
+            assertEquals("owned", raw.getString("fixture_string", null))
+            assertEquals(setOf("one", "two"), raw.getStringSet("fixture_set", null))
+            raw.edit().putString("fixture_late_apply", "flushed by restore").apply()
+        }
+        assertEquals(before, raw.all)
+    }
+
     @Test fun deletionWaitsForTheStoreFlushAndRemovesBothFiles() {
         val name = "teardown-${UUID.randomUUID()}"
         val backing = context.getSharedPreferences(name, Context.MODE_PRIVATE)

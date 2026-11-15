@@ -1,15 +1,9 @@
 package com.gezimos.katapult
 
-import android.app.Application
-import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.graphics.Bitmap
-import androidx.activity.compose.setContent
-import androidx.lifecycle.ViewModelStore
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.model.AppModel
-import com.gezimos.katapult.ui.App
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.ShortcutHelper
 import org.junit.Assert.*
@@ -31,34 +25,33 @@ class AppMenuInstrumentedTest {
         return if (info.packageName == "android") null else android.content.ComponentName(info.packageName, info.name)
     }
 
-    private class TestApplication(base: Context, private val store: SharedPreferences) : Application() {
-        init { attachBaseContext(base) }
-        override fun getApplicationContext(): Context = this
-        override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
-            if (name == "katapult_prefs") store else super.getSharedPreferences(name, mode)
-    }
-
     private fun fixture(test: (MainActivity, MainViewModel) -> Unit) {
         val home = resolvedHome()
         val role = context.getSystemService(android.app.role.RoleManager::class.java)
         val heldHomeRole = role.isRoleHeld(android.app.role.RoleManager.ROLE_HOME)
         val hadShortcutPermission = ShortcutHelper.hasHostPermission(context)
         var pinnedBefore = emptyList<String>()
-        WidgetHostTestFixture(context).use { f ->
-            val owner = ViewModelStore()
+        ApplicationPreferencesFixture(context).use { preferences ->
             lateinit var model: MainViewModel
+            var modelCreated = false
             var activity: MainActivity? = null
             try {
                 assertEquals("", shell("cmd role add-role-holder android.app.role.HOME ${context.packageName}"))
                 ui.await("Launcher shortcut permission missing") { ShortcutHelper.hasHostPermission(context) }
                 pinnedBefore = ShortcutHelper.queryShortcuts(context, camera.packageName).filter { it.isPinned }.map { it.id }
                 main {
-                    f.raw.edit().putBoolean("onboarding_complete", true)
-                        .putInt("theme_mode", com.gezimos.katapult.util.PrefsManager.THEME_LIGHT).commit()
-                    model = MainViewModel(TestApplication(context.applicationContext, f.raw))
-                    model.prefs.homeExtraRow = false
-                    owner.put("app-menu", model)
+                    preferences.reset {
+                        putBoolean("onboarding_complete", true)
+                        putInt("theme_mode", PrefsManager.THEME_LIGHT)
+                        putInt("app_sort_mode", PrefsManager.APP_SORT_MANUAL)
+                        putBoolean("home_extra_row", false)
+                    }
                 }
+                activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+                val current = activity!!
+                main { model = current.viewModel; modelCreated = true }
+                assertFalse("App-menu fixture must not adopt an existing reorder draft", model.reorderMode)
                 ui.await("App loading did not settle") { model.orderedApps.any { it.key == camera.key } }
                 calculator = model.orderedApps.first { candidate ->
                     candidate.packageName != camera.packageName &&
@@ -66,26 +59,25 @@ class AppMenuInstrumentedTest {
                         context.packageManager.getApplicationInfo(candidate.packageName, 0).flags and
                             android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
                 }
-                activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-                val current = activity!!
                 main {
                     model.orderedApps.filterNot { it.key == camera.key || it.key == calculator.key }
                         .forEach { model.prefs.hideApp(it.key) }
                     model.prefs.saveAppOrder(listOf(camera.key, calculator.key))
                     model.loadApps()
                     model.navigateTo(Screen.ALL_APPS)
-                    current.setContent {
-                        App(model, current.imagePicker, current.iconPicker, current.configExporter,
-                            current.configImporter, current.screensaverWallpaperPicker, {})
-                    }
                 }
                 ui.await("Fixture apps missing") { ui.has(camera.label) && ui.has(calculator.label) }
                 test(current, model)
             } finally {
-                main { activity?.finish(); owner.clear() }
+                main {
+                    if (modelCreated && model.reorderMode) model.discardReorderExit()
+                    activity?.finish()
+                }
+                activity?.let { current -> ui.await("App-menu Activity did not release its ViewModel") { current.isDestroyed } }
                 context.getSystemService(android.content.pm.LauncherApps::class.java)
                     .pinShortcuts(camera.packageName, pinnedBefore, android.os.Process.myUserHandle())
+                assertEquals("App-menu fixture leaked shortcut pins", pinnedBefore.toSet(),
+                    ShortcutHelper.queryShortcuts(context, camera.packageName).filter { it.isPinned }.map { it.id }.toSet())
                 if (!heldHomeRole) {
                     assertEquals("", shell("cmd role remove-role-holder android.app.role.HOME ${context.packageName}"))
                     context.packageManager.clearPackagePreferredActivities(context.packageName)
