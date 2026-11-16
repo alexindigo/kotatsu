@@ -79,11 +79,11 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
     fun has(label: String): Boolean = find(label) != null
 
     /** Mounted input targets, including duplicate app labels; never infer empty space from names. */
-    fun clickableBounds(): List<Rect> {
+    fun clickableBounds(predicate: (AccessibilityNodeInfo) -> Boolean = { true }): List<Rect> {
         val bounds = mutableListOf<Rect>()
         fun visit(node: AccessibilityNodeInfo) {
             if (!node.refresh()) return
-            if (node.isVisibleToUser && node.isClickable) {
+            if (node.isVisibleToUser && node.isClickable && predicate(node)) {
                 val rect = Rect()
                 node.getBoundsInScreen(rect)
                 if (!rect.isEmpty) bounds.add(rect)

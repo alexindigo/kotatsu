@@ -24,19 +24,34 @@ class AllAppsSwipeInstrumentedTest {
                 putBoolean("infinite_scroll", false)
                 putBoolean("hide_arrow_buttons", vertical)
                 putString("swipe_all_apps", HomeAppSwipe.UP_AND_LEFT.id)
+                putInt("app_sort_mode", PrefsManager.APP_SORT_MANUAL)
+            }
+            // Persist an owned inventory through the same public preference API used by
+            // pinned shortcuts. No installed label count or previous test state is required.
+            val fixtures = List(60) { index -> com.gezimos.katapult.model.AppModel(
+                context.packageName, "Swipe fixture", "", shortcutId = "swipe-fixture-$index") }
+            main {
+                val prefs = PrefsManager(context)
+                prefs.setSavedShortcuts(fixtures)
+                // Reconciliation inserts unknown native apps alphabetically. Include the
+                // entire inventory so those entries cannot displace the duplicate-label page.
+                val native = com.gezimos.katapult.util.AppLoader.loadApps(context, showSelf = prefs.showKatapultIcon)
+                prefs.saveAppOrder(fixtures.map { it.key } + native.map { it.key })
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-            try {
+            withFixtureCleanup(
+                { main { activity.finish() } },
+                { ui.await("Swipe fixture Activity did not release its model") { activity.isDestroyed } },
+            ) {
                 main { activity.viewModel.navigateTo(Screen.ALL_APPS) }
                 val model = activity.viewModel
                 ui.await("Two All Apps pages must render") {
                     model.totalPages >= 2 && model.orderedApps.isNotEmpty() && ui.has(model.orderedApps.first().label)
                 }
+                assertTrue("First page must exercise duplicate labels with distinct identities",
+                    model.orderedApps.take(model.appsPerPage).all { it.shortcutId.startsWith("swipe-fixture-") })
                 test(model)
-            } finally {
-                main { activity.finish() }
-                ui.await("Swipe fixture Activity did not release its model") { activity.isDestroyed }
             }
         }
     }
@@ -54,12 +69,11 @@ class AllAppsSwipeInstrumentedTest {
     }
 
     private fun crossAxisSwipe(model: MainViewModel, vertical: Boolean, duration: Int) {
-        val items = model.orderedApps.take(model.appsPerPage).mapNotNull { app ->
-            ui.findAncestor(app.label) { it.isClickable }?.let { node ->
-                android.graphics.Rect().also(node::getBoundsInScreen)
-            }
+        val items = ui.clickableBounds { node ->
+            node.isLongClickable && node.packageName?.toString() == context.packageName
         }
         assertTrue("Mounted grid has no app item bounds", items.isNotEmpty())
+        assertEquals("Every mounted app identity must contribute bounds", model.appsPerPage, items.size)
         val grid = android.graphics.Rect(items.minOf { it.left }, items.minOf { it.top },
             items.maxOf { it.right }, items.maxOf { it.bottom })
         val targets = ui.clickableBounds()
