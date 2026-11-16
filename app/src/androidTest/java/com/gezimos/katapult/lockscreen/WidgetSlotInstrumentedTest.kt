@@ -1,5 +1,7 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.appwidget.AppWidgetHostView
 import android.content.Intent
 import android.os.Handler
@@ -58,7 +60,11 @@ class WidgetSlotInstrumentedTest {
             val window = android.graphics.Rect(0, 0, 480, 800)
             val visibility = LockscreenVisibility().apply { beginEpoch(); recheck(true) { false } }
             var slot: LockscreenWidgetSlot? = null
-            try {
+            withFixtureCleanup(
+                { main { slot?.stop() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { fixture.host.releaseViews() } },
+            ) {
                 for (provider in providers) for (size in LockscreenWidgetSize.entries) {
                     val widget = LockscreenWidget(fixture.bind(provider), size)
                     if (provider.provider.className.endsWith(".QuoteWidgetProvider")) {
@@ -121,7 +127,7 @@ class WidgetSlotInstrumentedTest {
                         assertEquals(window.bottom, box.bottom)
                     }
                 }
-            } finally { main { slot?.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
+            }
         }
     }
 
@@ -156,7 +162,11 @@ class WidgetSlotInstrumentedTest {
                     }
                 }
             }
-            try {
+            withFixtureCleanup(
+                { main { slot.stop() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { fixture.host.releaseViews() } },
+            ) {
                 main {
                     slot = LockscreenWidgetSlot(activity, Handler(Looper.getMainLooper()), { render() }, { delay, action ->
                         assertEquals(30_000L, delay)
@@ -188,7 +198,7 @@ class WidgetSlotInstrumentedTest {
                 main { slot.hide(); assertNull(timer) }
                 widgets.forEach { assertFalse(fixture.manager.getAppWidgetOptions(it.id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE)) }
                 main { slot.rotation.wake(); render() }; checkShown(0)
-            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
+            }
         }
     }
 
@@ -266,7 +276,14 @@ class WidgetSlotInstrumentedTest {
         WidgetHostTestFixture(context, applicationPreferences = true).use { fixture ->
             val previous = fixture.raw.all.filterKeys { it in setOf("lockscreen_widget_rotation", "lockscreen_widget_swipe") }
             val ui = PlatformUiDriver(instrumentation)
-            try {
+            withFixtureCleanup({
+                val edit = fixture.raw.edit().remove("lockscreen_widget_rotation").remove("lockscreen_widget_swipe")
+                previous.forEach { (key, value) -> when (value) {
+                    is String -> edit.putString(key, value)
+                    is Boolean -> edit.putBoolean(key, value)
+                } }
+                assertTrue(edit.commit())
+            }) {
                 fixture.prefs.widgetRotation = WidgetRotation.WAKE
                 fixture.prefs.widgetSwipeToSwitch = true
                 androidx.test.core.app.ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
@@ -299,13 +316,6 @@ class WidgetSlotInstrumentedTest {
                     ui.back()
                     aligned(R.string.widget_rotation, R.string.widget_rotation_value_30s)
                 }
-            } finally {
-                val edit = fixture.raw.edit().remove("lockscreen_widget_rotation").remove("lockscreen_widget_swipe")
-                previous.forEach { (key, value) -> when (value) {
-                    is String -> edit.putString(key, value)
-                    is Boolean -> edit.putBoolean(key, value)
-                } }
-                assertTrue(edit.commit())
             }
         }
     }

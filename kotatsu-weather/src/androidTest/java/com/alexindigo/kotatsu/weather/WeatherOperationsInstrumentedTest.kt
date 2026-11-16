@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -25,15 +27,15 @@ class WeatherOperationsInstrumentedTest {
         instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         val host = AppWidgetHost(context, 0x4B54)
         val id = host.allocateAppWidgetId()
-        try {
+        withFixtureCleanup(
+            { host.deleteAppWidgetId(id) },
+            { store.delete(id) },
+            { WeatherRuntime.cancel(context) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+        ) {
             assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             assertTrue(prefs.edit().putString("widget_$id", ConfigJson.encode(WidgetConfig(listOf(first, second)))).commit())
             test(id, host)
-        } finally {
-            host.deleteAppWidgetId(id)
-            store.delete(id)
-            WeatherRuntime.cancel(context)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
         }
     }
 
@@ -81,7 +83,7 @@ class WeatherOperationsInstrumentedTest {
     @Test fun concurrentStoreInstancesSerializeOperations() = bound { id, _ ->
         val start = CountDownLatch(1)
         val pool = Executors.newFixedThreadPool(2)
-        try {
+        withFixtureCleanup({ pool.shutdownNow() }) {
             val results = listOf("Third", "Fourth").map { label -> pool.submit<WeatherStore.Result> {
                 check(start.await(5, TimeUnit.SECONDS))
                 WeatherStore(context).add(id, first.copy(label = label))
@@ -89,7 +91,7 @@ class WeatherOperationsInstrumentedTest {
             start.countDown()
             results.forEach { assertEquals(WeatherStore.Result.APPLIED, it.get(10, TimeUnit.SECONDS)) }
             assertEquals(setOf("First", "Second", "Third", "Fourth"), store.config(id)!!.locations.map { it.label }.toSet())
-        } finally { pool.shutdownNow() }
+        }
     }
 
     @Test fun widgetGoneDuringAsyncAddCannotRecreateItsConfiguration() = bound { id, host ->
@@ -115,7 +117,7 @@ class WeatherOperationsInstrumentedTest {
 
     @Test fun restoreCopiesExactRawDataAndNeverOverwritesADestination() = bound { id, host ->
         val destination = host.allocateAppWidgetId()
-        try {
+        withFixtureCleanup({ host.deleteAppWidgetId(destination) }, { store.delete(destination) }) {
             assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(destination, ComponentName(context, WeatherWidgetProvider::class.java)))
             val raw = "{\"version\":99,\"privateFutureData\":\"retained\"}"
             prefs.edit().putString("widget_$id", raw).commit()
@@ -124,6 +126,6 @@ class WeatherOperationsInstrumentedTest {
             prefs.edit().putString("widget_$id", "different").commit()
             store.restore(id, destination)
             assertEquals(raw, prefs.getString("widget_$destination", null))
-        } finally { host.deleteAppWidgetId(destination); store.delete(destination) }
+        }
     }
 }

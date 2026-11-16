@@ -1,5 +1,7 @@
 package com.gezimos.katapult.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import com.gezimos.katapult.platformAutomation
 import android.app.Application
 import android.content.Context
@@ -61,7 +63,16 @@ class WeatherGlyphInstrumentedTest {
         }) }, worker, Executor { handler.post(it) }, SystemClock::elapsedRealtime)
         val owner = com.gezimos.katapult.ownedViewModelStore()
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { activity?.finish() } },
+            { instrumentation.runOnMainSync { owner.clear() } },
+            { com.gezimos.katapult.ConnectedUiStateFixture.quiesceOwnedProducers() },
+            { feed.close() },
+            { worker.shutdown() },
+            { assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) },
+            { singleton.set(null, previous) },
+            { deleteTestPreferences(context, name) },
+        ) {
             assertTrue(prefs.edit().putString("clock_format", "'10:45'")
                 .putString("date_format", "'October 31, 2026'").putInt("theme_mode", 0)
                 .putBoolean("show_weather", true).putBoolean("show_battery", false)
@@ -107,21 +118,14 @@ class WeatherGlyphInstrumentedTest {
                     for ((label, bitmap) in listOf("clear" to clear, "801" to few)) {
                         val file = File(dir, "$label-${if (daytime) "day" else "night"}.png")
                         val copy = bitmap.copy(Bitmap.Config.ARGB_8888, false)
-                        try { file.outputStream().use { assertTrue(copy.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
-                        finally { copy.recycle() }
+                        withFixtureCleanup({ copy.recycle() }) {
+                            file.outputStream().use { assertTrue(copy.compress(Bitmap.CompressFormat.PNG, 100, it)) }
+                        }
                         assertTrue("Screenshot PNG must contain encoded pixels", file.length() > 0)
                     }
                 }
                 clear.recycle(); few.recycle(); partly.recycle()
             }
-        } finally {
-            instrumentation.runOnMainSync { activity?.finish(); owner.clear() }
-            com.gezimos.katapult.ConnectedUiStateFixture.quiesceOwnedProducers()
-            feed.close()
-            worker.shutdown()
-            assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS))
-            singleton.set(null, previous)
-            deleteTestPreferences(context, name)
         }
     }
 

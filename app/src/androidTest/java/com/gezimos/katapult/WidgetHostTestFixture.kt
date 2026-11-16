@@ -42,7 +42,7 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
                     .putInt("theme_mode", PrefsManager.THEME_LIGHT).commit())
             } }
         } catch (error: Throwable) {
-            try { close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
+            fixtureCleanup({ close() }, failure = error)
             throw error
         }
     }
@@ -52,11 +52,11 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
     fun bind(info: AppWidgetProviderInfo): Int {
         val automation = InstrumentationRegistry.getInstrumentation().platformAutomation
         automation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
-        try {
+        return withFixtureCleanup({ automation.dropShellPermissionIdentity() }) {
             val id = host.allocateAppWidgetId()
             assertTrue(manager.bindAppWidgetIdIfAllowed(id, info.provider))
-            return id
-        } finally { automation.dropShellPermissionIdentity() }
+            id
+        }
     }
 
     /** Simulate external/legacy restored bytes, deliberately before the owner's reconciling read. */
@@ -88,20 +88,24 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
     }
 
     private fun releaseAllocationsAndPreferences() {
-        (host.appWidgetIds.toSet() - initialIds).forEach(host::deleteAppWidgetId)
-        if (usesApplicationPreferences) {
-            val editor = raw.edit()
-            editor.restoreValue(LockscreenWidgetStore.KEY, initialList)
-            editor.restoreValue(LockscreenWidgetStore.SCREENS, initialScreens)
-            editor.restoreValue("theme_mode", initialTheme)
-            // commit is also the barrier for any preceding production apply writes.
-            assertTrue("Could not restore widget fixture preferences", editor.commit())
-            assertEquals(initialList, raw.all["lockscreen_widgets"])
-            assertEquals(initialScreens, raw.all[LockscreenWidgetStore.SCREENS])
-            assertEquals(initialTheme, raw.all["theme_mode"])
-        } else deleteTestPreferences(context, name)
-        assertEquals("Widget fixture leaked an allocation", initialIds, host.appWidgetIds.toSet())
-        assertEquals("Widget fixture changed an original binding", initialBindings,
-            initialIds.associateWith { manager.getAppWidgetInfo(it)?.provider })
+        fixtureCleanup(
+            *(host.appWidgetIds.toSet() - initialIds).map { id -> { host.deleteAppWidgetId(id) } }.toTypedArray(),
+            {
+                if (usesApplicationPreferences) {
+                    val editor = raw.edit()
+                    editor.restoreValue(LockscreenWidgetStore.KEY, initialList)
+                    editor.restoreValue(LockscreenWidgetStore.SCREENS, initialScreens)
+                    editor.restoreValue("theme_mode", initialTheme)
+                    // commit is also the barrier for any preceding production apply writes.
+                    assertTrue("Could not restore widget fixture preferences", editor.commit())
+                    assertEquals(initialList, raw.all["lockscreen_widgets"])
+                    assertEquals(initialScreens, raw.all[LockscreenWidgetStore.SCREENS])
+                    assertEquals(initialTheme, raw.all["theme_mode"])
+                } else deleteTestPreferences(context, name)
+            },
+            { assertEquals("Widget fixture leaked an allocation", initialIds, host.appWidgetIds.toSet()) },
+            { assertEquals("Widget fixture changed an original binding", initialBindings,
+                initialIds.associateWith { manager.getAppWidgetInfo(it)?.provider }) },
+        )
     }
 }

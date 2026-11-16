@@ -1,5 +1,7 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.appwidget.AppWidgetHostView
 import android.content.ComponentName
 import android.content.Intent
@@ -49,7 +51,7 @@ class EmptyWidgetSlotInstrumentedTest {
         val dir = java.io.File(context.getExternalFilesDir(null), "notes061-renders").apply { mkdirs() }
         val output = java.io.File(dir, name)
         output.outputStream().use { assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it)) }
-        try { inspect(bitmap) } finally { bitmap.recycle() }
+        withFixtureCleanup({ bitmap.recycle() }) { inspect(bitmap) }
     }
 
     @Test fun emptyHostedWidgetIsSkippedOnWakeTimerAndBothSwipesAndCanBecomeNonemptyAgain() {
@@ -74,7 +76,11 @@ class EmptyWidgetSlotInstrumentedTest {
                     ids.forEach { assertEquals(it == id, f.manager.getAppWidgetOptions(it).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE)) }
                 }
             }
-            try {
+            withFixtureCleanup(
+                { main { slot.stop() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { f.host.releaseViews() } },
+            ) {
                 main {
                     slot = LockscreenWidgetSlot(activity, Handler(Looper.getMainLooper()), { render() }, { _, action ->
                         timer = action; AutoCloseable { if (timer === action) timer = null }
@@ -96,7 +102,7 @@ class EmptyWidgetSlotInstrumentedTest {
                 rows(ids[0], -1); shown(null)
                 main { slot.rotation.wake(); render(); slot.rotation.swipe(1); assertNull(timer) }; shown(null)
                 rows(ids[1], 1); shown(ids[1])
-            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
+            }
         }
     }
 
@@ -113,7 +119,11 @@ class EmptyWidgetSlotInstrumentedTest {
             ui.back()
             val activity = activity()
             var side: SideScreenView? = null
-            try {
+            withFixtureCleanup(
+                { main { side?.dispose() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { f.host.releaseViews() } },
+            ) {
                 main {
                     side = SideScreenView(activity, SideScreen(name = "Shopping", slots = listOf(id, null)), {}, { _, _ -> false }, { _, _ -> false }, {}, {})
                     activity.setContentView(side); side!!.settled()
@@ -128,7 +138,7 @@ class EmptyWidgetSlotInstrumentedTest {
                     assertEquals(6, descendants(side!!).filterIsInstance<android.widget.CheckBox>().size)
                 }
                 capture(activity, "shopping-side.png")
-            } finally { main { side?.dispose() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
+            }
         }
     }
 
@@ -153,7 +163,11 @@ class EmptyWidgetSlotInstrumentedTest {
             var mode = WidgetRotation.WAKE
             var timer: (() -> Unit)? = null
             fun render() = slot.show(widgets, mode, true, visibility)
-            try {
+            withFixtureCleanup(
+                { main { slot.stop() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { f.host.releaseViews() } },
+            ) {
                 main {
                     // Same native theme as LockscreenWidgetService's BOX surface.
                     slot = LockscreenWidgetSlot(android.view.ContextThemeWrapper(activity, android.R.style.Theme_DeviceDefault_Light),
@@ -202,7 +216,7 @@ class EmptyWidgetSlotInstrumentedTest {
                     ready = slot.current?.id == quoteId && descendants(slot).filterIsInstance<TextView>()
                         .any { it.isShown && it.text.toString() == "Appeared while hidden" }
                 }; ready }
-            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
+            }
         }
     }
 
@@ -217,7 +231,11 @@ class EmptyWidgetSlotInstrumentedTest {
             val visibility = LockscreenVisibility().apply { beginEpoch(); recheck(true) { false } }
             lateinit var slot: LockscreenWidgetSlot
             fun render() = slot.show(listOf(LockscreenWidget(id, LockscreenWidgetSize.M)), WidgetRotation.WAKE, true, visibility)
-            try {
+            withFixtureCleanup(
+                { main { slot.stop() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { f.host.releaseViews() } },
+            ) {
                 main { slot = LockscreenWidgetSlot(activity, Handler(Looper.getMainLooper()), { render() }); activity.setContentView(slot); render() }
                 ui.await("The empty service-backed collection must be skipped") { var ready = false; main { ready = slot.current == null && slot.childCount == 0 }; ready }
                 rows(1)
@@ -225,7 +243,7 @@ class EmptyWidgetSlotInstrumentedTest {
                     ready = slot.current?.id == id && descendants(slot).filterIsInstance<TextView>()
                         .any { it.isShown && it.text.toString() == "Deferred item 0" }
                 }; ready }
-            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
+            }
         }
     }
 

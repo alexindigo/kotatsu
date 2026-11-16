@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.Intent
@@ -36,16 +38,16 @@ class WeatherStatusInstrumentedTest {
         .toInstant().plusSeconds(h * 3600L), when (h % 24) { 13 -> 90.0; 23 -> 54.0; else -> 58.0 }, 2, null) }, updated)
 
     private fun <T> withClockPreference(block: ((Boolean) -> Unit) -> T): T {
-        SystemTimeFixture().use { time ->
+        return SystemTimeFixture().use { time ->
             val before = time.shell("settings get system time_12_24").trim()
-            try {
-                return block { use24 ->
+            withFixtureCleanup(
+                { time.shell(if (before == "null") "settings delete system time_12_24" else "settings put system time_12_24 $before") },
+                { assertEquals(before, time.shell("settings get system time_12_24").trim()) },
+            ) {
+                block { use24 ->
                     time.shell("settings put system time_12_24 ${if (use24) 24 else 12}")
                     assertEquals(use24, android.text.format.DateFormat.is24HourFormat(context))
                 }
-            } finally {
-                time.shell(if (before == "null") "settings delete system time_12_24" else "settings put system time_12_24 $before")
-                assertEquals(before, time.shell("settings get system time_12_24").trim())
             }
         }
     }
@@ -180,7 +182,10 @@ class WeatherStatusInstrumentedTest {
         val previous = WidgetReconciler.clock
         WidgetReconciler.clock = Clock.fixed(now.toInstant(), now.zone)
         var editor: ConfigureActivity? = null
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { editor?.finish() } },
+            { WidgetReconciler.clock = previous },
+        ) {
             WeatherHostFixture().use { host ->
                 // Both jobs and the editor consume the same persisted facts. Keep the fixture retry in the future.
                 RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture offline") }
@@ -212,9 +217,6 @@ class WeatherStatusInstrumentedTest {
                     editor = null
                 }
             }
-        } finally {
-            instrumentation.runOnMainSync { editor?.finish() }
-            WidgetReconciler.clock = previous
         }
     }
 
@@ -244,7 +246,7 @@ class WeatherStatusInstrumentedTest {
         val table = StringBuilder("heightDp,count,reserveStatus,fontSp,pitchDp,rowHeightDp,statusDp,statusGapDp\n")
         val activity = instrumentation.startActivitySync(Intent(context, WeatherRenderActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION)) as WeatherRenderActivity
-        try {
+        withFixtureCleanup({ instrumentation.runOnMainSync { activity.finish() } }) {
             for (heightDp in listOf(64, 112, 160)) for (count in 1..4) {
                 val config = WidgetConfig(places.take(count))
                 val model = buildTimeline(config, List(count) { series }, emptyList(), now)
@@ -283,7 +285,7 @@ class WeatherStatusInstrumentedTest {
                 }
             }
             File(directory, "layout.csv").writeText(table.toString())
-        } finally { instrumentation.runOnMainSync { activity.finish() } }
+        }
     }
 
     /** Deliver a settled frame, never the Activity's first draw or an in-flight window transition. */

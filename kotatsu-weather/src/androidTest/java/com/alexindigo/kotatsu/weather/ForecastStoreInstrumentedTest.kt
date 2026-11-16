@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.graphics.Color
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
@@ -47,13 +49,13 @@ class ForecastStoreInstrumentedTest {
         .digest("${place.coordinateKey}|true|$zone".toByteArray()).joinToString("") { "%02x".format(it) }
     private fun isolated(block: () -> Unit) {
         val before = prefs.all
-        try { block() } finally {
+        withFixtureCleanup({
             val edit = prefs.edit()
             (prefs.all.keys - before.keys).forEach(edit::remove)
             before.forEach { (key, value) -> if (value is String) edit.putString(key, value) }
             assertTrue(edit.commit())
             assertEquals(before, prefs.all)
-        }
+        }) { block() }
     }
     private fun render(series: ForecastSeries, at: ZonedDateTime = now, location: Location = place) =
         TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(location)), listOf(series), emptyList(), at), 464, 112)
@@ -96,7 +98,11 @@ class ForecastStoreInstrumentedTest {
 
     @Test fun fallbackFixtureRendersFourHourAverageAndZoneSwitchReusesTheSeriesInProcess() = isolated {
         val previous = TimeZone.getDefault()
-        try {
+        withFixtureCleanup(
+            { TimeZone.setDefault(previous) },
+            { assertEquals(previous.id, TimeZone.getDefault().id) },
+            { assertEquals(previous.toZoneId(), ZoneId.systemDefault()) },
+        ) {
             TimeZone.setDefault(TimeZone.getTimeZone(zone))
             val at = ZonedDateTime.of(2026, 11, 1, 12, 30, 0, 0, zone)
             val parsed = OpenMeteoParser.parse(fixture("forecast-fallback.json")) as Parsed.Valid
@@ -121,10 +127,6 @@ class ForecastStoreInstrumentedTest {
             // UTC is missing the 00…06 portion of this row, so the consumer really resolves in the new zone.
             assertTrue(temperatureNumbers(row, same, DayWindow.of(utcNow.toLocalDate(), utcNow.zone)).isEmpty())
             assertTrue(render(same, utcNow, row).sameAs(render(same.copy(samples = emptyList()), utcNow, row)))
-        } finally {
-            TimeZone.setDefault(previous)
-            assertEquals(previous.id, TimeZone.getDefault().id)
-            assertEquals(previous.toZoneId(), ZoneId.systemDefault())
         }
     }
 
@@ -174,7 +176,7 @@ class ForecastStoreInstrumentedTest {
         val at = Instant.parse("2026-11-01T20:00:00Z")
         val start = CountDownLatch(1)
         val pool = Executors.newFixedThreadPool(2)
-        try {
+        withFixtureCleanup({ pool.shutdownNow() }) {
             val jobs = listOf(complete, incomplete).map { parsed -> pool.submit {
                 check(start.await(5, TimeUnit.SECONDS))
                 ForecastStore(context).accept(place, true, parsed, if (parsed == complete) at else at.plusSeconds(60), zone)
@@ -182,14 +184,14 @@ class ForecastStoreInstrumentedTest {
             start.countDown()
             jobs.forEach { it.get(10, TimeUnit.SECONDS) }
             assertEquals(complete.series.copy(fetchedAt = at), store.read(place, true, zone))
-        } finally { pool.shutdownNow() }
+        }
     }
 
     @Test fun incompleteRefreshJobPublishesRetainedNumbersToTheRealWidgetHost() = isolated {
         val deviceZone = ZoneId.systemDefault()
         val previousClock = WidgetReconciler.clock
         val clock = java.time.Clock.fixed(Instant.now(), deviceZone)
-        try {
+        withFixtureCleanup({ WidgetReconciler.clock = previousClock }) {
         WidgetReconciler.clock = clock
         val at = ZonedDateTime.now(clock)
         val first = DayWindow.of(at.toLocalDate(), deviceZone).start
@@ -230,7 +232,15 @@ class ForecastStoreInstrumentedTest {
             assertTrue(description, ready())
         }
         instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
-        try {
+        withFixtureCleanup(
+            { WeatherRuntime.cancel(context) },
+            { instrumentation.runOnMainSync { host.stopListening() } },
+            { instrumentation.runOnMainSync { host.deleteAppWidgetId(id) } },
+            { WeatherStore(context).delete(id) },
+            { RefreshJobService.fetcher = previousFetcher },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { assertEquals(initialIds, host.appWidgetIds.toSet()) },
+        ) {
             val manager = AppWidgetManager.getInstance(context)
             assertTrue(manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             instrumentation.runOnMainSync {
@@ -261,14 +271,7 @@ class ForecastStoreInstrumentedTest {
                           buildTimeline(WidgetConfig(listOf(place)), listOf(original), emptyList(), ZonedDateTime.now(clock)), width, height)) == true
             }
             assertEquals(original, store.read(place, true, deviceZone))
-        } finally {
-            WeatherRuntime.cancel(context)
-            instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
-            WeatherStore(context).delete(id)
-            RefreshJobService.fetcher = previousFetcher
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            assertEquals(initialIds, host.appWidgetIds.toSet())
         }
-        } finally { WidgetReconciler.clock = previousClock }
+        }
     }
 }

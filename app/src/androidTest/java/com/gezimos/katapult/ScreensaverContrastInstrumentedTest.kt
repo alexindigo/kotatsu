@@ -26,7 +26,10 @@ class ScreensaverContrastInstrumentedTest {
         val original = raw.all.toMap()
         val directory = File(context.filesDir, "contrast-ss-${UUID.randomUUID()}").apply { check(mkdir()) }
         var activity: ScreensaverActivity? = null
-        try {
+        withFixtureCleanup(
+            { restoreFixturePreferences(raw, original) },
+            { assertTrue(directory.deleteRecursively()) },
+        ) {
             for (dark in listOf(false, true)) {
                 instrumentation.runOnMainSync {
                     raw.edit().putBoolean("screensaver_enabled", true).putBoolean("screensaver_show_clock", true)
@@ -123,9 +126,6 @@ class ScreensaverContrastInstrumentedTest {
                 instrumentation.runOnMainSync { activity?.finish() }
                 ui.await("Screensaver did not finish") { !ScreensaverActivity.isShowing }
             }
-        } finally {
-            restoreFixturePreferences(raw, original)
-            assertTrue(directory.deleteRecursively())
         }
     }
 

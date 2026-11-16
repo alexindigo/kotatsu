@@ -49,10 +49,10 @@ internal class ActivityLifetimeFixture : AutoCloseable {
 
     override fun close() {
         if (closed) return
-        try { closeActivities() } finally {
-            fixtureMain { monitor.removeLifecycleCallback(callback) }
-            closed = true
-        }
+        withFixtureCleanup(
+            { fixtureMain { monitor.removeLifecycleCallback(callback) } },
+            { closed = true },
+        ) { closeActivities() }
     }
 }
 
@@ -70,15 +70,4 @@ internal fun fixtureAwait(message: String, ready: () -> Boolean) {
         SystemClock.sleep(25)
     }
     throw AssertionError(message)
-}
-
-/** Attempt every restoration without losing the primary exception. */
-internal fun fixtureCleanup(vararg actions: () -> Unit) {
-    var failure: Throwable? = null
-    actions.forEach { action ->
-        try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        }
-    }
-    failure?.let { throw it }
 }

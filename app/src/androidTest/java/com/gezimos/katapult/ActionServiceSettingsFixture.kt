@@ -47,7 +47,7 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
             }
             apply(exact ?: Values(enabled, if (on == true) "1" else original.accessibility))
         } catch (error: Throwable) {
-            try { close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
+            fixtureCleanup({ close() }, failure = error)
             throw error
         }
     }
@@ -61,32 +61,29 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
     }
     private fun apply(value: Values) {
         val previous = fixtureMain { connectedService() }
-        var failure: Throwable? = null
-        fun attempt(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        attempt { restoreSecureSetting(ENABLED, value.enabled, ::shell) }
-        attempt { restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell) }
-        attempt { await("Action Service connection did not reach the owned state") {
-            fixtureMain {
-                if (contains(value.enabled)) HomeKeyFilterState.active && connectedService() != null
-                else !HomeKeyFilterState.active && connectedService() == null &&
-                    (previous == null || previous.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED)
-            }
-        } }
-        attempt { fixtureMain { Unit } } // onDestroy must have returned, not merely cleared instance.
-        attempt { await("Accessibility pair did not restore exactly") {
-            if (values() == value) true else {
-                // Android can rewrite this flag while processing the enabled-service change.
-                restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell)
-                false
-            }
-        } }
-        attempt { await("Accessibility pair did not persist exactly") {
-            val stored = persistedSecureSettings(::shell)
-            (stored[ENABLED] ?: "null") == value.enabled && (stored[ACCESSIBILITY] ?: "null") == value.accessibility
-        } }
-        failure?.let { throw it }
+        fixtureCleanup(
+            { restoreSecureSetting(ENABLED, value.enabled, ::shell) },
+            { restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell) },
+            { await("Action Service connection did not reach the owned state") {
+                fixtureMain {
+                    if (contains(value.enabled)) HomeKeyFilterState.active && connectedService() != null
+                    else !HomeKeyFilterState.active && connectedService() == null &&
+                        (previous == null || previous.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED)
+                }
+            } },
+            { fixtureMain { Unit } }, // onDestroy must have returned, not merely cleared instance.
+            { await("Accessibility pair did not restore exactly") {
+                if (values() == value) true else {
+                    // Android can rewrite this flag while processing the enabled-service change.
+                    restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell)
+                    false
+                }
+            } },
+            { await("Accessibility pair did not persist exactly") {
+                val stored = persistedSecureSettings(::shell)
+                (stored[ENABLED] ?: "null") == value.enabled && (stored[ACCESSIBILITY] ?: "null") == value.accessibility
+            } },
+        )
     }
     override fun close() {
         if (closed) return

@@ -1,5 +1,8 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
@@ -37,7 +40,15 @@ class EditorPersistenceInstrumentedTest {
         val id = host.allocateAppWidgetId()
         var older: ConfigureActivity? = null
         var newer: ConfigureActivity? = null
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { older?.finish() } },
+            { instrumentation.runOnMainSync { newer?.finish() } },
+            { host.deleteAppWidgetId(id) },
+            { store.delete(id) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+            { shell("cmd location providers remove-test-provider gps") },
+        ) {
             assertTrue(manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             seed(id, WidgetConfig(listOf(first)))
             older = open(id)
@@ -94,13 +105,6 @@ class EditorPersistenceInstrumentedTest {
             instrumentation.runOnMainSync { find(older!!.window.decorView, "Done")!!.performClick() }
             instrumentation.waitForIdleSync()
             assertEquals("An older editor must not erase the newly saved place", listOf("First", "Second"), store.config(id)!!.locations.map { it.label })
-        } finally {
-            instrumentation.runOnMainSync { older?.finish(); newer?.finish() }
-            host.deleteAppWidgetId(id)
-            store.delete(id)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
-            shell("cmd location providers remove-test-provider gps")
         }
     }
 
@@ -111,7 +115,15 @@ class EditorPersistenceInstrumentedTest {
         val originalId = host.allocateAppWidgetId()
         var replacementId = AppWidgetManager.INVALID_APPWIDGET_ID
         var editor: ConfigureActivity? = null
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { editor?.finish() } },
+            { host.deleteAppWidgetId(originalId) },
+            { if (replacementId != AppWidgetManager.INVALID_APPWIDGET_ID) host.deleteAppWidgetId(replacementId) },
+            { store.delete(originalId) },
+            { if (replacementId != AppWidgetManager.INVALID_APPWIDGET_ID) store.delete(replacementId) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+        ) {
             assertTrue(manager.bindAppWidgetIdIfAllowed(originalId, ComponentName(context, WeatherWidgetProvider::class.java)))
             seed(originalId, WidgetConfig(listOf(first)))
             editor = instrumentation.startActivitySync(Intent(context, ConfigureActivity::class.java)
@@ -124,7 +136,7 @@ class EditorPersistenceInstrumentedTest {
             assertTrue(manager.bindAppWidgetIdIfAllowed(replacementId, ComponentName(context, WeatherWidgetProvider::class.java)))
             seed(replacementId, WidgetConfig(listOf(second)))
             val monitor = instrumentation.addMonitor(ConfigureActivity::class.java.name, null, false)
-            try {
+            withFixtureCleanup({ instrumentation.removeMonitor(monitor) }) {
                 instrumentation.runOnMainSync { editor!!.recreate() }
                 editor = monitor.waitForActivityWithTimeout(10_000) as? ConfigureActivity
                 assertNotNull("Android recreated the editor", editor)
@@ -132,15 +144,7 @@ class EditorPersistenceInstrumentedTest {
                 instrumentation.runOnMainSync { find(editor!!.window.decorView, "Done")?.performClick() }
                 instrumentation.waitForIdleSync()
                 assertEquals("A restored editor belongs to its original widget", listOf(second), store.config(replacementId)!!.locations)
-            } finally { instrumentation.removeMonitor(monitor) }
-        } finally {
-            instrumentation.runOnMainSync { editor?.finish() }
-            host.deleteAppWidgetId(originalId)
-            if (replacementId != AppWidgetManager.INVALID_APPWIDGET_ID) host.deleteAppWidgetId(replacementId)
-            store.delete(originalId)
-            if (replacementId != AppWidgetManager.INVALID_APPWIDGET_ID) store.delete(replacementId)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
+            }
         }
     }
 
@@ -150,7 +154,13 @@ class EditorPersistenceInstrumentedTest {
         instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         val id = host.allocateAppWidgetId()
         var editor: ConfigureActivity? = null
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { editor?.finish() } },
+            { host.deleteAppWidgetId(id) },
+            { store.delete(id) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+        ) {
             assertTrue(manager.bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             seed(id, WidgetConfig(listOf(first)))
             editor = open(id)
@@ -159,7 +169,7 @@ class EditorPersistenceInstrumentedTest {
             assertEquals("First", store.config(id)!!.locations.single().label)
             store.add(id, second)
             val monitor = instrumentation.addMonitor(ConfigureActivity::class.java.name, null, false)
-            try {
+            withFixtureCleanup({ instrumentation.removeMonitor(monitor) }) {
                 instrumentation.runOnMainSync { editor!!.recreate() }
                 editor = monitor.waitForActivityWithTimeout(10_000) as? ConfigureActivity
                 assertNotNull(editor)
@@ -175,12 +185,7 @@ class EditorPersistenceInstrumentedTest {
                 // Back closes without a whole-config save, and the change is already durable.
                 instrumentation.runOnMainSync { editor!!.onBackPressed() }
                 assertEquals(listOf("Edited", "Second"), WeatherStore(context).config(id)!!.locations.map { it.label })
-            } finally { instrumentation.removeMonitor(monitor) }
-        } finally {
-            instrumentation.runOnMainSync { editor?.finish() }
-            host.deleteAppWidgetId(id); store.delete(id)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
+            }
         }
     }
 
@@ -189,7 +194,13 @@ class EditorPersistenceInstrumentedTest {
         instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         val id = host.allocateAppWidgetId()
         var editor: ConfigureActivity? = null
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { editor?.finish() } },
+            { host.deleteAppWidgetId(id) },
+            { store.delete(id) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+        ) {
             assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             val raw = "{\"version\":99,\"locations\":[]}"
             context.getSharedPreferences("weather", 0).edit().putString("widget_$id", raw).commit()
@@ -199,11 +210,6 @@ class EditorPersistenceInstrumentedTest {
             assertNull(find(editor.window.decorView, "Done"))
             assertNull(find(editor.window.decorView, "Add location"))
             assertEquals(raw, context.getSharedPreferences("weather", 0).getString("widget_$id", null))
-        } finally {
-            instrumentation.runOnMainSync { editor?.finish() }
-            host.deleteAppWidgetId(id); store.delete(id)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
         }
     }
 
@@ -213,7 +219,14 @@ class EditorPersistenceInstrumentedTest {
         val id = host.allocateAppWidgetId()
         var editor: ConfigureActivity? = null
         val empty = "No places yet. Each place you add gets its own line on the widget."
-        try {
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { editor?.finish() } },
+            { host.deleteAppWidgetId(id) },
+            { store.delete(id) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+            { shell("cmd location providers remove-test-provider gps") },
+        ) {
             assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             seed(id, WidgetConfig(emptyList()))
             val active = open(id)
@@ -252,12 +265,6 @@ class EditorPersistenceInstrumentedTest {
                 assertNull(find(active.window.decorView, empty))
                 assertTrue(find(active.window.decorView, "Done")!!.isEnabled)
             }
-        } finally {
-            instrumentation.runOnMainSync { editor?.finish() }
-            host.deleteAppWidgetId(id); store.delete(id)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
-            shell("cmd location providers remove-test-provider gps")
         }
     }
 
@@ -269,7 +276,16 @@ class EditorPersistenceInstrumentedTest {
         val secondId = host.allocateAppWidgetId()
         val activities = mutableListOf<android.app.Activity>()
         val monitor = instrumentation.addMonitor(ConfigureActivity::class.java.name, null, false)
-        try {
+        withFixtureCleanup(
+            { instrumentation.removeMonitor(monitor) },
+            { fixtureCleanup(*activities.toList().map { activity -> { instrumentation.runOnMainSync { activity.finish() } } }.toTypedArray()) },
+            { host.deleteAppWidgetId(firstId) },
+            { host.deleteAppWidgetId(secondId) },
+            { store.delete(firstId) },
+            { store.delete(secondId) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+        ) {
             assertTrue(manager.bindAppWidgetIdIfAllowed(firstId, ComponentName(context, WeatherWidgetProvider::class.java)))
             seed(firstId, WidgetConfig(listOf(first)))
             val original = open(firstId)
@@ -290,13 +306,6 @@ class EditorPersistenceInstrumentedTest {
             assertFalse(store.config(secondId)!!.fahrenheit)
             assertEquals(listOf(first), store.config(firstId)!!.locations)
             assertEquals(listOf(second), store.config(secondId)!!.locations)
-        } finally {
-            instrumentation.removeMonitor(monitor)
-            instrumentation.runOnMainSync { activities.forEach { it.finish() } }
-            host.deleteAppWidgetId(firstId); host.deleteAppWidgetId(secondId)
-            store.delete(firstId); store.delete(secondId)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
         }
     }
 
@@ -325,7 +334,7 @@ class EditorPersistenceInstrumentedTest {
         for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
             val event = android.view.MotionEvent.obtain(down, android.os.SystemClock.uptimeMillis(), action, x, y, 0)
             event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
-            try { instrumentation.sendPointerSync(event) } finally { event.recycle() }
+            withFixtureCleanup({ event.recycle() }) { instrumentation.sendPointerSync(event) }
         }
         instrumentation.waitForIdleSync()
     }
@@ -347,8 +356,9 @@ class EditorPersistenceInstrumentedTest {
                 }
             }
         }
-        try { tapControl(matcher, decor = activity.window.decorView) }
-        finally { instrumentation.runOnMainSync { activity.window.callback = callback } }
+        withFixtureCleanup({ instrumentation.runOnMainSync { activity.window.callback = callback } }) {
+            tapControl(matcher, decor = activity.window.decorView)
+        }
         assertTrue("The real editor received DOWN before the refresh", refreshed)
     }
 

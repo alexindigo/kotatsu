@@ -69,7 +69,15 @@ class ScreenshotInstrumentedTest {
         val animationScales = listOf("window_animation_scale", "transition_animation_scale", "animator_duration_scale")
             .associateWith { shell("settings get global $it") }
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(
+            { ConnectedUiStateFixture.closeOwnedActivities() },
+            { accessibility?.close() },
+            { restoreFixturePreferences(raw, before) },
+            *animationScales.map { (key, value) -> {
+                if (value == "null") shell("settings delete global $key") else shell("settings put global $key $value")
+                Unit
+            } }.toTypedArray(),
+        ) {
             ConnectedUiStateFixture.prepareForegroundService()
             // Compare captures of a stable app, not two different phases of Android's entry animation.
             animationScales.keys.forEach { shell("settings put global $it 0") }
@@ -84,16 +92,6 @@ class ScreenshotInstrumentedTest {
             val service = accessibility.service
             assertTrue(service.serviceInfo.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT != 0)
             test(service, home)
-        } finally {
-          try { ConnectedUiStateFixture.closeOwnedActivities() } finally {
-           try { accessibility?.close() } finally {
-             try { restoreFixturePreferences(raw, before) } finally {
-            animationScales.forEach { (key, value) ->
-                if (value == "null") shell("settings delete global $key") else shell("settings put global $key $value")
-            }
-            }
-           }
-          }
         }
     }
 

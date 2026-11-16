@@ -1,12 +1,17 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import org.junit.Assert.*
 import org.junit.Test
 
 class WeatherHostFixtureInstrumentedTest {
     @Test fun failedTeardownBodyRestoresOriginalFetcherAfterSuccessfulDrain() {
         val original = RefreshJobService.fetcher
-        try {
+        withFixtureCleanup(
+            { RefreshJobService.fetcher = original },
+            { androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity() },
+        ) {
             // Do not introduce a real network worker while arranging a teardown failure.
             RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture response") }
             val previous = RefreshJobService.fetcher
@@ -16,9 +21,6 @@ class WeatherHostFixtureInstrumentedTest {
             assertSame(expected, runCatching { fixture.close() }.exceptionOrNull())
             assertEquals("Real ingress cleanup must finish", 0, expected.suppressed.size)
             assertSame("Original fetcher must be restored even if drain fails", previous, RefreshJobService.fetcher)
-        } finally {
-            RefreshJobService.fetcher = original
-            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
         }
     }
 
@@ -30,7 +32,10 @@ class WeatherHostFixtureInstrumentedTest {
         val original = RefreshJobService.fetcher
         val first = AssertionError("First controlled worker failed")
         val second = AssertionError("Second controlled worker failed")
-        try {
+        withFixtureCleanup(
+            { RefreshJobService.fetcher = original },
+            { androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity() },
+        ) {
             RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture response") }
             var heldFetcher: ((Location, Boolean, String) -> String)? = null
             val fixture = WeatherHostFixture { ingress ->
@@ -42,9 +47,6 @@ class WeatherHostFixtureInstrumentedTest {
             assertSame(first, failure.cause)
             assertEquals(listOf(second), failure.suppressed.toList())
             assertSame("Any worker failure keeps ingress held", heldFetcher, RefreshJobService.fetcher)
-        } finally {
-            RefreshJobService.fetcher = original
-            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
         }
     }
 
@@ -81,7 +83,10 @@ class WeatherHostFixtureInstrumentedTest {
 
     private fun assertFailedClose(failBody: Boolean) {
         val original = RefreshJobService.fetcher
-        try {
+        withFixtureCleanup(
+            { RefreshJobService.fetcher = original },
+            { androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity() },
+        ) {
             RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Original fetcher reopened") }
             val workerFailure = AssertionError("Injected controlled worker failure")
             val bodyFailure = AssertionError("Injected teardown body failure")
@@ -108,10 +113,6 @@ class WeatherHostFixtureInstrumentedTest {
             }.exceptionOrNull()
             assertTrue(rejected is java.io.IOException)
             assertEquals("Fixture owns refresh ingress", rejected!!.message)
-        } finally {
-            // Only a recorded worker error was injected; native workers really finished.
-            RefreshJobService.fetcher = original
-            androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().uiAutomation.dropShellPermissionIdentity()
         }
     }
 }

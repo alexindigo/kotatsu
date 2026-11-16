@@ -8,6 +8,7 @@ base {
 }
 
 android {
+    sourceSets.getByName("androidTest").kotlin.directories += rootProject.file("test-fixtures/src/androidTest/java").path
     namespace = "com.gezimos.katapult"
     compileSdk {
         version = release(36) {

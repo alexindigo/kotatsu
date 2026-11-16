@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.content.Intent
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.*
@@ -34,7 +36,7 @@ class ReconcilerInstrumentedTest {
         val previous = WidgetReconciler.clock
         val before = ZonedDateTime.parse("2026-10-17T23:59:00-07:00[America/Los_Angeles]")
         WidgetReconciler.clock = Clock.fixed(before.toInstant(), before.zone)
-        try {
+        withFixtureCleanup({ WidgetReconciler.clock = previous }) {
             WeatherHostFixture().use { host ->
                 RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture offline") }
                 seed(host, before)
@@ -62,7 +64,7 @@ class ReconcilerInstrumentedTest {
                 host.await("Identical options pulse republishes") { host.updates.get() > count }
                 assertTrue(host.latest.get()!!.sameAs(TimelineRenderer.render(host.context, new, host.width, host.height)))
             }
-        } finally { WidgetReconciler.clock = previous }
+        }
     }
 
     @Test fun realSystemClockMidnightDeadlineAndZoneBroadcastReachTheHostedPicture() {

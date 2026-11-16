@@ -32,7 +32,7 @@ class SwipeAllAppsInstrumentedTest {
                     override fun getApplicationContext(): Context = this
                     override fun getSharedPreferences(name: String?, mode: Int) = raw
                 }
-                try {
+                withFixtureCleanup({ deleteTestPreferences(context, name) }) {
                     if (existing) raw.edit().putBoolean("onboarding_complete", true).apply()
                     if (enabled != null) raw.edit().putBoolean("swipe_up_all_apps", enabled).apply()
                     if (vertical != null) raw.edit().putBoolean("vertical_app_gestures", vertical).apply()
@@ -75,7 +75,7 @@ class SwipeAllAppsInstrumentedTest {
                         assertFalse(prefs.importFromJson(JSONObject().put("_type", "katapult_config").put("swipe_all_apps", invalid).toString()))
                         assertEquals(before, raw.all)
                     }
-                } finally { deleteTestPreferences(context, name) }
+                }
             }
     }
 
@@ -83,7 +83,7 @@ class SwipeAllAppsInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) {
             main { raw.edit().putBoolean("onboarding_complete", true).putInt("theme_mode", PrefsManager.THEME_LIGHT)
                 .putString("swipe_all_apps", HomeAppSwipe.DEFAULT.id).putBoolean("hide_arrow_buttons", false)
                 .putBoolean("notice_action_service_dismissed", true).commit() }
@@ -123,8 +123,6 @@ class SwipeAllAppsInstrumentedTest {
                 }
                 assertFalse(prefs.hideArrowButtons)
             }
-        } finally {
-            restoreFixturePreferences(raw, before)
         }
     }
 

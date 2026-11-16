@@ -4,6 +4,7 @@ plugins {
 }
 
 android {
+    sourceSets.getByName("androidTest").kotlin.directories += rootProject.file("test-fixtures/src/androidTest/java").path
     namespace = "com.alexindigo.kotatsu.notes"
     compileSdk {
         version = release(36) { minorApiLevel = 1 }

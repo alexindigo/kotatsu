@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.graphics.Color
 import android.os.Bundle
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -50,7 +52,7 @@ class SettlingTimelineInstrumentedTest {
     @Test fun everyPublishWhileHiddenStaysSettlingAndVisiblePulseRestoresNormal() {
         val previous = WidgetReconciler.clock
         WidgetReconciler.clock = Clock.fixed(now.toInstant(), now.zone)
-        try { WeatherHostFixture().use { host ->
+        withFixtureCleanup({ WidgetReconciler.clock = previous }) { WeatherHostFixture().use { host ->
             RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture offline") }
             assertEquals(ForecastStore.Result.ACCEPTED, ForecastStore(context).accept(place, true, Parsed.Valid(series),
                 now.minusHours(2).toInstant(), now.zone))
@@ -73,6 +75,6 @@ class SettlingTimelineInstrumentedTest {
                 putBoolean(WidgetReconciler.OPTION_HOST_VISIBLE, true)
             }) }
             host.awaitPublishedModel("Visible pulse restores normal picture") { !it.settling }
-        } } finally { WidgetReconciler.clock = previous }
+        } }
     }
 }

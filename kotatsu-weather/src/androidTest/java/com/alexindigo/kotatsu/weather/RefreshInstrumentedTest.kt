@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.app.job.JobInfo
 import android.app.job.JobScheduler
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -16,7 +18,7 @@ class RefreshInstrumentedTest {
     @Test fun realFailedJobPersistsStatusAndSchedulesDelayedNetworkRetryThenSuccessClearsIt() {
         val previousClock = WidgetReconciler.clock
         val clock = Clock.fixed(Instant.now(), ZoneId.systemDefault())
-        try {
+        withFixtureCleanup({ WidgetReconciler.clock = previousClock }) {
         WidgetReconciler.clock = clock
         WeatherHostFixture().use { host ->
             val context = host.context
@@ -74,6 +76,6 @@ class RefreshInstrumentedTest {
             assertNotNull(success.lastAttemptAt)
             assertEquals(success.lastAttemptAt, success.lastSuccessAt)
         }
-        } finally { WidgetReconciler.clock = previousClock }
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.content.res.Configuration
 import android.os.LocaleList
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -25,7 +27,11 @@ class TimelineDescriptionInstrumentedTest {
         WidgetReconciler.clock = Clock.fixed(now.toInstant(), now.zone)
         SystemTimeFixture().use { time ->
             val before = time.shell("settings get system time_12_24").trim()
-            try {
+            withFixtureCleanup(
+                { WidgetReconciler.clock = previous },
+                { time.shell(if (before == "null") "settings delete system time_12_24" else "settings put system time_12_24 $before") },
+                { assertEquals(before, time.shell("settings get system time_12_24").trim()) },
+            ) {
                 WeatherHostFixture().use { host ->
                     RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture offline") }
                     val store = ForecastStore(context)
@@ -48,10 +54,6 @@ class TimelineDescriptionInstrumentedTest {
                     publish("Home, No forecast")
                     host.awaitPublishedModel("No-data picture and spoken description agree") { it.rows.single().state == RowState.NO_DATA }
                 }
-            } finally {
-                WidgetReconciler.clock = previous
-                time.shell(if (before == "null") "settings delete system time_12_24" else "settings put system time_12_24 $before")
-                assertEquals(before, time.shell("settings get system time_12_24").trim())
             }
         }
     }

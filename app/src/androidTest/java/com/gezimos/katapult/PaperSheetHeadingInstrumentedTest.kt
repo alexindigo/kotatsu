@@ -42,14 +42,14 @@ internal fun assertSheetHeading(ui: PlatformUiDriver, title: String, first: Stri
     // The pixel contract itself owns readiness; a missing or wrong rule still times out.
     ui.await("The sheet heading must not draw a full-width title rule") {
         val bitmap = instrumentation.platformAutomation.takeScreenshot()
-        try {
+        withFixtureCleanup({ bitmap.recycle() }) {
             val left = (16 * density).roundToInt()
             val right = bitmap.width - left
             val lines = (heading.bottom until row.top).filter { y ->
                 (left until right).all { x -> bitmap.getPixel(x, y) == palette.inkArgb }
             }
             lines.isEmpty()
-        } finally { bitmap.recycle() }
+        }
     }
 }
 
@@ -69,7 +69,7 @@ class PaperSheetHeadingInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) {
             for (dark in listOf(false, true)) {
                 main { raw.edit().putBoolean("onboarding_complete", true)
                     .putInt("theme_mode", if (dark) PrefsManager.THEME_DARK else PrefsManager.THEME_LIGHT)
@@ -106,8 +106,6 @@ class PaperSheetHeadingInstrumentedTest {
                 ConnectedUiStateFixture.closeOwnedActivities()
                 activity = null
             }
-        } finally {
-            restoreFixturePreferences(raw, before)
         }
     }
 }

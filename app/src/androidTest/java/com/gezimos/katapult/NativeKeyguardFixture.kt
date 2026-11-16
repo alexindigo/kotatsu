@@ -143,7 +143,7 @@ internal class NativeDisplayFixture : AutoCloseable {
 
     init {
         try { native.unlock() } catch (error: Throwable) {
-            try { close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
+            fixtureCleanup({ close() }, failure = error)
             throw error
         }
     }

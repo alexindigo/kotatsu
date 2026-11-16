@@ -5,8 +5,11 @@ import android.os.ParcelFileDescriptor
 import androidx.test.platform.app.InstrumentationRegistry
 
 /** Owns the Activity transition and native process prerequisite for the real kill adapter. */
-internal class BackgroundProcessFixture : AutoCloseable {
-    private val state = ConnectedUiStateFixture()
+internal class BackgroundProcessFixture(
+    private val launchHome: (Intent) -> MainActivity = {
+        InstrumentationRegistry.getInstrumentation().startActivitySync(it) as MainActivity
+    },
+) : AutoCloseable {
     companion object {
         const val PACKAGE_NAME = "org.chromium.webview_shell"
         // Android 12's killBackgroundProcesses uses SERVICE_ADJ, not UID state/importance.
@@ -15,8 +18,13 @@ internal class BackgroundProcessFixture : AutoCloseable {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
-    private val home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
-        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+    private val state = ConnectedUiStateFixture()
+    private val home = try {
+        launchHome(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    } catch (error: Throwable) {
+        fixtureCleanup({ state.close() }, failure = error)
+        throw error
+    }
     private var pid = ""
 
     fun foreground() {

@@ -26,9 +26,7 @@ class AppearanceInstrumentedTest {
 
     private fun preserve(test: () -> Unit) {
         val before = raw.all
-        try { test() } finally {
-            restoreFixturePreferences(raw, before)
-        }
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) { test() }
     }
 
     @Test fun defaultSystemKeepsExplicitAndLegacyChoicesAndResolvesEveryContext() = preserve {
@@ -108,7 +106,7 @@ class AppearanceInstrumentedTest {
                     ready
                 }
                 val image = checkNotNull(frame)
-                try {
+                withFixtureCleanup({ image.recycle() }) {
                     val rail = fixture.overlay.find { it.rangeInfo != null } ?: error("Scroll rail missing")
                     val railBounds = android.graphics.Rect().also(rail::getBoundsInScreen)
                     val railInk = (railBounds.top until railBounds.bottom).count {
@@ -128,7 +126,7 @@ class AppearanceInstrumentedTest {
                         .outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.PNG, 100, it)) }
                     assertEquals(task, fixture.resumedTask())
                     assertTrue("Overlay must not own system bars", bars.top > 0 && bars.bottom > 0)
-                } finally { image.recycle() }
+                }
             }
             fixture.overlay.click(context.getString(R.string.recent_dismiss))
             ui.await("Overlay close did not reveal Settings") { !fixture.overlay.windowVisible() && ui.has("Brightness level") }
@@ -140,7 +138,7 @@ class AppearanceInstrumentedTest {
             .putInt("theme_mode", PrefsManager.THEME_LIGHT).commit() }
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-        try {
+        withFixtureCleanup({ main { activity.finish() } }) {
             val model = activity.viewModel
             main { model.resolveLockscreenReEnable(); model.screen = Screen.SETTINGS }
             for (dark in listOf(false, true)) {
@@ -183,13 +181,13 @@ class AppearanceInstrumentedTest {
                 com.gezimos.katapult.util.SystemChrome.apply(activity.window, Appearance.Surface.LOCK_SCREEN, false, model.prefs)
                 side.settled()
             }
-            try {
+            withFixtureCleanup({ main { side.dispose() } }) {
                 for (dark in listOf(false, true)) {
                     main { model.prefs.themeMode = if (dark) PrefsManager.THEME_DARK else PrefsManager.THEME_LIGHT }
                     ui.await("Side screen missing") { ui.has("Side screen fixture") }
                     capture("${if (dark) "dark" else "light"}-side-screen", false)
                 }
-            } finally { main { side.dispose() } }
-        } finally { main { activity.finish() } }
+            }
+        }
     }
 }

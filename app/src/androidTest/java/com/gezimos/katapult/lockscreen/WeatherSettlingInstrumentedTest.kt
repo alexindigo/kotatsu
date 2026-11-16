@@ -1,5 +1,7 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import com.gezimos.katapult.platformAutomation
 import android.content.Intent
 import android.graphics.Bitmap
@@ -54,7 +56,13 @@ class WeatherSettlingInstrumentedTest {
             val previousClock = host.pictureClock
             var activity: MainActivity? = null
             host.pictureClock = { now }
-            try {
+            withFixtureCleanup(
+                { main { host.hideWidgets(context) } },
+                { main { host.listen(false) } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { host.releaseViews() } },
+                { host.pictureClock = previousClock },
+            ) {
                 activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
                 val current = activity
@@ -121,21 +129,23 @@ class WeatherSettlingInstrumentedTest {
                         parent.removeView(view)
                         parent.addView(replacement, params)
                     }
-                    try {
-                        await("Creation's asynchronous provider picture must remain normal on screen") { main {
-                            val received = (replacement.findViewById<ImageView>(image).drawable as BitmapDrawable).bitmap
-                            received !== first && hasBlack(received) && replacement.isShown && frames > 0
-                        } }
-                        instrumentation.waitForIdleSync()
-                        assertFalse("No settling frame may overwrite the visible widget", main { settlingDrawn })
-                        assertEquals(spoken, main { replacement.findViewById<ImageView>(image).contentDescription.toString() })
-                    } catch (failure: AssertionError) {
-                        throw AssertionError(main {
-                            val received = (replacement.findViewById<ImageView>(image).drawable as BitmapDrawable).bitmap
-                            "Replacement: hint=${fixture.manager.getAppWidgetOptions(widget.id)}, black=${hasBlack(received)}, " +
-                                "sameReceipt=${received === first}, shown=${replacement.isShown}, frames=$frames, settlingDrawn=$settlingDrawn"
-                        }, failure)
-                    } finally { main { replacement.viewTreeObserver.removeOnDrawListener(observer) } }
+                    withFixtureCleanup({ main { replacement.viewTreeObserver.removeOnDrawListener(observer) } }) {
+                        try {
+                            await("Creation's asynchronous provider picture must remain normal on screen") { main {
+                                val received = (replacement.findViewById<ImageView>(image).drawable as BitmapDrawable).bitmap
+                                received !== first && hasBlack(received) && replacement.isShown && frames > 0
+                            } }
+                            instrumentation.waitForIdleSync()
+                            assertFalse("No settling frame may overwrite the visible widget", main { settlingDrawn })
+                            assertEquals(spoken, main { replacement.findViewById<ImageView>(image).contentDescription.toString() })
+                        } catch (failure: AssertionError) {
+                            throw AssertionError(main {
+                                val received = (replacement.findViewById<ImageView>(image).drawable as BitmapDrawable).bitmap
+                                "Replacement: hint=${fixture.manager.getAppWidgetOptions(widget.id)}, black=${hasBlack(received)}, " +
+                                    "sameReceipt=${received === first}, shown=${replacement.isShown}, frames=$frames, settlingDrawn=$settlingDrawn"
+                            }, failure)
+                        }
+                    }
                     return@use
                 }
                 capture("normal")
@@ -167,11 +177,6 @@ class WeatherSettlingInstrumentedTest {
                 await("Fresh Weather picture replaces settling at the consumer") { bitmap() !== kept && hasBlack(bitmap()) }
                 assertEquals(spoken, description())
                 capture("fresh-after-pulse")
-            } finally {
-                main { host.hideWidgets(context); host.listen(false) }
-                com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities()
-                main { host.releaseViews() }
-                host.pictureClock = previousClock
             }
         } }
     }
@@ -188,10 +193,10 @@ class WeatherSettlingInstrumentedTest {
         Thread.sleep(200)
         val screenshot = checkNotNull(instrumentation.platformAutomation.takeScreenshot())
         val copy = screenshot.copy(Bitmap.Config.ARGB_8888, false)
-        try {
+        withFixtureCleanup({ copy.recycle() }, { screenshot.recycle() }) {
             val file = File(File(context.getExternalFilesDir(null), "weather-e").apply { mkdirs() }, "$name.png")
             file.outputStream().use { assertTrue(copy.compress(Bitmap.CompressFormat.PNG, 100, it)) }
             assertTrue(file.length() > 0)
-        } finally { copy.recycle(); screenshot.recycle() }
+        }
     }
 }

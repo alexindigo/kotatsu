@@ -16,6 +16,18 @@ class ConnectedUiStateFixtureInstrumentedTest {
     private val context = instrumentation.targetContext
     private val raw = context.getSharedPreferences("katapult_prefs", 0)
 
+    @Test fun failedBackgroundProcessConstructionRestoresItsState() {
+        val before = preferenceSnapshot(raw)
+        ActionServiceSettingsFixture.on().use { settings ->
+            val original = settings.values()
+            val expected = AssertionError("Home launch failed")
+            val actual = runCatching { BackgroundProcessFixture { throw expected } }.exceptionOrNull()
+            assertSame(expected, actual)
+            assertEquals(original, settings.values())
+            assertEquals(before, preferenceSnapshot(raw))
+        }
+    }
+
     @Test fun offUiScopeNeutralizesEveryRecoveryRequestAndRestoresTypedPresence() {
         ConnectedUiStateFixture().use {
             val neutral = ServiceActivationPreferencesFixture.neutral
@@ -77,12 +89,12 @@ class ConnectedUiStateFixtureInstrumentedTest {
                 }
             }
             raw.registerOnSharedPreferenceChangeListener(listener)
-            try {
+            withFixtureCleanup({ raw.unregisterOnSharedPreferenceChangeListener(listener) }) {
                 restoreFixturePreferences(raw, before)
                 assertTrue(observed.await(5, TimeUnit.SECONDS))
                 assertTrue("Restoration notified a still-live Activity/model", restoredAfterDestruction)
                 assertEquals(before, preferenceSnapshot(raw))
-            } finally { raw.unregisterOnSharedPreferenceChangeListener(listener) }
+            }
         }
     }
 
@@ -113,7 +125,7 @@ class ConnectedUiStateFixtureInstrumentedTest {
     @Test fun serviceAndNativeDisplayScopesRestoreEnabledAndSleepingStarts() {
         ActionServiceSettingsFixture.off().use {
             val native = NativeKeyguardFixture()
-            try {
+            withFixtureCleanup({ native.close() }) {
                 native.unlock()
                 for (on in listOf(false, true)) {
                     val settings = if (on) ActionServiceSettingsFixture.on() else ActionServiceSettingsFixture.off()
@@ -130,7 +142,7 @@ class ConnectedUiStateFixtureInstrumentedTest {
                         }
                     }
                 }
-            } finally { native.close() }
+            }
         }
     }
 
@@ -161,26 +173,36 @@ class ConnectedUiStateFixtureInstrumentedTest {
             val closing = CountDownLatch(1)
             val closed = CountDownLatch(1)
             val executor = Executors.newFixedThreadPool(2)
-            try {
+            withFixtureCleanup(
+                { release.countDown() },
+                { executor.shutdown() },
+                { assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS)) },
+                { fixture.close() },
+            ) {
                 val reader = executor.submit { synchronized(fixture.raw) {
                     fixture.prefs.lockscreenWidgetStore.read()
                     entered.countDown()
-                    check(release.await(10, TimeUnit.SECONDS))
+                    check(release.await(30, TimeUnit.SECONDS))
                 } }
                 assertTrue(entered.await(5, TimeUnit.SECONDS))
-                val teardown = executor.submit { closing.countDown(); try { fixture.close() } finally { closed.countDown() } }
+                // close() dispatches the synchronized preference restoration to main;
+                // its worker waits in runOnMainSync rather than entering BLOCKED itself.
+                val restorationThread = android.os.Looper.getMainLooper().thread
+                val teardown = executor.submit {
+                    closing.countDown()
+                    withFixtureCleanup({ closed.countDown() }) { fixture.close() }
+                }
                 assertTrue(closing.await(5, TimeUnit.SECONDS))
-                assertFalse("Restore escaped the store monitor", closed.await(100, TimeUnit.MILLISECONDS))
+                fixtureAwait("Teardown never blocked on the store monitor") {
+                    restorationThread.state == Thread.State.BLOCKED || closed.count == 0L
+                }
+                assertEquals("Restoration must be blocked on the held store monitor", Thread.State.BLOCKED, restorationThread.state)
+                assertEquals("Restore escaped the store monitor", 1L, closed.count)
                 release.countDown()
                 reader.get(10, TimeUnit.SECONDS)
                 teardown.get(10, TimeUnit.SECONDS)
                 instrumentation.waitForIdleSync()
                 assertFalse(raw.contains(LockscreenWidgetStore.KEY))
-            } finally {
-                release.countDown()
-                executor.shutdown()
-                assertTrue(executor.awaitTermination(15, TimeUnit.SECONDS))
-                fixture.close()
             }
         }
     }
@@ -231,7 +253,7 @@ class ConnectedUiStateFixtureInstrumentedTest {
                 lateinit var original: MainActivity
                 lateinit var current: MainActivity
                 val scenario = androidx.test.core.app.ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java))
-                try {
+                withFixtureCleanup({ scenario.close() }) {
                     scenario.onActivity {
                         original = it
                         it.viewModelStore.put("recreation-probe", object : ViewModel() {
@@ -245,7 +267,7 @@ class ConnectedUiStateFixtureInstrumentedTest {
                     lifetime.closeAndAwaitDestroyed(scenario)
                     assertTrue(current.isDestroyed)
                     assertEquals(0L, cleared.count)
-                } finally { scenario.close() }
+                }
             }
         }
     }
@@ -254,7 +276,7 @@ class ConnectedUiStateFixtureInstrumentedTest {
         ConnectedUiStateFixture().use {
             ConnectedUiStateFixture.prepareForegroundService()
             val native = NativeKeyguardFixture()
-            try {
+            withFixtureCleanup({ native.close() }) {
                 ActionServiceSettingsFixture.on().use {
                     native.sleep()
                     lateinit var activity: com.gezimos.katapult.lockscreen.ScreensaverActivity
@@ -269,7 +291,7 @@ class ConnectedUiStateFixtureInstrumentedTest {
                     assertTrue(activity.isDestroyed)
                     assertFalse(context.getSystemService(PowerManager::class.java).isInteractive)
                 }
-            } finally { native.close() }
+            }
         }
     }
 }

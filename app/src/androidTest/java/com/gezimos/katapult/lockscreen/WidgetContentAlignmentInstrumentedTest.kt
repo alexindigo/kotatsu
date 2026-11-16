@@ -1,4 +1,6 @@
 package com.gezimos.katapult.lockscreen
+
+import com.gezimos.katapult.withFixtureCleanup
 import com.gezimos.katapult.ui.settings.ScrollRailGeometry
 
 import android.content.Intent
@@ -69,7 +71,11 @@ class WidgetContentAlignmentInstrumentedTest {
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             var root: SideScreenView? = null
-            try {
+            withFixtureCleanup(
+                { main { root?.dispose() } },
+                { com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities() },
+                { main { fixture.host.releaseViews() } },
+            ) {
                 val ids = List(2) { fixture.bind(info) }
                 for (hasRail in listOf(true, false)) {
                     val count = if (hasRail) 24 else 1
@@ -120,10 +126,6 @@ class WidgetContentAlignmentInstrumentedTest {
                         frame.recycle()
                     }
                 }
-            } finally {
-                main { root?.dispose() }
-                com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities()
-                main { fixture.host.releaseViews() }
             }
         }
     }

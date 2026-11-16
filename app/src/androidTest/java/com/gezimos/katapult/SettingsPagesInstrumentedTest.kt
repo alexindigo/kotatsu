@@ -38,7 +38,7 @@ class SettingsPagesInstrumentedTest {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }) as MainActivity
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) {
             val model = ViewModelProvider(activity)[MainViewModel::class.java]
             instrumentation.runOnMainSync {
                 model.screen = Screen.SETTINGS
@@ -47,8 +47,6 @@ class SettingsPagesInstrumentedTest {
             }
             ui.await("Settings contents absent") { ui.has(text(R.string.section_system)) }
             block(activity, model)
-        } finally {
-            restoreFixturePreferences(raw, before)
         }
     }
 

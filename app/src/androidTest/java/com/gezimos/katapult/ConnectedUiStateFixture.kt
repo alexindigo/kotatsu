@@ -41,7 +41,7 @@ internal class ConnectedUiStateFixture(completeOnboarding: Boolean = true, priva
             if (scopes.isEmpty()) settingsTasks = AndroidSettingsTaskFixture()
             scopes.add(this)
         } catch (error: Throwable) {
-            try { close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
+            fixtureCleanup({ close() }, failure = error)
             throw error
         }
     }
@@ -69,8 +69,9 @@ internal class ConnectedUiStateFixture(completeOnboarding: Boolean = true, priva
                         { preferences?.takeIf { restorePreferences }?.let { snapshot ->
                             synchronized(raw) { restorePreferenceSnapshot(raw, snapshot) }
                         }; Unit },
+                        { UsageHelper.invalidate() },
+                        { IconUtility.invalidateOverrides() },
                     )
-                    UsageHelper.invalidate(); IconUtility.invalidateOverrides()
                 }
             } },
             { display?.close() },
@@ -80,7 +81,9 @@ internal class ConnectedUiStateFixture(completeOnboarding: Boolean = true, priva
 
     companion object {
         private val scopes = mutableListOf<ConnectedUiStateFixture>()
-        fun closeOwnedActivities() { scopes.toList().asReversed().forEach { it.closeActivities() } }
+        fun closeOwnedActivities() {
+            fixtureCleanup(*scopes.toList().asReversed().map { scope -> { scope.closeActivities() } }.toTypedArray())
+        }
         fun quiesceOwnedProducers() {
             fixtureCleanup(*scopes.toList().asReversed().map { scope ->
                 { fixtureCleanup({ scope.closeProducers() }, { scope.closeActivities() }) }

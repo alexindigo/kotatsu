@@ -39,7 +39,7 @@ class AppStoreInstrumentedTest {
         val before = shared.all
         val intents = CopyOnWriteArrayList<Intent>()
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(shared, before) }) {
             instrumentation.runOnMainSync {
                 shared.edit().putInt("theme_mode", PrefsManager.THEME_LIGHT).commit()
             }
@@ -76,8 +76,6 @@ class AppStoreInstrumentedTest {
                 ui.has(context.getString(if (packages.installed.isEmpty()) R.string.app_store_absent else R.string.app_store_open))
             }
             test(current, ui, intents)
-        } finally {
-            restoreFixturePreferences(shared, before)
         }
     }
 

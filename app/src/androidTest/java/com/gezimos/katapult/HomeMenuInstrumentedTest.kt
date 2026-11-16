@@ -26,15 +26,13 @@ class HomeMenuInstrumentedTest {
 
     private fun fixture(test: (RecentOverlayFixture) -> Unit) {
         val before = raw.all
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) {
             main { raw.edit().putString("wallpaper_source", "KOTATSU")
                 .putBoolean("hide_all_apps_button", false).commit() }
             RecentOverlayFixture().use { f ->
                 main { raw.edit().putBoolean("home_button_menu", true).commit() }
                 test(f)
             }
-        } finally {
-            restoreFixturePreferences(raw, before)
         }
     }
 

@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -74,7 +76,7 @@ class WeatherInstrumentedTest {
         val location = home.copy(latitude = 12.3456, longitude = 65.4321)
         val prefs = context.getSharedPreferences("weather", 0)
         val before = prefs.all
-        try {
+        withFixtureCleanup({ prefs.edit().apply { (prefs.all.keys - before.keys).forEach { remove(it) } }.commit() }) {
             store.accept(location, true, OpenMeteoParser.parse(threeDayFixture()), now.toInstant(), now.zone)
             val good = store.read(location, true, now.zone)!!
             val envelope = prefs.all
@@ -92,8 +94,6 @@ class WeatherInstrumentedTest {
             assertEquals(envelope.filterKeys { it.startsWith("forecast_") }, prefs.all.filterKeys { it.startsWith("forecast_") })
             assertTrue(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(location)), listOf(store.read(location, true)), emptyList(), now),
                 464, 112).sameAs(TimelineRenderer.render(context, buildTimeline(WidgetConfig(listOf(location)), listOf(good), emptyList(), now), 464, 112)))
-        } finally {
-            prefs.edit().apply { (prefs.all.keys - before.keys).forEach { remove(it) } }.commit()
         }
     }
 
@@ -185,7 +185,7 @@ class WeatherInstrumentedTest {
     @Test fun configAndCacheStaySeparateByWidgetAndUnitsButNotZone() {
         val store = WeatherStore(context)
         val id = 876543
-        try {
+        withFixtureCleanup({ store.delete(id) }) {
             context.getSharedPreferences("weather", 0).edit().putString("widget_$id", ConfigJson.encode(config)).commit()
             assertEquals(config, WeatherStore(context).config(id))
             val zone = "America/Los_Angeles"
@@ -196,7 +196,7 @@ class WeatherInstrumentedTest {
             assertEquals(forecasts.read(home, true), forecasts.read(home, true, ZoneId.of("Asia/Tokyo")))
             assertEquals(ForecastStore.Result.MALFORMED, forecasts.accept(home, true, OpenMeteoParser.parse("{}"), now.toInstant().plusMillis(1), now.zone))
             assertEquals(now.toInstant(), forecasts.read(home, true)!!.fetchedAt)
-        } finally { store.delete(id) }
+        }
         assertTrue(store.config(id)!!.locations.isEmpty())
     }
     @Test fun noWidgetMeansNoNetworkJobs() {

@@ -44,7 +44,7 @@ class PaperIndexSettingsInstrumentedTest {
         val shared = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
         val before = shared.all
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(shared, before) }) {
             instrumentation.runOnMainSync {
                 shared.edit().putBoolean("notice_action_service_dismissed", false)
                     .putInt("theme_mode", PrefsManager.THEME_LIGHT).putBoolean("hide_app_names", false)
@@ -62,8 +62,6 @@ class PaperIndexSettingsInstrumentedTest {
                 current.setContent { SettingsScreen(vm, current.configExporter, current.configImporter, current.screensaverWallpaperPicker) }
             }
             test(current, vm, PrefsManager(context), PlatformUiDriver(instrumentation))
-        } finally {
-            restoreFixturePreferences(shared, before)
         }
     }
 

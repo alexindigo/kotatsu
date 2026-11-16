@@ -39,32 +39,23 @@ class UsageAccessRule : TestRule {
                 check(mode() == value) { "Usage AppOp did not become $name" }
                 UsageHelper.invalidate()
             }
-            var failure: Throwable? = null
-            fun restore(action: () -> Unit) {
-                try { action() } catch (error: Throwable) {
-                    if (failure == null) failure = error else failure!!.addSuppressed(error)
-                }
-            }
-            try {
+            withFixtureCleanup(
+                {
+                    check(preferences.edit().apply { original.forEach { (key, value) ->
+                        if (value == null) remove(key) else putBoolean(key, value as Boolean)
+                    } }.commit())
+                    check(keys.associateWith { preferences.all[it] } == original) { "Usage preferences leaked" }
+                },
+                { setMode(previousMode) },
+                { android.util.Log.i("UsageAccessFixture", "${description.methodName} restoredMode=${mode()}"); Unit },
+            ) {
                 android.util.Log.i("UsageAccessFixture", "${description.methodName} priorMode=$previousMode")
                 setMode(AppOpsManager.MODE_ALLOWED)
                 check(preferences.edit().putBoolean("onboarding_complete", true)
                     .putBoolean("collect_usage_stats", true).commit())
                 check(UsageHelper.collectionAllowed(context)) { "Usage fixture did not enable the real consumer" }
                 base.evaluate()
-            } catch (error: Throwable) {
-                failure = error
-            } finally {
-                restore {
-                    check(preferences.edit().apply { original.forEach { (key, value) ->
-                        if (value == null) remove(key) else putBoolean(key, value as Boolean)
-                    } }.commit())
-                    check(keys.associateWith { preferences.all[it] } == original) { "Usage preferences leaked" }
-                }
-                restore { setMode(previousMode) }
-                android.util.Log.i("UsageAccessFixture", "${description.methodName} restoredMode=${mode()}")
             }
-            failure?.let { throw it }
         }
     }
 }

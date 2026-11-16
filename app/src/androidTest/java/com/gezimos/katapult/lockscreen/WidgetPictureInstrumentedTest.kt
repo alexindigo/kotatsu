@@ -1,5 +1,7 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
@@ -22,7 +24,10 @@ class WidgetPictureInstrumentedTest {
             val info = fixture.providers.singleProvider("com.alexindigo.kotatsu.weather.debug")
             val widget = LockscreenWidget(fixture.bind(info), LockscreenWidgetSize.M)
             var result: Result<Unit>? = null
-            try {
+            withFixtureCleanup(
+                { instrumentation.runOnMainSync { fixture.host.hideWidgets(context) } },
+                { instrumentation.runOnMainSync { fixture.host.releaseViews() } },
+            ) {
                 instrumentation.runOnMainSync { result = runCatching {
                     val state = LockscreenVisibility().apply { beginEpoch(); recheck(true) { false } }
                     LockscreenWidgetHost.pulseVisible(context, state, listOf(widget))
@@ -31,7 +36,7 @@ class WidgetPictureInstrumentedTest {
                         fixture.manager.getAppWidgetOptions(widget.id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
                 } }
                 result!!.getOrThrow()
-            } finally { instrumentation.runOnMainSync { fixture.host.hideWidgets(context); fixture.host.releaseViews() } }
+            }
         }
     }
 
@@ -46,7 +51,10 @@ class WidgetPictureInstrumentedTest {
             var now = 0L
             val before = fixture.host.pictureClock
             fixture.host.pictureClock = { now }
-            try {
+            withFixtureCleanup(
+                { fixture.host.pictureClock = before },
+                { instrumentation.runOnMainSync { fixture.host.releaseViews() } },
+            ) {
                 instrumentation.runOnMainSync {
                     val view = fixture.host.createView(context, id, info) as UnpaddedHostView
                     fun picture(color: Int) = RemoteViews(weather, layout).apply {
@@ -68,9 +76,6 @@ class WidgetPictureInstrumentedTest {
                     view.updateAppWidget(picture(Color.BLUE))
                     assertEquals("Fresh provider picture replaces retained one", Color.BLUE, color())
                 }
-            } finally {
-                fixture.host.pictureClock = before
-                instrumentation.runOnMainSync { fixture.host.releaseViews() }
             }
         }
     }
@@ -79,7 +84,11 @@ class WidgetPictureInstrumentedTest {
         WidgetHostTestFixture(context).use { fixture ->
             val info = fixture.providers.firstProvider("com.android.deskclock")
             val widget = LockscreenWidget(fixture.bind(info), LockscreenWidgetSize.M)
-            try {
+            withFixtureCleanup(
+                { instrumentation.runOnMainSync { fixture.host.hideWidgets(context) } },
+                { instrumentation.runOnMainSync { fixture.host.listen(false) } },
+                { instrumentation.runOnMainSync { fixture.host.releaseViews() } },
+            ) {
                 instrumentation.runOnMainSync {
                     fixture.host.listen(true)
                     val view = fixture.host.createView(context, widget.id, info)
@@ -94,7 +103,7 @@ class WidgetPictureInstrumentedTest {
                     assertTrue("Ordinary provider still renders", view.childCount > 0)
                     assertEquals(listOf(0, 0, 0, 0), listOf(view.paddingLeft, view.paddingTop, view.paddingRight, view.paddingBottom))
                 }
-            } finally { instrumentation.runOnMainSync { fixture.host.hideWidgets(context); fixture.host.listen(false); fixture.host.releaseViews() } }
+            }
         }
     }
 }

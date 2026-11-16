@@ -25,7 +25,7 @@ class ChoiceSheetsInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) {
             main { raw.edit().putInt("theme_mode", if (dark) PrefsManager.THEME_DARK else PrefsManager.THEME_LIGHT)
                 .putString("wallpaper_source", "KOTATSU").putBoolean("screensaver_enabled", true)
                 .putBoolean("notice_action_service_dismissed", true).putBoolean("home_button_menu", false)
@@ -42,8 +42,6 @@ class ChoiceSheetsInstrumentedTest {
                     current.screensaverWallpaperPicker, onWallpaperPhoto = { photos.incrementAndGet() }) }
             }
             test(current, vm, PrefsManager(context), PlatformUiDriver(instrumentation), photos)
-        } finally {
-            restoreFixturePreferences(raw, before)
         }
     }
 
@@ -85,7 +83,7 @@ class ChoiceSheetsInstrumentedTest {
 
     private fun assertChoiceGeometry(ui: PlatformUiDriver, dark: Boolean) {
         val bitmap = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES).takeScreenshot()
-        try {
+        withFixtureCleanup({ bitmap.recycle() }) {
             val palette = if (dark) PaperPalette.Dark(context) else PaperPalette.Light(context)
             val density = context.resources.displayMetrics.density
             val edge = bitmap.width - (16 * density).toInt()
@@ -107,7 +105,7 @@ class ChoiceSheetsInstrumentedTest {
                 }
                 assertTrue("Leader must use muted", leaderPixels > 10)
             }
-        } finally { bitmap.recycle() }
+        }
     }
 
     @Test fun sheetsKeepChapterApplyAndDismissInBothPalettes() {
