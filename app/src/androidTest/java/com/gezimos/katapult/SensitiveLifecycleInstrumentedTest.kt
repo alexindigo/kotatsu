@@ -149,7 +149,11 @@ class SensitiveLifecycleInstrumentedTest {
             }
             assertEquals(!before, PrefsManager(context).sensitiveChoice(SensitiveChoice.SMS_BADGES))
             assertTrue(ui.packageVisible(context.packageName))
-            assertFalse(DeviceHelper.isDefaultLauncher(context))
+            val resolvedHome = context.packageManager.resolveActivity(
+                Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo
+            assertFalse("Expected Kotatsu not to own HOME; target=${context.packageName}, " +
+                "resolved HOME=${resolvedHome?.let { "${it.packageName}/${it.name}" }}, " +
+                "onboarding_complete=${raw.all["onboarding_complete"]}", DeviceHelper.isDefaultLauncher(context))
             assertEquals(activation, listOf(prefs.appSortMode, prefs.doubleTapAction, prefs.lockscreenWidget,
                 prefs.lockscreenMusicWidget, prefs.screensaverEnabled))
             for (permission in listOf(Manifest.permission.READ_SMS, Manifest.permission.READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG)) {

@@ -24,7 +24,12 @@ class LauncherPreviewInstrumentedTest {
         val expected = InstrumentationRegistry.getArguments().getString("expectedApplicationId")
         assertEquals("com.alexindigo.kotatsu.debug", expected)
         assertEquals(expected, context.packageName)
-        assertFalse(DeviceHelper.isDefaultLauncher(context))
+        val resolvedHome = context.packageManager.resolveActivity(
+            Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo
+        assertFalse("Expected Kotatsu not to own HOME; target=${context.packageName}, " +
+            "resolved HOME=${resolvedHome?.let { "${it.packageName}/${it.name}" }}, " +
+            "onboarding_complete=${context.getSharedPreferences("katapult_prefs", 0).all["onboarding_complete"]}",
+            DeviceHelper.isDefaultLauncher(context))
         assertFalse(NotificationManagerCompat.getEnabledListenerPackages(context).contains(context.packageName))
         for (permission in listOf(Manifest.permission.READ_SMS, Manifest.permission.READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG)) {
             assertEquals(PackageManager.PERMISSION_DENIED, context.checkSelfPermission(permission))
