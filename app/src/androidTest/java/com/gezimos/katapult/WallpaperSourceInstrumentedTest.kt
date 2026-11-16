@@ -28,16 +28,42 @@ import org.junit.runner.RunWith
 import java.io.File
 import java.util.UUID
 
+private fun wallpaperStateRule(phase: String?) = org.junit.rules.TestRule { base, description ->
+    if (phase == "check-restored") base
+    else ConnectedUiStateRule(restorePreferences = phase == null).apply(base, description)
+}
+
 /** Public choice/picker input, real MainActivity, and end-of-chain Home framebuffer probes. */
 @RunWith(AndroidJUnit4::class)
 class WallpaperSourceInstrumentedTest {
-    @get:org.junit.Rule val nativeState = ConnectedUiStateRule(restorePreferences =
-        androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("wallpaperPhase") == null)
+    @get:org.junit.Rule val nativeState = wallpaperStateRule(InstrumentationRegistry.getArguments().getString("wallpaperPhase"))
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
     private val raw = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
     private val proof get() = File(context.getExternalFilesDir(null), "wallpaper-source-probes").apply { mkdirs() }
+
+    @Test fun coldRestoredCheckSeesMissingAndRequestedActivationValuesUnchanged() {
+        val before = preferenceSnapshot(raw)
+        withFixtureCleanup({ restoreFixturePreferences(raw, before) }) {
+            fixtureMain {
+                check(raw.edit().remove("screensaver_enabled").putBoolean("screensaver_on_power", true)
+                    .putBoolean("lockscreen_widgets_enabled", true).commit())
+            }
+            val expected = preferenceSnapshot(raw)
+            var evaluated = false
+            val check = object : org.junit.runners.model.Statement() {
+                override fun evaluate() {
+                    evaluated = true
+                    assertEquals("Cold check neutralized the restored store", expected, preferenceSnapshot(raw))
+                }
+            }
+            wallpaperStateRule("check-restored").apply(check,
+                org.junit.runner.Description.createTestDescription(javaClass, "cold-check-rule")).evaluate()
+            assertTrue(evaluated)
+            assertEquals(expected, preferenceSnapshot(raw))
+        }
+    }
 
     @Test fun legacyReadsAndConfigImportsRespectSourceAndOwnedFiles() {
         val name = "wallpaper-import-${UUID.randomUUID()}"
@@ -49,7 +75,7 @@ class WallpaperSourceInstrumentedTest {
         val prefs = PrefsManager(wrapped)
         val photo = File(context.filesDir, "$name.png")
         png(photo)
-        try {
+        withFixtureCleanup({ photo.delete() }, { deleteTestPreferences(context, name) }) {
             assertEquals(WallpaperSource.NONE, prefs.wallpaperSource)
             store.edit().putString("wallpaper_path", photo.path).commit()
             assertEquals(WallpaperSource.PHOTO, prefs.wallpaperSource)
@@ -72,9 +98,6 @@ class WallpaperSourceInstrumentedTest {
                 .put("wallpaper_path", "/not/owned.png").toString()))
             assertEquals(WallpaperSource.NONE, prefs.wallpaperSource)
             assertFalse(prefs.importFromJson(oldConfig.put("wallpaper_source", "bogus").toString()))
-        } finally {
-            photo.delete()
-            deleteTestPreferences(context, name)
         }
     }
 
@@ -107,7 +130,15 @@ class WallpaperSourceInstrumentedTest {
         val previousBytes = destination.takeIf { it.isFile }?.readBytes()
         val photo = File(context.filesDir, "wallpaper-source-test.png")
         png(photo)
-        try {
+        // Explicit cold-proof invocations retain their choice across the external process stop.
+        withFixtureCleanup(
+            { if (phase != "prepare") {
+                if (previousBytes == null) destination.delete() else destination.writeBytes(previousBytes)
+            }; Unit },
+            { if (phase != "prepare") restorePreferences(previous) },
+            { if (phase != "prepare") assertEquals(previous, raw.all) },
+            { photo.delete() },
+        ) {
             raw.edit().putBoolean("onboarding_complete", true).putString("clock_format", "'10:45'")
                 .putString("date_format", "'October 27, 2026'").putBoolean("show_weather", false)
                 .putBoolean("show_battery", false).putBoolean("show_alarm", false).commit()
@@ -185,7 +216,10 @@ class WallpaperSourceInstrumentedTest {
                     }
                     val screensaver = instrumentation.startActivitySync(Intent(context, ScreensaverActivity::class.java)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as ScreensaverActivity
-                    try {
+                    withFixtureCleanup(
+                        { instrumentation.runOnMainSync { screensaver.finish() } },
+                        { ui.await("Screensaver did not close") { !ScreensaverActivity.isShowing } },
+                    ) {
                         ui.await("Screensaver not shown") { ScreensaverActivity.isShowing }
                         ui.await("Screensaver did not inherit Kotatsu", 15000) {
                             val screen = frame()
@@ -195,9 +229,6 @@ class WallpaperSourceInstrumentedTest {
                             screen.recycle()
                             matches
                         }
-                    } finally {
-                        instrumentation.runOnMainSync { screensaver.finish() }
-                        ui.await("Screensaver did not close") { !ScreensaverActivity.isShowing }
                     }
                     baseline.recycle(); withPicture.recycle()
                 }
@@ -218,14 +249,6 @@ class WallpaperSourceInstrumentedTest {
                     assertHome(model, source)
                 }
             }
-        } finally {
-            // Explicit cold-proof invocations retain the chosen source across the external process stop.
-            if (phase != "prepare") {
-                if (previousBytes == null) destination.delete() else destination.writeBytes(previousBytes)
-                restorePreferences(previous)
-                assertEquals(previous, raw.all)
-            }
-            photo.delete()
         }
     }
 
@@ -253,7 +276,7 @@ class WallpaperSourceInstrumentedTest {
             addDataType("*/*"); addCategory(Intent.CATEGORY_OPENABLE)
         }, null, true)
         instrumentation.addMonitor(monitor)
-        try {
+        withFixtureCleanup({ instrumentation.removeMonitor(monitor) }) {
             ui.click(label(WallpaperSource.PHOTO))
             ui.await("Photo choice did not launch the existing picker") { monitor.hits == 1 }
             scenario.recreate()
@@ -268,7 +291,7 @@ class WallpaperSourceInstrumentedTest {
                     if (file == null) Activity.RESULT_CANCELED else Activity.RESULT_OK,
                     file?.let { Intent().setData(Uri.fromFile(it)) }))
             }
-        } finally { instrumentation.removeMonitor(monitor) }
+        }
     }
 
     private fun assertHome(model: MainViewModel, source: WallpaperSource) {
@@ -291,24 +314,25 @@ class WallpaperSourceInstrumentedTest {
         // Observe the final framebuffer rather than equating node presence with a drawn frame.
         var observed = frame
         var mismatch = ""
-        try {
-            ui.await("Home background $source did not render (theme=${model.themeMode})", 15000) {
-                observed.recycle()
-                observed = frame()
-                (observed.height / 2 until observed.height / 2 + 20).all { y -> (3..20).all { x ->
-                    val a = background.getPixel(x, y); val b = observed.getPixel(x, y)
-                    val matches = listOf<(Int) -> Int>(Color::red, Color::green, Color::blue).all { channel ->
-                        kotlin.math.abs(channel(a) - channel(b)) <= 3
-                    }
-                    if (!matches) mismatch = "$x,$y expected=${a.toUInt().toString(16)} observed=${b.toUInt().toString(16)}"
-                    matches
-                } }
+        withFixtureCleanup({ observed.recycle() }, { expected?.recycle() }, { background.recycle() }) {
+            try {
+                ui.await("Home background $source did not render (theme=${model.themeMode})", 15000) {
+                    observed.recycle()
+                    observed = frame()
+                    (observed.height / 2 until observed.height / 2 + 20).all { y -> (3..20).all { x ->
+                        val a = background.getPixel(x, y); val b = observed.getPixel(x, y)
+                        val matches = listOf<(Int) -> Int>(Color::red, Color::green, Color::blue).all { channel ->
+                            kotlin.math.abs(channel(a) - channel(b)) <= 3
+                        }
+                        if (!matches) mismatch = "$x,$y expected=${a.toUInt().toString(16)} observed=${b.toUInt().toString(16)}"
+                        matches
+                    } }
+                }
+            } catch (failure: AssertionError) {
+                save(observed, "failed-home-$source")
+                throw AssertionError("${failure.message}: $mismatch", failure)
             }
-        } catch (failure: AssertionError) {
-            save(observed, "failed-home-$source")
-            throw AssertionError("${failure.message}: $mismatch", failure)
-        } finally { observed.recycle() }
-        expected?.recycle(); background.recycle()
+        }
     }
 
     private fun verifyContrast(model: MainViewModel, baseline: Bitmap, drawn: Bitmap, dark: Boolean) {
