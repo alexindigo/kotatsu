@@ -17,6 +17,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WidgetSlotInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
@@ -120,7 +121,7 @@ class WidgetSlotInstrumentedTest {
                         assertEquals(window.bottom, box.bottom)
                     }
                 }
-            } finally { main { slot?.stop(); activity.finish(); fixture.host.releaseViews() } }
+            } finally { main { slot?.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
         }
     }
 
@@ -187,7 +188,7 @@ class WidgetSlotInstrumentedTest {
                 main { slot.hide(); assertNull(timer) }
                 widgets.forEach { assertFalse(fixture.manager.getAppWidgetOptions(it.id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE)) }
                 main { slot.rotation.wake(); render() }; checkShown(0)
-            } finally { main { slot.stop(); activity.finish(); fixture.host.releaseViews() } }
+            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
         }
     }
 

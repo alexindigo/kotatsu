@@ -25,6 +25,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class LockscreenWidgetCardsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -46,8 +47,8 @@ class LockscreenWidgetCardsInstrumentedTest {
         }
     }
 
-    private fun withWidgets(work: (MainActivity, WidgetHostTestFixture, List<LockscreenWidget>, List<String>) -> Unit) {
-        val fixture = WidgetHostTestFixture(context, applicationPreferences = true)
+    private fun withWidgets(work: (MainActivity, WidgetHostTestFixture, List<LockscreenWidget>, List<String>) -> Unit) =
+        WidgetHostTestFixture(context, applicationPreferences = true).use { fixture ->
         val providers = fixture.manager.installedProviders.filter { it.provider.packageName == "com.alexindigo.kotatsu.notes.debug" }
         assertEquals(2, providers.size)
         val selected = providers.sortedBy { it.loadLabel(context.packageManager) }.map {
@@ -70,9 +71,7 @@ class LockscreenWidgetCardsInstrumentedTest {
             ui.await("Widget page must render") { ui.has(context.getString(R.string.lockscreen_widgets_show)) }
             work(activity, fixture, selected, providers.sortedBy { it.loadLabel(context.packageManager) }.map { it.loadLabel(context.packageManager) })
         } finally {
-            main { activity.finish() }
-            instrumentation.waitForIdleSync()
-            fixture.close()
+            ConnectedUiStateFixture.closeOwnedActivities()
         }
     }
 

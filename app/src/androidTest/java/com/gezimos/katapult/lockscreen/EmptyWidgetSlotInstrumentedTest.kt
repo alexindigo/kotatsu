@@ -17,6 +17,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class EmptyWidgetSlotInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -95,7 +96,7 @@ class EmptyWidgetSlotInstrumentedTest {
                 rows(ids[0], -1); shown(null)
                 main { slot.rotation.wake(); render(); slot.rotation.swipe(1); assertNull(timer) }; shown(null)
                 rows(ids[1], 1); shown(ids[1])
-            } finally { main { slot.stop(); activity.finish(); f.host.releaseViews() } }
+            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
         }
     }
 
@@ -127,7 +128,7 @@ class EmptyWidgetSlotInstrumentedTest {
                     assertEquals(6, descendants(side!!).filterIsInstance<android.widget.CheckBox>().size)
                 }
                 capture(activity, "shopping-side.png")
-            } finally { main { side?.dispose(); activity.finish(); f.host.releaseViews() } }
+            } finally { main { side?.dispose() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
         }
     }
 
@@ -201,7 +202,7 @@ class EmptyWidgetSlotInstrumentedTest {
                     ready = slot.current?.id == quoteId && descendants(slot).filterIsInstance<TextView>()
                         .any { it.isShown && it.text.toString() == "Appeared while hidden" }
                 }; ready }
-            } finally { main { slot.stop(); activity.finish(); f.host.releaseViews() } }
+            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
         }
     }
 
@@ -224,7 +225,7 @@ class EmptyWidgetSlotInstrumentedTest {
                     ready = slot.current?.id == id && descendants(slot).filterIsInstance<TextView>()
                         .any { it.isShown && it.text.toString() == "Deferred item 0" }
                 }; ready }
-            } finally { main { slot.stop(); activity.finish(); f.host.releaseViews() } }
+            } finally { main { slot.stop() }; com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities(); main { f.host.releaseViews() } }
         }
     }
 

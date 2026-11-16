@@ -8,7 +8,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SwipeOwnersInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

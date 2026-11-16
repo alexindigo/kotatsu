@@ -16,6 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 
 class HomeKeyFilterInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @get:Rule val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
@@ -81,6 +82,7 @@ class HomeKeyFilterInstrumentedTest {
         var home: MainActivity? = null
         instrumentation.addMonitor(monitor)
         try {
+            ConnectedUiStateFixture.prepareForegroundService()
             prefs.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true)
                 .putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false)
                 .putBoolean("home_button_menu", false).commit()
@@ -194,9 +196,7 @@ class HomeKeyFilterInstrumentedTest {
                 try {
                     accessibility?.close()
                 } finally {
-                    prefs.edit().apply { previous.forEach { (key, value) ->
-                        if (value == null) remove(key) else putBoolean(key, value as Boolean)
-                    } }.commit()
+                    restoreFixturePreferenceValues(prefs, previous)
                 }
             }
         }

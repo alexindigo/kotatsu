@@ -21,6 +21,7 @@ import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class LockscreenWidgetsSettingsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private class TestApplication(base: Context, private val store: SharedPreferences) : Application() {
         init { attachBaseContext(base) }
         override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
@@ -37,7 +38,7 @@ class LockscreenWidgetsSettingsInstrumentedTest {
         }) as MainActivity
         val name = "k2-${UUID.randomUUID()}"
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
-        val owner = ViewModelStore()
+        val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
         val widgets = WidgetHostTestFixture(context)
         val provider = widgets.providers.firstProvider("com.android.deskclock")
@@ -73,6 +74,7 @@ class LockscreenWidgetsSettingsInstrumentedTest {
             }
         } finally {
             instrumentation.runOnMainSync { owner.clear(); activity.finish() }
+            ConnectedUiStateFixture.closeOwnedActivities()
             deleteTestPreferences(context, name)
             widgets.close()
         }

@@ -13,6 +13,7 @@ import java.io.File
 
 /** Real kernel HOME events, not shell input keyevent (which bypasses accessibility filtering). */
 class HomeDispatchDeadlineInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @get:Rule val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext

@@ -36,6 +36,9 @@ public class SideTestWidget extends AppWidgetProvider {
     private static int resource(Context context, String type, String name) {
         return context.getResources().getIdentifier(name, type, context.getPackageName());
     }
+    public static String titlePublication(int id, boolean title) {
+        return "host-title:" + id + ":" + title;
+    }
     public static void publish(Context context, int id, int count) {
         AppWidgetManager manager = AppWidgetManager.getInstance(context);
         if (context.getSharedPreferences("side-fixture", 0).getBoolean("service-" + id, false)) {
@@ -47,8 +50,10 @@ public class SideTestWidget extends AppWidgetProvider {
         }
         RemoteViews views = new RemoteViews(context.getPackageName(), resource(context, "layout", "side_test_widget"));
         views.setViewVisibility(resource(context, "id", "fixture_content"), count < 0 ? View.GONE : View.VISIBLE);
-        views.setViewVisibility(resource(context, "id", "fixture_heading"),
-            manager.getAppWidgetOptions(id).getBoolean("kotatsu.host.title", false) ? View.GONE : View.VISIBLE);
+        boolean title = manager.getAppWidgetOptions(id).getBoolean("kotatsu.host.title", false);
+        views.setViewVisibility(resource(context, "id", "fixture_heading"), title ? View.GONE : View.VISIBLE);
+        // A consumer observes this marker only after the same RemoteViews update was applied.
+        views.setTextViewText(resource(context, "id", "fixture_publication"), titlePublication(id, title));
         android.content.SharedPreferences prefs = context.getSharedPreferences("side-fixture", 0);
         views.setTextViewText(resource(context, "id", "fixture_broadcast"), "Broadcast " + prefs.getInt("broadcast-" + id, 0));
         views.setTextViewText(resource(context, "id", "fixture_launches"), "Launches " + prefs.getInt("launches-" + id, 0));

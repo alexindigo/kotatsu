@@ -9,6 +9,7 @@ import org.junit.Assert.*
 
 /** Owns service activation, native input and preference restoration for one test. */
 internal class RecentOverlayFixture : AutoCloseable {
+    private val state = ConnectedUiStateFixture()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     val ui = PlatformUiDriver(instrumentation)
@@ -22,6 +23,7 @@ internal class RecentOverlayFixture : AutoCloseable {
         private set
     init {
         try {
+            ConnectedUiStateFixture.prepareForegroundService()
             prefs.edit().putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false)
                 .putBoolean("home_button_menu", false).commit()
             home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
@@ -64,15 +66,15 @@ internal class RecentOverlayFixture : AutoCloseable {
     fun resumedTask(): String = shell("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") }.trim()
     fun focusedWindow(): String = shell("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }.trim()
     override fun close() {
-        try {
-            try { accessibility?.let { instrumentation.runOnMainSync { it.service.onInterrupt() } } }
-            finally { accessibility?.close() }
-            ui.await("Unbind left Recent apps attached") { !overlay.windowVisible() }
-        } finally {
-            try { if (::home.isInitialized) instrumentation.runOnMainSync { home.finish() } }
-            finally {
-                prefs.edit().apply { before.forEach { (key, value) -> if (value == null) remove(key) else putBoolean(key, value as Boolean) } }.commit()
-            }
-        }
+        fixtureCleanup(
+            { accessibility?.let { fixtureMain { it.service.onInterrupt() } } },
+            { accessibility?.close() },
+            { ui.await("Unbind left Recent apps attached") { !overlay.windowVisible() } },
+            { state.closeActivities() },
+            { fixtureMain { synchronized(prefs) {
+                assertTrue(prefs.edit().apply { before.forEach { (key, value) -> restoreValue(key, value) } }.commit())
+            } } },
+            { state.close() },
+        )
     }
 }

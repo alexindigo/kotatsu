@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class LauncherPreviewInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule(completeOnboarding = false)
     @Test fun publicPreviewAndDirtyOrderDecisions() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

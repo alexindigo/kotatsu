@@ -26,7 +26,7 @@ import org.junit.Test
 
 /** Real Home input -> shared settings -> the existing side surface / Android camera handoff. */
 class HomeEdgeSwipeInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -40,7 +40,7 @@ class HomeEdgeSwipeInstrumentedTest {
 
     private fun withHome(test: (MainViewModel, WidgetHostTestFixture, MainActivity) -> Unit) {
         WidgetHostTestFixture(context).use { fixture ->
-            val owner = ViewModelStore()
+            val owner = ownedViewModelStore()
             lateinit var model: MainViewModel
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, fixture.raw))

@@ -23,6 +23,7 @@ import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class DraftsAndPickersInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

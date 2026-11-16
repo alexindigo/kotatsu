@@ -17,6 +17,7 @@ import java.io.File
 import java.util.UUID
 
 class SwipeAllAppsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
@@ -123,19 +124,7 @@ class SwipeAllAppsInstrumentedTest {
                 assertFalse(prefs.hideArrowButtons)
             }
         } finally {
-            main {
-                activity?.finish()
-                val editor = raw.edit().clear()
-                before.forEach { (key, value) -> when (value) {
-                    is Boolean -> editor.putBoolean(key, value)
-                    is Int -> editor.putInt(key, value)
-                    is Long -> editor.putLong(key, value)
-                    is Float -> editor.putFloat(key, value)
-                    is String -> editor.putString(key, value)
-                    is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
-                } }
-                assertTrue(editor.commit())
-            }
+            restoreFixturePreferences(raw, before)
         }
     }
 

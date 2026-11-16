@@ -14,15 +14,20 @@ import java.util.UUID
 
 /** Owns test allocations and a preference scope; never clears another fixture's host or bindings. */
 internal class WidgetHostTestFixture(private val context: Context, applicationPreferences: Boolean = false) : AutoCloseable {
+    private val state = ConnectedUiStateFixture()
     val host = LockscreenWidgetHost.get(context)
     val manager = AppWidgetManager.getInstance(context)
     val providers = WidgetProviderTestFixture(context)
     private val initialIds = host.appWidgetIds.toSet()
+    private val initialBindings = initialIds.associateWith { manager.getAppWidgetInfo(it)?.provider }
     private val name = if (applicationPreferences) "katapult_prefs" else "widget-host-${UUID.randomUUID()}"
     val raw: SharedPreferences = context.getSharedPreferences(name, Context.MODE_PRIVATE)
     private val usesApplicationPreferences = applicationPreferences
     private val initialList = raw.all["lockscreen_widgets"]
+    private val initialScreens = raw.all[LockscreenWidgetStore.SCREENS]
     private val initialTheme = raw.all["theme_mode"]
+    private val producers = mutableListOf<AutoCloseable>()
+    private var closed = false
     val prefs = PrefsManager(object : ContextWrapper(context) {
         override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = raw
     })
@@ -30,11 +35,19 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
     init {
         // Real MainActivity reads the application store. Give its test a temporary empty selection,
         // retaining the exact previous value for restoration after the Activity/producers stop.
-        if (applicationPreferences) {
-            check(initialTheme == null || initialTheme is Int) { "Unexpected fixture theme preference type" }
-            assertTrue(raw.edit().putString("lockscreen_widgets", "[]").putInt("theme_mode", PrefsManager.THEME_LIGHT).commit())
+        try {
+            if (applicationPreferences) fixtureMain { synchronized(raw) {
+                check(initialTheme == null || initialTheme is Int) { "Unexpected fixture theme preference type" }
+                assertTrue(raw.edit().putString("lockscreen_widgets", "[]").remove(LockscreenWidgetStore.SCREENS)
+                    .putInt("theme_mode", PrefsManager.THEME_LIGHT).commit())
+            } }
+        } catch (error: Throwable) {
+            try { close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
+            throw error
         }
     }
+
+    fun <T : AutoCloseable> own(producer: T): T = producer.also { producers.add(it) }
 
     fun bind(info: AppWidgetProviderInfo): Int {
         val automation = InstrumentationRegistry.getInstrumentation().platformAutomation
@@ -53,20 +66,42 @@ internal class WidgetHostTestFixture(private val context: Context, applicationPr
 
     /** Call only after the test has stopped its Activities/models and their subscriptions. */
     override fun close() {
-        try { releaseAllocationsAndPreferences() } finally { providers.close() }
+        if (closed) return
+        closed = true
+        fixtureCleanup(
+            { state.closeProducers() },
+            { fixtureCleanup(*producers.asReversed().map { producer -> { fixtureMain { producer.close() } } }.toTypedArray()) },
+            { state.closeActivities() },
+            { fixtureMain { synchronized(raw) { releaseAllocationsAndPreferences() } } },
+            { InstrumentationRegistry.getInstrumentation().waitForIdleSync() },
+            { if (usesApplicationPreferences) {
+                val disk = persistedPreferenceSnapshot(context, name)
+                for ((key, value) in mapOf(LockscreenWidgetStore.KEY to initialList, LockscreenWidgetStore.SCREENS to initialScreens, "theme_mode" to initialTheme)) {
+                    assertEquals("Fixture changed key presence: $key", value != null, disk.containsKey(key))
+                    assertEquals("Fixture changed persisted value: $key", value, disk[key])
+                    assertEquals(value, raw.all[key])
+                }
+            } },
+            { providers.close() },
+            { state.close() },
+        )
     }
 
     private fun releaseAllocationsAndPreferences() {
         (host.appWidgetIds.toSet() - initialIds).forEach(host::deleteAppWidgetId)
         if (usesApplicationPreferences) {
             val editor = raw.edit()
-            if (initialList == null) editor.remove("lockscreen_widgets") else editor.putString("lockscreen_widgets", initialList as String)
-            if (initialTheme == null) editor.remove("theme_mode") else editor.putInt("theme_mode", initialTheme as Int)
+            editor.restoreValue(LockscreenWidgetStore.KEY, initialList)
+            editor.restoreValue(LockscreenWidgetStore.SCREENS, initialScreens)
+            editor.restoreValue("theme_mode", initialTheme)
             // commit is also the barrier for any preceding production apply writes.
             assertTrue("Could not restore widget fixture preferences", editor.commit())
             assertEquals(initialList, raw.all["lockscreen_widgets"])
+            assertEquals(initialScreens, raw.all[LockscreenWidgetStore.SCREENS])
             assertEquals(initialTheme, raw.all["theme_mode"])
         } else deleteTestPreferences(context, name)
         assertEquals("Widget fixture leaked an allocation", initialIds, host.appWidgetIds.toSet())
+        assertEquals("Widget fixture changed an original binding", initialBindings,
+            initialIds.associateWith { manager.getAppWidgetInfo(it)?.provider })
     }
 }

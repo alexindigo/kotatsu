@@ -17,7 +17,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class PaperIndexSettingsInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     @Test fun nativeSwitchTransitionWaitsForPublishedStateBeforeAnotherAction() = withSettings { activity, _, _, ui ->
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -63,19 +63,7 @@ class PaperIndexSettingsInstrumentedTest {
             }
             test(current, vm, PrefsManager(context), PlatformUiDriver(instrumentation))
         } finally {
-            instrumentation.runOnMainSync {
-                activity?.finish()
-                val edit = shared.edit().clear()
-                before.forEach { (key, value) -> when (value) {
-                    is Boolean -> edit.putBoolean(key, value)
-                    is Int -> edit.putInt(key, value)
-                    is Long -> edit.putLong(key, value)
-                    is Float -> edit.putFloat(key, value)
-                    is String -> edit.putString(key, value)
-                    is Set<*> -> edit.putStringSet(key, value.filterIsInstance<String>().toSet())
-                } }
-                assertTrue(edit.commit())
-            }
+            restoreFixturePreferences(shared, before)
         }
     }
 

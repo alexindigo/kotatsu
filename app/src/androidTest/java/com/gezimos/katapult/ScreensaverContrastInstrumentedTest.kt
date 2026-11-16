@@ -16,6 +16,7 @@ import java.util.UUID
 /** Real ScreensaverActivity and its real wallpaper preference/file paths, including Home fallback. */
 @RunWith(AndroidJUnit4::class)
 class ScreensaverContrastInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -123,20 +124,7 @@ class ScreensaverContrastInstrumentedTest {
                 ui.await("Screensaver did not finish") { !ScreensaverActivity.isShowing }
             }
         } finally {
-            instrumentation.runOnMainSync {
-                activity?.finish()
-                val editor = raw.edit().clear()
-                original.forEach { (key, value) -> when (value) {
-                    is Boolean -> editor.putBoolean(key, value)
-                    is Int -> editor.putInt(key, value)
-                    is Long -> editor.putLong(key, value)
-                    is Float -> editor.putFloat(key, value)
-                    is String -> editor.putString(key, value)
-                    is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
-                } }
-                assertTrue(editor.commit())
-                assertEquals(original, raw.all)
-            }
+            restoreFixturePreferences(raw, original)
             assertTrue(directory.deleteRecursively())
         }
     }

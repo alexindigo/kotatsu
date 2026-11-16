@@ -30,8 +30,9 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
     private val original = values()
     private var closed = false
     private fun contains(value: String) = value.split(':').any { ComponentName.unflattenFromString(it) == component }
-    val service: LockscreenWidgetService get() = LockscreenWidgetService::class.java.getDeclaredField("instance")
-        .apply { isAccessible = true }.get(null) as LockscreenWidgetService
+    private fun connectedService() = LockscreenWidgetService::class.java.getDeclaredField("instance")
+        .apply { isAccessible = true }.get(null) as? LockscreenWidgetService
+    val service: LockscreenWidgetService get() = fixtureMain { checkNotNull(connectedService()) }
     private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command))
         .bufferedReader().use { it.readText().trim() }
     fun values() = Values(shell("settings get secure $ENABLED"), shell("settings get secure $ACCESSIBILITY"))
@@ -59,6 +60,7 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
         throw AssertionError(message)
     }
     private fun apply(value: Values) {
+        val previous = fixtureMain { connectedService() }
         var failure: Throwable? = null
         fun attempt(action: () -> Unit) { try { action() } catch (error: Throwable) {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
@@ -66,8 +68,13 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
         attempt { restoreSecureSetting(ENABLED, value.enabled, ::shell) }
         attempt { restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell) }
         attempt { await("Action Service connection did not reach the owned state") {
-            HomeKeyFilterState.active == contains(value.enabled)
+            fixtureMain {
+                if (contains(value.enabled)) HomeKeyFilterState.active && connectedService() != null
+                else !HomeKeyFilterState.active && connectedService() == null &&
+                    (previous == null || previous.lifecycle.currentState == androidx.lifecycle.Lifecycle.State.DESTROYED)
+            }
         } }
+        attempt { fixtureMain { Unit } } // onDestroy must have returned, not merely cleared instance.
         attempt { await("Accessibility pair did not restore exactly") {
             if (values() == value) true else {
                 // Android can rewrite this flag while processing the enabled-service change.
@@ -86,6 +93,7 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
         closed = true
         apply(original)
     }
+
 }
 
 /** Establish OFF before constructing the Activity/model; nested ON leases restore this state. */

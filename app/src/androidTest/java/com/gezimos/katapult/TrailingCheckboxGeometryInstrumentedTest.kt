@@ -37,6 +37,7 @@ internal fun indexDrawingBounds(tag: String): List<androidx.compose.ui.geometry.
 }
 
 class TrailingCheckboxGeometryInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

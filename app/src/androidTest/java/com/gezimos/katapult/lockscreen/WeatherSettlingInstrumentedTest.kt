@@ -23,6 +23,7 @@ import java.io.File
 /** Separate Weather APK -> options broadcast -> actual launcher host; test-only provider-side seeding. */
 @RunWith(AndroidJUnit4::class)
 class WeatherSettlingInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val weather = "com.alexindigo.kotatsu.weather.debug"
@@ -167,7 +168,9 @@ class WeatherSettlingInstrumentedTest {
                 assertEquals(spoken, description())
                 capture("fresh-after-pulse")
             } finally {
-                main { host.hideWidgets(context); host.listen(false); activity?.finish(); host.releaseViews() }
+                main { host.hideWidgets(context); host.listen(false) }
+                com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities()
+                main { host.releaseViews() }
                 host.pictureClock = previousClock
             }
         } }

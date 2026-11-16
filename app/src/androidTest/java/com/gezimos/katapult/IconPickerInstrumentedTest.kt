@@ -35,6 +35,8 @@ import java.io.File
 /** Two explicit invocations prove a saved choice survives an actual process stop. */
 @RunWith(AndroidJUnit4::class)
 class IconPickerInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule(restorePreferences =
+        androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("iconPhase") == null)
     private val proofFiles = mutableSetOf<File>()
     private var retainColdProof = false
 

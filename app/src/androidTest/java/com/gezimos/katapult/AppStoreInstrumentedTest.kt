@@ -20,6 +20,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 @RunWith(AndroidJUnit4::class)
 class AppStoreInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private class Packages(vararg installed: String) : AppStorePackages {
         @Volatile var installed = installed.toSet()
         val launchRequests = CopyOnWriteArrayList<String>()
@@ -76,19 +77,7 @@ class AppStoreInstrumentedTest {
             }
             test(current, ui, intents)
         } finally {
-            instrumentation.runOnMainSync {
-                activity?.finish()
-                val edit = shared.edit().clear()
-                before.forEach { (key, value) -> when (value) {
-                    is Boolean -> edit.putBoolean(key, value)
-                    is Int -> edit.putInt(key, value)
-                    is Long -> edit.putLong(key, value)
-                    is Float -> edit.putFloat(key, value)
-                    is String -> edit.putString(key, value)
-                    is Set<*> -> edit.putStringSet(key, value.filterIsInstance<String>().toSet())
-                } }
-                assertTrue(edit.commit())
-            }
+            restoreFixturePreferences(shared, before)
         }
     }
 

@@ -26,6 +26,7 @@ import java.util.UUID
 /** Real OS posts -> listener -> shared source -> rendered consumers. No synthetic badge feed. */
 @RunWith(AndroidJUnit4::class)
 class UnreadBadgesInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -159,7 +160,7 @@ class UnreadBadgesInstrumentedTest {
         } catch (error: Throwable) {
             failure = error
         } finally {
-            restore { main { screensaver?.finish(); activity?.finish() } }
+            restore { ConnectedUiStateFixture.quiesceOwnedProducers() }
             restore {
                 for (id in 1..5) manager.cancel(tag, id)
                 manager.deleteNotificationChannel(channel)
@@ -171,21 +172,8 @@ class UnreadBadgesInstrumentedTest {
                         (wasAllowed || !SensitiveAccess.notificationConnected)
                 }
             }
-            restore { main {
-                lease?.close()
-                val edit = raw.edit()
-                saved.forEach { (key, value) -> when (value) {
-                    is Boolean -> edit.putBoolean(key, value)
-                    is Int -> edit.putInt(key, value)
-                    is String -> edit.putString(key, value)
-                    is Set<*> -> {
-                        @Suppress("UNCHECKED_CAST")
-                        edit.putStringSet(key, value as Set<String>)
-                    }
-                    else -> edit.remove(key)
-                } }
-                assertTrue(edit.commit())
-            } }
+            restore { main { lease?.close() } }
+            restore { restoreFixturePreferenceValues(raw, saved) }
             restore { assertEquals(saved, keys.associateWith { raw.all[it] }) }
             restore { ui.await("Fixture notifications were not removed") { manager.activeNotifications.none { it.tag == tag } } }
         }

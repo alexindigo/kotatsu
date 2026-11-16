@@ -9,7 +9,7 @@ import org.junit.Test
 
 /** Shell input traverses the real window/pointer owner, not a synthetic direction callback. */
 class AllAppsSwipeInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -53,11 +53,47 @@ class AllAppsSwipeInstrumentedTest {
         }
     }
 
+    private fun crossAxisSwipe(model: MainViewModel, vertical: Boolean, duration: Int) {
+        val items = model.orderedApps.take(model.appsPerPage).mapNotNull { app ->
+            ui.findAncestor(app.label) { it.isClickable }?.let { node ->
+                android.graphics.Rect().also(node::getBoundsInScreen)
+            }
+        }
+        assertTrue("Mounted grid has no app item bounds", items.isNotEmpty())
+        val grid = android.graphics.Rect(items.minOf { it.left }, items.minOf { it.top },
+            items.maxOf { it.right }, items.maxOf { it.bottom })
+        val targets = ui.clickableBounds()
+        val xs = (listOf(grid.left, grid.right) + targets.flatMap { listOf(it.left, it.right) })
+            .filter { it in grid.left..grid.right }.distinct().sorted()
+        val ys = (listOf(grid.top, grid.bottom) + targets.flatMap { listOf(it.top, it.bottom) })
+            .filter { it in grid.top..grid.bottom }.distinct().sorted()
+        val dx = if (vertical) -280 else 70
+        val dy = if (vertical) 40 else -380
+        data class Path(val x: Int, val y: Int, val scale: Double, val area: Int)
+        val path = xs.zipWithNext().flatMap { (left, right) ->
+            ys.zipWithNext().mapNotNull { (top, bottom) ->
+                val x = (left + right) / 2
+                val y = (top + bottom) / 2
+                if (targets.any { it.contains(x, y) }) null else {
+                    val horizontal = if (dx < 0) (x - grid.left).toDouble() / -dx else (grid.right - 1 - x).toDouble() / dx
+                    val longitudinal = if (dy < 0) (y - grid.top).toDouble() / -dy else (grid.bottom - 1 - y).toDouble() / dy
+                    Path(x, y, minOf(1.0, horizontal, longitudinal), (right - left) * (bottom - top))
+                }
+            }
+        }.maxWithOrNull(compareBy<Path> { it.scale }.thenBy { it.area })
+        assertNotNull("Mounted grid has no blank gesture origin", path)
+        val origin = checkNotNull(path)
+        val distance = maxOf(kotlin.math.abs(dx * origin.scale), kotlin.math.abs(dy * origin.scale))
+        val threshold = maxOf(android.view.ViewConfiguration.get(context).scaledTouchSlop.toDouble(),
+            17.5 * context.resources.displayMetrics.density)
+        assertTrue("Blank origin must support a real cross-axis drag", distance > threshold)
+        swipe(origin.x, origin.y, origin.x + (dx * origin.scale).toInt(), origin.y + (dy * origin.scale).toInt(), duration)
+    }
+
     @Test fun crossAxisDriftDoesNotReturnHome() {
         for (vertical in listOf(true, false)) withApps(vertical) { model ->
             for (duration in listOf(100, 250, 600, 1200)) {
-                if (vertical) swipe(380, 330, 100, 370, duration)
-                else swipe(200, 600, 270, 220, duration)
+                crossAxisSwipe(model, vertical, duration)
                 assertPage(model, 0)
             }
         }

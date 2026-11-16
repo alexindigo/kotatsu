@@ -20,6 +20,7 @@ import org.junit.runner.RunWith
 /** Real renderer, full Mudita chapter definitions, and the phone's logical viewport. */
 @RunWith(AndroidJUnit4::class)
 class PaperIndexChaptersInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val expected = linkedMapOf(

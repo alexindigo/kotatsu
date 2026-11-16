@@ -16,6 +16,7 @@ import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
 class ChoiceSheetsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
@@ -42,19 +43,7 @@ class ChoiceSheetsInstrumentedTest {
             }
             test(current, vm, PrefsManager(context), PlatformUiDriver(instrumentation), photos)
         } finally {
-            main {
-                activity?.finish()
-                val edit = raw.edit().clear()
-                before.forEach { (key, value) -> when (value) {
-                    is Boolean -> edit.putBoolean(key, value)
-                    is Int -> edit.putInt(key, value)
-                    is Long -> edit.putLong(key, value)
-                    is Float -> edit.putFloat(key, value)
-                    is String -> edit.putString(key, value)
-                    is Set<*> -> edit.putStringSet(key, value.filterIsInstance<String>().toSet())
-                } }
-                assertTrue(edit.commit())
-            }
+            restoreFixturePreferences(raw, before)
         }
     }
 

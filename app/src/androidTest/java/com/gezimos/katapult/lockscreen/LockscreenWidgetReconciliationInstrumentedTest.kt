@@ -19,7 +19,7 @@ class LockscreenWidgetReconciliationInstrumentedTest {
             val widgets = List(3) { LockscreenWidget(fixture.bind(info), LockscreenWidgetSize.M) }
             instrumentation.runOnMainSync {
                 fixture.restoreExternalSelection(LockscreenWidgetList.encode(widgets))
-                val settings = LockscreenWidgetSettings(context, fixture.prefs)
+                val settings = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
                 try {
                     widgets.forEach { fixture.host.deleteAppWidgetId(it.id) }
                     settings.refresh()
@@ -50,7 +50,7 @@ class LockscreenWidgetReconciliationInstrumentedTest {
                 instrumentation.runOnMainSync {
                     fixture.restoreExternalSelection(LockscreenWidgetList.encode(listOf(unbound, foreign, Int.MAX_VALUE)
                         .map { LockscreenWidget(it, LockscreenWidgetSize.M) }))
-                    val settings = LockscreenWidgetSettings(context, fixture.prefs)
+                    val settings = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
                     try {
                         assertTrue(settings.rows.isEmpty())
                         assertEquals("[]", fixture.prefs.lockscreenWidgets)
@@ -69,7 +69,7 @@ class LockscreenWidgetReconciliationInstrumentedTest {
             val local = listOf(LockscreenWidget(fixture.bind(info), LockscreenWidgetSize.M))
             instrumentation.runOnMainSync {
                 fixture.restoreExternalSelection(LockscreenWidgetList.encode(local))
-                val settings = LockscreenWidgetSettings(context, fixture.prefs)
+                val settings = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
                 try {
                     // Import from another install must not replace a local binding, even if the
                     // imported numeric ID happens to exist on this installation in another host.
@@ -92,7 +92,7 @@ class LockscreenWidgetReconciliationInstrumentedTest {
         WidgetHostTestFixture(context).use { fixture ->
             val info = fixture.providers.singleProvider(weather)
             instrumentation.runOnMainSync {
-                val settings = LockscreenWidgetSettings(context, fixture.prefs)
+                val settings = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
                 try {
                     for (failed in listOf(false, true)) {
                         var pending: Int? = null
@@ -119,7 +119,7 @@ class LockscreenWidgetReconciliationInstrumentedTest {
             try {
                 instrumentation.runOnMainSync {
                     fixture.restoreExternalSelection(LockscreenWidgetList.encode(listOf(widget)))
-                    settings = LockscreenWidgetSettings(context, fixture.prefs)
+                    settings = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
                 }
                 // PackageManager's component-removal event exercises the platform provider-removal
                 // path without uninstalling the separate app/data used by the other suites.

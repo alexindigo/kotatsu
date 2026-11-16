@@ -17,6 +17,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ScrollRailInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

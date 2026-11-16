@@ -24,6 +24,7 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class SensitiveLifecycleInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @Test fun syntheticDirectConsumerCanReentrantlyReadAndRevokePublishedWorkerResult() =
         DirectBadgeAdapterCases.reentrantConsumersCanReadAndRevokeWithoutNotificationUnderWorkerLocks()
     @Test fun policyRefreshAndUnavailableUsagePreserveReorderDraftAndManualFallback() {
@@ -73,15 +74,8 @@ class SensitiveLifecycleInstrumentedTest {
         } finally {
             instrumentation.runOnMainSync {
                 if (model.reorderMode) model.discardReorderExit()
-                val editor = raw.edit()
-                stored.forEach { (key, value) -> when (value) {
-                    is Boolean -> editor.putBoolean(key, value)
-                    is Int -> editor.putInt(key, value)
-                    is String -> editor.putString(key, value)
-                    else -> editor.remove(key)
-                } }
-                editor.commit(); model.loadApps()
             }
+            restoreFixturePreferenceValues(raw, stored)
         }
     }
     @Test fun syntheticStaticAndTimedScreensaverRowsClearAtRenderedConsumerAndReleaseWhenInactive() =
@@ -174,12 +168,8 @@ class SensitiveLifecycleInstrumentedTest {
                 assertNotNull("Stored choice not exposed as a switch: $label", ui.checked(label))
             }
         } finally {
-            instrumentation.runOnMainSync {
-                val editor = raw.edit()
-                stored.forEach { (key, value) -> if (value is Boolean) editor.putBoolean(key, value) else editor.remove(key) }
-                editor.commit()
-            }
             ui.back(); ui.back(); ui.back()
+            restoreFixturePreferenceValues(raw, stored)
         }
     }
     @Test fun strictAtomicImportAndNullableRetainedSubscription() {
@@ -294,12 +284,7 @@ class SensitiveLifecycleInstrumentedTest {
             assertFalse(SensitiveAccess.mediaControls())
             assertEquals(initial[SensitiveChoice.SMS_BADGES.key], prefs.sensitiveChoice(SensitiveChoice.SMS_BADGES))
         } finally {
-            instrumentation.runOnMainSync {
-                val editor = raw.edit()
-                stored.forEach { (key, value) -> if (value is Boolean) editor.putBoolean(key, value) else editor.remove(key) }
-                if (saverPresent) editor.putBoolean("screensaver_enabled", screensaver) else editor.remove("screensaver_enabled")
-                editor.commit()
-            }
+            restoreFixturePreferenceValues(raw, stored + ("screensaver_enabled" to if (saverPresent) screensaver else null))
         }
     }
 
@@ -327,11 +312,7 @@ class SensitiveLifecycleInstrumentedTest {
             instrumentation.waitForIdleSync()
             assertFalse("Exported power entry bypassed selected power activation", ScreensaverActivity.isShowing)
         } finally {
-            instrumentation.runOnMainSync {
-                val editor = raw.edit()
-                stored.forEach { (key, value) -> if (value is Boolean) editor.putBoolean(key, value) else editor.remove(key) }
-                editor.commit()
-            }
+            restoreFixturePreferenceValues(raw, stored)
         }
     }
 

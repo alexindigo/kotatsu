@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit
  */
 @RunWith(AndroidJUnit4::class)
 class IconTileReuseInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @Test fun reusedTileDoesNotInheritPreviousReadiness() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext

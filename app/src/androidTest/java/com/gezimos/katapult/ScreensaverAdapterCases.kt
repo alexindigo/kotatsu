@@ -38,7 +38,7 @@ internal object ScreensaverAdapterCases {
         fun late(epoch: Long): Boolean = sources.publish(epoch, true, mapOf("com.android.calendar" to 9))
     }
 
-    fun staticAndTimedConsumersClearImmediatelyAndReleaseWhenInactive() {
+    fun staticAndTimedConsumersClearImmediatelyAndReleaseWhenInactive() = ConnectedUiStateFixture().use {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val raw = context.getSharedPreferences("katapult_prefs", 0)
@@ -56,6 +56,7 @@ internal object ScreensaverAdapterCases {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }) as ScreensaverActivity
                 val feed = Feed()
+                try {
                 instrumentation.runOnMainSync { activity.setContent { ScreensaverView(feed) } }
                 ui.await("Synthetic screensaver row did not render in mode $mode") { ui.has("Calendar") && ui.has("2") }
                 assertTrue(feed.leases.demanded)
@@ -63,11 +64,13 @@ internal object ScreensaverAdapterCases {
                 ui.await("Policy invalidation left a static/timed row on screen in mode $mode") { !ui.has("Calendar") && !ui.has("2") }
                 assertFalse(feed.late(old))
                 assertFalse(ui.has("Calendar"))
-                instrumentation.runOnMainSync { activity.finish() }
+                ConnectedUiStateFixture.closeOwnedActivities()
                 ui.await("Screensaver inactivity retained source ownership") { !feed.leases.demanded && feed.listeners.isEmpty() }
                 assertFalse(ScreensaverActivity.isShowing)
+                } finally { ConnectedUiStateFixture.closeOwnedActivities() }
             }
         } finally {
+            ConnectedUiStateFixture.closeOwnedActivities()
             instrumentation.runOnMainSync {
                 val editor = raw.edit()
                 original.forEach { (key, value) ->

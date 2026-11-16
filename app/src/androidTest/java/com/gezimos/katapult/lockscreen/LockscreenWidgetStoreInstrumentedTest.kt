@@ -46,8 +46,8 @@ class LockscreenWidgetStoreInstrumentedTest {
             lateinit var held: LockscreenWidgetSettings
             lateinit var second: LockscreenWidgetSettings
             instrumentation.runOnMainSync {
-                held = LockscreenWidgetSettings(paused, PrefsManager(paused))
-                second = LockscreenWidgetSettings(context, fixture.prefs)
+                held = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(paused, PrefsManager(paused)))
+                second = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
             }
             val executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "held-widget-editor") }
             try {
@@ -121,10 +121,10 @@ class LockscreenWidgetStoreInstrumentedTest {
             val initial = ids.map { LockscreenWidget(it, LockscreenWidgetSize.S) }
             assertEquals(LockscreenWidgetStore.Result.APPLIED, fixture.prefs.lockscreenWidgetStore.replaceImportedSelection(LockscreenWidgetList.encode(initial)))
             instrumentation.runOnMainSync {
-                val first = LockscreenWidgetSettings(context, fixture.prefs)
-                val second = LockscreenWidgetSettings(context, PrefsManager(object : ContextWrapper(context) {
+                val first = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
+                val second = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, PrefsManager(object : ContextWrapper(context) {
                     override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = fixture.raw
-                }))
+                })))
                 try {
                     second.move(ids.last(), -2)
                     second.resize(ids[1], LockscreenWidgetSize.M)

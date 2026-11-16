@@ -14,7 +14,7 @@ import org.junit.Test
 
 /** Regressions for the chapter pager's ownership relative to its scrollable content. */
 class SettingsSwipeOwnerInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

@@ -21,6 +21,7 @@ import org.junit.runner.RunWith
 /** Exercise the production mixed-menu and multi-select consumers without allocating real widgets. */
 @RunWith(AndroidJUnit4::class)
 class PaperIndexSheetsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

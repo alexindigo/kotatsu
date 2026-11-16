@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class StoredFeatureSwitchInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     @Test fun notificationsCanBeTurnedOffWithoutService() = checkSwitch(
         R.string.cat_lockscreen, R.string.lockscreen_widget, R.string.lockscreen_widget_desc, "lockscreen_widget",
         { lockscreenWidget }, { lockscreenWidget = it },
@@ -96,16 +96,7 @@ class StoredFeatureSwitchInstrumentedTest {
             assertEquals("Unavailable enable attempt wrote a preference", 0, writes.get())
         } finally {
             shared.unregisterOnSharedPreferenceChangeListener(listener)
-            instrumentation.runOnMainSync {
-                activity?.finish()
-                // The runner can end this process next: restoration must reach disk,
-                // and absent preferences must remain absent rather than acquire defaults.
-                val editor = shared.edit()
-                saved.forEach { (name, value) ->
-                    if (value is Boolean) editor.putBoolean(name, value) else editor.remove(name)
-                }
-                assertTrue("Could not restore stored feature preferences", editor.commit())
-            }
+            restoreFixturePreferenceValues(shared, saved)
         }
     }
 }

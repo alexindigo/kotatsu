@@ -20,6 +20,7 @@ import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class ConfigImportInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 

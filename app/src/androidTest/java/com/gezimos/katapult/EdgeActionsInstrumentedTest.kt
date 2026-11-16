@@ -28,6 +28,7 @@ import org.junit.Test
 import java.util.UUID
 
 class EdgeActionsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 

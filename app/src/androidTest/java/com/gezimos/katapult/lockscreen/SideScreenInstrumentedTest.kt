@@ -15,6 +15,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class SideScreenInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -141,7 +142,7 @@ class SideScreenInstrumentedTest {
             lateinit var first: LockscreenWidgetSettings
             lateinit var restored: LockscreenWidgetSettings
             var replacement = -1
-            main { first = LockscreenWidgetSettings(context, fixture.prefs); restored = LockscreenWidgetSettings(context, fixture.prefs) }
+            main { first = ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs)); restored = ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs)) }
             try {
                 instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                 try { main { first.add(info, { fail("Bind permitted") }, { replacement = it }, 0) } }
@@ -207,7 +208,7 @@ class SideScreenInstrumentedTest {
             val info = fixture.providers.singleProvider(instrumentation.context.packageName)
             lateinit var settings: LockscreenWidgetSettings
             var pending = -1
-            main { settings = LockscreenWidgetSettings(context, fixture.prefs) }
+            main { settings = ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs)) }
             try {
                 instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
                 try { main { settings.add(info, { fail("Expected allowed bind") }, { pending = it }, 0) } }
@@ -269,6 +270,18 @@ class SideScreenInstrumentedTest {
                     }
                     ready
                 }
+                val publicationId = instrumentation.context.resources.getIdentifier(
+                    "fixture_publication", "id", instrumentation.context.packageName)
+                assertTrue("Provider publication marker missing from test APK", publicationId != 0)
+                ui.await("Hosted provider did not apply its title-hiding update") {
+                    var confirmed = false
+                    main {
+                        confirmed = descendants(slot).filterIsInstance<TextView>().any {
+                            it.id == publicationId && it.text.toString() == SideTestWidget.titlePublication(id, true)
+                        }
+                    }
+                    confirmed
+                }
                 main {
                     assertFalse(list.isVerticalScrollBarEnabled)
                     assertTrue(descendants(root).filterIsInstance<TextView>().none { it.text.toString() == "Fixture heading" && it.visibility == View.VISIBLE })
@@ -326,7 +339,7 @@ class SideScreenInstrumentedTest {
                 assertFalse(ui.has(context.getString(R.string.edge_task_scroll)))
                 main { root.dispose() }
                 assertFalse(fixture.manager.getAppWidgetOptions(id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
-            } finally { main { if (created) root.dispose(); activity.finish(); fixture.host.releaseViews() } }
+            } finally { main { if (created) root.dispose() }; ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
         }
     }
 
@@ -388,10 +401,11 @@ class SideScreenInstrumentedTest {
                     root!!.dispose()
                     assertTrue(fixture.manager.getAppWidgetOptions(box.id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
                 }
-            } finally { main {
-                root?.dispose(); fixture.host.hideWidgets(context); fixture.host.listen(false)
-                activity.finish(); fixture.host.releaseViews()
-            } }
+            } finally {
+                main { root?.dispose(); fixture.host.hideWidgets(context); fixture.host.listen(false) }
+                ConnectedUiStateFixture.closeOwnedActivities()
+                main { fixture.host.releaseViews() }
+            }
         }
     }
 
@@ -475,7 +489,7 @@ class SideScreenInstrumentedTest {
                     assertTrue(descendants(root).filterIsInstance<HostedWidgetSlot>().all { it.childCount == 0 })
                     assertFalse(fixture.manager.getAppWidgetOptions(id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
                 }
-            } finally { main { if (created) page.close(); activity.finish(); fixture.host.releaseViews() } }
+            } finally { main { if (created) page.close() }; ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
         }
     }
 
@@ -534,6 +548,7 @@ class SideScreenInstrumentedTest {
         WidgetHostTestFixture(context).use { fixture ->
             val id = fixture.bind(fixture.providers.singleProvider(instrumentation.context.packageName))
             try {
+                ConnectedUiStateFixture.prepareForegroundService()
                 nativeKeyguard.setPin()
                 accessibility = com.gezimos.katapult.ActionServiceSettingsFixture.on()
                 ui.await("Action Service did not connect", 15000) { instance.get(null) != null }

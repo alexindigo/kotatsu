@@ -31,6 +31,8 @@ import java.util.UUID
 /** Public choice/picker input, real MainActivity, and end-of-chain Home framebuffer probes. */
 @RunWith(AndroidJUnit4::class)
 class WallpaperSourceInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule(restorePreferences =
+        androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("wallpaperPhase") == null)
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -234,16 +236,7 @@ class WallpaperSourceInstrumentedTest {
     })
 
     private fun restorePreferences(values: Map<String, *>) {
-        val editor = raw.edit().clear()
-        values.forEach { (key, value) -> when (value) {
-            is String -> editor.putString(key, value)
-            is Boolean -> editor.putBoolean(key, value)
-            is Int -> editor.putInt(key, value)
-            is Long -> editor.putLong(key, value)
-            is Float -> editor.putFloat(key, value)
-            is Set<*> -> editor.putStringSet(key, value.filterIsInstance<String>().toSet())
-        } }
-        assertTrue(editor.commit())
+        restoreFixturePreferences(raw, values)
     }
 
     private fun assertChoice(source: WallpaperSource) {

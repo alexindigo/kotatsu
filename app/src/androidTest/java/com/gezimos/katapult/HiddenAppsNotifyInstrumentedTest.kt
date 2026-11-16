@@ -20,6 +20,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class HiddenAppsNotifyInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val prefs = PrefsManager(context)
@@ -153,22 +154,7 @@ class HiddenAppsNotifyInstrumentedTest {
         val saved = keys.associateWith { raw.all[it] }
         assertTrue(saved.values.all { it == null || it is Set<*> || it is Boolean || it is Int })
         try { block() } finally {
-            instrumentation.runOnMainSync {
-                val editor = raw.edit()
-                saved.forEach { (key, value) ->
-                    when (value) {
-                        is Set<*> -> {
-                            assertTrue(value.all { it is String })
-                            @Suppress("UNCHECKED_CAST")
-                            editor.putStringSet(key, value as Set<String>)
-                        }
-                        is Boolean -> editor.putBoolean(key, value)
-                        is Int -> editor.putInt(key, value)
-                        else -> editor.remove(key)
-                    }
-                }
-                assertTrue("Could not restore hidden notification preferences", editor.commit())
-            }
+            restoreFixturePreferenceValues(raw, saved)
         }
     }
 }

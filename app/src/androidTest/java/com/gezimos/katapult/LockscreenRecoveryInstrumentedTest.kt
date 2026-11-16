@@ -23,6 +23,7 @@ import java.util.Locale
 
 @RunWith(AndroidJUnit4::class)
 class LockscreenRecoveryInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
 
@@ -35,7 +36,7 @@ class LockscreenRecoveryInstrumentedTest {
     private fun withModel(test: (MainViewModel) -> Unit) {
         val name = "f6-${UUID.randomUUID()}"
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
-        val owner = ViewModelStore()
+        val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
         try {
             instrumentation.runOnMainSync {

@@ -17,6 +17,8 @@ import org.junit.runner.RunWith
 /** The separate APK is exercised through the launcher's real host and public Weather controls. */
 @RunWith(AndroidJUnit4::class)
 class WeatherHostPersistenceInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule(restorePreferences =
+        InstrumentationRegistry.getArguments().getString("retainWeatherFixture") != "true")
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val weather = "com.alexindigo.kotatsu.weather.debug"

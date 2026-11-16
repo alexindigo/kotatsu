@@ -16,6 +16,7 @@ import org.junit.Rule
 import java.io.File
 
 class AppearanceInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @get:Rule val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
@@ -26,16 +27,7 @@ class AppearanceInstrumentedTest {
     private fun preserve(test: () -> Unit) {
         val before = raw.all
         try { test() } finally {
-            main {
-                raw.edit().clear().apply { before.forEach { (key, value) -> when (value) {
-                    is Boolean -> putBoolean(key, value)
-                    is Int -> putInt(key, value)
-                    is Long -> putLong(key, value)
-                    is Float -> putFloat(key, value)
-                    is String -> putString(key, value)
-                    is Set<*> -> putStringSet(key, value.filterIsInstance<String>().toSet())
-                } } }.commit()
-            }
+            restoreFixturePreferences(raw, before)
         }
     }
 

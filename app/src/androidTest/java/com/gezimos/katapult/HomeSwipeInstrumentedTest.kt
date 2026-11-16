@@ -17,6 +17,7 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class HomeSwipeInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -30,7 +31,7 @@ class HomeSwipeInstrumentedTest {
 
     private fun withHome(vertical: Boolean, choice: HomeAppSwipe = HomeAppSwipe.DEFAULT, test: (MainViewModel) -> Unit) {
         WidgetHostTestFixture(context).use { fixture ->
-            val owner = ViewModelStore()
+            val owner = ownedViewModelStore()
             lateinit var model: MainViewModel
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, fixture.raw))

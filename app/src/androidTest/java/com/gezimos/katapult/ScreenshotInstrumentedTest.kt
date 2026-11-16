@@ -37,6 +37,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.CopyOnWriteArrayList
 
 class ScreenshotInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
@@ -61,7 +62,7 @@ class ScreenshotInstrumentedTest {
         assertTrue("Preview frame was not committed", committed.await(5, TimeUnit.SECONDS))
     }
 
-    private fun withService(test: (LockscreenWidgetService, MainActivity) -> Unit) {
+    private fun withService(test: (LockscreenWidgetService, MainActivity) -> Unit) = ConnectedUiStateFixture().use {
         var accessibility: ActionServiceSettingsFixture? = null
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
@@ -69,6 +70,7 @@ class ScreenshotInstrumentedTest {
             .associateWith { shell("settings get global $it") }
         var activity: MainActivity? = null
         try {
+            ConnectedUiStateFixture.prepareForegroundService()
             // Compare captures of a stable app, not two different phases of Android's entry animation.
             animationScales.keys.forEach { shell("settings put global $it 0") }
             raw.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true)
@@ -83,16 +85,9 @@ class ScreenshotInstrumentedTest {
             assertTrue(service.serviceInfo.capabilities and AccessibilityServiceInfo.CAPABILITY_CAN_TAKE_SCREENSHOT != 0)
             test(service, home)
         } finally {
-          try { main { activity?.finish() } } finally {
+          try { ConnectedUiStateFixture.closeOwnedActivities() } finally {
            try { accessibility?.close() } finally {
-            try { raw.edit().clear().apply { before.forEach { (key, value) -> when (value) {
-                is Boolean -> putBoolean(key, value)
-                is Int -> putInt(key, value)
-                is Long -> putLong(key, value)
-                is Float -> putFloat(key, value)
-                is String -> putString(key, value)
-                is Set<*> -> putStringSet(key, value.filterIsInstance<String>().toSet())
-            } } }.commit() } finally {
+             try { restoreFixturePreferences(raw, before) } finally {
             animationScales.forEach { (key, value) ->
                 if (value == "null") shell("settings delete global $key") else shell("settings put global $key $value")
             }

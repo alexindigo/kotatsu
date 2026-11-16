@@ -35,6 +35,7 @@ import java.util.concurrent.atomic.AtomicReference
 /** Mudita-like normalized source -> shared feed -> real Home -> framebuffer. */
 @RunWith(AndroidJUnit4::class)
 class WeatherGlyphInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -58,7 +59,7 @@ class WeatherGlyphInstrumentedTest {
         val feed = WeatherFeed({ WeatherFeed.Source(reading, { reading.get() }, {
             changed.set(it); AutoCloseable { }
         }) }, worker, Executor { handler.post(it) }, SystemClock::elapsedRealtime)
-        val owner = ViewModelStore()
+        val owner = com.gezimos.katapult.ownedViewModelStore()
         var activity: MainActivity? = null
         try {
             assertTrue(prefs.edit().putString("clock_format", "'10:45'")
@@ -115,6 +116,7 @@ class WeatherGlyphInstrumentedTest {
             }
         } finally {
             instrumentation.runOnMainSync { activity?.finish(); owner.clear() }
+            com.gezimos.katapult.ConnectedUiStateFixture.quiesceOwnedProducers()
             feed.close()
             worker.shutdown()
             assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS))

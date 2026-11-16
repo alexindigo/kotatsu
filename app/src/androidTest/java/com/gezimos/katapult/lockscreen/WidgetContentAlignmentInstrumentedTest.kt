@@ -18,6 +18,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class WidgetContentAlignmentInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -120,7 +121,9 @@ class WidgetContentAlignmentInstrumentedTest {
                     }
                 }
             } finally {
-                main { root?.dispose(); activity.finish(); fixture.host.releaseViews() }
+                main { root?.dispose() }
+                com.gezimos.katapult.ConnectedUiStateFixture.closeOwnedActivities()
+                main { fixture.host.releaseViews() }
             }
         }
     }

@@ -78,6 +78,22 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
 
     fun has(label: String): Boolean = find(label) != null
 
+    /** Mounted input targets, including duplicate app labels; never infer empty space from names. */
+    fun clickableBounds(): List<Rect> {
+        val bounds = mutableListOf<Rect>()
+        fun visit(node: AccessibilityNodeInfo) {
+            if (!node.refresh()) return
+            if (node.isVisibleToUser && node.isClickable) {
+                val rect = Rect()
+                node.getBoundsInScreen(rect)
+                if (!rect.isEmpty) bounds.add(rect)
+            }
+            for (index in 0 until node.childCount) node.getChild(index)?.let(::visit)
+        }
+        focusedRoot()?.let(::visit)
+        return bounds
+    }
+
     /**
      * Returns the matching node or its closest matching ancestor, freshly queried.
      * refresh() bypasses Android's cache without updating it, so parent lookups

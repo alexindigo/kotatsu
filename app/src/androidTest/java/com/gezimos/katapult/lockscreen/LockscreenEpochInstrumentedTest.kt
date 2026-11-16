@@ -23,6 +23,7 @@ import org.junit.runner.RunWith
 /** Actual service lifecycle and cross-APK options delivery; positive Kompakt box display is device-only. */
 @RunWith(AndroidJUnit4::class)
 class LockscreenEpochInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
@@ -72,6 +73,7 @@ class LockscreenEpochInstrumentedTest {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
         } }
         try {
+            com.gezimos.katapult.ConnectedUiStateFixture.prepareForegroundService()
             PrefsManager(context).lockscreenMessage = "Epoch test"
             nativeKeyguard.setPin()
             accessibility = ActionServiceSettingsFixture.on()
@@ -118,10 +120,7 @@ class LockscreenEpochInstrumentedTest {
             restore { nativeKeyguard.close() }
             restore { accessibility?.close() }
             restore {
-            val edit = raw.edit()
-            if (before.containsKey("lockscreen_message")) edit.putString("lockscreen_message", before["lockscreen_message"] as String)
-            else edit.remove("lockscreen_message")
-            assertTrue(edit.commit())
+                com.gezimos.katapult.restoreFixturePreferenceValues(raw, mapOf("lockscreen_message" to before["lockscreen_message"]))
             }
             restore {
             await("Keyguard restored unlocked") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }

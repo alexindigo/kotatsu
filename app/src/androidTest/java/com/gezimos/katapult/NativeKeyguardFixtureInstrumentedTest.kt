@@ -9,6 +9,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class NativeKeyguardFixtureInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @Test fun failedUnlockStillClearsOwnedPinAndPreservesFailure() {
         val keyguard = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(KeyguardManager::class.java)
         val expected = AssertionError("Injected unlock failure")

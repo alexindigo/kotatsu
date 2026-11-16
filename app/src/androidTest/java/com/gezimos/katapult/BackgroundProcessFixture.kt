@@ -6,6 +6,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 
 /** Owns the Activity transition and native process prerequisite for the real kill adapter. */
 internal class BackgroundProcessFixture : AutoCloseable {
+    private val state = ConnectedUiStateFixture()
     companion object {
         const val PACKAGE_NAME = "org.chromium.webview_shell"
         // Android 12's killBackgroundProcesses uses SERVICE_ADJ, not UID state/importance.
@@ -45,5 +46,5 @@ internal class BackgroundProcessFixture : AutoCloseable {
     private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
         instrumentation.platformAutomation.executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
 
-    override fun close() { instrumentation.runOnMainSync { home.finish() } }
+    override fun close() { state.close() }
 }

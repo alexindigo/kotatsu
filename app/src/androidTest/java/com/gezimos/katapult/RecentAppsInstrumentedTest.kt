@@ -26,7 +26,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecentAppsInstrumentedTest {
-    @get:Rule val accessibility = ActionServiceOffRule()
+    @get:Rule val accessibility = ConnectedUiStateRule()
     @get:Rule val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
@@ -438,7 +438,8 @@ class RecentAppsInstrumentedTest {
                 recent.available && recent.apps.isNotEmpty() && !ui.has("Usage access is off")
             }
             assertTrue(recent.visible)
-            main { recent.back(); home.finish() }
+            main { recent.back() }
+            ConnectedUiStateFixture.closeOwnedActivities()
             val permissions = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
             activity = permissions
@@ -454,9 +455,9 @@ class RecentAppsInstrumentedTest {
             ui.await("Usage settings fixture did not return to Permissions") { ui.packageVisible(context.packageName) }
         } finally {
             instrumentation.removeMonitor(monitor)
-            main { activity?.finish() }
+            ConnectedUiStateFixture.quiesceOwnedProducers()
             shell("appops set ${context.packageName} GET_USAGE_STATS $restore")
-            prefs.edit().apply { saved.forEach { (key, value) -> if (value == null) remove(key) else putBoolean(key, value as Boolean) } }.commit()
+            restoreFixturePreferenceValues(prefs, saved)
         }
     }
 

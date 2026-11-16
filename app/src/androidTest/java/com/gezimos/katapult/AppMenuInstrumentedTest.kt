@@ -11,6 +11,7 @@ import org.junit.Test
 import java.io.File
 
 class AppMenuInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val testContext = instrumentation.context
@@ -187,6 +188,7 @@ class AppMenuInstrumentedTest {
     }
 
     @Test fun appListsHideAndAndroidHandoff() = fixture { _, model ->
+        AndroidSettingsTaskFixture.assertEmpty()
         ui.click(camera.label, longPress = true)
         ui.click("Android")
         ui.await("Non-system app must offer uninstall") { ui.has("Uninstall") }

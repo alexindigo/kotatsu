@@ -32,6 +32,7 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class WeatherFeedInstrumentedTest {
+    @get:org.junit.Rule val nativeState = com.gezimos.katapult.ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
@@ -110,7 +111,7 @@ class WeatherFeedInstrumentedTest {
         val feed = WeatherFeed({ WeatherFeed.Source(reading, { reading.get() }, {
             registrations.incrementAndGet(); changed.set(it); AutoCloseable { closes.incrementAndGet() }
         }) }, worker, Executor { handler.post(it) }, SystemClock::elapsedRealtime)
-        val owner = androidx.lifecycle.ViewModelStore()
+        val owner = com.gezimos.katapult.ownedViewModelStore()
         var failure: Throwable? = null
         fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
@@ -176,6 +177,7 @@ class WeatherFeedInstrumentedTest {
             if (failure == null) failure = error else failure!!.addSuppressed(error)
         } }
         try {
+            com.gezimos.katapult.ConnectedUiStateFixture.prepareForegroundService()
             assertNull("Fixture requires no existing service", main { service() })
             singleton.set(null, feed)
             assertTrue(raw.edit().putBoolean("lockscreen_weather", true).commit())

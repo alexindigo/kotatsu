@@ -15,7 +15,7 @@ import org.junit.Test
 
 /** Exercise the shared chapter owner, with a choice deliberately on its later page. */
 class SettingsKeepPageInstrumentedTest {
-    @get:org.junit.Rule val accessibility = ActionServiceOffRule()
+    @get:org.junit.Rule val accessibility = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)

@@ -17,6 +17,7 @@ import java.util.UUID
 
 @RunWith(AndroidJUnit4::class)
 class LockscreenWeatherSettingsInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private class TestApplication(base: Context, private val store: SharedPreferences) : Application() {
         init { attachBaseContext(base) }
         override fun getSharedPreferences(name: String, mode: Int): SharedPreferences =
@@ -33,7 +34,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
         }) as MainActivity
         val name = "l3-${UUID.randomUUID()}"
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
-        val owner = ViewModelStore()
+        val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
         try {
             instrumentation.runOnMainSync {
@@ -77,6 +78,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
                 owner.clear()
                 activity.finish()
             }
+            ConnectedUiStateFixture.quiesceOwnedProducers()
             deleteTestPreferences(context, name)
         }
     }

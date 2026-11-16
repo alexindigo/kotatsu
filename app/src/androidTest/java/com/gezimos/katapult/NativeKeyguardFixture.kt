@@ -131,6 +131,39 @@ internal object NativeDisplayInputState {
         interactive && displayState == Display.STATE_ON
 }
 
+/** Restore native state while the enclosing service lease is still OFF. */
+internal class NativeDisplayFixture : AutoCloseable {
+    private val context = InstrumentationRegistry.getInstrumentation().targetContext
+    private val power = context.getSystemService(PowerManager::class.java)
+    private val keyguard = context.getSystemService(KeyguardManager::class.java)
+    private val interactive = power.isInteractive
+    private val locked = keyguard.isKeyguardLocked
+    private val native = NativeKeyguardFixture()
+    private var closed = false
+
+    init {
+        try { native.unlock() } catch (error: Throwable) {
+            try { close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
+            throw error
+        }
+    }
+
+    override fun close() {
+        if (closed) return
+        closed = true
+        fixtureCleanup(
+            { native.close() },
+            {
+                if (!interactive || locked) native.sleep()
+                if (interactive && locked) native.wake()
+                fixtureAwait("Native display/keyguard did not restore") {
+                    power.isInteractive == interactive && keyguard.isKeyguardLocked == locked
+                }
+            },
+        )
+    }
+}
+
 /** UiAutomation uses Runtime.exec(String), not a shell. In particular, `input keyevent`
  * treats following tokens as more keys: an accidental compound swipe can inject SYSRQ. */
 internal object NativeFixtureCommand {

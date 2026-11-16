@@ -41,6 +41,7 @@ import kotlinx.coroutines.cancel
 /** Consumer pixel probes: real owned wallpaper file -> model -> actual Home framebuffer. */
 @RunWith(AndroidJUnit4::class)
 class HomeContrastInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
@@ -58,7 +59,7 @@ class HomeContrastInstrumentedTest {
         val store = context.getSharedPreferences(name, Context.MODE_PRIVATE)
         val root = File(context.filesDir, name).apply { check(mkdir()) }
         val app = TestApplication(context.applicationContext, store, root)
-        val owner = ViewModelStore()
+        val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
         var activity: MainActivity? = null
         try {
@@ -187,6 +188,7 @@ class HomeContrastInstrumentedTest {
             }
         } finally {
             instrumentation.runOnMainSync { activity?.finish(); owner.clear() }
+            ConnectedUiStateFixture.quiesceOwnedProducers()
             assertTrue(root.deleteRecursively())
             deleteTestPreferences(context, name)
         }
@@ -235,6 +237,7 @@ class HomeContrastInstrumentedTest {
             assertSame("Layout movement rebuilt wallpaper map", map, contrast.map)
         } finally {
             instrumentation.runOnMainSync { activity.finish(); scope.cancel() }
+            ConnectedUiStateFixture.quiesceOwnedProducers()
             wallpaper.recycle()
         }
     }

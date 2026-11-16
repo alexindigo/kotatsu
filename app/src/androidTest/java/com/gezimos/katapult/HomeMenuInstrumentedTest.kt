@@ -16,6 +16,7 @@ import org.junit.Test
 import java.io.File
 
 class HomeMenuInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     @get:Rule val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
@@ -33,14 +34,7 @@ class HomeMenuInstrumentedTest {
                 test(f)
             }
         } finally {
-            main { raw.edit().clear().apply { before.forEach { (key, value) -> when (value) {
-                is Boolean -> putBoolean(key, value)
-                is Int -> putInt(key, value)
-                is Long -> putLong(key, value)
-                is Float -> putFloat(key, value)
-                is String -> putString(key, value)
-                is Set<*> -> putStringSet(key, value.filterIsInstance<String>().toSet())
-            } } }.commit() }
+            restoreFixturePreferences(raw, before)
         }
     }
 

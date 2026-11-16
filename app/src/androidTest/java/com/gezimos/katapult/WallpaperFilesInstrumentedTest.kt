@@ -33,6 +33,7 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class WallpaperFilesInstrumentedTest {
+    @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val key = "__f4_owned_icon__"
@@ -49,7 +50,7 @@ class WallpaperFilesInstrumentedTest {
         val name = "f4-${UUID.randomUUID()}"
         val store = context.getSharedPreferences(name, Context.MODE_PRIVATE)
         val root = File(context.filesDir, name).apply { assertTrue(mkdir()) }
-        val owner = ViewModelStore()
+        val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
         try {
             instrumentation.runOnMainSync {
