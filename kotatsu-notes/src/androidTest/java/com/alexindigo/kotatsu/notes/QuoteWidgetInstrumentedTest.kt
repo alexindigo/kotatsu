@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.notes
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -136,12 +138,12 @@ class QuoteWidgetInstrumentedTest {
         Host().use { f ->
             val old = NotesRuntime.unlocked
             val notes = QuoteRuntime.notes
-            try {
+            withFixtureCleanup({ NotesRuntime.unlocked = old }, { QuoteRuntime.notes = notes }) {
                 NotesRuntime.unlocked = { false }
                 QuoteRuntime.notes = { error("Credential-protected Notes must not be opened") }
                 NotesRuntime.enqueue { QuoteRuntime.refresh(context) }.get()
                 await("Direct boot must clear the old quote") { f.text().isEmpty() && f.author().isEmpty() }
-            } finally { NotesRuntime.unlocked = old; QuoteRuntime.notes = notes }
+            }
         }
     }
 
@@ -325,7 +327,7 @@ class QuoteWidgetInstrumentedTest {
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, f.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as QuoteConfigureActivity
             val ui = NotesSettingsUi(instrumentation)
             fun click(label: String) = ui.click(label)
-            try {
+            withFixtureCleanup({ main { activity.finish() } }) {
                 click(context.getString(R.string.settings_note)); click("Kotatsu quotes")
                 await("Picker choice must persist and render") { QuoteStore(context).config()?.noteId == 7L && f.text() == "First quote" }
                 click(context.getString(R.string.settings_changes))
@@ -334,7 +336,7 @@ class QuoteWidgetInstrumentedTest {
                 click(context.getString(R.string.quote_order))
                 click(context.getString(R.string.quote_shuffle))
                 await("Order must persist") { QuoteStore(context).config()?.order == QuoteOrder.SHUFFLE }
-            } finally { main { activity.finish() } }
+            }
             val keys = listOf(R.string.quote_label, R.string.quote_description, R.string.choose_note, R.string.choose_quotes,
                 R.string.no_text_notes, R.string.untitled_note, R.string.quote_frequency, R.string.quote_order,
                 R.string.quote_daily, R.string.quote_hourly, R.string.quote_on_wake, R.string.quote_rotation,

@@ -9,6 +9,8 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -28,7 +30,14 @@ class CrossPackageHostInstrumentedTest {
         fixture("reset")
         var id = -1
         val clock = QuoteRuntime.clock
-        try {
+        withFixtureCleanup(
+            { fixture("host-close") },
+            { await("Quote host must release") { fixture("host-stats").getString("hostState") == null } },
+            { if (id >= 0) NotesRuntime.enqueue {
+                fixtureCleanup({ QuoteStore(context).delete(id) }, { QuoteRuntime.refresh(context) })
+            }.get() },
+            { QuoteRuntime.clock = clock },
+        ) {
             QuoteRuntime.clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneId.of("UTC"))
             context.startActivity(Intent().setComponent(ComponentName(instrumentation.context.packageName, NotesCrossPackageHostActivity::class.java.name))
                 .putExtra("providerPackage", context.packageName).putExtra("providerClass", QuoteWidgetProvider::class.java.name)
@@ -52,11 +61,6 @@ class CrossPackageHostInstrumentedTest {
             val png = fixture("host-capture").getByteArray("png")!!
             val directory = java.io.File(context.getExternalFilesDir(null), "notes-renders").apply { mkdirs() }
             java.io.File(directory, "widget-quote-cross-package.png").writeBytes(png)
-        } finally {
-            fixture("host-close")
-            await("Quote host must release") { fixture("host-stats").getString("hostState") == null }
-            if (id >= 0) NotesRuntime.enqueue { QuoteStore(context).delete(id); QuoteRuntime.refresh(context) }.get()
-            QuoteRuntime.clock = clock
         }
     }
 
@@ -64,7 +68,13 @@ class CrossPackageHostInstrumentedTest {
         fixture("reset")
         val testPackage = instrumentation.context.packageName
         var widgetId = -1
-        try {
+        withFixtureCleanup(
+            { fixture("host-close") },
+            { await("Other package must release its widget") { fixture("host-stats").getString("hostState") == null } },
+            { if (widgetId >= 0) NotesRuntime.enqueue {
+                fixtureCleanup({ NotesStore(context).delete(widgetId, true) }, { NotesRuntime.arm(context) })
+            }.get() },
+        ) {
             context.startActivity(Intent().setComponent(ComponentName(testPackage, NotesCrossPackageHostActivity::class.java.name))
                 .putExtra("providerPackage", context.packageName)
                 .putExtra("providerClass", NotesWidgetProvider::class.java.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -146,10 +156,6 @@ class CrossPackageHostInstrumentedTest {
                 (bounds.left until bounds.right).any { x -> (frame.getPixel(x, y) and 0xffffff) < 0x808080 }
             })
             frame.recycle()
-        } finally {
-            fixture("host-close")
-            await("Other package must release its widget") { fixture("host-stats").getString("hostState") == null }
-            if (widgetId >= 0) NotesRuntime.enqueue { NotesStore(context).delete(widgetId, true); NotesRuntime.arm(context) }.get()
         }
     }
 }

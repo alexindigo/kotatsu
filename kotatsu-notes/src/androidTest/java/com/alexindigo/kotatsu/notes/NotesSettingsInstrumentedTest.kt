@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
 import org.junit.Assert.*
 import org.junit.Test
 
@@ -38,7 +40,7 @@ class NotesSettingsInstrumentedTest {
         assertTrue(NotesRuntime.ids(context).isEmpty())
         assertTrue(QuoteRuntime.ids(context).isEmpty())
         val root = open(NotesEntryActivity::class.java)
-        try {
+        withFixtureCleanup({ close(root) }) {
             ui.await(text(R.string.settings_widgets))
             ui.await(text(R.string.settings_changes))
             ui.await(text(R.string.quote_order))
@@ -49,9 +51,9 @@ class NotesSettingsInstrumentedTest {
                     48f * context.resources.displayMetrics.density, bounds.height().toFloat(), 1f)
             }
             ui.capture(root, "root-1")
-        } finally { close(root) }
+        }
         val task = open(ConfigureActivity::class.java)
-        try {
+        withFixtureCleanup({ close(task) }) {
             ui.click(text(R.string.settings_note))
             ui.awaitPage(text(R.string.settings_note)); ui.await("Kotatsu long list")
             ui.capture(task, "task-note-unselected")
@@ -66,9 +68,9 @@ class NotesSettingsInstrumentedTest {
             assertTrue(ui.selected("Kotatsu long list"))
             ui.capture(task, "task-note-selected")
             ui.back()
-        } finally { close(task) }
+        }
         val quote = open(QuoteConfigureActivity::class.java)
-        try {
+        withFixtureCleanup({ close(quote) }) {
             ui.click(text(R.string.settings_changes)); ui.await(text(R.string.quote_daily))
             ui.capture(quote, "changes")
             ui.click(text(R.string.quote_hourly))
@@ -87,10 +89,9 @@ class NotesSettingsInstrumentedTest {
             ui.click(text(R.string.settings_note)); ui.awaitPage(text(R.string.settings_note)); ui.await("Kotatsu quotes")
             assertTrue(ui.selected("Kotatsu quotes"))
             ui.capture(quote, "quote-note-selected")
-        } finally { close(quote) }
+        }
         val reopened = open(QuoteConfigureActivity::class.java)
-        try { ui.await("Kotatsu quotes"); ui.await(text(R.string.quote_hourly)) }
-        finally { close(reopened) }
+        withFixtureCleanup({ close(reopened) }) { ui.await("Kotatsu quotes"); ui.await(text(R.string.quote_hourly)) }
     }
 
     @Test fun realDeviceBackReturnsFromEveryChoiceToItsOwningPagerPageThenLeaves() {
@@ -115,7 +116,7 @@ class NotesSettingsInstrumentedTest {
             ui.await(context.getString(page, parentPage, 2))
             main { assertFalse("Only top-level Back may finish the activity", activity.isFinishing) }
         }
-        try {
+        withFixtureCleanup({ close(activity) }) {
             ui.awaitPage(text(R.string.app_name))
             returnFrom(R.string.settings_note, 1)
             ui.click(context.getString(com.gezimos.katapult.paper.R.string.paper_next_page))
@@ -130,7 +131,7 @@ class NotesSettingsInstrumentedTest {
                 main { finished = activity.isFinishing || activity.isDestroyed }
                 finished
             }
-        } finally { close(activity) }
+        }
     }
 
     @Test fun initialKeyboardModeDoesNotHighlightBackButKeyboardNavigationUsesOnlyInkRing() {
@@ -150,14 +151,14 @@ class NotesSettingsInstrumentedTest {
                 bitmap.getPixel(rect.left, rect.top + 8))
             bitmap.recycle()
         }
-        try {
+        withFixtureCleanup({ close(activity) }, { instrumentation.setInTouchMode(true) }) {
             ui.awaitPage(text(R.string.app_name))
             assertWhiteControlInterior("back-focus-initial", false)
             assertFalse("No initial keyboard focus highlight", ui.find(back)!!.isFocused)
             ui.key(android.view.KeyEvent.KEYCODE_TAB)
             awaitWidgetHost("Keyboard navigation must still focus Back") { ui.find(back)?.isFocused == true }
             assertWhiteControlInterior("back-focus-keyboard", true)
-        } finally { close(activity); instrumentation.setInTouchMode(true) }
+        }
     }
 
     @Test fun realDeviceBackPopsConfigureChoicesBeforeReturningTheOriginalWidgetResult() {
@@ -169,7 +170,11 @@ class NotesSettingsInstrumentedTest {
             val monitor = instrumentation.addMonitor(type.name, null, false)
             val widgetId = 4200 + kind.ordinal
             var child: Activity? = null
-            try {
+            withFixtureCleanup(
+                { instrumentation.removeMonitor(monitor) },
+                { child?.let(::close) },
+                { close(host) },
+            ) {
                 main { host.startActivityForResult(Intent(host, type)
                     .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, widgetId), 71) }
                 child = monitor.waitForActivityWithTimeout(5000)
@@ -196,10 +201,6 @@ class NotesSettingsInstrumentedTest {
                     assertEquals(Activity.RESULT_OK, host.returnedResult)
                     assertEquals(widgetId, host.returnedData!!.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, -1))
                 }
-            } finally {
-                instrumentation.removeMonitor(monitor)
-                child?.let(::close)
-                close(host)
             }
         }
     }
@@ -217,7 +218,17 @@ class NotesSettingsInstrumentedTest {
         val taskId = bind(WidgetKind.TASK)
         val quoteId = bind(WidgetKind.QUOTE)
         val activity = open(NotesEntryActivity::class.java)
-        try {
+        withFixtureCleanup(
+            { close(activity) },
+            { main { host.deleteHost() } },
+            { NotesRuntime.enqueue {
+                fixtureCleanup(*WidgetKind.entries.map { kind -> { kind.setEnabled(context, true) } }.toTypedArray())
+            }.get() },
+            { awaitWidgetHost("Both providers must be available before releasing the fixture") {
+                WidgetKind.entries.all { kind -> manager.installedProviders.any { it.provider == ComponentName(context, kind.provider) } }
+            } },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+        ) {
             ui.click(text(R.string.quote_label))
             awaitWidgetHost("Quote must disappear from Android's provider and instance lists") {
                 !WidgetKind.QUOTE.enabled(context) && manager.getAppWidgetInfo(quoteId) == null &&
@@ -241,14 +252,6 @@ class NotesSettingsInstrumentedTest {
             bind(WidgetKind.QUOTE)
             assertEquals(7L, QuoteStore(context).config()!!.noteId)
             assertEquals(4L, NotesStore(context).selected())
-        } finally {
-            close(activity)
-            main { host.deleteHost() }
-            NotesRuntime.enqueue { WidgetKind.entries.forEach { it.setEnabled(context, true) } }.get()
-            awaitWidgetHost("Both providers must be available before releasing the fixture") {
-                WidgetKind.entries.all { kind -> manager.installedProviders.any { it.provider == ComponentName(context, kind.provider) } }
-            }
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
         }
     }
 
@@ -259,12 +262,12 @@ class NotesSettingsInstrumentedTest {
             override fun choices(): List<TaskListChoice>? = throw SecurityException("Missing permission")
         } }
         val activity = open(ConfigureActivity::class.java)
-        try {
+        withFixtureCleanup({ close(activity) }, { NotesRuntime.notes = previous }) {
             ui.click(text(R.string.settings_note))
             ui.await(text(R.string.settings_notes_unavailable))
             ui.capture(activity, "notes-unavailable")
             assertFalse(ui.has("Kotatsu long list"))
-        } finally { close(activity); NotesRuntime.notes = previous }
+        }
         val keys = listOf(R.string.settings_widgets, R.string.settings_task, R.string.settings_note,
             R.string.settings_choose, R.string.settings_changes, R.string.settings_task_help,
             R.string.settings_quote_help, R.string.settings_notes_unavailable, R.string.settings_loading)
@@ -291,7 +294,12 @@ class NotesSettingsInstrumentedTest {
         val manager = AppWidgetManager.getInstance(context)
         val tasks = mutableListOf<android.appwidget.AppWidgetHostView>()
         val quotes = mutableListOf<android.appwidget.AppWidgetHostView>()
-        try {
+        withFixtureCleanup(
+            { main { fixtureCleanup({ host.stopListening() }, { host.deleteHost() }, { activity.finish() }) } },
+            { NotesRuntime.enqueue {}.get() },
+            { QuoteRuntime.clock = null },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+        ) {
             main {
                 val column = android.widget.LinearLayout(context).apply { orientation = android.widget.LinearLayout.VERTICAL }
                 activity.container.addView(column)
@@ -320,11 +328,6 @@ class NotesSettingsInstrumentedTest {
                 }
                 observed
             }
-        } finally {
-            main { host.stopListening(); host.deleteHost(); activity.finish() }
-            NotesRuntime.enqueue {}.get()
-            QuoteRuntime.clock = null
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
         }
         assertEquals(4L, NotesStore(context).selected())
         assertEquals(7L, QuoteStore(context).config()!!.noteId)

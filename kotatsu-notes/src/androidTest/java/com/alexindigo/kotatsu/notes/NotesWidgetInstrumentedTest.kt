@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.notes
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.app.job.JobScheduler
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -152,7 +154,7 @@ class NotesWidgetInstrumentedTest {
         Host().use { f ->
             lateinit var list: ListView
             onMain { list = f.view.findViewById(R.id.tasks); list.suppressLayout(true) }
-            try {
+            withFixtureCleanup({ onMain { list.suppressLayout(false) } }) {
                 f.click("Milk")
                 await("Provider and render store must reach the controlled intermediate state") {
                     fixture("stats").getInt("writes") == 1 &&
@@ -161,7 +163,7 @@ class NotesWidgetInstrumentedTest {
                 assertTrue("Click itself is optimistic", f.checkText("Milk")!!.isChecked)
                 assertFalse("Persistence and optimistic drawing cannot acknowledge a row that has not rebound",
                     f.tickReachedHost(1, true))
-            } finally { onMain { list.suppressLayout(false) } }
+            }
             await("The actual rebound row must acknowledge the saved check") { f.tickReachedHost(1, true) }
             f.click("Milk")
             await("The rebound callback must save and display the untick") { f.tickReachedHost(2, false) }
@@ -206,12 +208,12 @@ class NotesWidgetInstrumentedTest {
     @Test fun beforeUnlockShowsOneLineWithoutReadingCredentialProtectedState() {
         Host().use { f ->
             val previous = NotesRuntime.unlocked
-            try {
+            withFixtureCleanup({ NotesRuntime.unlocked = previous }) {
                 NotesRuntime.unlocked = { false }
                 NotesRuntime.enqueue { NotesRuntime.refresh(context) }.get()
                 await("Direct-boot guidance must reach host") { f.message() == context.getString(R.string.unlock_once) }
                 assertNull(f.heading())
-            } finally { NotesRuntime.unlocked = previous }
+            }
         }
     }
 
@@ -410,7 +412,7 @@ class NotesWidgetInstrumentedTest {
             }.get()
             val activity = instrumentation.startActivitySync(Intent(context, ConfigureActivity::class.java)
                 .putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, f.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as ConfigureActivity
-            try {
+            withFixtureCleanup({ onMain { activity.finish() } }) {
                 val ui = NotesSettingsUi(instrumentation)
                 ui.click(context.getString(R.string.settings_note))
                 ui.click("Kotatsu long list")
@@ -418,7 +420,7 @@ class NotesWidgetInstrumentedTest {
                     NotesStore(context).selected() == 4L && f.checkText("Milk") != null
                 }
                 assertTrue(fixture("stats").getBoolean("titlesOnly"))
-            } finally { onMain { activity.finish() } }
+            }
         }
     }
 }
