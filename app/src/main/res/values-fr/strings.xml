@@ -16,7 +16,7 @@
     <string name="settings">Paramètres</string>
     <string name="hidden_apps">Apps masquées</string>
     <string name="hidden_apps_count">Apps masquées (%1$d)</string>
-    <string name="hidden_apps_hide_column">Masquer</string>
+    <string name="hidden_apps_hidden_column">Masquée</string>
     <string name="hidden_apps_notify_column">Notifier</string>
     <string name="hidden_apps_notify_desc">Les apps masquées n\'apparaissent pas sur l\'écran de verrouillage sauf si Notifier est coché.</string>
     <string name="hidden_apps_desc">Choisissez les apps à masquer dans la liste des apps</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Vérifiez avant d’effacer les réglages</string>
     <string name="paper_select_all">Tout sélectionner</string>
     <string name="paper_deselect_all">Tout désélectionner</string>
-    <string name="paper_hide_app">Masquer : %1$s</string>
+    <string name="paper_hidden_app">Masquée : %1$s</string>
     <string name="paper_notify_app">Notifier : %1$s</string>
     <string name="paper_unavailable">Indisponible</string>
     <string name="paper_not_applicable">Sans objet</string>

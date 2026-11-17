@@ -138,7 +138,7 @@ the implementation, not from measuring an image.
 | 14 | Card text | Name 18/21.75 sp Bold; help 14/18 sp Regular; size 14/18 sp Bold; tracks stacked without extra gaps; minimum content height 48 dp | `PaperCardEntry` |
 | 15 | Card external action | Independent minimum 48 x 48 dp target, top-end aligned; `Open ↗` 18/21.75 sp Bold; 7.5 dp leader gaps, 9 dp minimum leader allocation | `PaperCardEntry` |
 | 16 | Card list | 12 dp between cards; whole held card becomes black with white ink, including bracket lanes | `PaperCardList`, `PaperCard(moving = true)` |
-| 17 | Hide/Notify matrix | 64 dp outer drawing columns and minimum 64 dp row/cell height; 6 dp after Hide; labels 14/17.25 sp Regular in 64 dp columns; Notify's target includes its leader without moving the centred box | App `VisibilityRow`, shared `PaperCheckboxEntry`, `ColumnLabel` in `AppChecklistPage.kt` |
+| 17 | Hidden/Notify matrix | 64 dp outer drawing columns and minimum 64 dp row/cell height; 6 dp after Hidden; labels 14/17.25 sp Regular in 64 dp columns; Notify's target includes its leader without moving the centred box | App `VisibilityRow`, shared `PaperCheckboxEntry`, `ColumnLabel` in `AppChecklistPage.kt` |
 | 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
 | 19 | Bottom sheet | Bottom anchored, paper fill; 2 dp ink outline on top and sides, no bottom edge; 18 dp top corners; 16 dp side and 10 dp bottom content padding, navigation-bar padding | `PaperSheet` |
 | 20 | Sheet heading | 21/25.5 sp Lato Bold, one line with ellipsis; 3 dp vertical padding; trailing 18 dp close drawing in a 48 dp target; optional leading page-back chevron in a 48 dp target; no title rule | `PaperSheetHeading` |
@@ -246,7 +246,7 @@ the shared dismissal state described below.
 ```text
 < Hidden apps (3)
 Tick Notify for hidden apps on the lock screen
-   Hide                                     Notify
+   Hidden                                   Notify
    [ ]    Alarm ...........................
    [x]    Calculator ......................  [x]
    [x]    Camera ..........................  [ ]
@@ -254,10 +254,11 @@ Tick Notify for hidden apps on the lock screen
                        * o o o o                (>)
 ```
 
-Hidden apps is a matrix, not two overlapping row actions. Hide is left;
+Hidden apps is a matrix, not two overlapping row actions. Hidden is left;
 name/leader centre; Notify right. Notify applies only to eligible hidden
 apps. Blank/not-applicable and disabled Notify cells retain their own space
-and must not activate Hide. Checked is a black square with a white check;
+and must not change Hidden. The Hidden checkbox names a state, not an action.
+Checked is a black square with a white check;
 enabled unchecked is a heavy empty box; disabled is a thin empty box.
 The current implementation explicitly supports that disabled matrix state.
 
@@ -387,7 +388,7 @@ The leader ends 7.5 dp before the visible checkbox, not before an invisible
 touch slot. `IndexTracks` measures drawings independently from input regions.
 For two-target rows, the name owns one minimum-48-dp target; the leader and
 checkbox share the other. `PaperCheckboxEntry` owns this structure for app
-shortcuts and the Hide/Notify matrix; full-row choice sheets use the same
+shortcuts and the Hidden/Notify matrix; full-row choice sheets use the same
 drawing tracks with their existing selectable row target.
 
 Below the shortcuts, evenly distributed Home-style tiles open **Kotatsu**,
@@ -643,8 +644,8 @@ Leaders, rules and bracket strokes are decorative. Name **?**, **×**, pager
 arrows and external actions by purpose. Use heading semantics on page
 titles, a logical reading order and visible ink focus on actionable controls.
 Independent actions need independent targets and semantics, not a parent
-click handler that swallows a nested control. In the Hide/Notify matrix, name
-the action and app; announce disabled/not-applicable Notify honestly.
+click handler that swallows a nested control. In the Hidden/Notify matrix, name
+the state and app; announce disabled/not-applicable Notify honestly.
 
 Provide non-gesture routes. Pager buttons supplement swipes; widget move-up
 and move-down accessibility actions supplement drag. Omit unavailable move

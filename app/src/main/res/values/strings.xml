@@ -15,7 +15,7 @@
     <string name="settings">Settings</string>
     <string name="hidden_apps">Hidden apps</string>
     <string name="hidden_apps_count">Hidden apps (%1$d)</string>
-    <string name="hidden_apps_hide_column">Hide</string>
+    <string name="hidden_apps_hidden_column">Hidden</string>
     <string name="hidden_apps_notify_column">Notify</string>
     <string name="hidden_apps_notify_desc">Tick Notify for hidden apps on the lock screen</string>
     <string name="hidden_apps_desc">Choose which apps to hide from the app list</string>
@@ -413,7 +413,7 @@
     <string name="paper_clear_help">Review before erasing settings</string>
     <string name="paper_select_all">Select all</string>
     <string name="paper_deselect_all">Deselect all</string>
-    <string name="paper_hide_app">Hide: %1$s</string>
+    <string name="paper_hidden_app">Hidden: %1$s</string>
     <string name="paper_notify_app">Notify: %1$s</string>
     <string name="paper_unavailable">Unavailable</string>
     <string name="paper_not_applicable">Not applicable</string>

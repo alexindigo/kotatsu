@@ -16,7 +16,7 @@
     <string name="settings">Einstellungen</string>
     <string name="hidden_apps">Versteckte Apps</string>
     <string name="hidden_apps_count">Versteckte Apps (%1$d)</string>
-    <string name="hidden_apps_hide_column">Ausblenden</string>
+    <string name="hidden_apps_hidden_column">Versteckt</string>
     <string name="hidden_apps_notify_column">Melden</string>
     <string name="hidden_apps_notify_desc">Ausgeblendete Apps erscheinen nicht auf dem Sperrbildschirm, außer Melden ist angehakt.</string>
     <string name="hidden_apps_desc">Wähle, welche Apps in der App-Liste ausgeblendet werden</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Vor dem Löschen der Einstellungen prüfen</string>
     <string name="paper_select_all">Alle auswählen</string>
     <string name="paper_deselect_all">Auswahl aufheben</string>
-    <string name="paper_hide_app">Ausblenden: %1$s</string>
+    <string name="paper_hidden_app">Versteckt: %1$s</string>
     <string name="paper_notify_app">Benachrichtigen: %1$s</string>
     <string name="paper_unavailable">Nicht verfügbar</string>
     <string name="paper_not_applicable">Nicht zutreffend</string>

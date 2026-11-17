@@ -16,7 +16,7 @@
     <string name="settings">Nastavení</string>
     <string name="hidden_apps">Skryté aplikace</string>
     <string name="hidden_apps_count">Skryté aplikace (%1$d)</string>
-    <string name="hidden_apps_hide_column">Skrýt</string>
+    <string name="hidden_apps_hidden_column">Skrytá</string>
     <string name="hidden_apps_notify_column">Oznámit</string>
     <string name="hidden_apps_notify_desc">Skryté aplikace se na zamykací obrazovce nezobrazí, pokud nezaškrtnete Oznámit.</string>
     <string name="hidden_apps_desc">Vyberte, které aplikace skrýt ze seznamu aplikací</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Před smazáním nastavení zkontrolujte</string>
     <string name="paper_select_all">Vybrat vše</string>
     <string name="paper_deselect_all">Zrušit výběr</string>
-    <string name="paper_hide_app">Skrýt: %1$s</string>
+    <string name="paper_hidden_app">Skrytá: %1$s</string>
     <string name="paper_notify_app">Oznámení: %1$s</string>
     <string name="paper_unavailable">Nedostupné</string>
     <string name="paper_not_applicable">Nelze použít</string>

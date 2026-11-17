@@ -43,7 +43,7 @@ class PaperIndexSheetsInstrumentedTest {
         }
         assertEquals(48f * context.resources.displayMetrics.density, arrow.height().toFloat(), 1f)
         val lastCell = android.graphics.Rect().also {
-            ui.find(context.getString(R.string.paper_hide_app, "App 6"))!!.getBoundsInScreen(it)
+            ui.find(context.getString(R.string.paper_hidden_app, "App 6"))!!.getBoundsInScreen(it)
         }
         assertEquals(64f * context.resources.displayMetrics.density, lastCell.height().toFloat(), 1f)
         assertTrue("The last row must be complete above the pager", lastCell.bottom <= pager.top)
@@ -92,6 +92,10 @@ class PaperIndexSheetsInstrumentedTest {
             }
         }
         ui.await("Notify matrix missing") { ui.checked("Notify: Calculator") == true }
+        assertTrue(ui.has("Hidden"))
+        assertFalse(ui.has("Hide"))
+        assertEquals(true, ui.checked("Hidden: Calculator"))
+        assertEquals(false, ui.checked("Hidden: Camera"))
         assertEquals(false, ui.checked("Notify: Calendar"))
         assertFalse(ui.find("Notify: Alarm")!!.isEnabled)
         assertEquals(false, ui.checked("Notify: Alarm"))

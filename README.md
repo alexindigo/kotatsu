@@ -23,7 +23,7 @@ Kotatsu on a Mudita Kompakt:
             <td><img src='docs/img/screenshots/kotatsu_weather_setup.png' height='300' alt="Kotatsu Weather places"></td>
         </tr>
         <tr>
-            <td><img src='docs/img/screenshots/kotatsu_hidden_apps.png' height='300' alt="Hidden apps page with Hide and Notify controls"></td>
+            <td><img src='docs/img/screenshots/kotatsu_hidden_apps.png' height='300' alt="Hidden apps page with Hidden and Notify controls"></td>
             <td><img src='docs/img/screenshots/kotatsu_home_wallpaper.png' height='300' alt="Home screen with the built-in Kotatsu wallpaper"></td>
             <td><img src='docs/img/screenshots/kotatsu_lockscreen_widgets.png' height='300' alt="Lock-screen widgets settings"></td>
             <td><img src='docs/img/screenshots/kotatsu_home_dark.png' height='300' alt="Dark home screen with battery percentage and no wallpaper"></td>
@@ -37,7 +37,7 @@ Kotatsu on a Mudita Kompakt:
 - **2,174 offline icon choices.** Search Simple Icons, Tabler and Material collections, import PNG/SVG artwork, or reset an icon. Reviewed brand matches and hand-picked stock line icons apply automatically; other apps keep their original icons. Manual choices take priority. See the [icon catalogue](docs/ICON_CATALOGUE.md).
 - **A consistent e-ink look.** Rounded-square or circle app icons, round buttons and page arrows, light/dark/system themes, and home-button refresh to clear ghosting. Home stays readable over any wallpaper, with automatic black-or-white ink that follows the picture underneath. Pick the built-in Kotatsu wallpaper or your own photo in Settings › Appearance › Wallpaper or from the Home long-press menu, or leave it at None.
 - **Setup at your pace.** Finish onboarding without sensitive grants or changing the default launcher. Sensitive access has separate choices for collecting badges, media information and usage statistics, and for notification dismissal, call acknowledgment, media controls and accessibility features.
-- **Quiet app lists.** Hide, rename and reorder apps. Settings → All Apps separates Hidden Apps from Kompakt System Apps. Stock apps omitted by Mudita's launcher, app stores, FUTO Keyboard and Mudita's Update start hidden and can be shown individually. Hidden apps stay off the lock screen unless their separate Notify box is ticked; lock-screen exclusions still take precedence.
+- **Quiet app lists.** Hide, rename and reorder apps. Settings > All Apps separates Hidden Apps from Kompakt System Apps. Its Hidden checkbox names the app's state. Stock apps omitted by Mudita's launcher, app stores, FUTO Keyboard and Mudita's Update start hidden and can be shown individually. Hidden apps stay off the lock screen unless their separate Notify box is ticked; lock-screen exclusions still take precedence.
 - **A useful lock screen.** On Kompakt, host installed Android app widgets in a configurable box over the padlock and unlock hint. Choose widget size and order. Optional experimental lock-screen notifications show per-app counts. These features need the Kotatsu Action Service.
 - **A side screen for widgets.** Swipe in from an edge to open a named screen, with one Full widget or a Split top/bottom pair. A scroll rail appears beside scrollable lists.
 - **Optional Notes widget.** Kotatsu Notes supplies a Mudita Notes task list you can check without unlocking. The launcher hosts the widget; Kotatsu Notes reads and saves the list.

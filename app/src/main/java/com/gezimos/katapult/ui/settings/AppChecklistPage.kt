@@ -37,7 +37,7 @@ fun AppChecklistPage(
         if (notifyCell != null) {
             SheetText(stringResource(R.string.hidden_apps_notify_desc))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                ColumnLabel(stringResource(R.string.hidden_apps_hide_column))
+                ColumnLabel(stringResource(R.string.hidden_apps_hidden_column))
                 Spacer(Modifier.weight(1f))
                 ColumnLabel(stringResource(R.string.hidden_apps_notify_column))
             }
@@ -59,7 +59,7 @@ private fun ColumnLabel(label: String) {
 /** Neither the parent nor the name target contains the right-hand control. */
 @Composable
 private fun VisibilityRow(label: String, hidden: Boolean, notify: NotifyCell, onHide: () -> Unit, onNotify: () -> Unit) {
-    val hideLabel = stringResource(R.string.paper_hide_app, label)
+    val hiddenLabel = stringResource(R.string.paper_hidden_app, label)
     val notifyLabel = stringResource(R.string.paper_notify_app, label)
     val unavailable = stringResource(R.string.paper_unavailable)
     val notApplicable = stringResource(R.string.paper_not_applicable)
@@ -67,7 +67,7 @@ private fun VisibilityRow(label: String, hidden: Boolean, notify: NotifyCell, on
         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.width(64.dp).heightIn(min = 64.dp).fillMaxHeight()
             .toggleable(hidden, role = Role.Checkbox, onValueChange = { onHide() })
-            .semantics { contentDescription = hideLabel }, contentAlignment = Alignment.Center) {
+            .semantics { contentDescription = hiddenLabel }, contentAlignment = Alignment.Center) {
             IndexCheckbox(hidden, true)
         }
         PaperCheckboxEntry(label, notifyLabel, notify == NotifyCell.ON, onHide, onNotify,

@@ -28,6 +28,20 @@ class HiddenAppsNotifyInstrumentedTest {
     private val ui = PlatformUiDriver(instrumentation)
     private val visibilityKeys = listOf("hidden_apps", "shown_default_hidden_apps", "notify_while_hidden_apps", "lockscreen_widget_excluded")
 
+    @Test fun hiddenCheckboxNamesAStateInEveryLocale() {
+        mapOf("en" to "Hidden", "cs" to "Skrytá", "de" to "Versteckt", "es" to "Oculta",
+            "fr" to "Masquée", "it" to "Nascosta", "nl" to "Verborgen", "pl" to "Ukryta", "pt" to "Oculta")
+            .forEach { (language, state) ->
+                val config = android.content.res.Configuration(context.resources.configuration).apply {
+                    setLocale(java.util.Locale.forLanguageTag(language))
+                }
+                val localized = context.createConfigurationContext(config)
+                assertEquals(language, state, localized.getString(R.string.hidden_apps_hidden_column))
+                val separator = if (language == "fr") " : " else ": "
+                assertEquals(language, "$state${separator}Sample", localized.getString(R.string.paper_hidden_app, "Sample"))
+            }
+    }
+
     @Test fun hiddenAppsOfferIndependentNotifyChoiceAndRespectExclusion() = preserving(visibilityKeys) {
         val app = AppLoader.loadApps(context).filter { !it.stock }.sortedBy { it.label.lowercase() }.first()
         instrumentation.runOnMainSync {
@@ -74,8 +88,8 @@ class HiddenAppsNotifyInstrumentedTest {
             assertTrue("Notify target must retain its entire column", cell.width() >= 64f * context.resources.displayMetrics.density - 1f)
             assertEquals(row.height(), cell.height())
             assertTrue("Notify cell is shorter than 64dp", cell.height() >= 64f * context.resources.displayMetrics.density - 1f)
-            val hide = context.getString(R.string.paper_hide_app, app.label)
-            val hideHeader = Rect().also { ui.find(context.getString(R.string.hidden_apps_hide_column))!!.getBoundsInScreen(it) }
+            val hide = context.getString(R.string.paper_hidden_app, app.label)
+            val hideHeader = Rect().also { ui.find(context.getString(R.string.hidden_apps_hidden_column))!!.getBoundsInScreen(it) }
             val hideCell = Rect().also { ui.findAncestor(hide) { it.isClickable }!!.getBoundsInScreen(it) }
             assertEquals(hideHeader.exactCenterX(), hideCell.exactCenterX(), 1f)
             assertEquals(64f * context.resources.displayMetrics.density, hideCell.width().toFloat(), 1f)

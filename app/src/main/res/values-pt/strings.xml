@@ -16,7 +16,7 @@
     <string name="settings">Definições</string>
     <string name="hidden_apps">Apps ocultas</string>
     <string name="hidden_apps_count">Apps ocultas (%1$d)</string>
-    <string name="hidden_apps_hide_column">Ocultar</string>
+    <string name="hidden_apps_hidden_column">Oculta</string>
     <string name="hidden_apps_notify_column">Notificar</string>
     <string name="hidden_apps_notify_desc">As apps ocultas não aparecem no ecrã de bloqueio, a menos que Notificar esteja marcado.</string>
     <string name="hidden_apps_desc">Escolha que apps ocultar da lista de apps</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Reveja antes de apagar as definições</string>
     <string name="paper_select_all">Selecionar tudo</string>
     <string name="paper_deselect_all">Desmarcar tudo</string>
-    <string name="paper_hide_app">Ocultar: %1$s</string>
+    <string name="paper_hidden_app">Oculta: %1$s</string>
     <string name="paper_notify_app">Notificar: %1$s</string>
     <string name="paper_unavailable">Indisponível</string>
     <string name="paper_not_applicable">Não aplicável</string>

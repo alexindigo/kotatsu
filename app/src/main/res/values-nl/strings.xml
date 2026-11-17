@@ -16,7 +16,7 @@
     <string name="settings">Instellingen</string>
     <string name="hidden_apps">Verborgen apps</string>
     <string name="hidden_apps_count">Verborgen apps (%1$d)</string>
-    <string name="hidden_apps_hide_column">Verbergen</string>
+    <string name="hidden_apps_hidden_column">Verborgen</string>
     <string name="hidden_apps_notify_column">Melden</string>
     <string name="hidden_apps_notify_desc">Verborgen apps verschijnen niet op het vergrendelscherm, tenzij Melden is aangevinkt.</string>
     <string name="hidden_apps_desc">Kies welke apps je verbergt in de app-lijst</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Controleer voordat je instellingen wist</string>
     <string name="paper_select_all">Alles selecteren</string>
     <string name="paper_deselect_all">Selectie opheffen</string>
-    <string name="paper_hide_app">Verbergen: %1$s</string>
+    <string name="paper_hidden_app">Verborgen: %1$s</string>
     <string name="paper_notify_app">Melden: %1$s</string>
     <string name="paper_unavailable">Niet beschikbaar</string>
     <string name="paper_not_applicable">Niet van toepassing</string>

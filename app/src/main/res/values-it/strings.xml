@@ -16,7 +16,7 @@
     <string name="settings">Impostazioni</string>
     <string name="hidden_apps">App nascoste</string>
     <string name="hidden_apps_count">App nascoste (%1$d)</string>
-    <string name="hidden_apps_hide_column">Nascondi</string>
+    <string name="hidden_apps_hidden_column">Nascosta</string>
     <string name="hidden_apps_notify_column">Notifica</string>
     <string name="hidden_apps_notify_desc">Le app nascoste non compaiono nella schermata di blocco se Notifica non è spuntato.</string>
     <string name="hidden_apps_desc">Scegli quali app nascondere dalla lista app</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Controlla prima di cancellare le impostazioni</string>
     <string name="paper_select_all">Seleziona tutto</string>
     <string name="paper_deselect_all">Deseleziona tutto</string>
-    <string name="paper_hide_app">Nascondi: %1$s</string>
+    <string name="paper_hidden_app">Nascosta: %1$s</string>
     <string name="paper_notify_app">Notifica: %1$s</string>
     <string name="paper_unavailable">Non disponibile</string>
     <string name="paper_not_applicable">Non applicabile</string>

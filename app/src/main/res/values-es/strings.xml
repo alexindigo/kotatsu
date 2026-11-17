@@ -16,7 +16,7 @@
     <string name="settings">Ajustes</string>
     <string name="hidden_apps">Apps ocultas</string>
     <string name="hidden_apps_count">Apps ocultas (%1$d)</string>
-    <string name="hidden_apps_hide_column">Ocultar</string>
+    <string name="hidden_apps_hidden_column">Oculta</string>
     <string name="hidden_apps_notify_column">Avisar</string>
     <string name="hidden_apps_notify_desc">Las apps ocultas no aparecen en la pantalla de bloqueo salvo que marques Avisar.</string>
     <string name="hidden_apps_desc">Elige qué apps ocultar de la lista de apps</string>
@@ -411,7 +411,7 @@
     <string name="paper_clear_help">Revisa antes de borrar los ajustes</string>
     <string name="paper_select_all">Seleccionar todo</string>
     <string name="paper_deselect_all">Deseleccionar todo</string>
-    <string name="paper_hide_app">Ocultar: %1$s</string>
+    <string name="paper_hidden_app">Oculta: %1$s</string>
     <string name="paper_notify_app">Notificar: %1$s</string>
     <string name="paper_unavailable">No disponible</string>
     <string name="paper_not_applicable">No aplicable</string>
