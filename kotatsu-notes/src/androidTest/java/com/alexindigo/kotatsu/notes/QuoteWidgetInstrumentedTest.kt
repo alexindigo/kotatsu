@@ -96,7 +96,7 @@ class QuoteWidgetInstrumentedTest {
         }
         override fun close() {
             fixtureCleanup(
-                { main { host.stopListening(); host.deleteAppWidgetId(id); activity.finish() } },
+                { main { fixtureCleanup({ host.stopListening() }, { host.deleteAppWidgetId(id) }, { activity.finish() }) } },
                 { notesFixtureCleanup({ QuoteStore(context).delete(id) }, { QuoteRuntime.refresh(context) }) },
                 { QuoteRuntime.clock = null },
                 { instrumentation.uiAutomation.dropShellPermissionIdentity() },

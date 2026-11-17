@@ -134,7 +134,9 @@ class NotesWidgetInstrumentedTest {
         }
         override fun close() {
             fixtureCleanup(
-                { instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id); activity.finish() } },
+                { instrumentation.runOnMainSync {
+                    fixtureCleanup({ host.stopListening() }, { host.deleteAppWidgetId(id) }, { activity.finish() })
+                } },
                 { notesFixtureCleanup(
                     { NotesStore(context).delete(id, true) },
                     { context.getSystemService(JobScheduler::class.java).cancel(NotesRuntime.WATCH_JOB) },

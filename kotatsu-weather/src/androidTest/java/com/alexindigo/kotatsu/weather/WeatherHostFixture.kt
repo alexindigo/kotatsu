@@ -13,6 +13,7 @@ import android.os.SystemClock
 import android.widget.ImageView
 import android.widget.RemoteViews
 import androidx.test.platform.app.InstrumentationRegistry
+import com.gezimos.katapult.fixtureCleanup
 import org.junit.Assert.*
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -86,7 +87,7 @@ internal class WeatherHostFixture(private val drainIngress: (HeldRefreshIngress)
 
     override fun close() {
         HeldRefreshIngress(previousFetcher).use {
-            instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id) }
+            instrumentation.runOnMainSync { fixtureCleanup({ host.stopListening() }, { host.deleteAppWidgetId(id) }) }
             WeatherStore(context).delete(id)
             drainIngress(it)
             instrumentation.uiAutomation.dropShellPermissionIdentity()

@@ -196,11 +196,18 @@ public class NotesCrossPackageHostActivity extends Activity {
         if (activity != null) activity.runOnUiThread(activity::finish);
     }
 
+    private interface Restoration extends AutoCloseable {
+        @Override void close();
+    }
+
     @Override public void onDestroy() {
         // Invalidate observation before releasing the resource it can inspect.
         if (current == this) current = null;
         view = null;
-        if (host != null) { host.stopListening(); host.deleteAppWidgetId(widgetId); }
-        super.onDestroy();
+        // Reverse close order keeps deletion and superclass teardown independent of stopListening.
+        try (Restoration destroy = super::onDestroy;
+             Restoration delete = () -> { if (host != null) host.deleteAppWidgetId(widgetId); }) {
+            if (host != null) host.stopListening();
+        }
     }
 }
