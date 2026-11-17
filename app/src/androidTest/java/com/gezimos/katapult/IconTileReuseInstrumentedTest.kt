@@ -56,7 +56,7 @@ class IconTileReuseInstrumentedTest {
                 CatalogueIconRenderer.render(context, icon, 64)
             }
         }
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 activity.setContent {
                     CompositionLocalProvider(com.gezimos.katapult.ui.LocalPalette provides com.gezimos.katapult.ui.PaperPalette.Light(activity)) {
@@ -71,8 +71,6 @@ class IconTileReuseInstrumentedTest {
             ui.click(context.getString(R.string.tabler_icons))
             ui.await("Tabler tile missing after the collection switch") { ui.has(tablerDescription) }
             assertFalse("A reused tile showed the previous entry's unavailable state", ui.has(unavailable))
-        } finally {
-            release.countDown()
-        }
+        }, actions = arrayOf<() -> Unit>({ release.countDown() }))
     }
 }

@@ -1,5 +1,8 @@
 package com.gezimos.katapult.weather
 
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.app.UiAutomation
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
@@ -56,9 +59,8 @@ class WeatherFeedInstrumentedTest {
         val expected = AssertionError("Fixture main-thread failure")
         var restored = false
         val failure = runCatching {
-            try { main<Unit> { throw expected } } finally {
-                assertSame(testThread, Thread.currentThread())
-                restored = main { true }
+            withFixtureCleanup({ assertSame(testThread, Thread.currentThread()) }, { restored = main { true } }) {
+                main<Unit> { throw expected }
             }
         }.exceptionOrNull()
         assertSame(expected, failure)
@@ -112,11 +114,7 @@ class WeatherFeedInstrumentedTest {
             registrations.incrementAndGet(); changed.set(it); AutoCloseable { closes.incrementAndGet() }
         }) }, worker, Executor { handler.post(it) }, SystemClock::elapsedRealtime)
         val owner = com.gezimos.katapult.ownedViewModelStore()
-        var failure: Throwable? = null
-        fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        try {
+        withFixtureCleanup(body = {
             singleton.set(null, feed)
             assertTrue(raw.edit().putBoolean("show_weather", true).commit())
             val vm = main {
@@ -137,20 +135,16 @@ class WeatherFeedInstrumentedTest {
             main { owner.clear() }
             await("Clearing the ViewModel releases its last lease") { closes.get() == 2 }
             assertEquals(WeatherFeed.State.Unavailable, feed.state)
-        } catch (error: Throwable) {
-            failure = error
-        } finally {
-            restore { main { owner.clear() } }
-            restore { feed.close() }
-            restore { worker.shutdown(); assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }
-            restore { singleton.set(null, previous) }
-            restore {
+        }, actions = arrayOf<() -> Unit>(
+            { main { owner.clear() } }, { feed.close() },
+            { worker.shutdown() }, { assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) },
+            { singleton.set(null, previous) },
+            {
             val edit = raw.edit()
             if (before == null) edit.remove("show_weather") else edit.putBoolean("show_weather", before as Boolean)
             assertTrue(edit.commit()); assertEquals(before, raw.all["show_weather"])
-            }
-        }
-        failure?.let { throw it }
+            },
+        ))
     }
 
     private fun evaluatePromptly() {
@@ -172,11 +166,7 @@ class WeatherFeedInstrumentedTest {
         val worker = Executors.newSingleThreadExecutor()
         val handler = Handler(Looper.getMainLooper())
         val feed = WeatherFeed({ source }, worker, Executor { handler.post(it) }, SystemClock::elapsedRealtime)
-        var failure: Throwable? = null
-        fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        try {
+        withFixtureCleanup(body = {
             com.gezimos.katapult.ConnectedUiStateFixture.prepareForegroundService()
             assertNull("Fixture requires no existing service", main { service() })
             singleton.set(null, feed)
@@ -184,22 +174,17 @@ class WeatherFeedInstrumentedTest {
             accessibility = com.gezimos.katapult.ActionServiceSettingsFixture.on()
             await("Service connected with injected feed") { main { service() != null } }
             exercise(feed)
-        } catch (error: Throwable) {
-            failure = error
-        } finally {
-            restore(releaseSource)
-            restore { accessibility?.close() }
-            restore { await("Service destroyed before closing injected feed") { main { service() == null } } }
-            restore {
+        }, actions = arrayOf<() -> Unit>(
+            { releaseSource() }, { accessibility?.close() },
+            { await("Service destroyed before closing injected feed") { main { service() == null } } },
+            {
                 val edit = raw.edit()
                 if (before == null) edit.remove("lockscreen_weather") else edit.putBoolean("lockscreen_weather", before as Boolean)
                 assertTrue(edit.commit()); assertEquals(before, raw.all["lockscreen_weather"])
-            }
-            restore { feed.close() }
-            restore { worker.shutdown(); assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }
-            restore { singleton.set(null, originalFeed) }
-        }
-        failure?.let { throw it }
+            },
+            { feed.close() }, { worker.shutdown() }, { assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) },
+            { singleton.set(null, originalFeed) },
+        ))
       }
     }
 
@@ -213,7 +198,7 @@ class WeatherFeedInstrumentedTest {
             var view: AppWidgetHostView? = null
             automation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
             val id = host.allocateAppWidgetId()
-            try {
+            withFixtureCleanup(body = {
                 assertTrue(fixture.manager.bindAppWidgetIdIfAllowed(id, info.provider))
                 val widget = LockscreenWidget(id, LockscreenWidgetSize.M)
                 val timeline = context.packageManager.getResourcesForApplication(weather).getIdentifier("timeline", "id", weather)
@@ -225,10 +210,10 @@ class WeatherFeedInstrumentedTest {
                     val bitmap = (view!!.findViewById<ImageView>(timeline)?.drawable as? BitmapDrawable)?.bitmap
                     bitmap != null && !bitmap.sameAs(marker)
                 } }
-            } finally {
-                automation.dropShellPermissionIdentity()
-                main { host.stopListening(); host.deleteAppWidgetId(id) }
-            }
+            }, actions = arrayOf<() -> Unit>(
+                { automation.dropShellPermissionIdentity() },
+                { main { fixtureCleanup({ host.stopListening() }, { host.deleteAppWidgetId(id) }) } },
+            ))
         }
     }
 }

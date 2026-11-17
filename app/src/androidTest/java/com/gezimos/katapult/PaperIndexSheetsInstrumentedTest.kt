@@ -184,6 +184,6 @@ class PaperIndexSheetsInstrumentedTest {
         }
         instrumentation.waitForIdleSync()
         if (ui.has("GOT IT")) ui.click("GOT IT") else if (ui.has("Got it")) ui.click("Got it")
-        try { block(activity) } finally { instrumentation.runOnMainSync { activity.finish() } }
+        withFixtureCleanup({ instrumentation.runOnMainSync { activity.finish() } }) { block(activity) }
     }
 }

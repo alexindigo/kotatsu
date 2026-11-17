@@ -40,8 +40,7 @@ class PaperIndexChaptersInstrumentedTest {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }) as MainActivity
-        try { test(activity, PlatformUiDriver(instrumentation)) }
-        finally { instrumentation.runOnMainSync { activity.finish() } }
+        withFixtureCleanup({ instrumentation.runOnMainSync { activity.finish() } }) { test(activity, PlatformUiDriver(instrumentation)) }
     }
 
     @Composable
@@ -214,7 +213,7 @@ class PaperIndexChaptersInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
         val previous = raw.all["disable_music_widget"]
         val prefs = PrefsManager(context)
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 prefs.disableMusicWidget = false
                 val vm = ViewModelProvider(activity)[MainViewModel::class.java]
@@ -232,19 +231,19 @@ class PaperIndexChaptersInstrumentedTest {
             assertTrue(org.json.JSONObject(prefs.exportToJson(context)).getBoolean("disable_music_widget"))
             ui.toggleSwitch(title, false, true) { !prefs.disableMusicWidget }
             ui.await("Music On must persist disable=false") { !prefs.disableMusicWidget && ui.checked(title) == true }
-        } finally {
+        }, actions = arrayOf<() -> Unit>({
             instrumentation.runOnMainSync {
                 val editor = raw.edit()
                 if (previous is Boolean) editor.putBoolean("disable_music_widget", previous) else editor.remove("disable_music_widget")
                 assertTrue(editor.commit())
             }
-        }
+        }))
     }
 
     @Test fun screensaverCustomizationNoLongerOffersTextBackgrounds() = withActivity { activity, ui ->
         val raw = context.getSharedPreferences("katapult_prefs", Context.MODE_PRIVATE)
         val previous = raw.all["screensaver_enabled"]
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 assertTrue(raw.edit().putBoolean("screensaver_enabled", true).commit())
                 val vm = ViewModelProvider(activity)[MainViewModel::class.java]
@@ -258,13 +257,13 @@ class PaperIndexChaptersInstrumentedTest {
             assertTrue(ui.has(context.getString(R.string.screensaver_eink_refresh)))
             assertFalse(ui.has("Text backgrounds"))
             assertFalse(ui.has("Screensaver Text Backgrounds"))
-        } finally {
+        }, actions = arrayOf<() -> Unit>({
             instrumentation.runOnMainSync {
                 val editor = raw.edit()
                 if (previous is Boolean) editor.putBoolean("screensaver_enabled", previous) else editor.remove("screensaver_enabled")
                 assertTrue(editor.commit())
                 assertEquals(previous, raw.all["screensaver_enabled"])
             }
-        }
+        }))
     }
 }

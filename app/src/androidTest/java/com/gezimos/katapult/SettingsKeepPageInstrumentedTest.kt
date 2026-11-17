@@ -29,10 +29,10 @@ class SettingsKeepPageInstrumentedTest {
         }
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-        try { test(activity) } finally {
-            instrumentation.runOnMainSync { activity.finish() }
-            ui.await("Position fixture did not finish") { activity.isDestroyed }
-        }
+        withFixtureCleanup(
+            { instrumentation.runOnMainSync { activity.finish() } },
+            { ui.await("Position fixture did not finish") { activity.isDestroyed } },
+        ) { test(activity) }
     }
 
     private fun fixture(count: Int, test: () -> Unit) = withActivity { activity ->
@@ -228,7 +228,7 @@ class SettingsKeepPageInstrumentedTest {
         val deviceModel = android.os.Build::class.java.getDeclaredField("MODEL").apply { isAccessible = true }
         val previousModel = deviceModel.get(null)
         if (kompakt) deviceModel.set(null, "Kompakt")
-        try {
+        withFixtureCleanup(body = {
             withActivity { activity ->
                 instrumentation.runOnMainSync { activity.viewModel.navigateTo(Screen.SETTINGS) }
                 ui.click(label(R.string.section_appearance))
@@ -251,6 +251,6 @@ class SettingsKeepPageInstrumentedTest {
                 ui.back()
                 ui.await("External handoff Back lost later page") { ui.has(label(R.string.theme_mode)) && ui.has(page) }
             }
-        } finally { deviceModel.set(null, previousModel) }
+        }, actions = arrayOf<() -> Unit>({ deviceModel.set(null, previousModel) }))
     }
 }

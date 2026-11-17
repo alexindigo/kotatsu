@@ -45,7 +45,7 @@ internal object ScreensaverAdapterCases {
         val keys = listOf("screensaver_enabled", "screensaver_show_notifications", "screensaver_update_mode", "screensaver_update_minutes")
         val original = keys.associateWith { raw.all[it] }
         val ui = PlatformUiDriver(instrumentation)
-        try {
+        withFixtureCleanup(body = {
             for (mode in listOf(PrefsManager.SCREENSAVER_MODE_STATIC, PrefsManager.SCREENSAVER_MODE_INTERVAL)) {
                 instrumentation.runOnMainSync {
                     raw.edit().putBoolean("screensaver_enabled", true).putBoolean("screensaver_show_notifications", true)
@@ -56,7 +56,7 @@ internal object ScreensaverAdapterCases {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 }) as ScreensaverActivity
                 val feed = Feed()
-                try {
+                withFixtureCleanup(body = {
                 instrumentation.runOnMainSync { activity.setContent { ScreensaverView(feed) } }
                 ui.await("Synthetic screensaver row did not render in mode $mode") { ui.has("Calendar") && ui.has("2") }
                 assertTrue(feed.leases.demanded)
@@ -67,11 +67,11 @@ internal object ScreensaverAdapterCases {
                 ConnectedUiStateFixture.closeOwnedActivities()
                 ui.await("Screensaver inactivity retained source ownership") { !feed.leases.demanded && feed.listeners.isEmpty() }
                 assertFalse(ScreensaverActivity.isShowing)
-                } finally { ConnectedUiStateFixture.closeOwnedActivities() }
+                }, actions = arrayOf<() -> Unit>({ ConnectedUiStateFixture.closeOwnedActivities() }))
             }
-        } finally {
-            ConnectedUiStateFixture.closeOwnedActivities()
-            instrumentation.runOnMainSync {
+        }, actions = arrayOf<() -> Unit>(
+            { ConnectedUiStateFixture.closeOwnedActivities() },
+            { instrumentation.runOnMainSync {
                 val editor = raw.edit()
                 original.forEach { (key, value) ->
                     when (value) {
@@ -81,7 +81,7 @@ internal object ScreensaverAdapterCases {
                     }
                 }
                 editor.commit()
-            }
-        }
+            } },
+        ))
     }
 }

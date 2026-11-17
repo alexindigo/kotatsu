@@ -58,7 +58,7 @@ class HomeDispatchDeadlineInstrumentedTest {
         fun pair() {
             assertEquals("Native injection failed", "", fixture.shell("su 0 sh ${native.absolutePath}"))
         }
-        try {
+        withFixtureCleanup(body = {
             for (dismiss in listOf("header", "back", "double")) {
                 fixture.settings()
                 val origin = fixture.resumedTask()
@@ -84,6 +84,6 @@ class HomeDispatchDeadlineInstrumentedTest {
                 fixture.ui.await("Close must reveal the same app", 15000) { !fixture.overlay.windowVisible() && fixture.ui.has("Brightness level") }
                 assertEquals(origin, fixture.resumedTask())
             }
-        } finally { native.delete() }
+        }, actions = arrayOf<() -> Unit>({ native.delete() }))
     }
 }

@@ -74,18 +74,18 @@ class RecentAppsInstrumentedTest {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
         val source = Source()
         val model = RecentApps(source, context.packageName) { now }
-        try {
+        withFixtureCleanup(body = {
             main { model.show(); activity.setContent { RecentAppsScreen(model) } }
             ui.await("Recent list not rendered") { ui.has("Mudita Notes") }
             test(model, source, activity)
-        } finally { main { activity.finish() } }
+        }, actions = arrayOf<() -> Unit>({ main { activity.finish() } }))
     }
 
     @Test fun homeIntentsCannotOpenRecentAppsWithoutTheService() {
         assertFalse(HomeKeyFilterState.active)
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java).setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-        try {
+        withFixtureCleanup(body = {
             main { activity.viewModel.screen = Screen.HOME }
             val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
                 .setClass(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -94,7 +94,7 @@ class RecentAppsInstrumentedTest {
             ui.await("Home not shown") { ui.packageVisible(context.packageName) }
             assertFalse(PlatformUiDriver(instrumentation, context.getString(R.string.recent_apps)).windowVisible())
             assertEquals(Screen.HOME, activity.viewModel.screen)
-        } finally { main { activity.finish() } }
+        }, actions = arrayOf<() -> Unit>({ main { activity.finish() } }))
     }
 
     @Test fun recentAppsOffDoesNotOpenTheServiceOverlay() = RecentOverlayFixture().use { fixture ->
@@ -135,7 +135,7 @@ class RecentAppsInstrumentedTest {
         val monitor = android.app.Instrumentation.ActivityMonitor(MainActivity::class.java.name, null, false)
         instrumentation.addMonitor(monitor)
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(body = {
             main { prefs.setSensitiveChoice(com.gezimos.katapult.util.SensitiveChoice.USAGE_STATS, false) }
             val recent = RecentApps(AndroidRecentApps(context.applicationContext), context.packageName)
             main { recent.show(); assertTrue(recent.canOpenAccess); recent.openAccess() }
@@ -146,10 +146,7 @@ class RecentAppsInstrumentedTest {
             assertUsageConsentIsVisibleAndOff()
             assertEquals(Screen.SETTINGS, activity.viewModel.screen)
             assertFalse(recent.visible)
-        } finally {
-            instrumentation.removeMonitor(monitor)
-            main { activity?.finish() }
-        }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.removeMonitor(monitor) }, { main { activity?.finish() } }))
     }
 
     @Test fun wholeRowRailArrowsMoveWhenOnlyOneRowFits() = withPage { _, _, activity ->
@@ -201,7 +198,7 @@ class RecentAppsInstrumentedTest {
         val closed = context.getSharedPreferences("recent_apps", 0)
         val previous = closed.all[target]
         closed.edit().remove(target).commit()
-        try {
+        withFixtureCleanup(body = {
             val intent = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
             main { context.startActivity(intent) }
             ui.await("Row fixture did not launch") { ui.packageVisible(target) }
@@ -253,10 +250,10 @@ class RecentAppsInstrumentedTest {
             ui.await("Usage access destination missing") {
                 fixture.shell("dumpsys activity activities").lineSequence().any { it.contains("mResumedActivity:") && it.contains("AppUsageAccessSettingsActivity") }
             }
-        } finally {
-            fixture.shell("appops set ${context.packageName} GET_USAGE_STATS allow")
-            closed.edit().apply { if (previous == null) remove(target) else putLong(target, previous as Long) }.commit()
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { fixture.shell("appops set ${context.packageName} GET_USAGE_STATS allow") },
+            { closed.edit().apply { if (previous == null) remove(target) else putLong(target, previous as Long) }.commit() },
+        ))
     }
 
     @Test fun bottomCloseFromAppReachesHomeHidesUntilReuseAndBackgroundCloseStaysOpen() = RecentOverlayFixture().use { fixture ->
@@ -274,7 +271,7 @@ class RecentAppsInstrumentedTest {
         }
         val store = context.getSharedPreferences("recent_apps", 0)
         val saved = store.all
-        try {
+        withFixtureCleanup(body = {
             store.edit().clear().commit()
             val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
             val label = context.packageManager.resolveActivity(launch, 0)!!.loadLabel(context.packageManager).toString()
@@ -337,9 +334,7 @@ class RecentAppsInstrumentedTest {
             }
             fixture.back()
             ui.await("Background Close changed underlying activity") { ui.has("Brightness level") }
-        } finally {
-            store.edit().clear().apply { saved.forEach { (key, value) -> putLong(key, value as Long) } }.commit()
-        }
+        }, actions = arrayOf<() -> Unit>({ store.edit().clear().apply { saved.forEach { (key, value) -> putLong(key, value as Long) } }.commit() }))
     }
 
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
@@ -350,7 +345,7 @@ class RecentAppsInstrumentedTest {
         val previousClose = closedStore.all[packageName]
         prefs.edit().putBoolean("collect_usage_stats", true).commit()
         val source = AndroidRecentApps(context)
-        try {
+        withFixtureCleanup(body = {
           BackgroundProcessFixture().use { fixture ->
             fixture.foreground()
             fixture.background()
@@ -368,10 +363,10 @@ class RecentAppsInstrumentedTest {
                 recentApps(recreated.history(), context.packageName, recreated.closed()).any { it.packageName == packageName }
             }
           }
-        } finally {
-            prefs.edit().apply { if (choice == null) remove("collect_usage_stats") else putBoolean("collect_usage_stats", choice as Boolean) }.commit()
-            closedStore.edit().apply { if (previousClose == null) remove(packageName) else putLong(packageName, previousClose as Long) }.commit()
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { prefs.edit().apply { if (choice == null) remove("collect_usage_stats") else putBoolean("collect_usage_stats", choice as Boolean) }.commit() },
+            { closedStore.edit().apply { if (previousClose == null) remove(packageName) else putLong(packageName, previousClose as Long) }.commit() },
+        ))
     }
 
     @Test fun cachedUidDoesNotMakeTheStoppingProcessKillEligible() {
@@ -408,7 +403,7 @@ class RecentAppsInstrumentedTest {
         }
         instrumentation.addMonitor(monitor)
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(body = {
             prefs.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true).commit()
             shell("appops set ${context.packageName} GET_USAGE_STATS ignore")
             val home = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
@@ -453,12 +448,10 @@ class RecentAppsInstrumentedTest {
             assertEquals(intent.resolveActivity(context.packageManager), launches.last().resolveActivity(context.packageManager))
             ui.back()
             ui.await("Usage settings fixture did not return to Permissions") { ui.packageVisible(context.packageName) }
-        } finally {
-            instrumentation.removeMonitor(monitor)
-            ConnectedUiStateFixture.quiesceOwnedProducers()
-            shell("appops set ${context.packageName} GET_USAGE_STATS $restore")
-            restoreFixturePreferenceValues(prefs, saved)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.removeMonitor(monitor) }, { ConnectedUiStateFixture.quiesceOwnedProducers() },
+            { shell("appops set ${context.packageName} GET_USAGE_STATS $restore") }, { restoreFixturePreferenceValues(prefs, saved) },
+        ))
     }
 
     @Test fun usageSettingsFallsBackAndReportsFailureForAnyContext() {

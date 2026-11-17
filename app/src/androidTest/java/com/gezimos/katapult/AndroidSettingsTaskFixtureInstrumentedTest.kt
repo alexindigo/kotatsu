@@ -35,7 +35,7 @@ class AndroidSettingsTaskFixtureInstrumentedTest {
     @Test fun staleAcquisitionAndExceptionalCloseRemoveOnlyOwnedSettingsTasks() {
         ActionServiceSettingsFixture.off().use {
             NativeDisplayFixture().use {
-                try {
+                withFixtureCleanup(body = {
                     display()
                     assertTrue(runCatching { AndroidSettingsTaskFixture.assertEmpty() }.isFailure)
                     val expected = AssertionError("Settings body failure")
@@ -52,7 +52,9 @@ class AndroidSettingsTaskFixtureInstrumentedTest {
                     }.exceptionOrNull()
                     assertSame(expected, error)
                     AndroidSettingsTaskFixture.assertEmpty()
-                } finally { AndroidSettingsTaskFixture().close() }
+                }, actions = arrayOf<() -> Unit>(
+                    { AndroidSettingsTaskFixture().close() },
+                ))
             }
         }
     }

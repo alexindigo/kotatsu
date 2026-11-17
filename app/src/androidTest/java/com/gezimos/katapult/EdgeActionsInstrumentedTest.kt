@@ -53,8 +53,7 @@ class EdgeActionsInstrumentedTest {
             override fun getApplicationContext(): Context = this
             override fun getSharedPreferences(name: String?, mode: Int) = raw
         }
-        try { val prefs = PrefsManager(isolated); test(prefs, prefs.edgeActions) }
-        finally { deleteTestPreferences(context, name) }
+        withFixtureCleanup({ deleteTestPreferences(context, name) }) { val prefs = PrefsManager(isolated); test(prefs, prefs.edgeActions) }
     }
 
     @Test fun storeSurvivesRecreationExportImportAndRejectsInvalidImportsAtomically() = withStore { prefs, store ->
@@ -101,7 +100,7 @@ class EdgeActionsInstrumentedTest {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }) as MainActivity
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 activity.setContent {
                     var revision by remember { mutableIntStateOf(0) }
@@ -152,7 +151,7 @@ class EdgeActionsInstrumentedTest {
             val intent = SecureCamera.intent()
             assertEquals(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE, intent.action)
             assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
-        } finally { instrumentation.runOnMainSync { activity.finish() } }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { activity.finish() } }))
     }
 
     @Test fun sideScreenAndExplicitNothingRoundTripOnEitherEdge() = withStore { prefs, store ->
@@ -169,7 +168,7 @@ class EdgeActionsInstrumentedTest {
     @Test fun unknownStoredActionsUseEachEdgesDefaultWithoutRewritingPreferences() {
         val name = "edge-defaults-${UUID.randomUUID()}"
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
-        try {
+        withFixtureCleanup(body = {
             val store = EdgeActionStore(raw)
             listOf("task_list", "unknown", 42, true).forEach { value ->
                 val edit = raw.edit()
@@ -186,7 +185,7 @@ class EdgeActionsInstrumentedTest {
                 assertEquals(value, raw.all[EdgeActionStore.LEFT])
                 assertEquals(value, raw.all[EdgeActionStore.RIGHT])
             }
-        } finally { deleteTestPreferences(context, name) }
+        }, actions = arrayOf<() -> Unit>({ deleteTestPreferences(context, name) }))
     }
 
     @Test fun launcherDoesNotRequestMuditaNotesPermissions() {

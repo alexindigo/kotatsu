@@ -28,11 +28,10 @@ class SettingsSwipeOwnerInstrumentedTest {
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-            try { test(activity, activity.viewModel) }
-            finally {
-                main { activity.finish() }
-                ui.await("Settings swipe fixture did not release its model") { activity.isDestroyed }
-            }
+            withFixtureCleanup(
+                { main { activity.finish() } },
+                { ui.await("Settings swipe fixture did not release its model") { activity.isDestroyed } },
+            ) { test(activity, activity.viewModel) }
         }
     }
 

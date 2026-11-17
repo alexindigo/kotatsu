@@ -19,7 +19,7 @@ class IconPersistenceInstrumentedTest {
         assertTrue("Preserve an unexpected existing fixture", backing.all.isEmpty())
         val key = "icon_override_fixture"
         val file = File.createTempFile("retained-manual-icon-", ".png", context.filesDir)
-        try {
+        withFixtureCleanup(body = {
             for (previous in listOf(null, "file:${file.absolutePath}", "res:clock")) {
                 assertTrue(backing.edit().clear().putString(key, previous).commit())
                 var attempts = 0
@@ -55,10 +55,8 @@ class IconPersistenceInstrumentedTest {
                 assertEquals(previous, PrefsManager.iconOverrides(wrapped)["fixture"])
                 assertTrue("Storage rollback was not attempted", attempts >= 2)
             }
-        } finally {
-            assertTrue(backing.edit().clear().commit())
-            deleteTestPreferences(context, name)
-            assertTrue(file.delete())
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { assertTrue(backing.edit().clear().commit()) }, { deleteTestPreferences(context, name) }, { assertTrue(file.delete()) },
+        ))
     }
 }

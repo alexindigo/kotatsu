@@ -36,7 +36,7 @@ class AppMenuInstrumentedTest {
             lateinit var model: MainViewModel
             var modelCreated = false
             var activity: MainActivity? = null
-            try {
+            withFixtureCleanup(body = {
                 assertEquals("", shell("cmd role add-role-holder android.app.role.HOME ${context.packageName}"))
                 ui.await("Launcher shortcut permission missing") { ShortcutHelper.hasHostPermission(context) }
                 pinnedBefore = ShortcutHelper.queryShortcuts(context, camera.packageName).filter { it.isPinned }.map { it.id }
@@ -69,28 +69,28 @@ class AppMenuInstrumentedTest {
                 }
                 ui.await("Fixture apps missing") { ui.has(camera.label) && ui.has(calculator.label) }
                 test(current, model)
-            } finally {
-                main {
-                    if (modelCreated && model.reorderMode) model.discardReorderExit()
-                    activity?.finish()
-                }
-                activity?.let { current -> ui.await("App-menu Activity did not release its ViewModel") { current.isDestroyed } }
-                context.getSystemService(android.content.pm.LauncherApps::class.java)
-                    .pinShortcuts(camera.packageName, pinnedBefore, android.os.Process.myUserHandle())
-                assertEquals("App-menu fixture leaked shortcut pins", pinnedBefore.toSet(),
-                    ShortcutHelper.queryShortcuts(context, camera.packageName).filter { it.isPinned }.map { it.id }.toSet())
-                if (!heldHomeRole) {
-                    assertEquals("", shell("cmd role remove-role-holder android.app.role.HOME ${context.packageName}"))
-                    context.packageManager.clearPackagePreferredActivities(context.packageName)
-                }
-                if (home != null && home.packageName != context.packageName) {
+            }, actions = arrayOf<() -> Unit>(
+                { main { fixtureCleanup(
+                    { if (modelCreated && model.reorderMode) model.discardReorderExit() },
+                    { activity?.finish() },
+                ) } },
+                { activity?.let { current -> ui.await("App-menu Activity did not release its ViewModel") { current.isDestroyed } } },
+                { context.getSystemService(android.content.pm.LauncherApps::class.java)
+                    .pinShortcuts(camera.packageName, pinnedBefore, android.os.Process.myUserHandle()) },
+                { assertEquals("App-menu fixture leaked shortcut pins", pinnedBefore.toSet(),
+                    ShortcutHelper.queryShortcuts(context, camera.packageName).filter { it.isPinned }.map { it.id }.toSet()) },
+                { if (!heldHomeRole) { fixtureCleanup(
+                    { assertEquals("", shell("cmd role remove-role-holder android.app.role.HOME ${context.packageName}")) },
+                    { context.packageManager.clearPackagePreferredActivities(context.packageName) },
+                ) } },
+                { if (home != null && home.packageName != context.packageName) {
                     assertTrue(shell("cmd package set-home-activity ${home.flattenToString()}").contains("Success"))
-                }
-                ui.await("Fixture changed the resolved Home app or shortcut permission") {
+                } },
+                { ui.await("Fixture changed the resolved Home app or shortcut permission") {
                     resolvedHome() == home && role.isRoleHeld(android.app.role.RoleManager.ROLE_HOME) == heldHomeRole &&
                         ShortcutHelper.hasHostPermission(context) == hadShortcutPermission
-                }
-            }
+                } },
+            ))
         }
     }
 

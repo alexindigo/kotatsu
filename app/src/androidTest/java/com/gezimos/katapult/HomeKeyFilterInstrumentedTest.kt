@@ -51,16 +51,16 @@ class HomeKeyFilterInstrumentedTest {
         val marker = "ELIGIBILITY ${SystemClock.uptimeMillis()}"
         android.util.Log.i("KotatsuHomeProbe", marker)
         shell("su 0 sendevent $keyboard 1 172 1"); shell("su 0 sendevent $keyboard 0 0 0")
-        try {
+        withFixtureCleanup(body = {
             ui.await("HOME DOWN was not consumed") {
                 shell("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(marker)
                     .lineSequence().any { it.contains("action=0 consumed=true") }
             }
             main { fixture.home.viewModel.prefs.homeButtonRecentApps = false }
             SystemClock.sleep(600)
-        } finally {
-            shell("su 0 sendevent $keyboard 1 172 0"); shell("su 0 sendevent $keyboard 0 0 0")
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { shell("su 0 sendevent $keyboard 1 172 0") }, { shell("su 0 sendevent $keyboard 0 0 0") },
+        ))
         SystemClock.sleep(650)
         assertEquals("An owned UP must not trigger Android's Home handler", origin, fixture.resumedTask())
         assertFalse(fixture.overlay.windowVisible())
@@ -81,7 +81,7 @@ class HomeKeyFilterInstrumentedTest {
         val field = LockscreenWidgetService::class.java.getDeclaredField("instance").apply { isAccessible = true }
         var home: MainActivity? = null
         instrumentation.addMonitor(monitor)
-        try {
+        withFixtureCleanup(body = {
             ConnectedUiStateFixture.prepareForegroundService()
             prefs.edit().putBoolean("onboarding_complete", true).putBoolean("collect_usage_stats", true)
                 .putBoolean("home_button_recent_apps", true).putBoolean("home_button_screenshot", false)
@@ -181,24 +181,18 @@ class HomeKeyFilterInstrumentedTest {
             val keyboard = Regex("/dev/input/event[0-9]+").find(
                 shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
             shell("su 0 sendevent $keyboard 1 172 1"); shell("su 0 sendevent $keyboard 0 0 0")
-            try {
+            withFixtureCleanup(body = {
                 SystemClock.sleep(650)
                 assertTrue("Held Home must stay at the origin until UP", ui.has("Brightness level"))
-            } finally {
-                shell("su 0 sendevent $keyboard 1 172 0"); shell("su 0 sendevent $keyboard 0 0 0")
-            }
+            }, actions = arrayOf<() -> Unit>(
+                { shell("su 0 sendevent $keyboard 1 172 0") }, { shell("su 0 sendevent $keyboard 0 0 0") },
+            ))
             ui.await("Held Home did not reach Home on UP") { ui.packageVisible(defaultHome) }
-        } finally {
-            try {
-                try { instrumentation.removeMonitor(monitor) }
-                finally { main { home?.finish() } }
-            } finally {
-                try {
-                    accessibility?.close()
-                } finally {
-                    restoreFixturePreferenceValues(prefs, previous)
-                }
-            }
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.removeMonitor(monitor) },
+            { main { home?.finish() } },
+            { accessibility?.close() },
+            { restoreFixturePreferenceValues(prefs, previous) },
+        ))
     }
 }

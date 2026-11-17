@@ -1,5 +1,8 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+
 import com.gezimos.katapult.platformAutomation
 import android.appwidget.AppWidgetManager
 import android.content.Intent
@@ -44,7 +47,7 @@ class SideScreenInstrumentedTest {
         WidgetHostTestFixture(context, applicationPreferences = true).use { fixture ->
             val previous = fixture.raw.all[LockscreenWidgetStore.SCREENS]
             assertTrue(fixture.raw.edit().remove(LockscreenWidgetStore.SCREENS).commit())
-            try {
+            withFixtureCleanup(body = {
                 androidx.test.core.app.ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                     lateinit var providerLabel: String
                     scenario.onActivity {
@@ -125,11 +128,11 @@ class SideScreenInstrumentedTest {
                         assertNotNull(it.viewModel.lockscreenWidgets.screens.first().slots[0])
                     }
                 }
-            } finally {
+            }, actions = arrayOf<() -> Unit>({
                 val edit = fixture.raw.edit()
                 if (previous == null) edit.remove(LockscreenWidgetStore.SCREENS) else edit.putString(LockscreenWidgetStore.SCREENS, previous as String)
                 assertTrue(edit.commit())
-            }
+            }))
         }
     }
 
@@ -143,10 +146,11 @@ class SideScreenInstrumentedTest {
             lateinit var restored: LockscreenWidgetSettings
             var replacement = -1
             main { first = ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs)); restored = ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs)) }
-            try {
+            withFixtureCleanup(body = {
                 instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
-                try { main { first.add(info, { fail("Bind permitted") }, { replacement = it }, 0) } }
-                finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
+                withFixtureCleanup({ instrumentation.platformAutomation.dropShellPermissionIdentity() }) {
+                    main { first.add(info, { fail("Bind permitted") }, { replacement = it }, 0) }
+                }
                 main {
                     val saved = Bundle(); first.saveState(saved); restored.restoreState(saved)
                     assertEquals(original, store.screens().first().slots[0])
@@ -158,7 +162,7 @@ class SideScreenInstrumentedTest {
                     assertEquals(replacement, store.screens().first().slots[0])
                     assertTrue(replacement in fixture.host.appWidgetIds)
                 }
-            } finally { main { first.close(); restored.close() } }
+            }, actions = arrayOf<() -> Unit>({ main { fixtureCleanup({ first.close() }, { restored.close() }) } }))
         }
     }
 
@@ -196,10 +200,10 @@ class SideScreenInstrumentedTest {
                 if (key == LockscreenWidgetStore.SCREENS && armed.compareAndSet(true, false)) store.nameScreen("Reentrant screen")
             }
             fixture.raw.registerOnSharedPreferenceChangeListener(listener)
-            try { main {
+            withFixtureCleanup({ fixture.raw.unregisterOnSharedPreferenceChangeListener(listener) }) { main {
                 assertEquals("Reentrant screen", store.screens().first().name)
                 assertEquals(listOf<Int?>(id, null), store.screens().first().slots)
-            } } finally { fixture.raw.unregisterOnSharedPreferenceChangeListener(listener) }
+            } }
         }
     }
 
@@ -209,10 +213,11 @@ class SideScreenInstrumentedTest {
             lateinit var settings: LockscreenWidgetSettings
             var pending = -1
             main { settings = ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs)) }
-            try {
+            withFixtureCleanup(body = {
                 instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
-                try { main { settings.add(info, { fail("Expected allowed bind") }, { pending = it }, 0) } }
-                finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
+                withFixtureCleanup({ instrumentation.platformAutomation.dropShellPermissionIdentity() }) {
+                    main { settings.add(info, { fail("Expected allowed bind") }, { pending = it }, 0) }
+                }
                 assertTrue(pending > 0)
                 assertEquals(listOf<Int?>(null, null), fixture.prefs.lockscreenWidgetStore.screens().first().slots)
                 val state = Bundle()
@@ -239,7 +244,7 @@ class SideScreenInstrumentedTest {
                 main { settings.removeSlot(1) }
                 assertFalse(second in fixture.host.appWidgetIds)
                 assertEquals(pending, fixture.prefs.lockscreenWidgetStore.screens().first().slots[0])
-            } finally { main { settings.close() } }
+            }, actions = arrayOf<() -> Unit>({ main { settings.close() } }))
         }
     }
 
@@ -253,7 +258,7 @@ class SideScreenInstrumentedTest {
             lateinit var list: AbsListView
             var closes = 0
             var created = false
-            try {
+            withFixtureCleanup(body = {
                 main {
                     root = SideScreenView(activity, SideScreen(slots = listOf(id, null)), { closes++ },
                         { _, _ -> false }, { _, _ -> false }, {}, {})
@@ -339,7 +344,9 @@ class SideScreenInstrumentedTest {
                 assertFalse(ui.has(context.getString(R.string.edge_task_scroll)))
                 main { root.dispose() }
                 assertFalse(fixture.manager.getAppWidgetOptions(id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
-            } finally { main { if (created) root.dispose() }; ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
+            }, actions = arrayOf<() -> Unit>(
+                { main { if (created) root.dispose() } }, { ConnectedUiStateFixture.closeOwnedActivities() }, { main { fixture.host.releaseViews() } },
+            ))
         }
     }
 
@@ -350,7 +357,7 @@ class SideScreenInstrumentedTest {
             val activity = activity()
             var root: SideScreenView? = null
             val box = LockscreenWidget(ids[2], LockscreenWidgetSize.S)
-            try {
+            withFixtureCleanup(body = {
                 main {
                     fixture.host.listen(LockscreenWidgetHost.Surface.BOX, true)
                     fixture.host.showSurface(context, LockscreenWidgetHost.Surface.BOX, listOf(box))
@@ -401,11 +408,10 @@ class SideScreenInstrumentedTest {
                     root!!.dispose()
                     assertTrue(fixture.manager.getAppWidgetOptions(box.id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
                 }
-            } finally {
-                main { root?.dispose(); fixture.host.hideWidgets(context); fixture.host.listen(false) }
-                ConnectedUiStateFixture.closeOwnedActivities()
-                main { fixture.host.releaseViews() }
-            }
+            }, actions = arrayOf<() -> Unit>(
+                { main { fixtureCleanup({ root?.dispose() }, { fixture.host.hideWidgets(context) }, { fixture.host.listen(false) }) } },
+                { ConnectedUiStateFixture.closeOwnedActivities() }, { main { fixture.host.releaseViews() } },
+            ))
         }
     }
 
@@ -420,7 +426,7 @@ class SideScreenInstrumentedTest {
             var inspections = 0
             var inversions = 0
             val roots = mutableListOf<SideScreenView>()
-            try {
+            withFixtureCleanup(body = {
                 main {
                     val manager = activity.getSystemService(android.view.WindowManager::class.java)
                     val port = object : android.view.WindowManager by manager {
@@ -489,7 +495,9 @@ class SideScreenInstrumentedTest {
                     assertTrue(descendants(root).filterIsInstance<HostedWidgetSlot>().all { it.childCount == 0 })
                     assertFalse(fixture.manager.getAppWidgetOptions(id).getBoolean(LockscreenWidgetHost.OPTION_HOST_VISIBLE))
                 }
-            } finally { main { if (created) page.close() }; ConnectedUiStateFixture.closeOwnedActivities(); main { fixture.host.releaseViews() } }
+            }, actions = arrayOf<() -> Unit>(
+                { main { if (created) page.close() } }, { ConnectedUiStateFixture.closeOwnedActivities() }, { main { fixture.host.releaseViews() } },
+            ))
         }
     }
 
@@ -511,7 +519,6 @@ class SideScreenInstrumentedTest {
         var inspection: AndroidLockscreenInspection? = null
         var sends = 0
         var pageRemoved = false
-        var failure: Throwable? = null
         val focusedGates = java.util.concurrent.atomic.AtomicInteger()
         val prematureRequests = java.util.concurrent.atomic.AtomicInteger()
         val requested = WidgetUnlockActivity::class.java.getDeclaredField("requested").apply { isAccessible = true }
@@ -533,9 +540,6 @@ class SideScreenInstrumentedTest {
             }
         }
         main { lifecycle.addLifecycleCallback(focusProbe) }
-        fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
         fun pinVisible() = nativeKeyguard.pinVisible()
         fun gateAlive(): Boolean {
             var alive = false
@@ -547,7 +551,7 @@ class SideScreenInstrumentedTest {
         }
         WidgetHostTestFixture(context).use { fixture ->
             val id = fixture.bind(fixture.providers.singleProvider(instrumentation.context.packageName))
-            try {
+            withFixtureCleanup(body = {
                 ConnectedUiStateFixture.prepareForegroundService()
                 nativeKeyguard.setPin()
                 accessibility = com.gezimos.katapult.ActionServiceSettingsFixture.on()
@@ -625,21 +629,21 @@ class SideScreenInstrumentedTest {
                 main { assertFalse(page!!.opened); assertEquals(4, sends) }
                 nativeKeyguard.unlock()
                 ui.await("Cancellation did not return HOME underneath keyguard") { ui.packageVisible(home) }
-            } catch (error: Throwable) { failure = error }
-            finally {
-                restore { main { lifecycle.removeLifecycleCallback(focusProbe) } }
-                restore { main { page?.close(); launch?.close(); inspection?.close(); if (service != null) launchField.set(service, original) } }
-                restore { nativeKeyguard.close(); assertFalse(keyguard.isDeviceSecure) }
-                restore {
+            }, actions = arrayOf<() -> Unit>(
+                { main { lifecycle.removeLifecycleCallback(focusProbe) } },
+                { main { fixtureCleanup(
+                    { page?.close() }, { launch?.close() }, { inspection?.close() }, { if (service != null) launchField.set(service, original) },
+                ) } },
+                { nativeKeyguard.close(); assertFalse(keyguard.isDeviceSecure) },
+                {
                     // Remove the test counterpart's retained task after cancellation, from unlocked UI.
                     context.startActivity(Intent().setComponent(android.content.ComponentName(instrumentation.context.packageName, SideTestTarget::class.java.name))
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("widget", id).putExtra("payload", "cleanup"))
                     ui.await("Counterpart cleanup UI absent") { ui.find { it.text?.toString()?.equals("Finish fixture", true) == true } != null }
                     ui.click(ui.find { it.text?.toString()?.equals("Finish fixture", true) == true }!!.text.toString())
-                }
-                restore { accessibility?.close() }
-            }
+                },
+                { accessibility?.close() },
+            ))
         }
-        failure?.let { throw it }
     }
 }

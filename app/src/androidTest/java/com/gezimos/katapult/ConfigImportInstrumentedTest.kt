@@ -32,8 +32,7 @@ class ConfigImportInstrumentedTest {
         val fixture = object : ContextWrapper(context) {
             override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = raw
         }
-        try { test(PrefsManager(fixture), raw) }
-        finally { deleteTestPreferences(context, name) }
+        withFixtureCleanup({ deleteTestPreferences(context, name) }) { test(PrefsManager(fixture), raw) }
     }
 
     private fun config() = JSONObject().put("_type", "katapult_config")
@@ -213,7 +212,7 @@ class ConfigImportInstrumentedTest {
         instrumentation.waitForIdleSync()
         val changes = mutableListOf<String?>()
         val subscription = prefs.subscribeChanges { changes.add(it) }
-        try {
+        withFixtureCleanup({ subscription.close() }) {
             rejectsUnchanged(prefs, raw, config().put("show_battery", true)
                 .put("icon_size", 80).put("date_format", "yyyy '"))
             instrumentation.waitForIdleSync()
@@ -221,7 +220,7 @@ class ConfigImportInstrumentedTest {
             assertFalse(prefs.showBattery)
             assertEquals(72, prefs.iconSize)
             assertEquals("system", prefs.dateFormat)
-        } finally { subscription.close() }
+        }
     }
 
     @Test fun localStateIsNeverImportedAndOmissionPreservesPresenceAndAbsence() = withPrefs { prefs, raw ->

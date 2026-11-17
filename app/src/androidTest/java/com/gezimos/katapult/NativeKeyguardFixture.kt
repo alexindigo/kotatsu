@@ -64,11 +64,11 @@ class NativeKeyguardFixture(private val unlockBeforeClear: NativeKeyguardFixture
 
     fun pinVisible(): Boolean {
         val focus = automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-        return try {
+        return withFixtureCleanup(body = {
             focus?.refresh() == true && focus.isVisibleToUser &&
                 focus.packageName?.toString() == "com.android.systemui" &&
                 focus.viewIdResourceName == "com.android.systemui:id/pinEntry" && focus.className?.contains("EditText") == true
-        } finally { @Suppress("DEPRECATION") focus?.recycle() }
+        }, actions = arrayOf<() -> Unit>({ @Suppress("DEPRECATION") focus?.recycle() }))
     }
 
     fun showPin() {

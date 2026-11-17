@@ -1,5 +1,7 @@
 package com.gezimos.katapult.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.content.Context
 import android.net.Uri
 import android.os.Bundle
@@ -39,14 +41,12 @@ internal class SleepingWeatherFixture(private val context: Context) : AutoClosea
     }
     fun read(): Weather? {
         synchronized(lock) { check(!closed); reads++ }
-        try {
+        withFixtureCleanup(body = {
             return context.contentResolver.query(URI, null, null, arrayOf(id), null)?.use { cursor ->
                 check(cursor.moveToFirst())
                 Weather(cursor.getInt(0), "C", WeatherCondition.FEW_CLOUDS, false)
             }
-        } finally {
-            synchronized(lock) { reads-- }
-        }
+        }, actions = arrayOf<() -> Unit>({ synchronized(lock) { reads-- } }))
     }
     fun awaitBlocked() {
         await("Current provider query did not reach its unreleased gate") {

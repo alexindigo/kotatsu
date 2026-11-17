@@ -44,7 +44,7 @@ class HomeMenuInstrumentedTest {
             assertEquals("", f.shell("su 0 sendevent $path 0 0 0"))
         }
         val native = File(context.getExternalFilesDir(null), "home-menu-pair.sh")
-        try {
+        withFixtureCleanup(body = {
             if (paired) {
                 // Keep the entire pair in one native stream. Shell round trips can exceed 500 ms.
                 native.writeText("set -e\n" +
@@ -55,7 +55,7 @@ class HomeMenuInstrumentedTest {
             } else edge(1)
             menu.await("Held Home did not attach the Home menu", 10000) { menu.windowVisible() }
             body()
-        } finally { edge(0); if (paired) native.delete() }
+        }, actions = arrayOf<() -> Unit>({ edge(0) }, { if (paired) native.delete() }))
         SystemClock.sleep(650)
         assertTrue("Releasing held Home must not dismiss or go Home", menu.windowVisible())
     }
@@ -172,20 +172,21 @@ class HomeMenuInstrumentedTest {
         fun key(scan: Int, value: Int) {
             f.shell("su 0 sendevent $path 1 $scan $value"); f.shell("su 0 sendevent $path 0 0 0")
         }
-        try {
+        withFixtureCleanup(body = {
             key(172, 1)
-            try {
+            withFixtureCleanup(body = {
                 SystemClock.sleep(150)
                 key(114, 1)
-                try { SystemClock.sleep(1200); assertFalse(menu.windowVisible()) }
-                finally { key(114, 0) }
-            } finally { key(172, 0) }
+                withFixtureCleanup({ key(114, 0) }) { SystemClock.sleep(1200); assertFalse(menu.windowVisible()) }
+            }, actions = arrayOf<() -> Unit>({ key(172, 0) }))
             f.ui.await("Screenshot chord did not save its picture") { pictures().size == before.size + 1 }
             assertTrue("Screenshot chord must not navigate away", f.ui.has("Brightness level"))
-        } finally {
-            (pictures() - before).forEach { id -> context.contentResolver.delete(
-                ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id), null, null) }
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { fixtureCleanup(*(pictures() - before).map { id -> {
+                context.contentResolver.delete(ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id), null, null)
+                Unit
+            } }.toTypedArray()) },
+        ))
     }
 
     @Test fun volumeWithScreenshotOffCancelsHeldMenuChangesVolumeAndReleasesToHome() = fixture { f ->
@@ -195,8 +196,7 @@ class HomeMenuInstrumentedTest {
         fun withAudioSettings(change: () -> Unit) {
             val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
             automation.adoptShellPermissionIdentity(android.Manifest.permission.MODIFY_AUDIO_SETTINGS)
-            try { change() }
-            finally { automation.dropShellPermissionIdentity() }
+            withFixtureCleanup({ automation.dropShellPermissionIdentity() }) { change() }
         }
         fun setVolume(value: Int) = withAudioSettings { audio.setStreamVolume(stream, value, 0) }
         fun volumePanelVisible(): Boolean {
@@ -207,7 +207,7 @@ class HomeMenuInstrumentedTest {
         val keyboard = f.shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
         val path = Regex("/dev/input/event[0-9]+").find(keyboard)!!.value
         val native = File(context.getExternalFilesDir(null), "home-menu-volume.sh")
-        try {
+        withFixtureCleanup(body = {
             for (recent in listOf(false, true)) {
                 main {
                     val prefs = PrefsManager(context)
@@ -223,28 +223,28 @@ class HomeMenuInstrumentedTest {
                     "sendevent $path 1 172 1\nsendevent $path 0 0 0\nsleep 0.15\n" +
                     "sendevent $path 1 114 1\nsendevent $path 0 0 0\n" +
                     "sendevent $path 1 114 0\nsendevent $path 0 0 0\nsleep 1.2\n")
-                try {
+                withFixtureCleanup(body = {
                     assertEquals("", f.shell("su 0 sh ${native.absolutePath}"))
                     assertFalse("Volume must cancel the held-Home menu", menu.windowVisible())
                     assertTrue("Home must wait for release", f.ui.has("Brightness level"))
                     assertTrue("Unowned Volume must still change Android volume", audio.getStreamVolume(stream) < 5)
-                } finally {
-                    f.shell("su 0 sendevent $path 1 172 0"); f.shell("su 0 sendevent $path 0 0 0")
-                    f.shell("su 0 sendevent $path 1 114 0"); f.shell("su 0 sendevent $path 0 0 0")
-                }
+                }, actions = arrayOf<() -> Unit>(
+                    { f.shell("su 0 sendevent $path 1 172 0") }, { f.shell("su 0 sendevent $path 0 0 0") },
+                    { f.shell("su 0 sendevent $path 1 114 0") }, { f.shell("su 0 sendevent $path 0 0 0") },
+                ))
                 val defaultHome = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
                     android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)!!.activityInfo.packageName
                 f.ui.await("Interrupted hold must release as a plain Home press") { f.ui.packageVisible(defaultHome) }
                 assertFalse(menu.windowVisible())
                 f.ui.await("Home release left the volume panel open") { !volumePanelVisible() }
             }
-        } finally {
-            try {
+        }, actions = arrayOf<() -> Unit>(
+            { withFixtureCleanup(body = {
                 setVolume(before)
                 f.ui.await("Media volume did not restore") { audio.getStreamVolume(stream) == before }
                 f.ui.await("Volume panel did not close during cleanup") { !volumePanelVisible() }
-            } finally { native.delete() }
-        }
+            }, actions = arrayOf<() -> Unit>({ native.delete() })) },
+        ))
     }
 
     @Test fun missingShellCommandFailsWithinItsDeadline() {
@@ -279,12 +279,10 @@ class HomeMenuInstrumentedTest {
         hold(f, paired = true)
         assertFalse("The deferred Recent apps toggle must not replace the held menu", f.overlay.windowVisible())
         assertEquals(origin, f.resumedTask())
-        try {
+        withFixtureCleanup(body = {
             f.shell("input keyevent KEYCODE_SLEEP")
             menu.await("Screen off retained the held menu") { !menu.windowVisible() }
-        } finally {
-            NativeKeyguardFixture.wakeAndUnlock()
-        }
+        }, actions = arrayOf<() -> Unit>({ NativeKeyguardFixture.wakeAndUnlock() }))
     }
 
     @Test fun hiddenAllAppsButtonAddsTheSharedMenuDestination() = fixture { f ->

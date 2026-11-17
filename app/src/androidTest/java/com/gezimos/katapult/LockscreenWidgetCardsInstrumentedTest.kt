@@ -34,7 +34,7 @@ class LockscreenWidgetCardsInstrumentedTest {
     @Test fun widgetFixtureOwnsLightThemeAndRestoresMissingOrDark() {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all["theme_mode"]
-        try {
+        withFixtureCleanup(body = {
             for (theme in listOf(null, com.gezimos.katapult.util.PrefsManager.THEME_DARK)) {
                 raw.edit().apply { if (theme == null) remove("theme_mode") else putInt("theme_mode", theme) }.commit()
                 WidgetHostTestFixture(context, applicationPreferences = true).use {
@@ -42,9 +42,9 @@ class LockscreenWidgetCardsInstrumentedTest {
                 }
                 assertEquals(theme, raw.all["theme_mode"])
             }
-        } finally {
-            raw.edit().apply { if (before == null) remove("theme_mode") else putInt("theme_mode", before as Int) }.commit()
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { raw.edit().apply { if (before == null) remove("theme_mode") else putInt("theme_mode", before as Int) }.commit() },
+        ))
     }
 
     private fun withWidgets(work: (MainActivity, WidgetHostTestFixture, List<LockscreenWidget>, List<String>) -> Unit) =
@@ -57,7 +57,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         assertEquals(LockscreenWidgetStore.Result.APPLIED, fixture.prefs.lockscreenWidgetStore.replaceImportedSelection(LockscreenWidgetList.encode(selected)))
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-        try {
+        withFixtureCleanup(body = {
             main {
                 val settings = activity.viewModel.lockscreenWidgets
                 settings.refresh()
@@ -70,9 +70,7 @@ class LockscreenWidgetCardsInstrumentedTest {
             }
             ui.await("Widget page must render") { ui.has(context.getString(R.string.lockscreen_widgets_show)) }
             work(activity, fixture, selected, providers.sortedBy { it.loadLabel(context.packageManager) }.map { it.loadLabel(context.packageManager) })
-        } finally {
-            ConnectedUiStateFixture.closeOwnedActivities()
-        }
+        }, actions = arrayOf<() -> Unit>({ ConnectedUiStateFixture.closeOwnedActivities() }))
     }
 
     private fun showCards(labels: List<String>) {
@@ -97,7 +95,7 @@ class LockscreenWidgetCardsInstrumentedTest {
             assertTrue(instrumentation.platformAutomation.injectInputEvent(e, true)); e.recycle()
         }
         event(MotionEvent.ACTION_DOWN)
-        try {
+        withFixtureCleanup(body = {
             SystemClock.sleep(750)
             capture(activity, "compact-ready")
             val file = File(context.getExternalFilesDir(null), "widget-card-renders/compact-ready.png")
@@ -115,7 +113,7 @@ class LockscreenWidgetCardsInstrumentedTest {
             }
             normal.recycle()
             image.recycle()
-        } finally { event(MotionEvent.ACTION_UP) }
+        }, actions = arrayOf<() -> Unit>({ event(MotionEvent.ACTION_UP) }))
         ui.await("A stationary long-press release must leave the card page open") {
             ui.has(context.getString(R.string.lockscreen_widgets_add)) && !ui.has(context.getString(R.string.lockscreen_widgets_remove))
         }
@@ -162,10 +160,10 @@ class LockscreenWidgetCardsInstrumentedTest {
         }
         ui.await("Provider list must offer the removed widget") { ui.has(providerLabel) }
         instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
-        try {
+        withFixtureCleanup(body = {
             ui.click(providerLabel)
             ui.await("New widget configure must launch") { ui.packageVisible("com.alexindigo.kotatsu.notes.debug") }
-        } finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.platformAutomation.dropShellPermissionIdentity() }))
         ui.back()
         ui.await("Configured widget must be added exactly once") { fixture.prefs.lockscreenWidgetStore.read().size == 2 }
         showCards(labels)
@@ -181,7 +179,7 @@ class LockscreenWidgetCardsInstrumentedTest {
             if (key == LockscreenWidgetStore.KEY) writes++
         }
         fixture.raw.registerOnSharedPreferenceChangeListener(listener)
-        try {
+        withFixtureCleanup(body = {
             drag(first.centerX().toFloat(), first.centerY().toFloat(), second.centerY() + 2f, cancel = true) {
                 ui.await("Whole-card preview must reverse visible order") { bounds(labels.first()).top > bounds(labels.last()).top }
                 assertEquals(selected, fixture.prefs.lockscreenWidgetStore.read())
@@ -196,7 +194,7 @@ class LockscreenWidgetCardsInstrumentedTest {
             ui.await("Drop must persist the permutation") { fixture.prefs.lockscreenWidgetStore.read() == selected.reversed() }
             assertEquals(1, writes)
             assertTrue(bounds(labels.first()).top > bounds(labels.last()).top)
-        } finally { fixture.raw.unregisterOnSharedPreferenceChangeListener(listener) }
+        }, actions = arrayOf<() -> Unit>({ fixture.raw.unregisterOnSharedPreferenceChangeListener(listener) }))
     }
 
     @Test fun providerWithoutReconfigurationOpensItsAppEntry() = withWidgets { activity, fixture, _, _ ->
@@ -237,7 +235,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
         val boxes = mutableMapOf<Int, Rect>()
-        try {
+        withFixtureCleanup(body = {
             main { activity.setContent {
                 Column(Modifier.fillMaxSize().statusBarsPadding().padding(16.dp)) {
                     for (lines in listOf(1, 3)) {
@@ -265,7 +263,7 @@ class LockscreenWidgetCardsInstrumentedTest {
                 assertEquals("Right bottom cap", android.graphics.Color.BLACK, image.getPixel(box.right - (density * 5).toInt(), box.bottom - 2))
             }
             image.recycle()
-        } finally { main { activity.finish() } }
+        }, actions = arrayOf<() -> Unit>({ main { activity.finish() } }))
     }
 
     private fun bounds(label: String) = Rect().also { checkNotNull(ui.find(label)).getBoundsInScreen(it) }
@@ -296,7 +294,7 @@ class LockscreenWidgetCardsInstrumentedTest {
         event(MotionEvent.ACTION_DOWN, start)
         SystemClock.sleep(700)
         for (step in 1..12) { event(MotionEvent.ACTION_MOVE, start + (end - start) * step / 12); SystemClock.sleep(30) }
-        try { beforeDrop() } finally { event(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, end) }
+        withFixtureCleanup({ event(if (cancel) MotionEvent.ACTION_CANCEL else MotionEvent.ACTION_UP, end) }) { beforeDrop() }
         instrumentation.waitForIdleSync()
     }
 

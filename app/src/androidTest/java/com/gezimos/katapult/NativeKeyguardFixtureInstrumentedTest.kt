@@ -18,13 +18,13 @@ class NativeKeyguardFixtureInstrumentedTest {
             if (failUnlock) { failUnlock = false; throw expected }
             unlock()
         }
-        try {
+        withFixtureCleanup(body = {
             fixture.setPin()
             fixture.sleep()
             fixture.showPin()
             assertSame(expected, runCatching { fixture.close() }.exceptionOrNull())
             assertFalse("Teardown must clear its PIN even when unlock fails", keyguard.isDeviceSecure)
-        } finally { fixture.close() }
+        }, actions = arrayOf<() -> Unit>({ fixture.close() }))
     }
 
     @Test fun automationCommandsRejectShellSeparatorsRatherThanInjectingExtraKeys() {

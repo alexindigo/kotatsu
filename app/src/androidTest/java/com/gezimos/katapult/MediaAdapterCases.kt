@@ -77,7 +77,7 @@ internal object MediaAdapterCases {
             helper = AudioWidgetHelper(context, access, sessions)
             helper.initialize(ComponentName(context, com.gezimos.katapult.service.NotificationListener::class.java))
         }
-        try {
+        withFixtureCleanup(body = {
             assertEquals(0, sessions.enumerations)
             assertNull(helper.state.value)
             instrumentation.runOnMainSync {
@@ -142,9 +142,10 @@ internal object MediaAdapterCases {
             }
             instrumentation.waitForIdleSync()
             assertNull(helper.state.value)
-        } finally {
-            instrumentation.runOnMainSync { helper.close(); helper.close(); session.release(); replacement?.release() }
-            assertTrue(access.listeners.isEmpty())
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { fixtureCleanup(
+                { helper.close() }, { helper.close() }, { session.release() }, { replacement?.release() },
+            ) } }, { assertTrue(access.listeners.isEmpty()) },
+        ))
     }
 }

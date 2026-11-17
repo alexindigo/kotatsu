@@ -1,5 +1,7 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.content.Intent
 import android.graphics.Rect
 import android.os.SystemClock
@@ -46,7 +48,7 @@ class ScrollRailInstrumentedTest {
         val metrics = mutableStateOf(ListRail(2000, 10000, 0))
         val commands = mutableListOf<Int>()
         var commandedMaximum = 10000
-        try {
+        withFixtureCleanup(body = {
             main {
                 activity.setContentView(ComposeView(activity).apply { setContent {
                   com.gezimos.katapult.ui.Appearance.Provide(com.gezimos.katapult.ui.Appearance.Surface.LOCK_SCREEN) {
@@ -77,6 +79,6 @@ class ScrollRailInstrumentedTest {
             instrumentation.waitForIdleSync()
             drag(track, false)
             main { assertEquals("Reverse drag must reach the real top: $commands", 0, commands.last()) }
-        } finally { main { activity.finish() } }
+        }, actions = arrayOf<() -> Unit>({ main { activity.finish() } }))
     }
 }

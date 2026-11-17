@@ -235,7 +235,7 @@ class IconPickerInstrumentedTest {
                 .put("originalShape", originalShape)
             stateFile.writeText(state.toString(2))
             var reached = false
-            try {
+            withFixtureCleanup(body = {
                 instrumentation.runOnMainSync {
                     model.prefs.themeMode = 0
                     model.themeMode = 0
@@ -288,7 +288,7 @@ class IconPickerInstrumentedTest {
                 }
                 capture("grid-selected-light")
                 // Theme and shape are deliberate temporary test choices; restore
-                // through their existing public controller properties in finally.
+                // through their existing public controller properties during cleanup.
                 instrumentation.runOnMainSync {
                     model.prefs.themeMode = 1
                     model.themeMode = 1
@@ -309,25 +309,27 @@ class IconPickerInstrumentedTest {
                 capture("picker-material-dark-rounded")
                 ui.back()
                 reached = true
-            } finally {
-                instrumentation.runOnMainSync {
-                    model.prefs.themeMode = originalTheme
-                    model.themeMode = originalTheme
-                    model.prefs.roundedIcons = originalShape
-                    model.roundedIcons = originalShape
-                }
-                // Only an explicit two-invocation cold proof retains its choice.
-                // The normal class gate owns and cleans all of its artifacts.
-                retainColdProof = reached && InstrumentationRegistry.getArguments().getString("iconPhase") == "choose"
-                if (!retainColdProof) {
-                    val editor = context.getSharedPreferences("katapult_prefs", 0).edit()
-                    if (previous == null) editor.remove("icon_override_${target.key}")
-                    else editor.putString("icon_override_${target.key}", previous)
-                    assertTrue(editor.commit())
-                    IconUtility.clearCacheFor(target.key)
-                    assertEquals(previous, model.prefs.getIconOverride(target.key))
-                }
-            }
+            }, actions = arrayOf<() -> Unit>(
+                { instrumentation.runOnMainSync { fixtureCleanup(
+                    { model.prefs.themeMode = originalTheme }, { model.themeMode = originalTheme },
+                    { model.prefs.roundedIcons = originalShape }, { model.roundedIcons = originalShape },
+                ) } },
+                {
+                    // Only an explicit two-invocation cold proof retains its choice.
+                    // The normal class gate owns and cleans all of its artifacts.
+                    retainColdProof = reached && InstrumentationRegistry.getArguments().getString("iconPhase") == "choose"
+                },
+                { if (!retainColdProof) { fixtureCleanup(
+                    {
+                        val editor = context.getSharedPreferences("katapult_prefs", 0).edit()
+                        if (previous == null) editor.remove("icon_override_${target.key}")
+                        else editor.putString("icon_override_${target.key}", previous)
+                        assertTrue(editor.commit())
+                    },
+                    { IconUtility.clearCacheFor(target.key) },
+                    { assertEquals(previous, model.prefs.getIconOverride(target.key)) },
+                ) } },
+            ))
         } else {
             assertTrue("Cold proof missing", stateFile.isFile)
             val state = JSONObject(stateFile.readText())
@@ -338,7 +340,7 @@ class IconPickerInstrumentedTest {
             }
             val key = state.getString("key")
             val chosen = state.getString("selectedId")
-            try {
+            withFixtureCleanup(body = {
                 assertEquals("catalogue:$chosen", model.prefs.getIconOverride(key))
                 assertEquals(state.getInt("originalTheme"), model.prefs.themeMode)
                 assertEquals(state.getBoolean("originalShape"), model.prefs.roundedIcons)
@@ -355,15 +357,19 @@ class IconPickerInstrumentedTest {
                 ui.await("Reset did not restore automatic/original resolution") { model.prefs.getIconOverride(key) == null }
                 assertNotNull(IconUtility.loadIcon(context, state.getString("package"), state.getString("activity"), 96))
                 state.put("coldBitmapVerified", true).put("resetVerified", true)
-            } finally {
+            }, actions = arrayOf<() -> Unit>({
                 val previous = if (state.isNull("previous")) null else state.getString("previous")
-                val editor = context.getSharedPreferences("katapult_prefs", 0).edit()
-                if (previous == null) editor.remove("icon_override_$key")
-                else editor.putString("icon_override_$key", previous)
-                assertTrue(editor.commit())
-                IconUtility.clearCacheFor(key)
-                assertEquals(previous, model.prefs.getIconOverride(key))
-            }
+                fixtureCleanup(
+                    {
+                        val editor = context.getSharedPreferences("katapult_prefs", 0).edit()
+                        if (previous == null) editor.remove("icon_override_$key")
+                        else editor.putString("icon_override_$key", previous)
+                        assertTrue(editor.commit())
+                    },
+                    { IconUtility.clearCacheFor(key) },
+                    { assertEquals(previous, model.prefs.getIconOverride(key)) },
+                )
+            }))
         }
         Log.i("KotatsuIconProof", "PASS public picker phase=$phase; paging/search/selection/cold consumer/reset/preservation")
     }

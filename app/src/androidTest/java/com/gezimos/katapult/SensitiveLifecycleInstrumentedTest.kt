@@ -40,7 +40,7 @@ class SensitiveLifecycleInstrumentedTest {
         val stored = listOf("collect_usage_stats", "app_sort_mode", "app_order").associateWith { raw.all[it] }
         assertFalse("Preserve a pre-existing human reorder draft", model.reorderMode)
         val ui = PlatformUiDriver(instrumentation)
-        try {
+        withFixtureCleanup(body = {
             if (ui.has("Finish")) ui.click("Finish")
             instrumentation.runOnMainSync { model.navigateTo(Screen.ALL_APPS) }
             ui.await("Grid unavailable before policy refresh test") { model.orderedApps.size >= 2 && ui.has(model.orderedApps[0].label) }
@@ -71,12 +71,11 @@ class SensitiveLifecycleInstrumentedTest {
             instrumentation.runOnMainSync { model.prefs.setSensitiveChoice(SensitiveChoice.USAGE_STATS, true) }
             ui.await("Denied Usage Access changed manual fallback") { model.orderedApps.map { it.key } == baseline }
             assertEquals(PrefsManager.APP_SORT_USED, model.prefs.appSortMode)
-        } finally {
-            instrumentation.runOnMainSync {
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync {
                 if (model.reorderMode) model.discardReorderExit()
-            }
-            restoreFixturePreferenceValues(raw, stored)
-        }
+            } }, { restoreFixturePreferenceValues(raw, stored) },
+        ))
     }
     @Test fun syntheticStaticAndTimedScreensaverRowsClearAtRenderedConsumerAndReleaseWhenInactive() =
         ScreensaverAdapterCases.staticAndTimedConsumersClearImmediatelyAndReleaseWhenInactive()
@@ -101,7 +100,7 @@ class SensitiveLifecycleInstrumentedTest {
         var second = 0
         val one = prefs.subscribeChanges { first++ }
         val two = prefs.subscribeChanges { second++ }
-        try {
+        withFixtureCleanup(body = {
             System.gc()
             raw.edit().putBoolean("synthetic", true).commit()
             instrumentation.waitForIdleSync()
@@ -114,10 +113,7 @@ class SensitiveLifecycleInstrumentedTest {
             raw.edit().putBoolean("synthetic", true).commit()
             instrumentation.waitForIdleSync()
             assertEquals(1, first); assertEquals(2, second)
-        } finally {
-            one.close(); two.close()
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>({ one.close() }, { two.close() }, { deleteTestPreferences(context, name) }))
     }
     @Test fun publicChoicesRemainIndependentAndPersistWithoutGrantOrActivationChanges() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -134,7 +130,7 @@ class SensitiveLifecycleInstrumentedTest {
         val activation = listOf(prefs.appSortMode, prefs.doubleTapAction, prefs.lockscreenWidget,
             prefs.lockscreenMusicWidget, prefs.screensaverEnabled)
         val ui = PlatformUiDriver(instrumentation)
-        try {
+        withFixtureCleanup(body = {
             if (ui.has("Finish")) ui.click("Finish")
             ui.await("HOME not observed") { ui.has("Apps") }
             ui.homeMenu(); ui.click("Settings"); ui.click("System")
@@ -171,10 +167,7 @@ class SensitiveLifecycleInstrumentedTest {
                 }
                 assertNotNull("Stored choice not exposed as a switch: $label", ui.checked(label))
             }
-        } finally {
-            ui.back(); ui.back(); ui.back()
-            restoreFixturePreferenceValues(raw, stored)
-        }
+        }, actions = arrayOf<() -> Unit>({ ui.back() }, { ui.back() }, { ui.back() }, { restoreFixturePreferenceValues(raw, stored) }))
     }
     @Test fun strictAtomicImportAndNullableRetainedSubscription() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
@@ -187,7 +180,7 @@ class SensitiveLifecycleInstrumentedTest {
         val prefs = PrefsManager(fixture)
         val keys = mutableListOf<String?>()
         val subscription = prefs.subscribeChanges { keys.add(it) }
-        try {
+        withFixtureCleanup(body = {
             val before = raw.all.toMap()
             for (choice in SensitiveChoice.entries) for (invalid in listOf<Any>("false", 0, 1, 0.5, JSONObject.NULL, org.json.JSONArray(), JSONObject())) {
                 val json = JSONObject().put("_type", "katapult_config").put(choice.key, invalid)
@@ -238,10 +231,10 @@ class SensitiveLifecycleInstrumentedTest {
             instrumentation.waitForIdleSync()
             assertTrue("API31 clear event did not deliver nullable key", keys.any { it == null })
             assertTrue(prefs.sensitiveChoices().values.all { it })
-        } finally {
-            subscription.close(); subscription.close()
-            deleteTestPreferences(context, name) // Only this uniquely named synthetic fixture.
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { subscription.close() }, { subscription.close() },
+            { deleteTestPreferences(context, name) }, // Only this uniquely named synthetic fixture.
+        ))
     }
 
     @Test fun deniedAdaptersAndDisabledEntryPreserveConsumerAndPreferences() {
@@ -259,7 +252,7 @@ class SensitiveLifecycleInstrumentedTest {
         val screensaver = prefs.screensaverEnabled
         val saverPresent = raw.contains("screensaver_enabled")
         val sort = prefs.appSortMode
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 SensitiveAccess.initialize(context)
                 prefs.setSensitiveChoice(SensitiveChoice.NOTIFICATION_BADGES, false)
@@ -287,9 +280,9 @@ class SensitiveLifecycleInstrumentedTest {
             assertFalse(SensitiveAccess.notificationBadges())
             assertFalse(SensitiveAccess.mediaControls())
             assertEquals(initial[SensitiveChoice.SMS_BADGES.key], prefs.sensitiveChoice(SensitiveChoice.SMS_BADGES))
-        } finally {
-            restoreFixturePreferenceValues(raw, stored + ("screensaver_enabled" to if (saverPresent) screensaver else null))
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { restoreFixturePreferenceValues(raw, stored + ("screensaver_enabled" to if (saverPresent) screensaver else null)) },
+        ))
     }
 
     @Test fun exportedPowerScreensaverCannotBypassDisabledAccessibilityOrPowerActivation() {
@@ -298,7 +291,7 @@ class SensitiveLifecycleInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val keys = listOf("screensaver_enabled", "screensaver_on_power", "allow_accessibility_features")
         val stored = keys.associateWith { raw.all[it] }
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 raw.edit().putBoolean("screensaver_enabled", true).putBoolean("screensaver_on_power", true)
                     .putBoolean("allow_accessibility_features", false).commit()
@@ -315,9 +308,7 @@ class SensitiveLifecycleInstrumentedTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra(ScreensaverActivity.EXTRA_FROM_POWER, true))
             instrumentation.waitForIdleSync()
             assertFalse("Exported power entry bypassed selected power activation", ScreensaverActivity.isShowing)
-        } finally {
-            restoreFixturePreferenceValues(raw, stored)
-        }
+        }, actions = arrayOf<() -> Unit>({ restoreFixturePreferenceValues(raw, stored) }))
     }
 
     @Test fun syntheticAndroidCallbackCannotRepopulateAfterOptOutAndReenable() {

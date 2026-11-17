@@ -81,13 +81,12 @@ internal class WidgetProviderTestFixture(private val context: Context) : AutoClo
                 if (ready(observed)) result.complete(observed)
             } catch (error: Throwable) { result.completeExceptionally(error) }
         }, 0, 25, TimeUnit.MILLISECONDS)
-        try {
-            return result.get(8, TimeUnit.SECONDS)
-        } catch (error: TimeoutException) {
-            throw AssertionError("$description not observed within 8 seconds; last=${last.get()}", error)
-        } finally {
-            task.cancel(true)
-            executor.shutdownNow()
-        }
+        withFixtureCleanup(body = {
+            try {
+                return result.get(8, TimeUnit.SECONDS)
+            } catch (error: TimeoutException) {
+                throw AssertionError("$description not observed within 8 seconds; last=${last.get()}", error)
+            }
+        }, actions = arrayOf<() -> Unit>({ task.cancel(true) }, { executor.shutdownNow() }))
     }
 }

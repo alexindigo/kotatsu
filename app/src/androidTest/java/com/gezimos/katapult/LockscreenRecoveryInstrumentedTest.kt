@@ -38,17 +38,14 @@ class LockscreenRecoveryInstrumentedTest {
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
         val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, raw))
                 owner.put("f6", model)
                 model.screen = Screen.HOME
             }
             test(model)
-        } finally {
-            instrumentation.runOnMainSync { owner.clear() }
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { owner.clear() } }, { deleteTestPreferences(context, name) }))
     }
 
     @Test fun musicAndMessageAlonePromptWhileOptOutAndInactivePowerSelectionDoNot() = withModel { model ->
@@ -125,7 +122,7 @@ class LockscreenRecoveryInstrumentedTest {
 
     @Test fun renderedTurnOffActionClearsMusicAndExistingRowsButKeepsMessageAndScreensaver() = withModel { model ->
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model.prefs.lockscreenWidget = true
                 model.prefs.lockscreenMusicWidget = true
@@ -168,9 +165,7 @@ class LockscreenRecoveryInstrumentedTest {
                 model.disableLockscreenServiceFeatures()
                 assertEquals(PrefsManager.DOUBLE_TAP_BRIGHTNESS, model.prefs.doubleTapAction)
             }
-        } finally {
-            instrumentation.runOnMainSync { activity?.finish() }
-        }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { activity?.finish() } }))
     }
 
     @Test fun recoveryCopyStatesOnlyKnownOffStateInEveryLocale() {

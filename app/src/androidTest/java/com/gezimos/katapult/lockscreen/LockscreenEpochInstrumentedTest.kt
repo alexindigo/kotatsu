@@ -1,5 +1,8 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+
 import android.app.KeyguardManager
 import android.app.UiAutomation
 import android.graphics.Bitmap
@@ -53,9 +56,8 @@ class LockscreenEpochInstrumentedTest {
         val expected = AssertionError("Fixture main-thread failure")
         var restored = false
         val failure = runCatching {
-            try { main<Unit> { throw expected } } finally {
-                assertSame(testThread, Thread.currentThread())
-                restored = main { true }
+            withFixtureCleanup({ assertSame(testThread, Thread.currentThread()) }, { restored = main { true } }) {
+                main<Unit> { throw expected }
             }
         }.exceptionOrNull()
         assertSame(expected, failure)
@@ -68,11 +70,7 @@ class LockscreenEpochInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         assertFalse("Fixture must start without a credential", context.getSystemService(KeyguardManager::class.java).isDeviceSecure)
-        var failure: Throwable? = null
-        fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        try {
+        withFixtureCleanup(body = {
             com.gezimos.katapult.ConnectedUiStateFixture.prepareForegroundService()
             PrefsManager(context).lockscreenMessage = "Epoch test"
             nativeKeyguard.setPin()
@@ -105,7 +103,7 @@ class LockscreenEpochInstrumentedTest {
             nativeKeyguard.showPin()
             await("PIN pad input focused") {
                 val focus = automation.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
-                try { focus?.className?.contains("EditText") == true } finally { @Suppress("DEPRECATION") focus?.recycle() }
+                withFixtureCleanup({ @Suppress("DEPRECATION") focus?.recycle() }) { focus?.className?.contains("EditText") == true }
             }
             await("PIN observation hides overlays") { main { !visibility(service).visible } }
             main {
@@ -114,19 +112,11 @@ class LockscreenEpochInstrumentedTest {
                         .apply { isAccessible = true }.get(service))
                 }
             }
-        } catch (error: Throwable) {
-            failure = error
-        } finally {
-            restore { nativeKeyguard.close() }
-            restore { accessibility?.close() }
-            restore {
-                com.gezimos.katapult.restoreFixturePreferenceValues(raw, mapOf("lockscreen_message" to before["lockscreen_message"]))
-            }
-            restore {
-            await("Keyguard restored unlocked") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked }
-            }
-        }
-        failure?.let { throw it }
+        }, actions = arrayOf<() -> Unit>(
+            { nativeKeyguard.close() }, { accessibility?.close() },
+            { com.gezimos.katapult.restoreFixturePreferenceValues(raw, mapOf("lockscreen_message" to before["lockscreen_message"])) },
+            { await("Keyguard restored unlocked") { !context.getSystemService(KeyguardManager::class.java).isKeyguardLocked } },
+        ))
     }
 
     @Test fun newVisibleEpochDeliversWeatherRemoteViewsToTheRealHost() {
@@ -137,7 +127,7 @@ class LockscreenEpochInstrumentedTest {
             val host = fixture.host
             val timeline = context.packageManager.getResourcesForApplication(weather).getIdentifier("timeline", "id", weather)
             val view = main { host.listen(true); LockscreenWidgetHost.updateSize(context, widget); host.createView(context, widget.id, info) }
-            try {
+            withFixtureCleanup(body = {
                 val original = WeatherHostViewProbe(context, view, timeline).awaitSizedBitmap()
                 // Distinct host-only marker: only a new RemoteViews application can restore the provider image.
                 val marker = Bitmap.createBitmap(original.width, original.height, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.MAGENTA) }
@@ -155,7 +145,7 @@ class LockscreenEpochInstrumentedTest {
                     received != null && !received.sameAs(marker) && received.sameAs(original)
                 } }
                 assertEquals(emptyList<Int>(), main { state.widgetsToPulse(listOf(widget.id)) })
-            } finally { main { host.listen(false); host.releaseViews() } }
+            }, actions = arrayOf<() -> Unit>({ main { fixtureCleanup({ host.listen(false) }, { host.releaseViews() }) } }))
         }
     }
 }

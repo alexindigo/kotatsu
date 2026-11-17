@@ -52,18 +52,16 @@ class WallpaperFilesInstrumentedTest {
         val root = File(context.filesDir, name).apply { assertTrue(mkdir()) }
         val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, store, root))
                 owner.put("f4", model)
             }
             test(model, root)
-        } finally {
-            instrumentation.runOnMainSync { owner.clear() }
-            IconUtility.clearCacheFor(key)
-            assertTrue(root.deleteRecursively())
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { owner.clear() } }, { IconUtility.clearCacheFor(key) },
+            { assertTrue(root.deleteRecursively()) }, { deleteTestPreferences(context, name) },
+        ))
     }
 
     private fun png(file: File, color: Int): File = file.apply {
@@ -122,7 +120,7 @@ class WallpaperFilesInstrumentedTest {
         model.prefs.screensaverWallpaper = true
         val source = png(File(root, "source.png"), Color.BLUE)
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(body = {
             activity = instrumentation.startActivitySync(Intent(Intent.ACTION_MAIN).apply {
                 setClassName(context.packageName, MainActivity::class.java.name)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -149,7 +147,7 @@ class WallpaperFilesInstrumentedTest {
             }
             assertNull(model.prefs.screensaverWallpaperPath)
             assertNull(model.screensaverWallpaperPath)
-        } finally { instrumentation.runOnMainSync { activity?.finish() } }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { activity?.finish() } }))
     }
 
     private fun success(screensaver: Boolean) = withModel { model, root ->
@@ -194,7 +192,7 @@ class WallpaperFilesInstrumentedTest {
         val source = object : ContextWrapper(context) {
             override fun getContentResolver(): ContentResolver = ContentResolver.wrap(provider)
         }
-        try {
+        withFixtureCleanup(body = {
             val jobs = save(model, source, Uri.parse("content://f4/red"), screensaver)
             assertTrue(entered.await(15, TimeUnit.SECONDS))
             if (clear) clear(model, screensaver) else {
@@ -213,7 +211,7 @@ class WallpaperFilesInstrumentedTest {
                 assertEquals(Color.BLUE, BitmapHelper.decodeFile(path(model, screensaver)!!, 64)!!.getPixel(12, 12))
                 if (!screensaver) assertEquals(Color.BLUE, model.wallpaperBitmap!!.getPixel(12, 12))
             }
-        } finally { release.countDown() }
+        }, actions = arrayOf<() -> Unit>({ release.countDown() }))
     }
 
     @Test fun failedHomeWritePreservesOldFileAndPreference() = failedWrite(false)
@@ -237,7 +235,7 @@ class WallpaperFilesInstrumentedTest {
         val outside = png(File(context.cacheDir, "f4-${UUID.randomUUID()}.png"), Color.RED)
         val link = File(root, "outside-link.png")
         Os.symlink(outside.path, link.path)
-        try {
+        withFixtureCleanup(body = {
             for (file in listOf(outside, File(root, "../${root.name}/../../cache/${outside.name}"), link, root)) {
                 model.prefs.wallpaperPath = file.path
                 model.prefs.screensaverWallpaperPath = file.path
@@ -263,7 +261,7 @@ class WallpaperFilesInstrumentedTest {
                 assertNull(model.prefs.screensaverWallpaperPath)
                 assertNull(model.prefs.getIconOverride(key))
             }
-        } finally { assertTrue(outside.delete()) }
+        }, actions = arrayOf<() -> Unit>({ assertTrue(outside.delete()) }))
     }
 
     @Test fun clearingWallpaperRetainsOtherWallpaperAndIconReferences() = withModel { model, root ->
@@ -323,10 +321,10 @@ class WallpaperFilesInstrumentedTest {
         val preserved = png(File(outside, "preserved.png"), Color.RED)
         Os.symlink(outside.path, File(root, "outside-directory").path)
         val owned = png(File(root, "owned.png"), Color.BLUE)
-        try {
+        withFixtureCleanup(body = {
             model.prefs.clearAll(model.getApplication())
             assertTrue(preserved.isFile)
             assertFalse(owned.exists())
-        } finally { assertTrue(outside.deleteRecursively()) }
+        }, actions = arrayOf<() -> Unit>({ assertTrue(outside.deleteRecursively()) }))
     }
 }

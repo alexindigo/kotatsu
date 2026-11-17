@@ -39,7 +39,7 @@ class HomeSlotPickerInstrumentedTest {
         assertTrue("Need two installed app keys", apps.map { it.key }.toSet().size >= 2)
         val hidden = apps[0]
         val visible = apps.first { it.key != hidden.key }
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, raw))
                 owner.put("picker", model)
@@ -94,10 +94,9 @@ class HomeSlotPickerInstrumentedTest {
                     model.getShortcutPackage("phone") == visible.packageName
             }
             assertEquals(visible.packageName, model.prefs.loadShortcut("phone")?.first)
-        } finally {
-            instrumentation.runOnMainSync { activity?.finish(); owner.clear() }
-            ConnectedUiStateFixture.quiesceOwnedProducers()
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { fixtureCleanup({ activity?.finish() }, { owner.clear() }) } },
+            { ConnectedUiStateFixture.quiesceOwnedProducers() }, { deleteTestPreferences(context, name) },
+        ))
     }
 }

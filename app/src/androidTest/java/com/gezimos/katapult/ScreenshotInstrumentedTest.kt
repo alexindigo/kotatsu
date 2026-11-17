@@ -157,7 +157,7 @@ class ScreenshotInstrumentedTest {
         val expiry = ControlledPreviewExpiry()
         val window = ScreenshotPreviewWindow(service, expiry, wm)
         val sample = Bitmap.createBitmap(48, 80, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
-        try {
+        withFixtureCleanup(body = {
             main { window.saved(sample) }
             // The appearance/capture fixture deliberately outlives the real production deadline.
             SystemClock.sleep(ScreenshotPreviewWindow.DURATION_MS + 100)
@@ -174,7 +174,9 @@ class ScreenshotInstrumentedTest {
             }
             main { expiry.expireNow() }
             ui.await("Controlled expiry did not remove the preview") { !wm.view!!.isAttachedToWindow }
-        } finally { main { window.close(); expiry.close() }; sample.recycle() }
+        }, actions = arrayOf<() -> Unit>(
+            { main { fixtureCleanup({ window.close() }, { expiry.close() }) } }, { sample.recycle() },
+        ))
     }
 
     @Test fun previewHasOneWindowReplacesInPlaceAndExpiresThreeSecondsAfterLatestResult() = withService { service, _ ->
@@ -184,7 +186,7 @@ class ScreenshotInstrumentedTest {
         lateinit var window: ScreenshotPreviewWindow
         var cleanup: (() -> Unit)? = null
         val bitmap = Bitmap.createBitmap(480, 800, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
-        try {
+        withFixtureCleanup(body = {
             main { window = ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), wm); cleanup = window::close; window.saved(bitmap) }
             ui.await("Saved preview was not attached") { wm.view?.isAttachedToWindow == true && hasText(wm.view, "Saved") }
             val original = wm.view
@@ -228,7 +230,7 @@ class ScreenshotInstrumentedTest {
             main { window.saved(bitmap); window.saved(bitmap); window.hide() }
             assertEquals(3, wm.adds); assertEquals(3, wm.removes)
             assertNull(wm.view!!.parent); assertFalse(wm.view!!.isAttachedToWindow)
-        } finally { main { cleanup?.invoke() }; bitmap.recycle() }
+        }, actions = arrayOf<() -> Unit>({ main { cleanup?.invoke() } }, { bitmap.recycle() }))
     }
 
     @Test fun anotherCaptureIsAcceptedWhileTheFirstSaveIsBlockedAndClearPreventsLatePreview() = withService { service, _ ->
@@ -237,7 +239,7 @@ class ScreenshotInstrumentedTest {
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
         lateinit var pipeline: ScreenshotCapture
         var cleanup: (() -> Unit)? = null
-        try {
+        withFixtureCleanup(body = {
             main {
                 pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true },
                     capturePreview(service, wm)) { bitmap ->
@@ -260,11 +262,11 @@ class ScreenshotInstrumentedTest {
             main { pipeline.clear() }
             assertFalse(wm.view!!.isAttachedToWindow)
             assertEquals(1, wm.removes)
-        } finally { release.countDown(); main { cleanup?.invoke() } }
+        }, actions = arrayOf<() -> Unit>({ release.countDown() }, { main { cleanup?.invoke() } }))
 
         val started = CountDownLatch(1); val finish = CountDownLatch(1); val completed = CountDownLatch(1)
         val late = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
-        try {
+        withFixtureCleanup(body = {
             SystemClock.sleep(400)
             main {
                 pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true },
@@ -278,7 +280,7 @@ class ScreenshotInstrumentedTest {
             assertTrue(completed.await(10, TimeUnit.SECONDS)); instrumentation.waitForIdleSync()
             main { pipeline.close() }
             assertEquals("Clearing during a save must not resurrect the window", 0, late.adds)
-        } finally { finish.countDown(); main { pipeline.close() } }
+        }, actions = arrayOf<() -> Unit>({ finish.countDown() }, { main { pipeline.close() } }))
     }
 
     @Test fun olderSaveCannotReplaceNewerCaptureFailureOrResurrectExpiredPreview() = withService { service, _ ->
@@ -288,7 +290,7 @@ class ScreenshotInstrumentedTest {
         val delivered = CountDownLatch(2)
         val handler = object : Handler(Looper.getMainLooper()) {
             override fun dispatchMessage(message: android.os.Message) {
-                try { super.dispatchMessage(message) } finally { delivered.countDown() }
+                withFixtureCleanup({ delivered.countDown() }) { super.dispatchMessage(message) }
             }
         }
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
@@ -296,7 +298,7 @@ class ScreenshotInstrumentedTest {
         lateinit var pipeline: ScreenshotCapture
         var cleanup: (() -> Unit)? = null
         var requests = 0
-        try {
+        withFixtureCleanup(body = {
             main {
                 pipeline = ScreenshotCapture(service, handler, { true }, ScreenshotPreviewWindow(service, expiry, wm),
                     request = { callback ->
@@ -327,7 +329,9 @@ class ScreenshotInstrumentedTest {
                 assertEquals(1, wm.adds)
                 assertEquals(if (expireFirst) 1 else 0, wm.removes)
             }
-        } finally { release.countDown(); main { cleanup?.invoke(); expiry.close() } }
+        }, actions = arrayOf<() -> Unit>(
+            { release.countDown() }, { main { fixtureCleanup({ cleanup?.invoke() }, { expiry.close() }) } },
+        ))
       }
     }
 
@@ -336,7 +340,7 @@ class ScreenshotInstrumentedTest {
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
         lateinit var pipeline: ScreenshotCapture
         var cleanup: (() -> Unit)? = null
-        try {
+        withFixtureCleanup(body = {
             main {
                 pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true },
                     capturePreview(service, wm)) {
@@ -347,7 +351,7 @@ class ScreenshotInstrumentedTest {
             }
             ui.await("Save failure was not reported", 10000) { hasText(wm.view, "Phone storage is full") }
             assertEquals(1, calls.get()); assertEquals(1, wm.adds)
-        } finally { main { cleanup?.invoke() } }
+        }, actions = arrayOf<() -> Unit>({ main { cleanup?.invoke() } }))
     }
 
     private fun pictures(): Set<Long> {
@@ -365,7 +369,7 @@ class ScreenshotInstrumentedTest {
     @Test fun screenOffRemovesTheServiceOwnedPreviewAndPassesKeysThrough() = withService { service, _ ->
         val before = pictures()
         val key = LockscreenWidgetService::class.java.getDeclaredMethod("onKeyEvent", KeyEvent::class.java).apply { isAccessible = true }
-        try {
+        withFixtureCleanup(body = {
             main {
                 assertEquals(true, key.invoke(service, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_HOME)))
                 assertEquals(true, key.invoke(service, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN)))
@@ -380,10 +384,13 @@ class ScreenshotInstrumentedTest {
                 assertEquals(false, key.invoke(service, KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_VOLUME_DOWN)))
                 assertEquals(false, key.invoke(service, KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_HOME)))
             }
-        } finally {
-            NativeKeyguardFixture.wakeAndUnlock()
-            (pictures() - before).forEach { context.contentResolver.delete(imageUri(it), null, null) }
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { NativeKeyguardFixture.wakeAndUnlock() },
+            { fixtureCleanup(*(pictures() - before).map { id -> {
+                context.contentResolver.delete(imageUri(id), null, null)
+                Unit
+            } }.toTypedArray()) },
+        ))
     }
 
     @Test fun hardwareChordSavesOnePictureWithoutChangingVolumeOrHomeAndNeverCapturesThePreviousPreview() = withService { service, activity ->
@@ -397,7 +404,7 @@ class ScreenshotInstrumentedTest {
             if (event.eventType == android.view.accessibility.AccessibilityEvent.TYPE_ANNOUNCEMENT)
                 announcements.addAll(event.text.map { it.toString() })
         }
-        try {
+        withFixtureCleanup(body = {
             main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
             ui.await("Origin app missing") { ui.has("Brightness level") }
             val keyboard = Regex("/dev/input/event[0-9]+").find(shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
@@ -424,14 +431,14 @@ class ScreenshotInstrumentedTest {
             val firstId = (pictures() - before).single()
             val first = context.contentResolver.openInputStream(imageUri(firstId)).use { BitmapFactory.decodeStream(it) }!!
             png(first, "screenshot-capture-first.png")
-            try {
+            withFixtureCleanup(body = {
                 SystemClock.sleep(400)
                 chord(true)
                 ui.await("Second chord not published", 10000) { pictures().size == before.size + 2 }
                 val secondId = (pictures() - before - firstId).single()
                 val second = context.contentResolver.openInputStream(imageUri(secondId)).use { BitmapFactory.decodeStream(it) }!!
                 png(second, "screenshot-capture-second.png")
-                try {
+                withFixtureCleanup(body = {
                     assertEquals(first.width, second.width); assertEquals(first.height, second.height)
                     // Static app content underneath the former preview must be identical, not a nested card.
                     val width = first.width / 3 + 32; val height = first.height / 3 + 80
@@ -439,8 +446,8 @@ class ScreenshotInstrumentedTest {
                     first.getPixels(a, 0, width, 0, first.height - height, width, height)
                     second.getPixels(b, 0, width, 0, second.height - height, width, height)
                     assertArrayEquals("The previous preview was included in the next screenshot", a, b)
-                } finally { second.recycle() }
-            } finally { first.recycle() }
+                }, actions = arrayOf<() -> Unit>({ second.recycle() }))
+            }, actions = arrayOf<() -> Unit>({ first.recycle() }))
             for (id in pictures() - before) context.contentResolver.query(imageUri(id), arrayOf(
                 MediaStore.Images.Media.DISPLAY_NAME, MediaStore.Images.Media.RELATIVE_PATH, MediaStore.Images.Media.IS_PENDING), null, null, null)!!.use {
                 assertTrue(it.moveToFirst()); assertTrue(it.getString(0).startsWith("Screenshot_")); assertTrue(it.getString(0).endsWith(".png"))
@@ -451,22 +458,25 @@ class ScreenshotInstrumentedTest {
             // Interrupt cleanup must remove the current result, not resurrect it after its save.
             main { service.onInterrupt() }
             ui.await("Interrupt did not remove preview") { !previewVisible() }
-        } finally {
-            automation.setOnAccessibilityEventListener(null)
-            (pictures() - before).forEach { context.contentResolver.delete(imageUri(it), null, null) }
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { automation.setOnAccessibilityEventListener(null) },
+            { fixtureCleanup(*(pictures() - before).map { id -> {
+                context.contentResolver.delete(imageUri(id), null, null)
+                Unit
+            } }.toTypedArray()) },
+        ))
     }
 
     @Test fun mediaStorePublishesPngAndDeletesPendingRowsOnOpenOrPublishFailure() {
         val bitmap = Bitmap.createBitmap(40, 60, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.BLACK) }
-        try {
+        withFixtureCleanup(body = {
             val uri = ScreenshotStore(context.contentResolver).save(bitmap)
-            try {
+            withFixtureCleanup(body = {
                 context.contentResolver.openInputStream(uri).use {
                     val decoded = BitmapFactory.decodeStream(it)!!
                     assertEquals(40, decoded.width); assertEquals(60, decoded.height); assertEquals(Color.BLACK, decoded.getPixel(10, 10)); decoded.recycle()
                 }
-            } finally { context.contentResolver.delete(uri, null, null) }
+            }, actions = arrayOf<() -> Unit>({ context.contentResolver.delete(uri, null, null) }))
             for (failOpen in listOf(true, false)) {
                 val fixture = File(context.filesDir, "screenshot-store-failure.png")
                 var deleted = 0
@@ -483,14 +493,16 @@ class ScreenshotInstrumentedTest {
                         return ParcelFileDescriptor.open(fixture, ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_TRUNCATE)
                     }
                 }
-                try {
-                    ScreenshotStore(ContentResolver.wrap(provider)).save(bitmap)
-                    fail("The storage failure was swallowed")
-                } catch (error: Exception) {
-                    assertEquals(if (failOpen) ScreenshotFailure.STORAGE_FULL else ScreenshotFailure.UNAVAILABLE, screenshotFailure(error))
-                } finally { fixture.delete() }
+                withFixtureCleanup(body = {
+                    try {
+                        ScreenshotStore(ContentResolver.wrap(provider)).save(bitmap)
+                        fail("The storage failure was swallowed")
+                    } catch (error: Exception) {
+                        assertEquals(if (failOpen) ScreenshotFailure.STORAGE_FULL else ScreenshotFailure.UNAVAILABLE, screenshotFailure(error))
+                    }
+                }, actions = arrayOf<() -> Unit>({ fixture.delete() }))
                 assertEquals(1, pending); assertEquals("Pending row was not deleted", 1, deleted)
             }
-        } finally { bitmap.recycle() }
+        }, actions = arrayOf<() -> Unit>({ bitmap.recycle() }))
     }
 }

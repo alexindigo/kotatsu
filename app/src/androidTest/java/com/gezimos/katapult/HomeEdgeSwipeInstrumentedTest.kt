@@ -51,14 +51,16 @@ class HomeEdgeSwipeInstrumentedTest {
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-            try {
+            withFixtureCleanup(body = {
                 instrumentation.runOnMainSync { activity.setContent {
                     App(model, activity.imagePicker, activity.iconPicker, activity.configExporter,
                         activity.configImporter, activity.screensaverWallpaperPicker, {})
                 } }
                 ui.await("Home not rendered") { ui.has(context.getString(R.string.all_apps)) }
                 test(model, fixture, activity)
-            } finally { instrumentation.runOnMainSync { activity.finish(); owner.clear() } }
+            }, actions = arrayOf<() -> Unit>(
+                { instrumentation.runOnMainSync { fixtureCleanup({ activity.finish() }, { owner.clear() }) } },
+            ))
         }
     }
 
@@ -134,7 +136,7 @@ class HomeEdgeSwipeInstrumentedTest {
         val deviceModel = android.os.Build::class.java.getDeclaredField("MODEL").apply { isAccessible = true }
         val previousModel = deviceModel.get(null)
         deviceModel.set(null, "Kompakt")
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model.prefs.edgeActions.enabled = false
                 model.observeActionService(true) // A switch must reconcile even a stale service observation.
@@ -178,7 +180,7 @@ class HomeEdgeSwipeInstrumentedTest {
             model.prefs.edgeActions.setAction(ScreenEdge.LEFT, EdgeAction.SIDE_SCREEN)
             swipe(.005f, .65f)
             ui.await("Home edge must work without Action Service") { ui.has(context.getString(R.string.side_close)) }
-        } finally { deviceModel.set(null, previousModel) }
+        }, actions = arrayOf<() -> Unit>({ deviceModel.set(null, previousModel) }))
     }
 
     @Test fun cameraAndNothingFollowBothEdgeSettingsAndTheMasterSwitch() = withHome { model, _, _ ->
@@ -186,7 +188,7 @@ class HomeEdgeSwipeInstrumentedTest {
             Instrumentation.ActivityResult(0, null), true)
         val secure = instrumentation.addMonitor(IntentFilter(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE),
             Instrumentation.ActivityResult(0, null), true)
-        try {
+        withFixtureCleanup(body = {
             for (edge in ScreenEdge.entries) {
                 fun inward() { if (edge == ScreenEdge.LEFT) swipe(.005f, .65f) else swipe(.995f, .35f) }
                 model.prefs.edgeActions.setAction(edge, EdgeAction.CAMERA)
@@ -204,7 +206,7 @@ class HomeEdgeSwipeInstrumentedTest {
                 model.prefs.edgeActions.enabled = true
             }
             assertEquals(0, secure.hits)
-        } finally { instrumentation.removeMonitor(normal); instrumentation.removeMonitor(secure) }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.removeMonitor(normal) }, { instrumentation.removeMonitor(secure) }))
     }
 
     @Test fun middleSwipesUseTheHomeChoiceAndShortEdgesDoNothing() = withHome { model, _, _ ->
@@ -259,12 +261,12 @@ class HomeEdgeSwipeInstrumentedTest {
         ui.await("Home not restored") { ui.has(context.getString(R.string.all_apps)) }
         val camera = instrumentation.addMonitor(IntentFilter(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA),
             Instrumentation.ActivityResult(0, null), true)
-        try {
+        withFixtureCleanup(body = {
             swipe(.005f, .65f)
             assertTrue("Side screen must stay closed with Home Off", ui.has(context.getString(R.string.all_apps)))
             swipe(.995f, .35f)
             assertEquals(0, camera.hits)
             assertEquals(Screen.HOME, model.screen)
-        } finally { instrumentation.removeMonitor(camera) }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.removeMonitor(camera) }))
     }
 }

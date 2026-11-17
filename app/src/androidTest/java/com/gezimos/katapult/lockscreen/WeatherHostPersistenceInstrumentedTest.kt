@@ -1,5 +1,8 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+
 import com.gezimos.katapult.platformAutomation
 import android.content.Intent
 import android.os.ParcelFileDescriptor
@@ -30,7 +33,7 @@ class WeatherHostPersistenceInstrumentedTest {
         // A retained acceptance fixture deliberately outlives instrumentation. Normal tests own a
         // scoped selection and all allocations, with a synchronous teardown barrier.
         val fixture = if (retained) null else WidgetHostTestFixture(context, applicationPreferences = true)
-        try { WidgetProviderTestFixture(context).use { exerciseHost(it) } } finally { fixture?.close() }
+        withFixtureCleanup({ fixture?.close() }) { WidgetProviderTestFixture(context).use { exerciseHost(it) } }
     }
 
     private fun exerciseHost(providers: WidgetProviderTestFixture) {
@@ -52,7 +55,7 @@ class WeatherHostPersistenceInstrumentedTest {
         }
         fun hasTwoPlaces() = ui.has("Current location, 10.000, 20.000\n7:00 to 23:00") &&
             ui.has("Current location, 30.000, 40.000\n7:00 to 23:00")
-        try {
+        withFixtureCleanup(body = {
             ui.await("Launcher startup missing") { ui.has("Finish") || ui.has("Apps") }
             if (ui.has("Finish")) ui.click("Finish")
             shell("pm grant $weather android.permission.ACCESS_COARSE_LOCATION")
@@ -111,19 +114,18 @@ class WeatherHostPersistenceInstrumentedTest {
             shell("pm revoke $weather android.permission.ACCESS_COARSE_LOCATION")
             ui.await("Permission revocation did not kill Weather", 10_000) { shell("pidof $weather").trim() != oldPid }
             openIcon(); ui.await("Permission-death recreation lost a place") { hasTwoPlaces() }; ui.click("Done")
-        } finally {
-            instrumentation.platformAutomation.dropShellPermissionIdentity()
-            instrumentation.runOnMainSync {
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.platformAutomation.dropShellPermissionIdentity() },
+            { instrumentation.runOnMainSync { fixtureCleanup(
+                {
                 // Optional retained fixture supports reboot/update acceptance outside instrumentation.
                 if (InstrumentationRegistry.getArguments().getString("retainWeatherFixture") != "true") {
                     id?.let { activity.viewModel.lockscreenWidgets.remove(it) }
                 }
-                host.listen(false)
-                activity.finish()
-            }
-            instrumentation.waitForIdleSync()
-            shell("cmd location providers remove-test-provider gps")
-        }
+                }, { host.listen(false) }, { activity.finish() },
+            ) } },
+            { instrumentation.waitForIdleSync() }, { shell("cmd location providers remove-test-provider gps") },
+        ))
         instrumentation.sendStatus(0, android.os.Bundle().apply { putInt("weatherWidgetId", id!!) })
     }
 }

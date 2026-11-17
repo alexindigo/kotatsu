@@ -69,7 +69,7 @@ internal object DirectBadgeAdapterCases {
     fun independentSourcesAndOffThreadReads() {
         val port = Port()
         val helper = DirectBadgeHelper(port)
-        try {
+        withFixtureCleanup(body = {
             helper.reconcile()
             assertTrue(helper.getCounts().isEmpty())
             assertEquals(0, port.calls.get()); assertEquals(0, port.messages.get())
@@ -87,7 +87,7 @@ internal object DirectBadgeAdapterCases {
             assertTrue(helper.getCounts().isEmpty()); assertTrue(port.active.isEmpty())
             helper.close(); helper.close()
             assertTrue(port.subscribers.isEmpty())
-        } finally { helper.close() }
+        }, actions = arrayOf<() -> Unit>({ helper.close() }))
     }
 
     fun cancelDebounceAndRejectLateAndDetachedCallbacks() {
@@ -102,7 +102,7 @@ internal object DirectBadgeAdapterCases {
             7 // Deliberately ignores cancellation, like a slow provider returning late.
         }
         val helper = DirectBadgeHelper(port)
-        try {
+        withFixtureCleanup(body = {
             port.call = true; port.changed()
             assertTrue(entered.await(8, TimeUnit.SECONDS))
             val detached = port.active.single().second
@@ -125,7 +125,7 @@ internal object DirectBadgeAdapterCases {
             SystemClock.sleep(450)
             assertEquals("Debounce survived opt-out", stoppedQueries, port.calls.get())
             assertTrue(helper.getCounts().isEmpty())
-        } finally { release.countDown(); helper.close() }
+        }, actions = arrayOf<() -> Unit>({ release.countDown() }, { helper.close() }))
     }
 
     fun unavailableIsNotZeroAndDisabledQueuedActionsNeverWrite() {
@@ -133,7 +133,7 @@ internal object DirectBadgeAdapterCases {
         val helper = DirectBadgeHelper(port)
         val first = CountDownLatch(1)
         port.callReader = { first.countDown(); null }
-        try {
+        withFixtureCleanup(body = {
             port.call = true; port.changed()
             assertTrue(first.await(8, TimeUnit.SECONDS))
             assertNull(helper.getCounts()[DirectBadgeHelper.MUDITA_DIAL])
@@ -163,7 +163,7 @@ internal object DirectBadgeAdapterCases {
             port.write = false
             helper.clearMissedCalls({ true }) {}
             assertEquals(1, port.writes.get())
-        } finally { helper.close() }
+        }, actions = arrayOf<() -> Unit>({ helper.close() }))
     }
 
     fun reentrantConsumersCanReadAndRevokeWithoutNotificationUnderWorkerLocks() {
@@ -179,12 +179,12 @@ internal object DirectBadgeAdapterCases {
             }
         }
         helper = DirectBadgeHelper(port)
-        try {
+        withFixtureCleanup(body = {
             helper.addListener(listener)
             port.callReader = { 5 }
             port.call = true; port.changed()
             assertTrue("Listener could not observe/revoke the actual worker output", observed.await(8, TimeUnit.SECONDS))
             assertTrue(port.active.isEmpty())
-        } finally { helper.removeListener(listener); helper.close() }
+        }, actions = arrayOf<() -> Unit>({ helper.removeListener(listener) }, { helper.close() }))
     }
 }

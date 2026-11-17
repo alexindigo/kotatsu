@@ -43,7 +43,7 @@ class LockscreenWidgetsSettingsInstrumentedTest {
         val widgets = WidgetHostTestFixture(context)
         val provider = widgets.providers.firstProvider("com.android.deskclock")
         val list = LockscreenWidgetList.encode(listOf(LockscreenWidget(widgets.bind(provider), LockscreenWidgetSize.M)))
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, raw))
                 owner.put("k2", model)
@@ -72,11 +72,9 @@ class LockscreenWidgetsSettingsInstrumentedTest {
                 assertFalse(model.prefs.lockscreenWidgetsEnabled)
                 assertEquals(list, model.prefs.lockscreenWidgets)
             }
-        } finally {
-            instrumentation.runOnMainSync { owner.clear(); activity.finish() }
-            ConnectedUiStateFixture.closeOwnedActivities()
-            deleteTestPreferences(context, name)
-            widgets.close()
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { fixtureCleanup({ owner.clear() }, { activity.finish() }) } },
+            { ConnectedUiStateFixture.closeOwnedActivities() }, { deleteTestPreferences(context, name) }, { widgets.close() },
+        ))
     }
 }

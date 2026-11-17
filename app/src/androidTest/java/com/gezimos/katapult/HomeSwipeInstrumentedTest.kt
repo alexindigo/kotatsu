@@ -42,14 +42,16 @@ class HomeSwipeInstrumentedTest {
             }
             val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-            try {
+            withFixtureCleanup(body = {
                 instrumentation.runOnMainSync { activity.setContent {
                     App(model, activity.imagePicker, activity.iconPicker, activity.configExporter,
                         activity.configImporter, activity.screensaverWallpaperPicker, {})
                 } }
                 ui.await("Home not rendered") { ui.has(context.getString(R.string.all_apps)) }
                 test(model)
-            } finally { instrumentation.runOnMainSync { activity.finish(); owner.clear() } }
+            }, actions = arrayOf<() -> Unit>(
+                { instrumentation.runOnMainSync { fixtureCleanup({ activity.finish() }, { owner.clear() }) } },
+            ))
         }
     }
 

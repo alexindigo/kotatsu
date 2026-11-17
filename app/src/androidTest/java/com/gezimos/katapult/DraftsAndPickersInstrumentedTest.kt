@@ -144,7 +144,7 @@ class DraftsAndPickersInstrumentedTest {
         val filter = IntentFilter(action).apply { addDataType("*/*"); addCategory(Intent.CATEGORY_OPENABLE) }
         val monitor = instrumentation.addMonitor(filter, null, true)
         var request = 0
-        try {
+        withFixtureCleanup(body = {
             scenario.onActivity { activity ->
                 launch(activity)
                 val saved = Bundle()
@@ -158,7 +158,7 @@ class DraftsAndPickersInstrumentedTest {
             }
             scenario.sendSingleHomeIntent()
             assertEquals("External picker was not intercepted", 1, monitor.hits)
-        } finally { instrumentation.removeMonitor(monitor) }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.removeMonitor(monitor) }))
         scenario.recreate()
         return request
     }
@@ -174,7 +174,7 @@ class DraftsAndPickersInstrumentedTest {
 
     @Test fun exportResultAfterHomeAndRecreationWritesConfigurationAndCancelDoesNotWrite() {
         val file = File(context.filesDir, "f7-export-${UUID.randomUUID()}.json")
-        try {
+        withFixtureCleanup(body = {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 val request = pending(scenario, 3, Intent.ACTION_CREATE_DOCUMENT) { it.configExporter.launch(file.name) }
                 deliver(scenario, request, Uri.fromFile(file))
@@ -184,12 +184,12 @@ class DraftsAndPickersInstrumentedTest {
                 deliver(scenario, cancel, null)
                 assertEquals(contents, file.readText())
             }
-        } finally { file.delete() }
+        }, actions = arrayOf<() -> Unit>({ file.delete() }))
     }
 
     @Test fun importResultAndPreviewSurviveHomeAndRecreationUntilExplicitCancel() {
         val file = File(context.filesDir, "f7-import-${UUID.randomUUID()}.json")
-        try {
+        withFixtureCleanup(body = {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 var local = false
                 scenario.onActivity {
@@ -223,12 +223,12 @@ class DraftsAndPickersInstrumentedTest {
                     assertEquals(local, it.viewModel.prefs.sensitiveChoice(SensitiveChoice.MEDIA_INFO))
                 }
             }
-        } finally { file.delete() }
+        }, actions = arrayOf<() -> Unit>({ file.delete() }))
     }
 
     @Test fun importWithoutPrivacyChangesStillShowsReplacementConfirmation() {
         val file = File(context.filesDir, "g3-import-${UUID.randomUUID()}.json")
-        try {
+        withFixtureCleanup(body = {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 scenario.onActivity { file.writeText(it.viewModel.prefs.exportToJson(context)) }
                 val request = pending(scenario, 4, Intent.ACTION_OPEN_DOCUMENT) { it.configImporter.launch(arrayOf("application/json")) }
@@ -244,7 +244,7 @@ class DraftsAndPickersInstrumentedTest {
                 ui.click(context.getString(R.string.cancel))
                 scenario.onActivity { assertNull(it.viewModel.pendingImportText) }
             }
-        } finally { file.delete() }
+        }, actions = arrayOf<() -> Unit>({ file.delete() }))
     }
 
     @Test fun screensaverPickerResultAfterHomeAndRecreationReachesObservedPathAndBitmap() {
@@ -257,7 +257,7 @@ class DraftsAndPickersInstrumentedTest {
         val bitmap = Bitmap.createBitmap(24, 24, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.CYAN) }
         source.outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
         bitmap.recycle()
-        try {
+        withFixtureCleanup(body = {
             ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)).use { scenario ->
                 val request = pending(scenario, 5, Intent.ACTION_GET_CONTENT) { it.screensaverWallpaperPicker.launch("image/*") }
                 deliver(scenario, request, Uri.fromFile(source))
@@ -273,10 +273,10 @@ class DraftsAndPickersInstrumentedTest {
                 deliver(scenario, cancel, null)
                 scenario.onActivity { assertEquals(destination.path, it.viewModel.screensaverWallpaperPath) }
             }
-        } finally {
-            source.delete()
-            if (oldBytes == null) destination.delete() else destination.writeBytes(oldBytes)
-            assertTrue(raw.edit().apply { if (oldPath == null) remove(key) else putString(key, oldPath) }.commit())
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { source.delete() },
+            { if (oldBytes == null) destination.delete() else destination.writeBytes(oldBytes) },
+            { assertTrue(raw.edit().apply { if (oldPath == null) remove(key) else putString(key, oldPath) }.commit()) },
+        ))
     }
 }

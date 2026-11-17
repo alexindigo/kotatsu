@@ -46,12 +46,12 @@ class TrailingCheckboxGeometryInstrumentedTest {
     private fun fixture(content: @Composable () -> Unit, test: () -> Unit) {
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-        try {
+        withFixtureCleanup(body = {
             main { activity.setContent {
                 Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) { content() }
             } }
             test()
-        } finally { main { activity.finish() } }
+        }, actions = arrayOf<() -> Unit>({ main { activity.finish() } }))
     }
 
     private fun geometry(label: String) {

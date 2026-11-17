@@ -25,15 +25,17 @@ internal fun UiAutomation.boundedShell(command: String, timeoutSeconds: Long = 1
         }
         stream.bufferedReader().use { it.readText().trim() }
     }
-    try {
-        return result.get(timeoutSeconds, TimeUnit.SECONDS)
-    } catch (error: TimeoutException) {
-        throw AssertionError("Shell command exceeded ${timeoutSeconds}s: $command", error)
-    } catch (error: ExecutionException) {
-        throw AssertionError("Shell command failed: $command", error.cause)
-    } finally {
-        cancelled.set(true)
-        result.cancel(true)
-        try { input.get()?.close() } finally { worker.shutdownNow() }
-    }
+    withFixtureCleanup(body = {
+        try {
+            return result.get(timeoutSeconds, TimeUnit.SECONDS)
+        } catch (error: TimeoutException) {
+            throw AssertionError("Shell command exceeded ${timeoutSeconds}s: $command", error)
+        } catch (error: ExecutionException) {
+            throw AssertionError("Shell command failed: $command", error.cause)
+        }
+    }, actions = arrayOf<() -> Unit>(
+        { cancelled.set(true) },
+        { result.cancel(true) },
+        { fixtureCleanup({ input.get()?.close() }, { worker.shutdownNow() }) },
+    ))
 }

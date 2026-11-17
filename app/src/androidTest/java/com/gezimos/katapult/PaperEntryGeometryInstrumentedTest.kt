@@ -27,7 +27,7 @@ class PaperEntryGeometryInstrumentedTest {
     private fun withActivity(work: (MainActivity) -> Unit) {
         val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
-        try { work(activity) } finally { main { activity.finish() } }
+        withFixtureCleanup({ main { activity.finish() } }) { work(activity) }
     }
 
     @Test fun everyHelpLessEntryRetains48dpTargetAndNormalPaddingWhileHelpKeepsItsHeight() = withActivity { activity ->

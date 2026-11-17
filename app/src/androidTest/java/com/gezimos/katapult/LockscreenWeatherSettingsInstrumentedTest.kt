@@ -36,7 +36,7 @@ class LockscreenWeatherSettingsInstrumentedTest {
         val raw = context.getSharedPreferences(name, Context.MODE_PRIVATE)
         val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, raw))
                 owner.put("l3", model)
@@ -73,13 +73,9 @@ class LockscreenWeatherSettingsInstrumentedTest {
                 model.disableLockscreenServiceFeatures()
                 assertFalse(model.prefs.lockscreenWeather)
             }
-        } finally {
-            instrumentation.runOnMainSync {
-                owner.clear()
-                activity.finish()
-            }
-            ConnectedUiStateFixture.quiesceOwnedProducers()
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { fixtureCleanup({ owner.clear() }, { activity.finish() }) } },
+            { ConnectedUiStateFixture.quiesceOwnedProducers() }, { deleteTestPreferences(context, name) },
+        ))
     }
 }

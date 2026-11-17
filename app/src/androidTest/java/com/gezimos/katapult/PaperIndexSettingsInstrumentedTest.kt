@@ -24,7 +24,7 @@ class PaperIndexSettingsInstrumentedTest {
         val published = androidx.compose.runtime.mutableStateOf(true)
         var stored = true
         val requests = mutableListOf<Boolean>()
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync { activity.setContent {
                 com.gezimos.katapult.ui.settings.Entry(com.gezimos.katapult.ui.settings.SettingsEntry.Switch(
                     "owned", "Owned switch", "", published.value, { value ->
@@ -36,7 +36,7 @@ class PaperIndexSettingsInstrumentedTest {
             ui.toggleSwitch("Owned switch", false, true) { stored }
             assertEquals(listOf(false, true), requests)
             assertEquals(true, ui.checked("Owned switch"))
-        } finally { handler.removeCallbacksAndMessages(null) }
+        }, actions = arrayOf<() -> Unit>({ handler.removeCallbacksAndMessages(null) }))
     }
     private fun withSettings(test: (MainActivity, MainViewModel, PrefsManager, PlatformUiDriver) -> Unit) {
         val instrumentation = InstrumentationRegistry.getInstrumentation()

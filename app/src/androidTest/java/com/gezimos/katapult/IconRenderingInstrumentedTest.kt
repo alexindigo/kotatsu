@@ -173,7 +173,7 @@ class IconRenderingInstrumentedTest {
         val key = "__curated_icon_test_fixture__"
         assertNull("Preserve an unexpected existing fixture", prefs.getIconOverride(key))
         val file = File.createTempFile("curated-icon-", ".png", context.filesDir)
-        try {
+        withFixtureCleanup(body = {
             for (collection in IconCollection.entries) {
                 val icon = catalogue.search(collection, "").first()
                 assertTrue(prefs.commitIconOverride(key, "catalogue:${icon.id}"))
@@ -191,21 +191,22 @@ class IconRenderingInstrumentedTest {
             assertEquals(Color.MAGENTA, IconUtility.loadIcon(context, key, "", 96)!!.getPixel(48, 48))
             val shortcutKey = "$key|owned-shortcut"
             assertNull(prefs.getIconOverride(shortcutKey))
-            try {
+            withFixtureCleanup(body = {
                 assertTrue(prefs.commitIconOverride(shortcutKey, "catalogue:${signal.id}"))
                 IconUtility.clearCacheFor(shortcutKey)
                 assertTrue(IconUtility.loadShortcutIcon(context, key, "owned-shortcut", 96)!!.sameAs(CatalogueIconRenderer.render(context, signal, 96)))
-            } finally {
+            }, actions = arrayOf<() -> Unit>(
+                {
                 assertTrue(context.getSharedPreferences("katapult_prefs", 0).edit()
                     .remove("icon_override_$shortcutKey").commit())
-                IconUtility.clearCacheFor(shortcutKey)
-            }
-        } finally {
+                }, { IconUtility.clearCacheFor(shortcutKey) },
+            ))
+        }, actions = arrayOf<() -> Unit>(
+            {
             assertTrue(context.getSharedPreferences("katapult_prefs", 0).edit()
                 .remove("icon_override_$key").commit())
-            IconUtility.clearCacheFor(key)
-            assertTrue(file.delete())
-        }
+            }, { IconUtility.clearCacheFor(key) }, { assertTrue(file.delete()) },
+        ))
         Log.i("KotatsuIconProof", "PASS reviewed mapping / unmatched original fallback / manual catalogue / legacy res / PNG / shortcut isolation")
     }
 }

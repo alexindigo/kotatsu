@@ -57,12 +57,6 @@ class UnreadBadgesInstrumentedTest {
         var activity: MainActivity? = null
         var screensaver: ScreensaverActivity? = null
         var lease: AutoCloseable? = null
-        var failure: Throwable? = null
-        fun restore(action: () -> Unit) {
-            try { action() } catch (error: Throwable) {
-                if (failure == null) failure = error else failure!!.addSuppressed(error)
-            }
-        }
         fun post(id: Int, number: Int? = null, summary: Boolean = false, ongoing: Boolean = false) {
             val builder = Notification.Builder(context, channel)
                 .setSmallIcon(R.drawable.ic_screensaver).setContentTitle("Unread fixture $id")
@@ -74,7 +68,7 @@ class UnreadBadgesInstrumentedTest {
             NotificationListener.getCount(context.packageName) == expected &&
                 (BadgeSources.counts(context)[context.packageName] ?: 0) == expected
         }
-        try {
+        withFixtureCleanup(body = {
             main {
                 prefs.onboardingComplete = true
                 prefs.notificationIndicators = true
@@ -157,26 +151,21 @@ class UnreadBadgesInstrumentedTest {
                 current.setContentView(view)
             }
             ui.await("Production lock-screen row did not render the same total") { ui.has("A unread fixture") && ui.has("5") }
-        } catch (error: Throwable) {
-            failure = error
-        } finally {
-            restore { ConnectedUiStateFixture.quiesceOwnedProducers() }
-            restore {
-                for (id in 1..5) manager.cancel(tag, id)
-                manager.deleteNotificationChannel(channel)
-            }
-            restore { if (!wasAllowed) shell("cmd notification disallow_listener ${listener.flattenToString()}") }
-            restore {
+        }, actions = arrayOf<() -> Unit>(
+            { ConnectedUiStateFixture.quiesceOwnedProducers() },
+            { fixtureCleanup(*(1..5).map { id -> { manager.cancel(tag, id) } }.toTypedArray()) },
+            { manager.deleteNotificationChannel(channel) },
+            { if (!wasAllowed) shell("cmd notification disallow_listener ${listener.flattenToString()}") },
+            {
                 ui.await("Notification access was not restored", 15000) {
                     manager.isNotificationListenerAccessGranted(listener) == wasAllowed &&
                         (wasAllowed || !SensitiveAccess.notificationConnected)
                 }
-            }
-            restore { main { lease?.close() } }
-            restore { restoreFixturePreferenceValues(raw, saved) }
-            restore { assertEquals(saved, keys.associateWith { raw.all[it] }) }
-            restore { ui.await("Fixture notifications were not removed") { manager.activeNotifications.none { it.tag == tag } } }
-        }
-        failure?.let { throw it }
+            },
+            { main { lease?.close() } },
+            { restoreFixturePreferenceValues(raw, saved) },
+            { assertEquals(saved, keys.associateWith { raw.all[it] }) },
+            { ui.await("Fixture notifications were not removed") { manager.activeNotifications.none { it.tag == tag } } },
+        ))
     }
 }

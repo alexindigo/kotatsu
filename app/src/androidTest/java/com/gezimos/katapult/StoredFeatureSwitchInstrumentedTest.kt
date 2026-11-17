@@ -52,7 +52,7 @@ class StoredFeatureSwitchInstrumentedTest {
             if (changed == key) writes.incrementAndGet()
         }
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 prefs.write(true)
                 prefs.screensaverEnabled = true
@@ -94,9 +94,8 @@ class StoredFeatureSwitchInstrumentedTest {
             instrumentation.waitForIdleSync()
             assertFalse("Unavailable feature was enabled", prefs.read())
             assertEquals("Unavailable enable attempt wrote a preference", 0, writes.get())
-        } finally {
-            shared.unregisterOnSharedPreferenceChangeListener(listener)
-            restoreFixturePreferenceValues(shared, saved)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { shared.unregisterOnSharedPreferenceChangeListener(listener) }, { restoreFixturePreferenceValues(shared, saved) },
+        ))
     }
 }

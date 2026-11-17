@@ -52,18 +52,16 @@ class IconSaveInstrumentedTest {
         val root = File(context.filesDir, name).apply { assertTrue(mkdir()) }
         val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 model = MainViewModel(TestApplication(context.applicationContext, wrap(store), root))
                 owner.put("f3", model)
             }
             test(model, root)
-        } finally {
-            instrumentation.runOnMainSync { owner.clear() }
-            IconUtility.clearCacheFor(key)
-            assertTrue(root.deleteRecursively())
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { owner.clear() } }, { IconUtility.clearCacheFor(key) },
+            { assertTrue(root.deleteRecursively()) }, { deleteTestPreferences(context, name) },
+        ))
     }
 
     private fun await(message: String, condition: () -> Boolean) {
@@ -103,7 +101,7 @@ class IconSaveInstrumentedTest {
                 }
             }
         }
-        try {
+        withFixtureCleanup(body = {
             withModel(wrap) { model, _ ->
                 val before = model.shortcutRefresh
                 lateinit var waiter: Job
@@ -119,10 +117,7 @@ class IconSaveInstrumentedTest {
                 val icon = IconCatalogue.load(application).icon(id)!!
                 assertTrue(IconUtility.loadIcon(application, key, "", 64)!!.sameAs(CatalogueIconRenderer.render(application, icon, 64)))
             }
-        } finally {
-            release.countDown()
-            pickerScope.cancel()
-        }
+        }, actions = arrayOf<() -> Unit>({ release.countDown() }, { pickerScope.cancel() }))
     }
 
     @Test fun invalidationDoesNotRepublishAnOlderOverrideSnapshot() = staleSnapshot(false)
@@ -145,7 +140,7 @@ class IconSaveInstrumentedTest {
         val normal = using(store)
         val prefs = PrefsManager(normal)
         val worker = Executors.newSingleThreadExecutor()
-        try {
+        withFixtureCleanup(body = {
             prefs.setIconOverride(key, "res:clock")
             IconUtility.clearCacheFor(key)
             val read = worker.submit<Bitmap?> { IconUtility.loadIcon(using(blockingStore), key, "", 64) }
@@ -157,12 +152,9 @@ class IconSaveInstrumentedTest {
             val icon = IconCatalogue.load(normal).icon(id)!!
             assertTrue("Stale map hid the newly committed icon at the consumer",
                 IconUtility.loadIcon(normal, key, "", 64)!!.sameAs(CatalogueIconRenderer.render(normal, icon, 64)))
-        } finally {
-            release.countDown()
-            worker.shutdownNow()
-            IconUtility.clearCacheFor(key)
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { release.countDown() }, { worker.shutdownNow() }, { IconUtility.clearCacheFor(key) }, { deleteTestPreferences(context, name) },
+        ))
     }
 
     private fun previousIcon(model: MainViewModel, root: File): Pair<File, ByteArray> {

@@ -1,5 +1,8 @@
 package com.gezimos.katapult.lockscreen
 
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+
 import com.gezimos.katapult.platformAutomation
 import android.content.Context
 import android.content.ContextWrapper
@@ -50,7 +53,7 @@ class LockscreenWidgetStoreInstrumentedTest {
                 second = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, fixture.prefs))
             }
             val executor = Executors.newSingleThreadExecutor { runnable -> Thread(runnable, "held-widget-editor") }
-            try {
+            withFixtureCleanup(body = {
                 val operation = executor.submit { held.resize(ids.first(), LockscreenWidgetSize.M) }
                 assertTrue("Resize never reached the external layout boundary", paused.entered.await(8, TimeUnit.SECONDS))
                 lateinit var expected: List<LockscreenWidget>
@@ -59,12 +62,10 @@ class LockscreenWidgetStoreInstrumentedTest {
                 operation.get(8, TimeUnit.SECONDS)
                 assertEquals("Held editor must apply to the current stored list", expected,
                     LockscreenWidgetList.decode(fixture.prefs.lockscreenWidgets))
-            } finally {
-                paused.release.countDown()
-                executor.shutdownNow()
-                assertTrue(executor.awaitTermination(8, TimeUnit.SECONDS))
-                instrumentation.runOnMainSync { held.close(); second.close() }
-            }
+            }, actions = arrayOf<() -> Unit>(
+                { paused.release.countDown() }, { executor.shutdownNow() }, { assertTrue(executor.awaitTermination(8, TimeUnit.SECONDS)) },
+                { instrumentation.runOnMainSync { fixtureCleanup({ held.close() }, { second.close() }) } },
+            ))
         }
     }
 
@@ -103,14 +104,14 @@ class LockscreenWidgetStoreInstrumentedTest {
                 }
             }
             fixture.raw.registerOnSharedPreferenceChangeListener(listener)
-            try {
+            withFixtureCleanup(body = {
                 instrumentation.runOnMainSync {
                     assertEquals(LockscreenWidgetStore.Result.APPLIED, fixture.prefs.lockscreenWidgetStore.resize(first, LockscreenWidgetSize.M))
                     assertEquals(listOf(LockscreenWidget(first, LockscreenWidgetSize.M), LockscreenWidget(added, LockscreenWidgetSize.M)),
                         fixture.prefs.lockscreenWidgetStore.read())
                     assertFalse(ghost in fixture.host.appWidgetIds)
                 }
-            } finally { fixture.raw.unregisterOnSharedPreferenceChangeListener(listener) }
+            }, actions = arrayOf<() -> Unit>({ fixture.raw.unregisterOnSharedPreferenceChangeListener(listener) }))
         }
     }
 
@@ -125,7 +126,7 @@ class LockscreenWidgetStoreInstrumentedTest {
                 val second = com.gezimos.katapult.ownFixtureMain(LockscreenWidgetSettings(context, PrefsManager(object : ContextWrapper(context) {
                     override fun getSharedPreferences(name: String?, mode: Int): SharedPreferences = fixture.raw
                 })))
-                try {
+                withFixtureCleanup(body = {
                     second.move(ids.last(), -2)
                     second.resize(ids[1], LockscreenWidgetSize.M)
                     assertTrue(fixture.prefs.importFromJson(JSONObject().put("_type", "katapult_config")
@@ -135,7 +136,7 @@ class LockscreenWidgetStoreInstrumentedTest {
                         LockscreenWidget(ids[0], LockscreenWidgetSize.S), LockscreenWidget(ids[1], LockscreenWidgetSize.M))
                     assertEquals(expected, fixture.prefs.lockscreenWidgetStore.read())
                     assertEquals(expected, LockscreenWidgetList.decode(JSONObject(fixture.prefs.exportToJson(context)).getString(LockscreenWidgetStore.KEY)))
-                } finally { first.close(); second.close() }
+                }, actions = arrayOf<() -> Unit>({ first.close() }, { second.close() }))
             }
         }
     }
@@ -190,8 +191,9 @@ class LockscreenWidgetStoreInstrumentedTest {
         val info = fixture.providers.singleProvider("com.alexindigo.kotatsu.weather.debug")
         var id: Int? = null
         instrumentation.platformAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
-        try { settings.add(info, { fail("Binding should be allowed") }, { id = it }) }
-        finally { instrumentation.platformAutomation.dropShellPermissionIdentity() }
+        withFixtureCleanup({ instrumentation.platformAutomation.dropShellPermissionIdentity() }) {
+            settings.add(info, { fail("Binding should be allowed") }, { id = it })
+        }
         assertNotNull(id)
         settings.configured(true)
         return settings.rows.single { it.widget.id == id }.widget

@@ -1,5 +1,7 @@
 package com.gezimos.katapult.weather
 
+import com.gezimos.katapult.withFixtureCleanup
+
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.weather.api.Weather
 import com.gezimos.katapult.weather.api.WeatherCondition
@@ -18,7 +20,7 @@ class SleepingWeatherFixtureInstrumentedTest {
         val process = checkNotNull(context.contentResolver.acquireContentProviderClient(SleepingWeatherFixture.URI))
         var previousId: String? = null
         var pid: Int? = null
-        try {
+        withFixtureCleanup(body = {
             repeat(2) {
                 SleepingWeatherFixture(context).use { provider ->
                     if (pid == null) pid = provider.providerPid else assertEquals(pid, provider.providerPid)
@@ -39,17 +41,16 @@ class SleepingWeatherFixtureInstrumentedTest {
                 assertEquals("Teardown must remove every owned gate/counter", 0, state.getInt("lifetimes"))
                 assertEquals(pid, state.getInt("pid"))
             }
-        } finally {
-            try { worker.shutdown(); assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }
-            finally { process.close() }
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { worker.shutdown() }, { assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }, { process.close() },
+        ))
     }
 
     @Test fun exceptionalBodyReleasesDrainsAndResetsTheRemoteLifetime() {
         val worker = Executors.newSingleThreadExecutor()
         var query: Future<Weather?>? = null
         val expectedFailure = IllegalStateException("fixture body failed")
-        try {
+        withFixtureCleanup(body = {
             val failure = runCatching {
                 SleepingWeatherFixture(context).use { provider ->
                     query = worker.submit<Weather?> { provider.read() }
@@ -62,12 +63,12 @@ class SleepingWeatherFixtureInstrumentedTest {
             assertTrue("Teardown must not suppress a cleanup failure", expectedFailure.suppressed.isEmpty())
             assertEquals(expected, query!!.get(15, TimeUnit.SECONDS))
             assertEquals(0, SleepingWeatherFixture.status(context).getInt("lifetimes"))
-        } finally { worker.shutdown(); assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }
+        }, actions = arrayOf<() -> Unit>({ worker.shutdown() }, { assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }))
     }
 
     @Test fun releasingOneActiveLifetimeCannotCompleteAnotherLifetimesQuery() {
         val worker = Executors.newFixedThreadPool(2)
-        try {
+        withFixtureCleanup(body = {
             SleepingWeatherFixture(context).use { first ->
                 SleepingWeatherFixture(context).use { second ->
                     assertEquals(first.providerPid, second.providerPid)
@@ -83,6 +84,6 @@ class SleepingWeatherFixtureInstrumentedTest {
                 }
             }
             assertEquals(0, SleepingWeatherFixture.status(context).getInt("lifetimes"))
-        } finally { worker.shutdown(); assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }
+        }, actions = arrayOf<() -> Unit>({ worker.shutdown() }, { assertTrue(worker.awaitTermination(15, TimeUnit.SECONDS)) }))
     }
 }

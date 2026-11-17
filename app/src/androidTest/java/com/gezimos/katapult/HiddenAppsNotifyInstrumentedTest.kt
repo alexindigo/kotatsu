@@ -39,7 +39,7 @@ class HiddenAppsNotifyInstrumentedTest {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }) as MainActivity
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 val viewModel = ViewModelProvider(activity)[MainViewModel::class.java]
                 activity.setContent {
@@ -99,9 +99,7 @@ class HiddenAppsNotifyInstrumentedTest {
             ui.click(notify)
             instrumentation.waitForIdleSync()
             assertEquals("Disabled Notify tap changed preferences or fell through to Hide", before, raw.all)
-        } finally {
-            instrumentation.runOnMainSync { activity.finish() }
-        }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { activity.finish() } }))
     }
 
     private fun tap(x: Float, y: Float) {
@@ -136,7 +134,7 @@ class HiddenAppsNotifyInstrumentedTest {
             override fun counts() = mapOf(app.packageName to 987)
             override fun times() = emptyMap<String, Long>()
         }
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync { activity.setContent { ScreensaverView(feed) } }
             instrumentation.waitForIdleSync()
             assertFalse("Hidden notification rendered before opt-in", ui.has("987"))
@@ -144,17 +142,13 @@ class HiddenAppsNotifyInstrumentedTest {
             ui.await("Opt-in did not reach the rendered screensaver consumer") { ui.has(app.label) && ui.has("987") }
             instrumentation.runOnMainSync { prefs.setLockscreenExcludedApps(prefs.getLockscreenExcludedApps() + app.packageName) }
             ui.await("Exclusion did not clear the rendered screensaver consumer") { !ui.has("987") }
-        } finally {
-            instrumentation.runOnMainSync { activity.finish() }
-        }
+        }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { activity.finish() } }))
     }
 
     /** Restore presence as well as values in one synchronous transaction before the runner can exit. */
     private fun preserving(keys: List<String>, block: () -> Unit) {
         val saved = keys.associateWith { raw.all[it] }
         assertTrue(saved.values.all { it == null || it is Set<*> || it is Boolean || it is Int })
-        try { block() } finally {
-            restoreFixturePreferenceValues(raw, saved)
-        }
+        withFixtureCleanup({ restoreFixturePreferenceValues(raw, saved) }) { block() }
     }
 }

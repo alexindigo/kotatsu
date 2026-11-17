@@ -64,7 +64,7 @@ class LauncherPreviewInstrumentedTest {
         val originalThemeValue = rawPrefs.all["theme_mode"]
         assertTrue("Preserve unexpected stored order types", originalOrderJson == null || originalOrderJson is String)
         var generatedIcon: Pair<com.gezimos.katapult.model.AppModel, java.io.File>? = null
-        try {
+        withFixtureCleanup(body = {
         ui.click(first.label, longPress = true)
         ui.click("Move")
         ui.await("Reorder mode missing") { model.reorderMode }
@@ -256,7 +256,7 @@ class LauncherPreviewInstrumentedTest {
         assertFalse(ScreensaverActivity.isShowing)
         assertEquals(controlledDraft, model.orderedApps.map { it.key })
         instrumentation.runOnMainSync { model.prefs.screensaverEnabled = true }
-        try {
+        withFixtureCleanup(body = {
         instrumentation.runOnMainSync { model.startScreensaver(activity) }
         ui.await("App-controlled screensaver exit omitted the dirty decision") { ui.has("Save app order changes?") }
         assertFalse(ScreensaverActivity.isShowing)
@@ -302,12 +302,12 @@ class LauncherPreviewInstrumentedTest {
         assertEquals(draft, model.prefs.loadAppOrder())
         gridReadback()
         case("packaged-shortcut-and-launch-task-return-preserve-draft")
-        } finally {
+        }, actions = arrayOf<() -> Unit>({
             instrumentation.runOnMainSync {
                 if (screensaverKeyPresent) model.prefs.screensaverEnabled = originalScreensaver
                 else context.getSharedPreferences("katapult_prefs", 0).edit().remove("screensaver_enabled").commit()
             }
-        }
+        }))
         ui.back()
         ui.click("Discard")
         ui.await("Controlled draft Discard failed") { !model.reorderMode }
@@ -381,25 +381,28 @@ class LauncherPreviewInstrumentedTest {
         for (permission in listOf(Manifest.permission.READ_SMS, Manifest.permission.READ_CALL_LOG, Manifest.permission.WRITE_CALL_LOG)) {
             assertEquals(PackageManager.PERMISSION_DENIED, context.checkSelfPermission(permission))
         }
-        } finally {
-            instrumentation.runOnMainSync {
-                // Every draft in this test follows the initial !reorderMode assertion.
-                if (model.reorderMode) model.discardReorderExit()
-                generatedIcon?.let { (app, file) ->
-                    if (model.prefs.getIconOverride(app.key) == "file:${file.absolutePath}") model.clearIconOverride(app.key)
-                }
-                val editor = rawPrefs.edit()
-                if (originalOrderJson is String) editor.putString("app_order", originalOrderJson)
-                else editor.remove("app_order")
-                if (originalScreensaverValue is Boolean) editor.putBoolean("screensaver_enabled", originalScreensaverValue)
-                else editor.remove("screensaver_enabled")
-                if (originalThemeValue is Int) editor.putInt("theme_mode", originalThemeValue)
-                else editor.remove("theme_mode")
-                assertTrue(editor.commit())
-                assertEquals(originalScreensaverValue, rawPrefs.all["screensaver_enabled"])
-                assertEquals(originalThemeValue, rawPrefs.all["theme_mode"])
-                model.loadApps()
-            }
-        }
+        }, actions = arrayOf<() -> Unit>({
+            instrumentation.runOnMainSync { fixtureCleanup(
+                {
+                    // Every draft in this test follows the initial !reorderMode assertion.
+                    if (model.reorderMode) model.discardReorderExit()
+                }, {
+                    generatedIcon?.let { (app, file) ->
+                        if (model.prefs.getIconOverride(app.key) == "file:${file.absolutePath}") model.clearIconOverride(app.key)
+                    }
+                }, {
+                    val editor = rawPrefs.edit()
+                    if (originalOrderJson is String) editor.putString("app_order", originalOrderJson)
+                    else editor.remove("app_order")
+                    if (originalScreensaverValue is Boolean) editor.putBoolean("screensaver_enabled", originalScreensaverValue)
+                    else editor.remove("screensaver_enabled")
+                    if (originalThemeValue is Int) editor.putInt("theme_mode", originalThemeValue)
+                    else editor.remove("theme_mode")
+                    assertTrue(editor.commit())
+                    assertEquals(originalScreensaverValue, rawPrefs.all["screensaver_enabled"])
+                    assertEquals(originalThemeValue, rawPrefs.all["theme_mode"])
+                }, { model.loadApps() },
+            ) }
+        }))
     }
 }

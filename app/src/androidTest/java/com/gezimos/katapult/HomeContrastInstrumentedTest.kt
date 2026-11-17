@@ -62,7 +62,7 @@ class HomeContrastInstrumentedTest {
         val owner = ownedViewModelStore()
         lateinit var model: MainViewModel
         var activity: MainActivity? = null
-        try {
+        withFixtureCleanup(body = {
             store.edit().putString("clock_format", "'10:45'").putString("date_format", "'October 18, 2026'")
                 .putBoolean("show_battery", false).putBoolean("show_alarm", false)
                 .putBoolean("show_weather", false).putBoolean("home_extra_row", true).commit()
@@ -186,12 +186,12 @@ class HomeContrastInstrumentedTest {
                 val content = Rect(0, clock.top, baseline.width, labels.maxOf { it.bottom })
                 assertRegionIdentical(baseline, cleared, content)
             }
-        } finally {
-            instrumentation.runOnMainSync { activity?.finish(); owner.clear() }
-            ConnectedUiStateFixture.quiesceOwnedProducers()
-            assertTrue(root.deleteRecursively())
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { fixtureCleanup({ activity?.finish() }, { owner.clear() }) } },
+            { ConnectedUiStateFixture.quiesceOwnedProducers() },
+            { assertTrue(root.deleteRecursively()) },
+            { deleteTestPreferences(context, name) },
+        ))
     }
 
     @Test fun movingBareContentUsesItsNewWallpaperPositionWithoutRebuildingMap() {
@@ -205,7 +205,7 @@ class HomeContrastInstrumentedTest {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }) as MainActivity
-        try {
+        withFixtureCleanup(body = {
             instrumentation.runOnMainSync {
                 contrast.updateWallpaper(wallpaper)
                 activity.setContent {
@@ -235,11 +235,11 @@ class HomeContrastInstrumentedTest {
             ui.await("Bare element did not move") { bounds("MMMM").left >= 300 }
             checkInk(Color.BLACK)
             assertSame("Layout movement rebuilt wallpaper map", map, contrast.map)
-        } finally {
-            instrumentation.runOnMainSync { activity.finish(); scope.cancel() }
-            ConnectedUiStateFixture.quiesceOwnedProducers()
-            wallpaper.recycle()
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { instrumentation.runOnMainSync { fixtureCleanup({ activity.finish() }, { scope.cancel() }) } },
+            { ConnectedUiStateFixture.quiesceOwnedProducers() },
+            { wallpaper.recycle() },
+        ))
     }
 
     private fun bounds(label: String): Rect = Rect().also { ui.find(label)!!.getBoundsInScreen(it) }

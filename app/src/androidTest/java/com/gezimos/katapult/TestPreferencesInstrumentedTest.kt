@@ -85,7 +85,7 @@ class TestPreferencesInstrumentedTest {
                 return super.deleteSharedPreferences(store).also { deleted.set(it) }
             }
         }
-        try {
+        withFixtureCleanup(body = {
             backing.edit().putInt("applied", 42).apply()
             val task = worker.submit { deleteTestPreferences(owner, name) }
             assertTrue("Teardown did not enter the store's disk-write barrier", entered.await(5, TimeUnit.SECONDS))
@@ -95,13 +95,10 @@ class TestPreferencesInstrumentedTest {
             assertTrue(deleted.get())
             assertFalse(File(context.applicationInfo.dataDir, "shared_prefs/$name.xml").exists())
             assertFalse(File(context.applicationInfo.dataDir, "shared_prefs/$name.xml.bak").exists())
-        } finally {
-            release.countDown()
-            worker.shutdownNow()
-            assertTrue(worker.awaitTermination(8, TimeUnit.SECONDS))
-            assertTrue(backing.edit().commit())
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>(
+            { release.countDown() }, { worker.shutdownNow() }, { assertTrue(worker.awaitTermination(8, TimeUnit.SECONDS)) },
+            { assertTrue(backing.edit().commit()) }, { deleteTestPreferences(context, name) },
+        ))
     }
 
     @Test fun failedFlushPreservesTheFixtureAndFailsBeforeDeletion() {
@@ -120,15 +117,13 @@ class TestPreferencesInstrumentedTest {
                 return super.deleteSharedPreferences(store)
             }
         }
-        try {
+        withFixtureCleanup(body = {
             assertTrue(backing.edit().putBoolean("evidence", true).commit())
             val error = runCatching { deleteTestPreferences(owner, name) }.exceptionOrNull()
             assertTrue("An unconfirmed disk flush must fail teardown", error is AssertionError)
             assertFalse("A failed barrier must leave evidence available", deleted.get())
             assertTrue(File(context.applicationInfo.dataDir, "shared_prefs/$name.xml").exists())
             assertTrue(backing.getBoolean("evidence", false))
-        } finally {
-            deleteTestPreferences(context, name)
-        }
+        }, actions = arrayOf<() -> Unit>({ deleteTestPreferences(context, name) }))
     }
 }
