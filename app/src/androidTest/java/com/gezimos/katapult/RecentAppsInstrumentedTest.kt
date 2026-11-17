@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.recent.*
 import com.gezimos.katapult.ui.RecentAppsScreen
+import com.gezimos.katapult.ui.recentAppActionLabel
 import com.gezimos.katapult.ui.settings.ScrollRailLabels
 import com.gezimos.katapult.ui.settings.WholeRowList
 import org.junit.Assert.*
@@ -33,6 +34,7 @@ class RecentAppsInstrumentedTest {
     private val ui = PlatformUiDriver(instrumentation)
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
     private val now = 1_800_000_000_000L
+    private val actionLabel get() = context.getString(recentAppActionLabel(android.os.Build.VERSION.SDK_INT))
 
     private fun assertUsageConsentIsVisibleAndOff() {
         val label = context.getString(R.string.policy_usage_stats)
@@ -281,7 +283,7 @@ class RecentAppsInstrumentedTest {
                 val row = Rect().also { fixture.overlay.find(text)!!.getBoundsInScreen(it) }
                 val close = fixture.overlay.find { node ->
                     val bounds = Rect().also(node::getBoundsInScreen)
-                    node.text?.toString() == "Close" && bounds.centerY() in row.top..row.bottom
+                    node.text?.toString() == actionLabel && bounds.centerY() in row.top..row.bottom
                 }!!
                 assertTrue(close.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
             }
@@ -325,7 +327,7 @@ class RecentAppsInstrumentedTest {
                 fixture.overlay.find(label)?.getBoundsInScreen(targetRow)
                 !targetRow.isEmpty && fixture.overlay.find { node ->
                     val bounds = Rect().also(node::getBoundsInScreen)
-                    node.text?.toString() == "Close" && bounds.top >= targetRow.bottom
+                    node.text?.toString() == actionLabel && bounds.top >= targetRow.bottom
                 } != null
             }
             closeRow(label)
@@ -485,7 +487,9 @@ class RecentAppsInstrumentedTest {
     @Test fun closeSwipeAndSwitchHaveIndependentTargets() = withPage { model, source, _ ->
         val row = Rect().also { ui.find("Open Camera")!!.getBoundsInScreen(it) }
         val close = ui.find { node -> val bounds = Rect().also(node::getBoundsInScreen)
-            node.text?.toString() == "Close" && bounds.top in row.top..row.bottom }!!
+            node.text?.toString() == actionLabel && bounds.top in row.top..row.bottom }!!
+        assertTrue("Action's native accessibility name must match its visible label",
+            ui.findAncestor(actionLabel) { it.isClickable }?.isEnabled == true)
         assertTrue(close.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
         ui.await("Close must remove row") { !ui.has("Open Camera") }
         assertTrue(model.visible)
@@ -530,7 +534,7 @@ class RecentAppsInstrumentedTest {
         reopen()
         val bounds = row()
         val close = ui.find { node -> val rect = Rect().also(node::getBoundsInScreen)
-            node.text?.toString() == "Close" && rect.top in bounds.top..bounds.bottom }!!
+            node.text?.toString() == actionLabel && rect.top in bounds.top..bounds.bottom }!!
         val action = Rect().also(close::getBoundsInScreen)
         pointerStroke(action.centerX().toFloat(), action.centerY().toFloat(), 0f, 0f)
         ui.await("Close tap did not close independently") { source.kills == listOf(listOf("notes")) }

@@ -439,6 +439,7 @@
     <string name="edge_camera_setup">Needs a compatible secure camera. In Open Camera, grant camera permission and enable Settings > More camera controls > Show camera when locked.</string>
     <string name="recent_apps">Recent apps</string>
     <string name="recent_close">Close</string>
+    <string name="recent_hide">Hide</string>
     <string name="recent_dismiss">Close recent apps</string>
     <string name="recent_just_now">Just now</string>
     <string name="recent_yesterday">Yesterday</string>

@@ -437,6 +437,7 @@
     <string name="edge_camera_setup">Wymaga zgodnego bezpiecznego aparatu. W Open Camera udziel dost&#281;pu do aparatu i w&#322;&#261;cz Ustawienia > Wi&#281;cej opcji aparatu > Poka&#380; aparat przy zablokowanym ekranie.</string>
     <string name="recent_apps">Ostatnie aplikacje</string>
     <string name="recent_close">Zamknij</string>
+    <string name="recent_hide">Ukryj</string>
     <string name="recent_dismiss">Zamknij ostatnie aplikacje</string>
     <string name="recent_just_now">Przed chwil&#261;</string>
     <string name="recent_yesterday">Wczoraj</string>

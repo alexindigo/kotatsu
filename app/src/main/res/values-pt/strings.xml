@@ -437,6 +437,7 @@
     <string name="edge_camera_setup">Requer uma c&#226;mara segura compat&#237;vel. No Open Camera, conceda permiss&#227;o de c&#226;mara e ative Defini&#231;&#245;es > Mais controlos da c&#226;mara > Mostrar c&#226;mara quando bloqueado.</string>
     <string name="recent_apps">Apps recentes</string>
     <string name="recent_close">Fechar</string>
+    <string name="recent_hide">Ocultar</string>
     <string name="recent_dismiss">Fechar aplica&#231;&#245;es recentes</string>
     <string name="recent_just_now">Agora mesmo</string>
     <string name="recent_yesterday">Ontem</string>

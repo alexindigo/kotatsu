@@ -437,6 +437,7 @@
     <string name="edge_camera_setup">Vereist een geschikte beveiligde camera. Geef Open Camera cameratoegang en schakel Instellingen > Meer camerabediening > Camera tonen wanneer vergrendeld in.</string>
     <string name="recent_apps">Recente apps</string>
     <string name="recent_close">Sluiten</string>
+    <string name="recent_hide">Verbergen</string>
     <string name="recent_dismiss">Recente apps sluiten</string>
     <string name="recent_just_now">Zojuist</string>
     <string name="recent_yesterday">Gisteren</string>

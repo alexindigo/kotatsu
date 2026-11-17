@@ -1,5 +1,6 @@
 package com.gezimos.katapult.ui
 
+import android.os.Build
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
@@ -13,6 +14,10 @@ import com.gezimos.katapult.R
 import com.gezimos.katapult.recent.*
 import com.gezimos.katapult.ui.settings.*
 import java.util.Calendar
+
+/** Android 14 restricts background-process stopping to the caller's own app. */
+internal fun recentAppActionLabel(apiLevel: Int): Int =
+    if (apiLevel >= 34) R.string.recent_hide else R.string.recent_close
 
 @Composable
 private fun lastUseLabel(lastUsed: Long, now: Long): String {
@@ -32,7 +37,7 @@ private fun lastUseLabel(lastUsed: Long, now: Long): String {
 @Composable
 fun RecentAppsScreen(model: RecentApps) {
     val title = stringResource(R.string.recent_apps)
-    val close = stringResource(R.string.recent_close)
+    val action = stringResource(recentAppActionLabel(Build.VERSION.SDK_INT))
     PageFrame(title, model::back, Modifier.windowInsetsPadding(WindowInsets.systemBars)
         .semantics { paneTitle = title }, heading = {
         PageHeader(title, trailing = {
@@ -46,7 +51,7 @@ fun RecentAppsScreen(model: RecentApps) {
                 else SettingsEntry.Metadata("recent-access", message, ""))
         } else {
             WholeRowList(model.apps, scrollRailLabels(), { it.packageName }, reset = model.refreshRevision) { app ->
-                PaperActionEntry(app.label, lastUseLabel(app.lastUsed, model.now), close,
+                PaperActionEntry(app.label, lastUseLabel(app.lastUsed, model.now), action,
                     { model.switchTo(app.packageName) }, { model.close(app.packageName) },
                     onSwipeLeft = { model.close(app.packageName) })
             }

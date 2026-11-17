@@ -104,9 +104,12 @@ Home opens the picker for that spot. There is no separate long-press app
 setting. Added shortcut icons offer App icon Remove and Move or Change.
 
 Double-press Home within 400 ms to open Recent apps. The newest app sits at the bottom; scroll up for older apps.
-Tap an app name to switch to it. Close, or swipe a row left by at least a third of its width, to stop its background
-processes and hide it until it is used again. Close all asks for confirmation in the top line. Back cancels that
-confirmation; otherwise Back or another double-press returns to the app or Home where you started.
+Tap an app name to switch to it. On Android 13 and below, Close requests a stop
+of its background processes and hides it until it is used again. On Android 14+
+(API 34+), the same action is labelled Hide, including its accessibility name:
+Android does not let Kotatsu stop other apps, so it only hides the app from
+Kotatsu's Recent apps list. Swiping a row left by at least a third of its width
+performs the same action. Back or another double-press returns to the app or Home where you started.
 Recent apps uses the existing usage-statistics choice and Android usage access.
 
 ### Edge swipes on the lock screen and Home
@@ -164,7 +167,7 @@ Android grants and Kotatsu's Sensitive access choices are separate: a grant alon
 | 6 | `WRITE_CALL_LOG` | Separate, deliberate call acknowledgment action |
 | 7 | Usage access (`PACKAGE_USAGE_STATS`) | Optional most-recent / most-used app sorting and Recent apps |
 | 8 | Kotatsu Action Service (accessibility) | Optional lock-screen overlays/widgets, edge actions and gesture passthrough, clock cover, locking and screensaver features |
-| 9 | `KILL_BACKGROUND_PROCESSES` | Close background app processes from Recent apps |
+| 9 | `KILL_BACKGROUND_PROCESSES` | Request background app process stops from Recent apps on Android 13 and below; Android 14+ only allows hiding from Kotatsu's list |
 
 Kotatsu Weather separately declares Internet and network-state access. Location access is optional for Add current location: a one-off fix while setup is open, never a background location request. Search for a place instead to avoid granting location access.
 
