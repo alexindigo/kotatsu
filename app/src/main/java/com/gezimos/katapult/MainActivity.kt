@@ -10,6 +10,8 @@ import androidx.activity.viewModels
 import androidx.core.view.WindowCompat
 import com.gezimos.katapult.lockscreen.LockscreenWidgetService
 import com.gezimos.katapult.ui.App
+import com.gezimos.katapult.ui.input.WindowEditorInput
+import com.gezimos.katapult.ui.input.WindowEditorInputScope
 import com.gezimos.katapult.util.AudioWidgetHelper
 import com.gezimos.katapult.util.DeviceHelper
 import com.gezimos.katapult.util.EinkHelper
@@ -68,6 +70,7 @@ class MainActivity : ComponentActivity() {
 
     private var einkHelper: EinkHelper? = null
     private var homeKeyGate: AutoCloseable? = null
+    private lateinit var editorInput: WindowEditorInput
     private var acknowledgmentRequestId: Long? = null
     private val callAcknowledgmentPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         val id = acknowledgmentRequestId
@@ -159,6 +162,7 @@ class MainActivity : ComponentActivity() {
             ?.getLong("call_acknowledgment_request")
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.setWindowAnimations(0)
+        editorInput = WindowEditorInput.get(window)
         overridePendingTransition(0, 0)
 
         onBackPressedDispatcher.addCallback(this, backCallback)
@@ -172,9 +176,11 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker,
-                configExporter = configExporter, configImporter = configImporter,
-                screensaverWallpaperPicker = screensaverWallpaperPicker, onClearBadge = ::clearBadge)
+            WindowEditorInputScope(editorInput) {
+                App(viewModel = viewModel, imagePicker = imagePicker, iconPicker = iconPicker,
+                    configExporter = configExporter, configImporter = configImporter,
+                    screensaverWallpaperPicker = screensaverWallpaperPicker, onClearBadge = ::clearBadge)
+            }
         }
         if (savedInstanceState == null) {
             if (intent.action == Intent.ACTION_MAIN && intent.hasCategory(Intent.CATEGORY_HOME)) viewModel.onHomeIntent()
@@ -200,6 +206,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        editorInput.resume()
         overridePendingTransition(0, 0)
         viewModel.startNotificationListener() // Reconcile current choices/grants before cache refresh.
         viewModel.applyStatusBar(this)
@@ -225,6 +232,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onStop() {
+        editorInput.stop()
         super.onStop()
         LockscreenWidgetService.onLauncherForeground(false)
     }
@@ -249,6 +257,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        editorInput.close()
         homeKeyGate?.close(); homeKeyGate = null
         super.onDestroy()
     }

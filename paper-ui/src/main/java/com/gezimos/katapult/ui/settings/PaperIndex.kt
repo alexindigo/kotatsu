@@ -46,6 +46,9 @@ import com.gezimos.katapult.ui.LocalSurface
 import com.gezimos.katapult.ui.LocalPalette
 import com.gezimos.katapult.ui.SwipeAxis
 import com.gezimos.katapult.ui.detectSwipeGestures
+import com.gezimos.katapult.ui.input.currentWindowEditorInput
+import com.gezimos.katapult.ui.input.EditorPageInput
+import com.gezimos.katapult.ui.input.LocalEditorPageInput
 import kotlin.math.max
 
 @Composable
@@ -519,9 +522,17 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
     var count by position.count
     val scroll = position.scroll
     val renderedCount = count
+    val editorInput = currentWindowEditorInput()
+    val editorPage = remember(editorInput) { editorInput?.let { EditorPageInput(it.owner) } }
+    fun changePage(next: Int) {
+        if (next != page) {
+            editorInput?.owner?.retireAfterTransition()
+            page = next
+        }
+    }
     SubcomposeLayout(Modifier.fillMaxSize().then(if (swipePaging) Modifier.pointerInput(page, count) {
             detectSwipeGestures(SwipeAxis.HORIZONTAL, 80f) { direction ->
-                page = (page + if (direction.forward) 1 else -1).coerceIn(0, count - 1)
+                changePage((page + if (direction.forward) 1 else -1).coerceIn(0, count - 1))
             }
         } else Modifier)) { constraints ->
             val width = constraints.maxWidth
@@ -534,6 +545,7 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
             // scroll viewport handles a genuinely oversized block (large text, or an editor's IME).
             // Allocation uses the full stable screen capacity, never the previous page's footer.
             val body = subcompose("body") {
+              CompositionLocalProvider(LocalEditorPageInput provides editorPage) {
                 Layout(content = content, modifier = Modifier.fillMaxWidth().pageContentScroll(scroll)) { children, bodyConstraints ->
                     val blocks = children.map { it.measure(Constraints(maxWidth = (width - inset * 2).coerceAtLeast(0))) }
                     val heights = blocks.map { it.height }
@@ -552,16 +564,18 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
                     }
                     if (pages.isEmpty()) pages += IntRange.EMPTY
                     val current = page.coerceIn(0, pages.lastIndex)
-                    if (page != current) page = current
+                    if (page != current) changePage(current)
                     if (count != pages.size) count = pages.size
                     val active = pages[current]
                     layout(bodyConstraints.maxWidth, active.sumOf { heights[it] }.coerceAtLeast(bodyConstraints.minHeight)) {
+                        editorPage?.beginPlacement()
                         var y = 0
                         active.forEach { index -> blocks[index].placeRelative(inset, y); y += heights[index] }
                     }
                 }
+              }
             }.single().measure(Constraints.fixed(width, (available - if (renderedCount > 1) pagerHeight else 0).coerceAtLeast(0)))
-            val footer = if (count > 1) subcompose("pager") { Pager(page, count, false) { page = it } }.single().measure(loose) else null
+            val footer = if (count > 1) subcompose("pager") { Pager(page, count, false, ::changePage) }.single().measure(loose) else null
             layout(width, constraints.maxHeight) {
                 heading.placeRelative(0, 0)
                 body.placeRelative(0, heading.height)

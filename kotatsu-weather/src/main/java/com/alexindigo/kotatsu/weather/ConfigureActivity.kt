@@ -25,6 +25,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import java.util.concurrent.Executors
+import com.gezimos.katapult.ui.input.WindowEditorInput
 
 class ConfigureActivity : Activity() {
     private var widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
@@ -34,6 +35,7 @@ class ConfigureActivity : Activity() {
     private data class PlaceEdit(val widgetId: Int, val placeId: String, val label: String, val start: Int, val end: Int)
     private var editing: PlaceEdit? = null
     private var editDialog: AlertDialog? = null
+    private val editorInputs = mutableSetOf<WindowEditorInput>()
     private lateinit var rows: LinearLayout
     private val locationRows = mutableMapOf<String, View>()
     private val emptyRow by lazy {
@@ -130,6 +132,7 @@ class ConfigureActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        editorInputs.forEach { it.resume() }
         getSharedPreferences("weather", 0).registerOnSharedPreferenceChangeListener(refreshListener)
         if (!editorReady || choosing) return
         if (widgetId !in WeatherRuntime.ids(this)) { finish(); return }
@@ -147,6 +150,22 @@ class ConfigureActivity : Activity() {
     override fun onPause() {
         getSharedPreferences("weather", 0).unregisterOnSharedPreferenceChangeListener(refreshListener)
         super.onPause()
+    }
+
+    override fun onStop() {
+        editorInputs.forEach { it.stop() }
+        super.onStop()
+    }
+
+    private fun bindEditor(dialog: AlertDialog, field: EditText): AutoCloseable {
+        val input = WindowEditorInput.get(checkNotNull(dialog.window))
+        editorInputs += input
+        val registration = input.bind(field)
+        return AutoCloseable {
+            registration.close()
+            input.close()
+            editorInputs -= input
+        }
     }
 
     private fun changed(result: WeatherStore.Result) {
@@ -310,7 +329,9 @@ class ConfigureActivity : Activity() {
                 changed(store.edit(widgetId, placeId, label.text.toString(), start, end))
             }.create()
         editDialog = dialog
-        dialog.setOnDismissListener { editing = null; editDialog = null }
+        var input: AutoCloseable? = null
+        dialog.setOnDismissListener { input?.close(); editing = null; editDialog = null }
+        input = bindEditor(dialog, label)
         dialog.show()
     }
 
@@ -389,7 +410,8 @@ class ConfigureActivity : Activity() {
                     REQUEST_LOCATION)
             }
         }
-        dialog.setOnDismissListener { locating?.cancel(); locating = null }
+        val editorInput = bindEditor(dialog, input)
+        dialog.setOnDismissListener { editorInput.close(); locating?.cancel(); locating = null }
         dialog.setOnShowListener {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 val query = input.text.toString().trim()
@@ -440,7 +462,11 @@ class ConfigureActivity : Activity() {
         then(CurrentPosition.granted(this))
     }
 
-    override fun onDestroy() { searchGeneration++; locating?.cancel(); executor.shutdownNow(); super.onDestroy() }
+    override fun onDestroy() {
+        editorInputs.toList().forEach { it.close() }
+        editorInputs.clear()
+        searchGeneration++; locating?.cancel(); executor.shutdownNow(); super.onDestroy()
+    }
     private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
     private fun hours(hour: Int) = "$hour:00"
     private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }

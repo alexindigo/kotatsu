@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.text.BasicTextField
+import com.gezimos.katapult.ui.input.PaperTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,7 +32,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -184,11 +183,10 @@ private fun RenameDialog(
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
 ) {
-    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
-
     BottomSheet(onDismiss = onDismiss, imePadding = true) {
         PaperSheetHeading(stringResource(R.string.menu_name), onDismiss)
-        BasicTextField(
+        PaperTextField(
+            autofocus = true,
             value = textFieldValue,
             onValueChange = onValueChange,
             singleLine = true,
@@ -201,8 +199,7 @@ private fun RenameDialog(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(2.5.dp, LocalInk.current)
-                .padding(12.dp)
-                .focusRequester(focusRequester),
+                .padding(12.dp),
         )
         Spacer(Modifier.height(16.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
@@ -226,9 +223,6 @@ private fun RenameDialog(
                     .clickable { onConfirm(textFieldValue.text) }
                     .padding(12.dp),
             )
-        }
-        androidx.compose.runtime.LaunchedEffect(Unit) {
-            focusRequester.requestFocus()
         }
     }
 }
