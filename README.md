@@ -115,6 +115,8 @@ On Kompakt, open Settings > Lock screen > Edge swipes and enable the Kotatsu Act
 Choose Side screen, Camera or Nothing for each edge. The defaults are Side screen on the left and Camera on the right.
 These same settings also apply on Home, without requiring the Action Service there.
 Enable on home screen is On by default; turn it Off to keep edge actions only on the lock screen.
+With the master Edge swipes setting Off, Enable on home screen and the left/right
+action rows are hidden. Turning it On shows them again with their saved choices.
 Swipe inward from the screen edge by at least one third of the screen width
 to run its action. Short sideways swipes do nothing; taps and vertical swipes pass to the lock screen after release.
 The strips are absent over the PIN pad, other apps and while the screen is off.

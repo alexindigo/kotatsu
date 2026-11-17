@@ -96,6 +96,7 @@ class EdgeActionsInstrumentedTest {
     }
 
     @Test fun settingsChoicesPersistBothEdgesAndShowMissingSecureCamera() = withStore { _, store ->
+        store.enabled = true
         val activity = instrumentation.startActivitySync(Intent(Intent.ACTION_MAIN).apply {
             setClassName(context.packageName, MainActivity::class.java.name)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -152,6 +153,103 @@ class EdgeActionsInstrumentedTest {
             assertEquals(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA_SECURE, intent.action)
             assertTrue(intent.flags and Intent.FLAG_ACTIVITY_NEW_TASK != 0)
         }, actions = arrayOf<() -> Unit>({ instrumentation.runOnMainSync { activity.finish() } }))
+    }
+
+    @Test fun masterHidesDependentRowsAndReallocatesPagesWithTheNotice() = withStore { _, store ->
+        val activity = instrumentation.startActivitySync(Intent(context, MainActivity::class.java)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as MainActivity
+        val ui = PlatformUiDriver(instrumentation)
+        val master = context.getString(R.string.edge_swipes_help)
+        val dependent = listOf(R.string.edge_home_enabled, R.string.edge_left, R.string.edge_right).map(context::getString)
+        val next = context.getString(R.string.paper_next_page)
+        val previous = context.getString(R.string.paper_previous_page)
+        val notice = context.getString(R.string.paper_service_off)
+        fun capture(name: String) {
+            if (InstrumentationRegistry.getArguments().getString("settingsStateEvidence") != "true") return
+            instrumentation.waitForIdleSync()
+            val automation = instrumentation.platformAutomation
+            var bitmap = automation.takeScreenshot()
+            var stable = false
+            for (attempt in 0 until 20) {
+                android.os.SystemClock.sleep(100)
+                val current = automation.takeScreenshot()
+                stable = current.sameAs(bitmap)
+                bitmap.recycle()
+                bitmap = current
+                if (stable) break
+            }
+            assertTrue("Edge settings screenshot did not settle", stable)
+            java.io.File(context.getExternalFilesDir(null), "$name.png").outputStream().use {
+                assertTrue(bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it))
+            }
+            bitmap.recycle()
+        }
+        fun firstPage() {
+            repeat(12) {
+                if (!ui.has(previous)) return
+                ui.click(previous)
+                instrumentation.waitForIdleSync()
+            }
+            fail("Edge settings never returned to page one")
+        }
+        fun checkPages(enabled: Boolean): Int {
+            firstPage()
+            val seen = mutableListOf<String>()
+            repeat(12) { page ->
+                instrumentation.waitForIdleSync()
+                val region = ui.find { it.paneTitle?.toString() == context.getString(R.string.paper_notice_region) }
+                val footer = android.graphics.Rect().also { checkNotNull(region).getBoundsInScreen(it) }
+                assertTrue("Notice lost its message", ui.has(notice))
+                dependent.forEach { label ->
+                    if (!enabled) assertFalse("Off left a dependent row: $label", ui.has(label))
+                    else if (ui.has(label)) {
+                        seen += label
+                        val row = ui.findAncestor(label) { it.isClickable }!!
+                        val bounds = android.graphics.Rect().also(row::getBoundsInScreen)
+                        assertTrue("Available row was disabled: $label", row.isEnabled)
+                        assertTrue("Notice overlaps $label", bounds.bottom <= footer.top)
+                    }
+                }
+                if (!enabled) assertFalse("Off left an empty Actions heading", ui.has(context.getString(R.string.edge_actions)))
+                if (ui.has(next) || ui.has(previous)) {
+                    val pager = android.graphics.Rect().also { checkNotNull(ui.find(if (ui.has(next)) next else previous)).getBoundsInScreen(it) }
+                    assertTrue("Pager overlaps the Notice", footer.bottom <= pager.top)
+                }
+                capture("edge-swipes-${if (enabled) "on" else "off"}-${page + 1}")
+                if (!ui.has(next)) {
+                    if (enabled) assertEquals("Pagination lost or duplicated dependent rows", dependent, seen)
+                    return page + 1
+                }
+                ui.click(next)
+            }
+            error("Edge settings pagination never ended")
+        }
+        try {
+            instrumentation.runOnMainSync { activity.setContent {
+                var revision by remember { mutableIntStateOf(0) }
+                @Suppress("UNUSED_VARIABLE") val observed = revision
+                PaperIndexRenderer(edgeSwipesCategory(store.enabled, store.homeEnabled,
+                    store.action(ScreenEdge.LEFT), store.action(ScreenEdge.RIGHT), false,
+                    { store.enabled = it; revision++ }, { store.homeEnabled = it; revision++ },
+                    { edge, action -> store.setAction(edge, action); revision++ }), {},
+                    Modifier.statusBarsPadding().navigationBarsPadding(),
+                    notice = com.gezimos.katapult.ui.settings.NoticeContent(notice,
+                        context.getString(R.string.paper_notice_region), context.getString(R.string.paper_notice_dismiss), {},
+                        context.getString(R.string.paper_turn_on), {}))
+            } }
+            ui.await("Master Off missing") { ui.checked(master) == false }
+            val offPages = checkPages(false)
+            firstPage()
+            ui.toggleSwitch(master, false, true) { store.enabled }
+            val onPages = checkPages(true)
+            assertTrue("Showing dependent rows unexpectedly reduced page count", onPages >= offPages)
+            firstPage()
+            ui.toggleSwitch(master, true, false) { !store.enabled }
+            assertEquals(offPages, checkPages(false))
+            assertTrue("Hiding controls changed the saved Home choice", store.homeEnabled)
+            assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
+            assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
+        } finally { instrumentation.runOnMainSync { activity.finish() } }
     }
 
     @Test fun sideScreenAndExplicitNothingRoundTripOnEitherEdge() = withStore { prefs, store ->

@@ -18,13 +18,13 @@ fun edgeSwipesCategory(enabled: Boolean, homeEnabled: Boolean, left: EdgeAction,
     return SettingsCategory("edges", stringResource(R.string.edge_swipes), listOf(
         SettingsGroup("swipes", "", listOf(
             SettingsEntry.Switch("enabled", stringResource(R.string.edge_swipes), stringResource(R.string.edge_swipes_help), enabled, onEnabled),
-            SettingsEntry.Switch("home-enabled", stringResource(R.string.edge_home_enabled), stringResource(R.string.edge_home_help), homeEnabled, onHomeEnabled),
+            SettingsEntry.Switch("home-enabled", stringResource(R.string.edge_home_enabled), stringResource(R.string.edge_home_help), homeEnabled, onHomeEnabled, visible = enabled),
         )),
         SettingsGroup("actions", stringResource(R.string.edge_actions), ScreenEdge.entries.map { edge ->
             val action = if (edge == ScreenEdge.LEFT) left else right
             SettingsEntry.Value(edge.name, stringResource(if (edge == ScreenEdge.LEFT) R.string.edge_left else R.string.edge_right),
                 "", choices.single { it.id == action.id }.label, choices,
-                { id -> EdgeAction.fromId(id)?.let { onAction(edge, it) } }, action.id)
+                { id -> EdgeAction.fromId(id)?.let { onAction(edge, it) } }, action.id, visible = enabled)
         }),
         SettingsGroup("camera", stringResource(R.string.edge_camera), listOf(
             SettingsEntry.Metadata("camera", stringResource(R.string.edge_camera),

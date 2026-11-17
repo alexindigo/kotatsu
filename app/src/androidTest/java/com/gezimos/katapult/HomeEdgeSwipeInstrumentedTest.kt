@@ -143,8 +143,11 @@ class HomeEdgeSwipeInstrumentedTest {
                 model.settingsPageRequest = "edges"
                 model.navigateTo(Screen.SETTINGS)
             }
-            ui.await("Actual edge settings did not open") { ui.has(context.getString(R.string.edge_home_enabled)) }
             val master = context.getString(R.string.edge_swipes_help)
+            ui.await("Actual edge settings did not open") { ui.checked(master) == false }
+            assertFalse(ui.has(context.getString(R.string.edge_home_enabled)))
+            assertFalse(ui.has(context.getString(R.string.edge_left)))
+            assertFalse(ui.has(context.getString(R.string.edge_right)))
             ui.toggleSwitch(master, false, null) {
                 model.prefs.edgeActions.enabled && ui.has(context.getString(R.string.a11y_setup_title))
             }
@@ -163,6 +166,9 @@ class HomeEdgeSwipeInstrumentedTest {
             ui.toggleSwitch(master, true, false) { !model.prefs.edgeActions.enabled }
             ui.await("Master edge switch must turn Off") { !model.prefs.edgeActions.enabled }
             instrumentation.waitForIdleSync()
+            assertFalse(ui.has(context.getString(R.string.edge_home_enabled)))
+            assertFalse(ui.has(context.getString(R.string.edge_left)))
+            assertFalse(ui.has(context.getString(R.string.edge_right)))
             assertNull("Turning edges Off must never request service setup", model.actionServiceSetup)
             assertFalse(ui.has(context.getString(R.string.a11y_setup_title)))
             ui.toggleSwitch(master, false, null) {

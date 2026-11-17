@@ -515,6 +515,11 @@ Android-owned screens and prompts retain their existing behaviour.
 | 6 | Oversized block | Preserve it whole and allow its viewport to scroll. Do not shrink type, drop content or cut a group to fake a fit |
 | 7 | Single page | No dots or arrow buttons. Root uses scrollable contents, not the six-entry chapter allocator |
 
+Edge swipes uses entry visibility for its dependent controls: while the master
+is Off, omit Enable on home screen and both edge-action rows, including the
+empty Actions group. On restores the saved choices. The shared allocator
+remeasures the visible groups and Notice; no disabled rows or reserved gaps.
+
 The six-entry limit is a chapter contract. `PagedContent` counts direct
 blocks, not nested settings: a `Column` containing six permission entries is
 one block, and the widget cards plus Add widget are one block. It allocates
