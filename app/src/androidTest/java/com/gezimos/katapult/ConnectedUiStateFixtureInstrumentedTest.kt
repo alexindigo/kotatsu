@@ -5,6 +5,7 @@ import android.os.PowerManager
 import androidx.lifecycle.ViewModel
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.lockscreen.LockscreenWidgetStore
+import com.gezimos.katapult.util.PrefsManager
 import org.junit.Assert.*
 import org.junit.Test
 import java.util.concurrent.CountDownLatch
@@ -17,14 +18,17 @@ class ConnectedUiStateFixtureInstrumentedTest {
     private val raw = context.getSharedPreferences("katapult_prefs", 0)
 
     @Test fun failedBackgroundProcessConstructionRestoresItsState() {
-        val before = preferenceSnapshot(raw)
-        ActionServiceSettingsFixture.on().use { settings ->
-            val original = settings.values()
-            val expected = AssertionError("Home launch failed")
-            val actual = runCatching { BackgroundProcessFixture { throw expected } }.exceptionOrNull()
-            assertSame(expected, actual)
-            assertEquals(original, settings.values())
-            assertEquals(before, preferenceSnapshot(raw))
+        ConnectedUiStateFixture().use {
+            fixtureMain { PrefsManager(context) }
+            val before = preferenceSnapshot(raw)
+            ActionServiceSettingsFixture.on().use { settings ->
+                val original = settings.values()
+                val expected = AssertionError("Home launch failed")
+                val actual = runCatching { BackgroundProcessFixture { throw expected } }.exceptionOrNull()
+                assertSame(expected, actual)
+                assertEquals(original, settings.values())
+                assertEquals(before, preferenceSnapshot(raw))
+            }
         }
     }
 
