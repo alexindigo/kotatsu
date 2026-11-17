@@ -61,6 +61,7 @@ class LockscreenEpochInstrumentedTest {
             }
         }.exceptionOrNull()
         assertSame(expected, failure)
+        assertTrue("Restoration must not hide a thread assertion failure", expected.suppressed.isEmpty())
         assertTrue("Restoration ran and the main looper remains usable", restored)
     }
 

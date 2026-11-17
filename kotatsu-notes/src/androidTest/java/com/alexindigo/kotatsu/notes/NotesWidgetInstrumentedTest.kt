@@ -1,5 +1,6 @@
 package com.alexindigo.kotatsu.notes
 
+import com.gezimos.katapult.fixtureCleanup
 import com.gezimos.katapult.withFixtureCleanup
 
 import android.app.job.JobScheduler
@@ -132,12 +133,14 @@ class NotesWidgetInstrumentedTest {
             return text
         }
         override fun close() {
-            instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id); activity.finish() }
-            NotesRuntime.enqueue {
-                NotesStore(context).delete(id, true)
-                context.getSystemService(JobScheduler::class.java).cancel(NotesRuntime.WATCH_JOB)
-            }.get()
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            fixtureCleanup(
+                { instrumentation.runOnMainSync { host.stopListening(); host.deleteAppWidgetId(id); activity.finish() } },
+                { notesFixtureCleanup(
+                    { NotesStore(context).delete(id, true) },
+                    { context.getSystemService(JobScheduler::class.java).cancel(NotesRuntime.WATCH_JOB) },
+                ) },
+                { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            )
         }
     }
 

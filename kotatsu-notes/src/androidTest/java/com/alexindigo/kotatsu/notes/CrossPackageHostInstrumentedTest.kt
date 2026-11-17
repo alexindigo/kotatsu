@@ -9,7 +9,6 @@ import android.graphics.Typeface
 import android.os.Bundle
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.test.platform.app.InstrumentationRegistry
-import com.gezimos.katapult.fixtureCleanup
 import com.gezimos.katapult.withFixtureCleanup
 import org.junit.Assert.*
 import org.junit.Test
@@ -33,9 +32,7 @@ class CrossPackageHostInstrumentedTest {
         withFixtureCleanup(
             { fixture("host-close") },
             { await("Quote host must release") { fixture("host-stats").getString("hostState") == null } },
-            { if (id >= 0) NotesRuntime.enqueue {
-                fixtureCleanup({ QuoteStore(context).delete(id) }, { QuoteRuntime.refresh(context) })
-            }.get() },
+            { if (id >= 0) notesFixtureCleanup({ QuoteStore(context).delete(id) }, { QuoteRuntime.refresh(context) }) },
             { QuoteRuntime.clock = clock },
         ) {
             QuoteRuntime.clock = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneId.of("UTC"))
@@ -71,9 +68,7 @@ class CrossPackageHostInstrumentedTest {
         withFixtureCleanup(
             { fixture("host-close") },
             { await("Other package must release its widget") { fixture("host-stats").getString("hostState") == null } },
-            { if (widgetId >= 0) NotesRuntime.enqueue {
-                fixtureCleanup({ NotesStore(context).delete(widgetId, true) }, { NotesRuntime.arm(context) })
-            }.get() },
+            { if (widgetId >= 0) notesFixtureCleanup({ NotesStore(context).delete(widgetId, true) }, { NotesRuntime.arm(context) }) },
         ) {
             context.startActivity(Intent().setComponent(ComponentName(testPackage, NotesCrossPackageHostActivity::class.java.name))
                 .putExtra("providerPackage", context.packageName)

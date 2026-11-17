@@ -1,5 +1,6 @@
 package com.alexindigo.kotatsu.notes
 
+import com.gezimos.katapult.fixtureCleanup
 import com.gezimos.katapult.withFixtureCleanup
 
 import android.appwidget.AppWidgetHost
@@ -94,10 +95,12 @@ class QuoteWidgetInstrumentedTest {
             }
         }
         override fun close() {
-            main { host.stopListening(); host.deleteAppWidgetId(id); activity.finish() }
-            NotesRuntime.enqueue { QuoteStore(context).delete(id); QuoteRuntime.refresh(context) }.get()
-            QuoteRuntime.clock = null
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
+            fixtureCleanup(
+                { main { host.stopListening(); host.deleteAppWidgetId(id); activity.finish() } },
+                { notesFixtureCleanup({ QuoteStore(context).delete(id) }, { QuoteRuntime.refresh(context) }) },
+                { QuoteRuntime.clock = null },
+                { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            )
         }
     }
 

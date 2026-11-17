@@ -221,9 +221,7 @@ class NotesSettingsInstrumentedTest {
         withFixtureCleanup(
             { close(activity) },
             { main { host.deleteHost() } },
-            { NotesRuntime.enqueue {
-                fixtureCleanup(*WidgetKind.entries.map { kind -> { kind.setEnabled(context, true) } }.toTypedArray())
-            }.get() },
+            { notesFixtureCleanup(*WidgetKind.entries.map { kind -> { kind.setEnabled(context, true) } }.toTypedArray()) },
             { awaitWidgetHost("Both providers must be available before releasing the fixture") {
                 WidgetKind.entries.all { kind -> manager.installedProviders.any { it.provider == ComponentName(context, kind.provider) } }
             } },
