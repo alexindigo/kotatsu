@@ -159,7 +159,7 @@ internal class NativeDisplayFixture : AutoCloseable {
     }
 }
 
-/** UiAutomation uses Runtime.exec(String), not a shell. In particular, `input keyevent`
+/** boundedShell preserves Runtime.exec(String) arguments, not shell syntax. `input keyevent`
  * treats following tokens as more keys: an accidental compound swipe can inject SYSRQ. */
 internal object NativeFixtureCommand {
     fun checked(command: String): String {
