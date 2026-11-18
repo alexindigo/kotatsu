@@ -551,18 +551,8 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
                     val heights = blocks.map { it.height }
                     val paged = blocks.size > 6 || heights.sum() > available
                     val capacity = (available - if (paged) pagerHeight else 0).coerceAtLeast(0)
-                    val pages = mutableListOf<IntRange>()
-                    var start = 0
-                    while (start < blocks.size) {
-                        var end = start
-                        var height = heights[start]
-                        while (end + 1 < blocks.size && end - start + 1 < 6 && height + heights[end + 1] <= capacity) {
-                            end++; height += heights[end]
-                        }
-                        pages += start..end
-                        start = end + 1
-                    }
-                    if (pages.isEmpty()) pages += IntRange.EMPTY
+                    val pages = paginateGroups(List(blocks.size) { 1 }, heights, capacity)
+                        .ifEmpty { listOf(IntRange.EMPTY) }
                     val current = page.coerceIn(0, pages.lastIndex)
                     if (page != current) changePage(current)
                     if (count != pages.size) count = pages.size

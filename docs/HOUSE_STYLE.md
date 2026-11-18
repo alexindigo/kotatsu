@@ -508,7 +508,7 @@ Android-owned screens and prompts retain their existing behaviour.
 | # | Path | Allocation contract |
 |---|---|---|
 | 1 | `PaperIndexRenderer` | Filter invisible entries and empty groups; measure complete groups and the candidate footer. Maximum six visible entries per page. Each nonempty group must contain one to six visible entries |
-| 2 | `paginateGroups` | Keep groups whole; choose fewest pages, then fewest avoidable one-entry pages, then balanced entry counts. A genuine one-setting category is valid |
+| 2 | `paginateGroups` | Fill each page in order while the next whole group fits measured height and the six-entry limit. Never defer a fitting group to balance later pages or avoid a one-entry page. Keeping groups whole keeps a heading with at least its first row |
 | 3 | Chapter Notice | Reserve measured Notice height only for candidate pages where it applies. `noticeGroup` restricts it to pages containing that group; a Notice without a group applies on every chapter page |
 | 4 | `SettingsPage` -> `PagedContent` | Measure each direct layout child as an indivisible block; maximum six blocks per page plus measured height. Keep a heading and its entries in one `Column` when they must travel together |
 | 5 | `PagedSettingsPage` -> `PagedContent` | A separately measured persistent header plus whole item rows, up to six item blocks per page. The pager stays outside the scrolling body |
@@ -523,7 +523,7 @@ remeasures the visible groups and Notice; no disabled rows or reserved gaps.
 The six-entry limit is a chapter contract. `PagedContent` counts direct
 blocks, not nested settings: a `Column` containing six permission entries is
 one block, and the widget cards plus Add widget are one block. It allocates
-greedily and does not use the chapter allocator's balancing/orphan pass.
+through the same ordered-fill allocator as chapters, with one count per block.
 Do not describe it as automatically enforcing a recursive six-setting cap.
 
 Current gestures differ: chapters page on vertical drags; secondary pages

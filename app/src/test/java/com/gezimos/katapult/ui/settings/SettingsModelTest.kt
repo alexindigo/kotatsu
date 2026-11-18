@@ -17,11 +17,9 @@ class SettingsModelTest {
         })
     }
 
-    @Test fun chaptersKeepBalancedWholeGroupPagesWhenNoticeIsDismissed() {
-        // A tall viewport must not turn Screensaver 4/4 or System 4/3 into an arbitrary
-        // short first page just because several equally small page-count solutions fit.
+    @Test fun chaptersFillWholeGroupPagesWhenNoticeIsDismissed() {
         assertEquals(listOf(0..1, 2..3), paginateGroups(listOf(3, 1, 3, 1), listOf(230, 90, 230, 90), 450))
-        assertEquals(listOf(0..1, 2..3), paginateGroups(listOf(2, 2, 1, 2), listOf(160, 160, 90, 160), 450))
+        assertEquals(listOf(0..2, 3..3), paginateGroups(listOf(2, 2, 1, 2), listOf(160, 160, 90, 160), 450))
         assertEquals(listOf(0..1, 2..3), paginateGroups(listOf(3, 2, 3, 1), listOf(230, 160, 230, 90), 450))
     }
 
@@ -36,8 +34,8 @@ class SettingsModelTest {
         assertTrue(pages.all { page -> page.sumOf { counts[it] } <= 6 })
     }
 
-    @Test fun avoidsAnOrphanWithoutSplittingAGroup() {
-        assertEquals(listOf(0..0, 1..2), paginateGroups(listOf(5, 1, 1), listOf(5, 1, 1), 100))
+    @Test fun aSingletonPageMustNotMoveAFittingGroupBackward() {
+        assertEquals(listOf(0..1, 2..2), paginateGroups(listOf(5, 1, 1), listOf(5, 1, 1), 100))
     }
 
     @Test fun unavoidableSingletonRemainsReachable() {

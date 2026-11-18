@@ -31,7 +31,7 @@ class PaperIndexChaptersInstrumentedTest {
         "notifications" to listOf(listOf("indicators", "apps", "log", "history")),
         "lock" to listOf(listOf("notifications", "apps", "sort", "edges"), listOf("music", "weather", "widgets", "message")),
         "screensaver" to listOf(listOf("enabled", "system", "customization", "wallpaper"), listOf("brightness", "power", "icon", "mode")),
-        "system" to listOf(listOf("sensitive", "permissions", "default", "search"), listOf("config", "app_license", "font_license")),
+        "system" to listOf(listOf("sensitive", "permissions", "default", "search", "config"), listOf("app_license", "font_license")),
         "about" to listOf(listOf("version", "source", "upstream")),
     )
 
