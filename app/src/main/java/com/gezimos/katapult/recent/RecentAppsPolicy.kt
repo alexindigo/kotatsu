@@ -1,9 +1,11 @@
 package com.gezimos.katapult.recent
 
-data class RecentApp(val packageName: String, val label: String, val lastUsed: Long)
+/** Display recency and proof of a post-close opening are separate signals. */
+data class RecentApp(val packageName: String, val label: String, val lastUsed: Long, val lastOpened: Long = lastUsed)
 
 fun recentApps(history: List<RecentApp>, ownPackage: String, closed: Map<String, Long>): List<RecentApp> =
-    history.filter { it.packageName != ownPackage && it.lastUsed > 0 && it.lastUsed > (closed[it.packageName] ?: 0) }
+    history.filter { app -> app.packageName != ownPackage && app.lastUsed > 0 &&
+        (closed[app.packageName]?.let { app.lastOpened > it } ?: true) }
         .groupBy { it.packageName }.map { (_, uses) -> uses.maxBy { it.lastUsed } }
         .sortedWith(compareBy<RecentApp> { it.lastUsed }.thenBy { it.packageName })
 

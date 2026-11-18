@@ -24,6 +24,26 @@ class RecentAppsTest {
         assertEquals(RelativeUse(RecentAge.DAYS, 3), age(now - 3 * 86_400_000))
     }
 
+    @Test fun onlyANewerOpeningCanRestoreAClosedAppWithoutChangingItsDisplayTime() {
+        val paused = RecentApp("a", "A", 200, lastOpened = 50)
+        assertTrue(recentApps(listOf(paused), "own", mapOf("a" to 100)).isEmpty())
+        val reopened = paused.copy(lastOpened = 101)
+        assertEquals(listOf(reopened), recentApps(listOf(reopened), "own", mapOf("a" to 100)))
+        assertEquals(200L, reopened.lastUsed)
+        assertEquals(listOf(paused.copy(lastOpened = 0)), recentApps(listOf(paused.copy(lastOpened = 0)), "own", emptyMap()))
+    }
+
+    @Test fun closeSupersedesThePublishedUsageEvenWhenItLeadsWallTime() {
+        val delegate = FakeSource()
+        val source = object : RecentAppsSource by delegate {
+            override fun history() = listOf(RecentApp("b", "B", 200))
+        }
+        val model = RecentApps(source, "own") { 100 }
+        model.show(); model.close("b"); model.show()
+        assertEquals(200L, delegate.closedAt)
+        assertTrue(model.apps.isEmpty())
+    }
+
     @Test fun dismissalOnlyRemovesTheOverlayAndRowsCloseIndependently() {
         val source = FakeSource()
         var removed = 0
@@ -107,14 +127,41 @@ class RecentAppsTest {
         assertEquals(listOf("a"), model.apps.map { it.packageName })
     }
 
+    @Test fun foregroundCloseCompletionInvalidatesAReopenedSnapshotBeforeOrAfterDelivery() {
+        for (deliverBeforeClose in listOf(false, true)) {
+            val source = FakeSource()
+            val loads = mutableListOf<() -> Unit>()
+            val deliveries = mutableListOf<() -> Unit>()
+            var transition: (() -> Unit)? = null
+            val model = RecentApps(source, "own", load = { loads += it }, deliver = { deliveries += it },
+                closeForeground = { transition = it }) { 100 }
+            model.show()
+            loads.removeAt(0)(); deliveries.removeAt(0)()
+            model.close("b")
+            model.show()
+            loads.removeAt(0)()
+            if (deliverBeforeClose) deliveries.removeAt(0)()
+            checkNotNull(transition).invoke()
+            if (!deliverBeforeClose) deliveries.removeAt(0)()
+            assertFalse(model.apps.any { it.packageName == "b" })
+            loads.removeAt(0)(); deliveries.removeAt(0)()
+            assertEquals(listOf("a"), model.apps.map { it.packageName })
+            assertTrue(model.visible)
+        }
+    }
+
     private class FakeSource : RecentAppsSource {
         var closedAt = 0L
+        private val closed = mutableMapOf<String, Long>()
         val launched = mutableListOf<String>()
         val killed = mutableListOf<List<String>>()
         override fun available() = true
         override fun history() = listOf(RecentApp("a", "A", 10), RecentApp("b", "B", 20))
-        override fun closed() = emptyMap<String, Long>()
-        override fun close(packages: List<String>, at: Long) { killed += packages; closedAt = at }
+        override fun closed() = closed.toMap()
+        override fun close(packages: List<String>, at: Long) {
+            killed += packages; closedAt = at
+            packages.forEach { closed[it] = at }
+        }
         override fun launch(packageName: String) { launched += packageName }
         override fun openAccess() = true
     }
