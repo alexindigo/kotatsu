@@ -1,5 +1,6 @@
 package com.gezimos.katapult.weather
 
+import com.gezimos.katapult.fixtureCleanup
 import com.gezimos.katapult.withFixtureCleanup
 
 import android.content.Context
@@ -70,20 +71,17 @@ internal class SleepingWeatherFixture(private val context: Context) : AutoClosea
     }
     override fun close() {
         synchronized(lock) { if (closed) return; closed = true }
-        var failure: Throwable? = null
-        fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        restore { command("release") }
-        restore { await("Fixture readers did not drain") { synchronized(lock) { reads == 0 } } }
-        restore { await("Provider lifetime did not drain") { command("state").getInt("inFlight") == 0 } }
-        restore {
-            val ended = command("end")
-            check(!ended.getBoolean("active") && ended.getInt("entered") == 0 &&
-                ended.getInt("inFlight") == 0 && ended.getInt("completed") == 0 &&
-                !ended.getBoolean("released")) { "Provider lifetime was not reset" }
-        }
-        restore { providerLease.close() }
-        failure?.let { throw it }
+        fixtureCleanup(
+            { command("release"); Unit },
+            { await("Fixture readers did not drain") { synchronized(lock) { reads == 0 } } },
+            { await("Provider lifetime did not drain") { command("state").getInt("inFlight") == 0 } },
+            {
+                val ended = command("end")
+                check(!ended.getBoolean("active") && ended.getInt("entered") == 0 &&
+                    ended.getInt("inFlight") == 0 && ended.getInt("completed") == 0 &&
+                    !ended.getBoolean("released")) { "Provider lifetime was not reset" }
+            },
+            { providerLease.close() },
+        )
     }
 }

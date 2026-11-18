@@ -98,27 +98,22 @@ class NativeKeyguardFixture(private val unlockBeforeClear: NativeKeyguardFixture
     }
 
     override fun close() {
-        var failure: Throwable? = null
-        fun restore(action: () -> Unit) { try { action() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        if (pinSet) {
-            restore { if (keyguard.isKeyguardLocked) unlockBeforeClear() }
-            restore {
+        fixtureCleanup(
+            { if (pinSet && keyguard.isKeyguardLocked) unlockBeforeClear() },
+            { if (pinSet) {
                 assertEquals("Lock credential cleared", shell("su 0 locksettings clear --old 2468"))
                 await("PIN credential restored") { !keyguard.isDeviceSecure }
                 pinSet = false
                 // SystemUI can retain the old PIN bouncer after LockSettings clears its
                 // credential. A new wake reconciles that window with the restored policy.
                 sleep()
-            }
-        }
-        restore {
-            shell("locksettings set-disabled $disabled")
-            assertEquals(disabled, shell("locksettings get-disabled"))
-        }
-        restore { unlock() }
-        failure?.let { throw it }
+            } },
+            {
+                shell("locksettings set-disabled $disabled")
+                assertEquals(disabled, shell("locksettings get-disabled"))
+            },
+            { unlock() },
+        )
     }
 
     companion object {

@@ -44,6 +44,7 @@ internal class WeatherSettlingFixture : AutoCloseable {
 
     override fun close() {
         if (!ownsSeed) return
+        // The provider may only resume after its seed restoration was acknowledged.
         command("restore")
         ownsSeed = false
         shell("su 0 am broadcast -f 0x20 -a android.appwidget.action.APPWIDGET_UPDATE -n $provider")

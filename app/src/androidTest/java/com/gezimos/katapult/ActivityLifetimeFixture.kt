@@ -37,14 +37,13 @@ internal class ActivityLifetimeFixture : AutoCloseable {
         // Destruction can launch another owned Activity (for example a pending result).
         fixtureAwait("Owned Activities survived teardown") {
             val live = fixtureMain { activities.filterNot { it.isDestroyed } }
-            live.forEach(::finishAndAwaitDestroyed)
+            fixtureCleanup(*live.map { activity -> { finishAndAwaitDestroyed(activity) } }.toTypedArray())
             fixtureMain { activities.all { it.isDestroyed } }
         }
     }
 
     fun <A : Activity> closeAndAwaitDestroyed(scenario: ActivityScenario<A>) {
-        scenario.close()
-        closeActivities()
+        withFixtureCleanup({ closeActivities() }) { scenario.close() }
     }
 
     override fun close() {

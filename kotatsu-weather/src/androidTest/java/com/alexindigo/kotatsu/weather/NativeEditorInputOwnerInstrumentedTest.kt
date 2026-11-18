@@ -21,6 +21,7 @@ import androidx.test.espresso.matcher.RootMatchers.isDialog
 import androidx.test.espresso.matcher.ViewMatchers.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.gezimos.katapult.withFixtureCleanup
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -81,7 +82,13 @@ class NativeEditorInputOwnerInstrumentedTest {
         instrumentation.uiAutomation.adoptShellPermissionIdentity("android.permission.BIND_APPWIDGET")
         val id = host.allocateAppWidgetId()
         var activity: ConfigureActivity? = null
-        try {
+        withFixtureCleanup(
+            { main { activity?.finish() } },
+            { host.deleteAppWidgetId(id) },
+            { WeatherStore(context).delete(id) },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+            { WeatherRuntime.cancel(context) },
+        ) {
             assertTrue(AppWidgetManager.getInstance(context).bindAppWidgetIdIfAllowed(id, ComponentName(context, WeatherWidgetProvider::class.java)))
             assertTrue(context.getSharedPreferences("weather", 0).edit().putString("widget_$id",
                 ConfigJson.encode(WidgetConfig(listOf(Location("First", "Fixture place", 10.0, 20.0))))).commit())
@@ -99,11 +106,6 @@ class NativeEditorInputOwnerInstrumentedTest {
                 }.onFailure { failure.addSuppressed(it) }
                 throw failure
             }
-        } finally {
-            main { activity?.finish() }
-            host.deleteAppWidgetId(id); WeatherStore(context).delete(id)
-            instrumentation.uiAutomation.dropShellPermissionIdentity()
-            WeatherRuntime.cancel(context)
         }
     }
     private fun edit(hint: String, value: String): EditText {
@@ -119,7 +121,7 @@ class NativeEditorInputOwnerInstrumentedTest {
         for (action in listOf(android.view.MotionEvent.ACTION_DOWN, android.view.MotionEvent.ACTION_UP)) {
             val event = android.view.MotionEvent.obtain(down, SystemClock.uptimeMillis(), action, x, y, 0)
             event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
-            try { instrumentation.sendPointerSync(event) } finally { event.recycle() }
+            withFixtureCleanup({ event.recycle() }) { instrumentation.sendPointerSync(event) }
         }
         instrumentation.waitForIdleSync()
     }
@@ -187,7 +189,7 @@ class NativeEditorInputOwnerInstrumentedTest {
         field = edit("City or town", "Recreate city")
         val monitor = instrumentation.addMonitor(ConfigureActivity::class.java.name, null, false)
         var recreated: ConfigureActivity? = null
-        try {
+        withFixtureCleanup({ instrumentation.removeMonitor(monitor) }, { main { recreated?.finish() } }) {
             main { activity.recreate() }
             recreated = monitor.waitForActivityWithTimeout(10_000) as? ConfigureActivity
             assertNotNull(recreated)
@@ -195,7 +197,7 @@ class NativeEditorInputOwnerInstrumentedTest {
             // Search has never persisted across Activity recreation. Do not invent a new draft policy.
             onView(withText("Add location")).check(androidx.test.espresso.assertion.ViewAssertions.matches(isDisplayed()))
             assertEquals(original, WeatherStore(context).config(id))
-        } finally { instrumentation.removeMonitor(monitor); main { recreated?.finish() } }
+        }
     }
 
     @Test fun labelRecreationRetiresOldWindowAndKeepsUnsavedDraft() = fixture { activity, id ->
@@ -208,7 +210,7 @@ class NativeEditorInputOwnerInstrumentedTest {
         val field = edit("Up to 8 characters", "Edited")
         val monitor = instrumentation.addMonitor(ConfigureActivity::class.java.name, null, false)
         var recreated: ConfigureActivity? = null
-        try {
+        withFixtureCleanup({ instrumentation.removeMonitor(monitor) }, { main { recreated?.finish() } }) {
             main { activity.recreate() }
             recreated = monitor.waitForActivityWithTimeout(10_000) as? ConfigureActivity
             assertNotNull(recreated)
@@ -223,9 +225,6 @@ class NativeEditorInputOwnerInstrumentedTest {
             dialogAction("Save")
             released(fresh)
             assertEquals("Edited", WeatherStore(context).config(id)!!.locations.single().label)
-        } finally {
-            instrumentation.removeMonitor(monitor)
-            main { recreated?.finish() }
         }
     }
 }

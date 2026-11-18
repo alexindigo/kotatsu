@@ -47,20 +47,9 @@ class EditorInputOwnerInstrumentedTest {
         val original = shell("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME")
             .trim().lineSequence().last()
         shell("cmd package set-home-activity ${context.packageName}/${MainActivity::class.java.name}")
-        try {
-            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)
-                .setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)).use { scenario ->
-                scenario.onActivity { assertTrue("Fixture must enter the real HOME route", it.intent.hasCategory(Intent.CATEGORY_HOME)) }
-                try { test(scenario) }
-                catch (failure: Throwable) {
-                    runCatching { captureFailure() }.onFailure { failure.addSuppressed(it) }
-                    throw failure
-                }
-                finally { shell("cmd package set-home-activity $original") }
-            }
-        } finally {
-            shell("cmd package set-home-activity $original")
-            main {
+        withFixtureCleanup(
+            { shell("cmd package set-home-activity $original"); Unit },
+            { main {
                 val restore = preferences.edit().clear()
                 before.forEach { (key, value) -> when (value) {
                     is Boolean -> restore.putBoolean(key, value)
@@ -71,6 +60,18 @@ class EditorInputOwnerInstrumentedTest {
                     is Set<*> -> restore.putStringSet(key, value.filterIsInstance<String>().toSet())
                 } }
                 assertTrue(restore.commit())
+            } },
+        ) {
+            ActivityScenario.launch<MainActivity>(Intent(context, MainActivity::class.java)
+                .setAction(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)).use { scenario ->
+                scenario.onActivity { assertTrue("Fixture must enter the real HOME route", it.intent.hasCategory(Intent.CATEGORY_HOME)) }
+                withFixtureCleanup({ shell("cmd package set-home-activity $original"); Unit }) {
+                    try { test(scenario) }
+                    catch (failure: Throwable) {
+                        runCatching { captureFailure() }.onFailure { failure.addSuppressed(it) }
+                        throw failure
+                    }
+                }
             }
         }
     }
@@ -167,10 +168,10 @@ class EditorInputOwnerInstrumentedTest {
         // Saving the empty value avoids invoking unrelated Action Service setup.
         var original: String? = null
         scenario.onActivity { original = it.viewModel.prefs.lockscreenMessage }
-        try {
+        withFixtureCleanup({ scenario.onActivity { it.viewModel.prefs.lockscreenMessage = original.orEmpty() } }) {
             ui.click(label(R.string.save)); released()
             scenario.onActivity { assertEquals("", it.viewModel.prefs.lockscreenMessage) }
-        } finally { scenario.onActivity { it.viewModel.prefs.lockscreenMessage = original.orEmpty() } }
+        }
     }
 
     @Test fun renameRealHomeDismissalAndTargetHandoffReleaseOnlyDepartedInput() = withHome { scenario ->
@@ -215,11 +216,11 @@ class EditorInputOwnerInstrumentedTest {
             if (decor.rootWindowInsets?.isVisible(WindowInsets.Type.ime()) == true) sawIme.set(true)
         }
         scenario.onActivity { decor = it.window.decorView; decor.viewTreeObserver.addOnGlobalLayoutListener(listener) }
-        try {
+        withFixtureCleanup({ main { decor.viewTreeObserver.removeOnGlobalLayoutListener(listener) } }) {
             setEditorText("7")
             ui.await("Numeric regression never opened the real IME") { sawIme.get() }
             released()
-        } finally { main { decor.viewTreeObserver.removeOnGlobalLayoutListener(listener) } }
+        }
         ui.click(label(R.string.screensaver_mode_auto)); released()
         scenario.onActivity { assertEquals(7, it.viewModel.prefs.screensaverUpdateMinutes) }
     }

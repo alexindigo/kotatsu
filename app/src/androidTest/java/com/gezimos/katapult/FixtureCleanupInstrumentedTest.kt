@@ -4,6 +4,24 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class FixtureCleanupInstrumentedTest {
+    @Test fun failedPrerequisiteSkipsDependentWriteButNotIndependentRestorations() {
+        val body = AssertionError("body")
+        val drain = AssertionError("writers remain")
+        var restoredPreferences = false
+        var releasedPermission = false
+        fun drainWriters() { throw drain }
+        val actual = runCatching {
+            withFixtureCleanup(
+                { drainWriters(); restoredPreferences = true },
+                { releasedPermission = true },
+            ) { throw body }
+        }.exceptionOrNull()
+        assertSame(body, actual)
+        assertArrayEquals(arrayOf(drain), body.suppressed)
+        assertFalse(restoredPreferences)
+        assertTrue(releasedPermission)
+    }
+
     @Test fun bodyFailureRemainsPrimaryAndEveryRestorationRuns() {
         val body = AssertionError("body")
         val first = AssertionError("first cleanup")
