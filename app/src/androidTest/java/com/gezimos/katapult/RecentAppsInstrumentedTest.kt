@@ -356,10 +356,10 @@ class RecentAppsInstrumentedTest {
     @Test fun androidAdapterDoesNotTreatTheClosingPauseAsReuse() {
         val packageName = BackgroundProcessFixture.PACKAGE_NAME
         val store = context.getSharedPreferences("recent_apps", 0)
-        val previous = store.all[packageName]
+        val saved = store.all
         val source = AndroidRecentApps(context)
         withFixtureCleanup(body = {
-            store.edit().remove(packageName).commit()
+            store.edit().clear().commit()
             BackgroundProcessFixture().use { fixture ->
                 val manager = context.getSystemService(android.app.usage.UsageStatsManager::class.java)
                 fun latestResume(): Long {
@@ -397,9 +397,10 @@ class RecentAppsInstrumentedTest {
                 }
                 assertFalse("Reuse proof must outlive Android's event retention", AndroidRecentApps(context).closed().containsKey(packageName))
             }
-        }, actions = arrayOf<() -> Unit>({ store.edit().apply {
-            if (previous == null) remove(packageName) else putLong(packageName, previous as Long)
+        }, actions = arrayOf<() -> Unit>({ store.edit().clear().apply {
+            saved.forEach { (key, value) -> putLong(key, value as Long) }
         }.commit() }))
+        assertEquals(saved, store.all)
     }
 
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
@@ -407,10 +408,11 @@ class RecentAppsInstrumentedTest {
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
         val choice = prefs.all["collect_usage_stats"]
         val closedStore = context.getSharedPreferences("recent_apps", 0)
-        val previousClose = closedStore.all[packageName]
+        val savedClosed = closedStore.all
         prefs.edit().putBoolean("collect_usage_stats", true).commit()
         val source = AndroidRecentApps(context)
         withFixtureCleanup(body = {
+          closedStore.edit().clear().commit()
           BackgroundProcessFixture().use { fixture ->
             fixture.foreground()
             fixture.background()
@@ -430,8 +432,9 @@ class RecentAppsInstrumentedTest {
           }
         }, actions = arrayOf<() -> Unit>(
             { prefs.edit().apply { if (choice == null) remove("collect_usage_stats") else putBoolean("collect_usage_stats", choice as Boolean) }.commit() },
-            { closedStore.edit().apply { if (previousClose == null) remove(packageName) else putLong(packageName, previousClose as Long) }.commit() },
+            { closedStore.edit().clear().apply { savedClosed.forEach { (key, value) -> putLong(key, value as Long) } }.commit() },
         ))
+        assertEquals(savedClosed, closedStore.all)
     }
 
     @Test fun cachedUidDoesNotMakeTheStoppingProcessKillEligible() {

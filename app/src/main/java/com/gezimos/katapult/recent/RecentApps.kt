@@ -133,21 +133,24 @@ class RecentApps(private val source: RecentAppsSource, private val ownPackage: S
         }
     }
     fun close(packageName: String) {
-        if (!visible || apps.none { it.packageName == packageName }) return
+        if (!visible) return
+        // Capture the offered row before dismissal or a deferred Home transition
+        // can replace the published snapshot, including with an empty list.
+        val lastUsed = apps.firstOrNull { it.packageName == packageName }?.lastUsed ?: return
+        val closeBoundary = maxOf(clock(), lastUsed)
         if (apps.lastOrNull()?.packageName == packageName) {
             dismiss()
             closeForeground {
-                closePackages(listOf(packageName))
+                closePackages(listOf(packageName), closeBoundary)
                 if (visible) refresh()
             }
-        } else closePackages(listOf(packageName))
+        } else closePackages(listOf(packageName), closeBoundary)
     }
-    private fun closePackages(packages: List<String>) {
+    private fun closePackages(packages: List<String>, closeBoundary: Long) {
         generation++
         // The close must supersede the snapshot that offered the row, including
         // usage timestamps ahead of wall time after Android clock corrections.
-        val lastUsed = apps.filter { it.packageName in packages }.maxOfOrNull { it.lastUsed } ?: 0
-        source.close(packages, maxOf(clock(), lastUsed))
+        source.close(packages, maxOf(clock(), closeBoundary))
         apps = apps.filterNot { it.packageName in packages }
     }
     fun switchTo(packageName: String) { dismiss(); source.launch(packageName) }

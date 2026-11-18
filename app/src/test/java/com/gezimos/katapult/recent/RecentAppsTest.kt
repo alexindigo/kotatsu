@@ -34,14 +34,46 @@ class RecentAppsTest {
     }
 
     @Test fun closeSupersedesThePublishedUsageEvenWhenItLeadsWallTime() {
-        val delegate = FakeSource()
-        val source = object : RecentAppsSource by delegate {
-            override fun history() = listOf(RecentApp("b", "B", 200))
+        for (foreground in listOf(false, true)) {
+            val delegate = FakeSource()
+            val source = object : RecentAppsSource by delegate {
+                override fun history() = listOfNotNull(RecentApp("b", "B", 200),
+                    if (foreground) null else RecentApp("c", "C", 300))
+            }
+            val model = RecentApps(source, "own") { 100 }
+            model.show(); model.close("b"); model.show()
+            assertEquals(200L, delegate.closedAt)
+            assertFalse(model.apps.any { it.packageName == "b" })
         }
-        val model = RecentApps(source, "own") { 100 }
-        model.show(); model.close("b"); model.show()
-        assertEquals(200L, delegate.closedAt)
-        assertTrue(model.apps.isEmpty())
+    }
+
+    @Test fun deferredCloseKeepsTheOfferedBoundaryAfterAnEmptyReopenAndClockCorrection() {
+        for ((lastUsed, tappedAt) in listOf(200L to 100L, 100L to 200L)) {
+            val delegate = FakeSource()
+            val offered = RecentApp("b", "B", lastUsed)
+            var history = listOf(offered)
+            var at = tappedAt
+            var transition: (() -> Unit)? = null
+            val source = object : RecentAppsSource by delegate {
+                override fun history() = history
+            }
+            val model = RecentApps(source, "own", closeForeground = { transition = it }) { at }
+            model.show(); model.close("b")
+            assertFalse(model.visible)
+            assertTrue(delegate.killed.isEmpty())
+            history = emptyList()
+            model.show()
+            assertTrue(model.apps.isEmpty())
+            at = 90
+            checkNotNull(transition).invoke()
+            assertEquals(200L, delegate.closedAt)
+            history = listOf(offered.copy(lastUsed = 200, lastOpened = 150))
+            model.refresh()
+            assertTrue("An opening before the captured close boundary must not restore the row", model.apps.isEmpty())
+            history = listOf(offered.copy(lastUsed = 201, lastOpened = 201))
+            model.refresh()
+            assertEquals(listOf("b"), model.apps.map { it.packageName })
+        }
     }
 
     @Test fun dismissalOnlyRemovesTheOverlayAndRowsCloseIndependently() {
