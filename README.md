@@ -107,8 +107,11 @@ Double-press Home within 400 ms to open Recent apps. The newest app sits at the 
 Tap an app name to switch to it. On Android 13 and below, Close requests a stop
 of its background processes and hides it until it is used again. On Android 14+
 (API 34+), the same action is labelled Hide, including its accessibility name:
-Android does not let Kotatsu stop other apps, so it only hides the app from
-Kotatsu's Recent apps list. Swiping a row left by at least a third of its width
+Android does not let Kotatsu stop other apps, so it hides the app from
+Kotatsu's Recent apps list without stopping it. On all versions, acting on the
+newest (bottom) app also closes Recent apps and returns Home, leaving the app
+you were using; other rows leave Recent apps open. Hidden apps reappear when
+used again. Swiping a row left by at least a third of its width
 performs the same action. Back or another double-press returns to the app or Home where you started.
 Recent apps uses the existing usage-statistics choice and Android usage access.
 

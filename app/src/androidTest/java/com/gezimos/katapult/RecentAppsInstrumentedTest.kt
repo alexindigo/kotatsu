@@ -488,9 +488,15 @@ class RecentAppsInstrumentedTest {
         val row = Rect().also { ui.find("Open Camera")!!.getBoundsInScreen(it) }
         val close = ui.find { node -> val bounds = Rect().also(node::getBoundsInScreen)
             node.text?.toString() == actionLabel && bounds.top in row.top..row.bottom }!!
-        assertTrue("Action's native accessibility name must match its visible label",
-            ui.findAncestor(actionLabel) { it.isClickable }?.isEnabled == true)
-        assertTrue(close.parent.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
+        val action = generateSequence(close) { it.parent }.first { it.refresh() && it.isClickable }
+        // Compose can expose the button's name through its native text children.
+        val childNames = (0 until action.childCount).mapNotNull { index ->
+            action.getChild(index)?.let { it.contentDescription ?: it.text }?.toString()
+        }
+        assertEquals("Action's native accessibility name must match its visible label", actionLabel,
+            (action.contentDescription ?: action.text)?.toString() ?: childNames.joinToString(" "))
+        assertTrue("Row action must be enabled", action.isEnabled)
+        assertTrue(action.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK))
         ui.await("Close must remove row") { !ui.has("Open Camera") }
         assertTrue(model.visible)
         assertEquals(listOf(listOf("camera")), source.kills)
