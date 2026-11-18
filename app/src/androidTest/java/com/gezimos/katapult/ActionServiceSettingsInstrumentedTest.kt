@@ -64,4 +64,63 @@ class ActionServiceSettingsInstrumentedTest {
         awaitActionServiceSettingsPersisted("null") { xml("") }
         awaitActionServiceSettingsPersisted("null") { "<settings /><namespaceHashes />" }
     }
+
+    @Test fun exactPersistenceKeepsReconcilingAfterAFrameworkRewrite() {
+        for (expectedFlag in listOf("0", "", "null")) {
+            var live = expectedFlag
+            var stored = "1"
+            var rewrites = 0
+            var repairs = 0
+            awaitExactActionServiceSettingsPersisted(ActionServiceSettingsFixture.Values("", expectedFlag)) { command ->
+                when {
+                    command == "settings get secure enabled_accessibility_services" -> ""
+                    command == "settings get secure accessibility_enabled" -> live
+                    command.startsWith("su 0 abx2xml ") -> {
+                        if (rewrites++ == 0) live = "1" // Arrives after the first matching live read.
+                        """<settings>
+                            <setting name="enabled_accessibility_services" value="" />
+                            ${if (stored == "null") "" else "<setting name=\"accessibility_enabled\" value=\"$stored\" />"}
+                        </settings>"""
+                    }
+                    else -> {
+                        repairs++
+                        restoreSecureSetting("accessibility_enabled", expectedFlag) { expectedCommand ->
+                            assertEquals(expectedCommand, command)
+                            ""
+                        }
+                        live = expectedFlag
+                        stored = expectedFlag
+                        ""
+                    }
+                }
+            }
+            assertTrue("The late framework write must be repaired", repairs > 0)
+            assertEquals(expectedFlag, live)
+            assertEquals(expectedFlag, stored)
+        }
+    }
+
+    @Test fun exactPersistenceRechecksLiveStateAfterReadingMatchingDisk() {
+        var live = "0"
+        var reads = 0
+        var repairs = 0
+        awaitExactActionServiceSettingsPersisted(ActionServiceSettingsFixture.Values("", "0")) { command ->
+            when (command) {
+                "settings get secure enabled_accessibility_services" -> ""
+                "settings get secure accessibility_enabled" -> live
+                "settings put secure accessibility_enabled 0" -> { repairs++; live = "0"; "" }
+                else -> {
+                    assertEquals("su 0 abx2xml /data/system/users/0/settings_secure.xml -", command)
+                    if (reads++ == 0) live = "1"
+                    """<settings>
+                        <setting name="enabled_accessibility_services" value="" />
+                        <setting name="accessibility_enabled" value="0" />
+                    </settings>"""
+                }
+            }
+        }
+        assertEquals("Matching stale disk cannot hide a late live rewrite", 1, repairs)
+        assertEquals("0", live)
+        assertTrue(reads >= 2)
+    }
 }
