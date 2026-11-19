@@ -82,7 +82,7 @@ class RecentAppsInstrumentedTest {
             RecentApp("notes", "Mudita Notes", now))
         override fun closed() = closed.toMap()
         override fun close(packages: List<String>, at: Long) { kills += packages; packages.forEach {
-            closed[it] = RecentClose(java.util.UUID.randomUUID().toString(), at, null, emptyList())
+            closed[it] = RecentClose(java.util.UUID.randomUUID().toString(), at, null)
         } }
         override fun launch(packageName: String) { launches += packageName }
         override fun canOpenAccess() = accessDestination

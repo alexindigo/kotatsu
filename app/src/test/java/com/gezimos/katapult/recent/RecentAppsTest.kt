@@ -4,20 +4,23 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RecentAppsTest {
-    private val resumed = UsageKind.RESUMED
-    private val paused = UsageKind.PAUSED
-    private val stopped = UsageKind.STOPPED
-    private fun mark(kind: UsageKind, at: Long, activity: String = "A") = UsageMark(kind, activity, at)
-    private fun startup(at: Long) = UsageMark(UsageKind.STARTUP, null, at)
+    private val day = 86_400_000L
+    // Wall time 1_800_000_000_000 at elapsed 1_000_000 when the app is closed.
+    private val o = 1_800_000_000_000L - 1_000_000
+    private val month = 1_798_000_000_000L
+    private val months = listOf(month - 30 * day, month)
+    private val booted = o + 20_000
+    private fun resume(at: Long) = UsageMark(UsageKind.RESUMED, at)
+    private fun startup(at: Long) = UsageMark(UsageKind.STARTUP, at)
     private fun List<UsageMark>.shifted(by: Long) = map { it.copy(at = it.at + by) }
-    private fun legacy(at: Long) = RecentClose("v0.7.0:$at", at, null, null)
-
-    // Wall time 1_800_000_000_000 at elapsed 1_000_000; Android's usage clock has the same offset unless stated.
-    private val offset = 1_800_000_000_000L - 1_000_000
-    private val session = listOf(mark(resumed, offset + 990_000), mark(paused, offset + 995_000), mark(stopped, offset + 995_400))
-    private fun closed(trail: List<UsageMark> = session, boot: Int = 1, closeOffset: Long? = offset, id: String = "close") =
-        RecentClose(id, offset + 1_000_000, UsageClock(boot, 1_000_000, closeOffset), trail)
-    private fun now(elapsed: Long, nowOffset: Long? = offset, boot: Int = 1) = UsageClock(boot, elapsed, nowOffset)
+    private fun legacy(at: Long) = RecentClose("v0.7.0:$at", at, null)
+    private val before = listOf(startup(booted), resume(o + 900_000), resume(o + 950_000), resume(o + 990_000))
+    private fun closed(position: Long = o + 990_000, boot: Int = 1, offset: Long? = o, month: Long? = this.month,
+        startup: Long? = booted, id: String = "close") =
+        RecentClose(id, o + 1_000_000, CloseAnchor(UsageClock(boot, offset), position, month, startup))
+    /** [shift] is the rebase Android applied to every stored time; [offset] is the clock sample of this view. */
+    private fun view(events: List<UsageMark>, offset: Long? = o, shift: Long = 0, boot: Int = 1, months: List<Long> = this.months) =
+        UsageView(UsageClock(boot, offset), months.map { it + shift }, events)
 
     @Test fun overlappingLoadsCannotRetireANewerCloseWithTheSameTimestamp() {
         val first = closed(id = "first")
@@ -35,112 +38,94 @@ class RecentAppsTest {
             recentApps(listOf(provedByB.copy(reopened = "second")), "own", records))
     }
 
-    @Test fun backwardClockRebaseNeitherRestoresAClosedAppNorHidesARealRelaunch() {
-        val back = -36L * 3_600_000
-        val rebased = session.shifted(back)
-        val clock = now(1_010_000, offset + back)
-        assertFalse("A clock correction alone is not reuse", closed().reopenedIn(rebased, clock, rebased.first().at))
-        val relaunch = rebased + mark(resumed, offset + back + 1_005_000)
-        assertTrue("A resume after the close must restore the app behind a future close time",
-            closed().reopenedIn(relaunch, clock, relaunch.first().at))
+    @Test fun rebasedClockChangesNeitherRestoreAClosedAppNorHideARealRelaunch() {
+        for (shift in listOf(-36 * 3_600_000L, -3_000L, 3_000L, 3 * 3_600_000L)) {
+            for (noise in listOf(-2_900L, 0L, 2_900L)) {
+                val stream = before.shifted(shift)
+                val sampled = o + shift + noise
+                assertFalse("A clock change alone is not reuse ($shift, $noise)", closed().reopenedIn(view(stream, sampled, shift)))
+                assertTrue("A resume 50 ms after the close is reuse ($shift, $noise)",
+                    closed().reopenedIn(view(stream + resume(o + 1_000_050 + shift), sampled, shift)))
+            }
+        }
     }
 
-    @Test fun usageClockWithinAndroidsTwoSecondToleranceCannotDecideReuse() {
-        // Android rebases only beyond 2 s, so its usage clock can lead or lag wall time unnoticed.
-        for (lead in listOf(500L, -1_500L)) {
-            val usage = offset + lead
-            val trail = listOf(mark(resumed, usage + 998_500))
-            val close = closed(trail)
-            val closing = trail + mark(paused, usage + 1_000_100) + mark(stopped, usage + 1_000_400)
-            assertFalse("The closing pause is not reuse ($lead)", close.reopenedIn(closing, now(1_002_000), trail.first().at))
-            val reopened = closing + mark(resumed, usage + 1_000_050 + 400)
-            assertTrue("A resume 450 ms after the close is reuse ($lead)", close.reopenedIn(reopened, now(1_002_000), trail.first().at))
+    @Test fun cr4624139102UnrebasedDriftAndRepeatedSessionsCannotHideOrInventReuse() {
+        // Four identical one-second sessions end just before the close; Android does not rebase drift under 2 s.
+        val sessions = listOf(startup(booted)) + (0 until 4).map { resume(o + 996_000 + it * 1_000L) }
+        val close = closed(position = o + 999_000)
+        for (drift in listOf(1_000L, 1_900L, -1_500L, -1_900L)) {
+            assertFalse("Unchanged stream, drift $drift", close.reopenedIn(view(sessions, o + drift)))
+            assertTrue("Reopen 500 ms after the close, drift $drift",
+                close.reopenedIn(view(sessions + resume(o + 1_000_500) + resume(o + 1_001_500), o + drift)))
         }
+        // Android's usage clock can also lag wall time by up to 2 s when the app is closed.
+        val lag = -1_500L
+        val lagging = closed(position = o + lag + 999_000)
+        assertFalse(lagging.reopenedIn(view(sessions.shifted(lag), o)))
+        assertTrue("Reopen 450 ms after the close, behind the wall-time close",
+            lagging.reopenedIn(view(sessions.shifted(lag) + resume(o + lag + 1_000_450), o)))
+    }
+
+    @Test fun cr4624139100SessionsOnBothSidesOfAStartupCannotHideAResumeOneSecondAfterTheClose() {
+        val stream = listOf(resume(o - 30_000), startup(booted), resume(o + 997_000))
+        val close = closed(position = o + 997_000)
+        assertFalse(close.reopenedIn(view(stream)))
+        assertTrue(close.reopenedIn(view(stream + resume(o + 1_001_000))))
     }
 
     @Test fun pruningOlderDaysCannotHideTheFirstResumeAfterARecentClose() {
-        val day = 86_400_000L
-        // Android prunes daily files more than ten days old.
-        val older = (5 downTo 1).map { mark(if (it % 2 == 0) paused else resumed, offset - (9 + it) * day) }
-        val close = closed(older + session)
-        // Android deleted the daily files holding the older trail; the latest session remains.
-        val retained = session + mark(resumed, offset + 1_001_000)
-        assertTrue(close.reopenedIn(retained, now(1_002_000), session.first().at))
-        assertFalse(close.reopenedIn(session, now(1_002_000), session.first().at))
-        val rebased = retained.shifted(-7_200_000)
-        assertTrue("Pruning and a clock rebase together", close.reopenedIn(rebased, now(1_002_000, offset - 7_200_000), rebased.first().at))
-        assertFalse(close.reopenedIn(session.shifted(-7_200_000), now(1_002_000, offset - 7_200_000), offset - 7_200_000 + 990_000))
+        // Android deleted the daily files with the boot's startup and older resumes; the latest pre-close resume remains.
+        val retained = listOf(resume(o + 990_000))
+        assertFalse(closed().reopenedIn(view(retained, months = listOf(month))))
+        assertTrue(closed().reopenedIn(view(retained + resume(o + 1_001_000), months = listOf(month))))
+        // Every pre-close event is gone; only the reopen remains, also after a rebase.
+        assertTrue(closed().reopenedIn(view(listOf(resume(o + 1_001_000 - 7_200_000)), o - 7_200_000, -7_200_000)))
+        assertFalse(closed().reopenedIn(view(emptyList(), o - 7_200_000, -7_200_000)))
     }
 
-    @Test fun aFullyPrunedTrailLeavesOnlyLaterResumes() {
-        val day = 86_400_000L
-        val close = closed()
-        val later = listOf(mark(resumed, offset + 11 * day), mark(paused, offset + 11 * day + 5_000))
-        assertTrue(close.reopenedIn(later, now(1_000_000 + 12 * day), later.first().at))
-        assertFalse(close.reopenedIn(emptyList(), now(1_000_000 + 12 * day), offset + 11 * day))
-        // Without both clock samples a lost trail still admits resumes clearly after the close.
-        val unbounded = closed(closeOffset = null)
-        assertTrue(unbounded.reopenedIn(later, now(1_000_000 + 12 * day), later.first().at))
-        assertFalse(unbounded.reopenedIn(later, now(1_000_000 + 12 * day, null), later.first().at))
-    }
-
-    @Test fun theTrailIsFoundAtOneCommonShiftNotAtALaterSessionOfTheSameActivity() {
-        val close = closed()
-        val forward = 3_000L
-        val stream = session.shifted(forward) + listOf(mark(resumed, offset + forward + 1_020_000),
-            mark(paused, offset + forward + 1_022_000), mark(stopped, offset + forward + 1_022_300))
-        assertTrue(close.reopenedIn(stream, now(1_030_000, offset + forward), stream.first().at))
-        assertTrue("Unknown clock samples still use the exact gaps",
-            close.reopenedIn(stream, now(1_030_000, null), stream.first().at))
-        assertFalse(close.reopenedIn(session.shifted(forward), now(1_030_000, null), offset + forward))
-    }
-
-    @Test fun aRepeatedTrailCannotTurnTheFinalPreCloseSessionIntoReuse() {
-        // Four identical one-second sessions match the saved trail at several shifts in an unchanged stream.
-        val sessions = (0 until 4).flatMap { listOf(mark(resumed, offset + 990_000 + it * 1_000L),
-            mark(paused, offset + 990_400 + it * 1_000L)) }
-        val close = closed(sessions)
-        for (skew in listOf(0L, -500L, 500L, -600L, -1_000L)) {
-            val clock = now(1_002_000, offset + skew)
-            assertFalse("Unchanged stream, wall skew $skew", close.reopenedIn(sessions, clock, sessions.first().at))
-            val reopened = sessions + mark(resumed, offset + 1_001_000)
-            assertTrue("Reopen after a repeated trail, wall skew $skew", close.reopenedIn(reopened, clock, sessions.first().at))
+    @Test fun withoutOneMonthlyStartTheCloseIsBoundedByAndroidsTolerance() {
+        val stream = before + resume(o + 999_000 - 9_000 + 2_000)
+        for (missing in listOf(closed(month = null), closed().copy(anchor = closed().anchor!!.copy(month = month + 30 * day)))) {
+            assertFalse("A resume inside the tolerance may precede the close", missing.reopenedIn(view(stream)))
+            assertTrue(missing.reopenedIn(view(before + resume(o + 990_000 + 6_001), o)))
+            assertTrue(missing.reopenedIn(view(before + resume(o + 990_000 + 3_000 + 6_001), o + 3_000)))
         }
+        val twoStarts = listOf(month - 2_000, month + 2_000)
+        assertFalse("Two interval starts within the bound do not decide the shift",
+            closed().reopenedIn(view(before + resume(o + 991_000), months = twoStarts)))
+        assertFalse("A clock change during the query defers the decision",
+            closed().reopenedIn(view(before + resume(o + 1_100_000), offset = null)))
+        assertFalse("Unknown clock at close", closed(offset = null).reopenedIn(view(before + resume(o + 1_100_000))))
     }
 
-    @Test fun aResumeInALaterBootCannotStandInForATrailLostAtReboot() {
-        val trail = listOf(mark(resumed, offset + 999_000))
-        val close = closed(trail)
-        // The unflushed trail was lost at reboot; the first resume of the new boot is the same activity.
-        val stream = listOf(startup(offset + 2_000_000), mark(resumed, offset + 2_010_000))
-        assertTrue(close.reopenedIn(stream, now(20_000, offset + 1_990_000, boot = 2), stream.first().at))
-        val older = listOf(mark(resumed, offset + 500_000), mark(paused, offset + 600_000), startup(offset + 700_000))
-        assertTrue("Only the close's own boot can hold its trail",
-            close.reopenedIn(older + stream, now(20_000, offset + 1_990_000, boot = 2), older.first().at))
-        assertFalse(close.reopenedIn(older + stream.first(), now(20_000, offset + 1_990_000, boot = 2), older.first().at))
+    @Test fun rebootCountsLaterBootsAndTheCloseBootAfterTheClose() {
+        val later = startup(o + 5_000_000)
+        val boot2 = 2
+        assertFalse(closed().reopenedIn(view(before + later, boot = boot2)))
+        assertTrue("Reopen in the next boot", closed().reopenedIn(view(before + later + resume(o + 5_010_000), boot = boot2)))
+        assertTrue("Reopen after the close, before the reboot",
+            closed().reopenedIn(view(before + resume(o + 1_001_000) + later, boot = boot2)))
+        val back = -36 * 3_600_000L
+        assertTrue("The close boot's startup carries Android's later rebase",
+            closed().reopenedIn(view((before + resume(o + 1_001_000) + later).shifted(back), boot = boot2)))
+        assertFalse(closed().reopenedIn(view((before + later).shifted(back), boot = boot2)))
+        val third = startup(o + 9_000_000)
+        assertTrue("Two boots since the close", closed().reopenedIn(view(before + later + resume(o + 5_010_000) + third, boot = 3)))
+        assertFalse(closed().reopenedIn(view(before + later + third, boot = 3)))
+        assertTrue("Later startups older than retention", closed().reopenedIn(view(listOf(resume(o + 9_010_000)), boot = 3)))
+        assertFalse("Pre-close resumes of earlier boots are not reuse",
+            closed().reopenedIn(view(listOf(startup(o - 2 * day), resume(o - day)) + before + later, boot = boot2)))
+        assertFalse("An unknown close boot decides nothing", closed(boot = -1).reopenedIn(view(before + resume(o + 1_001_000))))
     }
 
-    @Test fun rebootKeepsTheTrailOrderAndALostTrailCountsOnlyLaterBoots() {
-        val close = closed()
-        val boot = startup(offset + 2_000_000)
-        val after = mark(resumed, offset + 2_010_000)
-        assertFalse(close.reopenedIn(session + boot, now(20_000, offset + 1_990_000, boot = 2), session.first().at))
-        assertTrue(close.reopenedIn(session + boot + after, now(20_000, offset + 1_990_000, boot = 2), session.first().at))
-        // Android can lose the latest unflushed events, or delete future-dated files after the clock went back.
-        val older = listOf(mark(resumed, offset + 500_000), mark(paused, offset + 600_000))
-        assertFalse(close.reopenedIn(older + boot, now(20_000, boot = 2), older.first().at))
-        assertTrue(close.reopenedIn(older + boot + after, now(20_000, boot = 2), older.first().at))
-        val second = startup(offset + 3_000_000)
-        assertTrue("Two boots since the close", close.reopenedIn(older + boot + after + second, now(20_000, boot = 3), older.first().at))
-        assertTrue("Startups older than retention", close.reopenedIn(listOf(after), now(20_000, boot = 3), after.at))
-    }
-
-    @Test fun anEmptyTrailOrAReleasedRecordUsesItsOwnEvidence() {
-        val close = closed(emptyList())
-        assertFalse(close.reopenedIn(emptyList(), now(1_002_000), null))
-        assertTrue(close.reopenedIn(listOf(mark(resumed, offset + 1_000_500)), now(1_002_000), offset + 1_000_500))
-        assertFalse(legacy(100).reopenedIn(listOf(mark(resumed, 100), mark(paused, 150)), now(1_002_000), 100))
-        assertTrue(legacy(100).reopenedIn(listOf(mark(resumed, 101)), now(1_002_000), 101))
+    @Test fun aCloseWithoutRecentResumesOrAReleasedRecordUsesItsOwnEvidence() {
+        val window = o + 1_000_000 - 3_600_000
+        val close = closed(position = window)
+        assertFalse(close.reopenedIn(view(listOf(startup(booted), resume(window - 60_000)))))
+        assertTrue(close.reopenedIn(view(listOf(startup(booted), resume(window - 60_000), resume(o + 1_000_500)))))
+        assertFalse(legacy(100).reopenedIn(view(listOf(resume(100)))))
+        assertTrue(legacy(100).reopenedIn(view(listOf(resume(101)))))
     }
 
     @Test fun historyIsUniqueLaunchableInputOldestFirstAndClosedUntilReused() {
@@ -341,7 +326,7 @@ class RecentAppsTest {
         override fun closed() = closed.toMap()
         override fun close(packages: List<String>, at: Long) {
             killed += packages; closedAt = at
-            packages.forEach { closed[it] = RecentClose("close:${++closes}", at, null, emptyList()) }
+            packages.forEach { closed[it] = RecentClose("close:${++closes}", at, null) }
         }
         override fun launch(packageName: String) { launched += packageName }
         override fun openAccess() = true
