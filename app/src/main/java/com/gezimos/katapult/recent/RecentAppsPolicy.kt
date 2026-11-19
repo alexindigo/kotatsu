@@ -29,14 +29,29 @@ data class RecentClose(val id: String, val at: Long, val clock: UsageClock?, val
         val sameBoot = closed?.boot == now.boot
         val shifts = if (sameBoot && closed?.offset != null && now.offset != null)
             (now.offset - closed.offset).let { it - SHIFT_TOLERANCE..it + SHIFT_TOLERANCE } else null
-        // The earliest consistent shift: later resumes cannot replicate the trail's exact gaps.
-        val retained = events.toHashSet()
-        val anchor = events.indices.firstOrNull { index ->
+        // Android adds one startup per boot: the close's boot lies between the matching startups from the end.
+        val startups = events.indices.filter { events[it].kind == UsageKind.STARTUP }
+        val boots = closed?.let { now.boot - it.boot }
+        fun startupFromEnd(count: Int) = if (count == 0) events.size else startups.getOrElse(startups.size - count) { -1 }
+        val boot = if (boots == null) events.indices else (startupFromEnd(boots + 1) + 1) until startupFromEnd(boots)
+        // Only the close's boot can hold its trail. Android prunes whole daily files more
+        // than ten days old, so a missing mark must be older than nine days to count as pruned.
+        val retained = boot.map { events[it] }.toHashSet()
+        val nowWall = now.offset?.let { now.elapsed + it }
+        fun pruned(at: Long) = earliest != null && at < earliest && (nowWall == null || at < nowWall + OFFSET_TOLERANCE - PRUNED_AGE)
+        val alignments = boot.mapNotNull { index ->
             val candidate = events[index]
             val shift = candidate.at - last.at
-            candidate.kind == last.kind && candidate.className == last.className && (shifts == null || shift in shifts) &&
-                trail.all { mark -> (earliest != null && mark.at + shift < earliest) || mark.copy(at = mark.at + shift) in retained }
+            (index to shift).takeIf {
+                candidate.kind == last.kind && candidate.className == last.className && (shifts == null || shift in shifts) &&
+                    trail.all { mark -> pruned(mark.at + shift) || mark.copy(at = mark.at + shift) in retained }
+            }
         }
+        // Several alignments mean a repeated trail. Prefer the shift the clock samples predict;
+        // when they cannot decide, only a resume after every candidate proves reuse.
+        val predicted = shifts?.let { (it.first + it.last) / 2 }
+        val anchor = if (predicted == null) alignments.firstOrNull()?.first
+            else alignments.groupBy { kotlin.math.abs(it.second - predicted) }.minByOrNull { it.key }?.value?.last()?.first
         if (anchor != null) return resumes(anchor + 1)
         if (sameBoot) {
             // Pruning removes the oldest daily files first, so a fully pruned trail leaves only later resumes.
@@ -45,11 +60,8 @@ data class RecentClose(val id: String, val at: Long, val clock: UsageClock?, val
             val after = checkNotNull(closed).elapsed + offset + OFFSET_TOLERANCE
             return events.any { it.kind == UsageKind.RESUMED && it.at > after }
         }
-        if (closed == null) return false
-        // Android adds one startup per boot; the boot after the close begins at the matching one from the end.
-        val startups = events.indices.filter { events[it].kind == UsageKind.STARTUP }
-        val boots = now.boot - closed.boot
-        return resumes(if (startups.size >= boots) startups[startups.size - boots] + 1 else 0)
+        // The boot after the close begins at its startup; without it, every retained event is later.
+        return boots != null && resumes(startupFromEnd(boots) + 1)
     }
 
     companion object {
@@ -59,6 +71,7 @@ data class RecentClose(val id: String, val at: Long, val clock: UsageClock?, val
         const val OFFSET_TOLERANCE = 2_000L + SAMPLE_TOLERANCE
         const val SHIFT_TOLERANCE = 2 * OFFSET_TOLERANCE
         const val TRAIL = 8
+        const val PRUNED_AGE = 9 * 86_400_000L
     }
 }
 

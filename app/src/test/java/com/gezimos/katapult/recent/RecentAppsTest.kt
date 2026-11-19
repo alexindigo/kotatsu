@@ -60,7 +60,8 @@ class RecentAppsTest {
 
     @Test fun pruningOlderDaysCannotHideTheFirstResumeAfterARecentClose() {
         val day = 86_400_000L
-        val older = (5 downTo 1).map { mark(if (it % 2 == 0) paused else resumed, offset - it * day) }
+        // Android prunes daily files more than ten days old.
+        val older = (5 downTo 1).map { mark(if (it % 2 == 0) paused else resumed, offset - (9 + it) * day) }
         val close = closed(older + session)
         // Android deleted the daily files holding the older trail; the latest session remains.
         val retained = session + mark(resumed, offset + 1_001_000)
@@ -92,6 +93,31 @@ class RecentAppsTest {
         assertTrue("Unknown clock samples still use the exact gaps",
             close.reopenedIn(stream, now(1_030_000, null), stream.first().at))
         assertFalse(close.reopenedIn(session.shifted(forward), now(1_030_000, null), offset + forward))
+    }
+
+    @Test fun aRepeatedTrailCannotTurnTheFinalPreCloseSessionIntoReuse() {
+        // Four identical one-second sessions match the saved trail at several shifts in an unchanged stream.
+        val sessions = (0 until 4).flatMap { listOf(mark(resumed, offset + 990_000 + it * 1_000L),
+            mark(paused, offset + 990_400 + it * 1_000L)) }
+        val close = closed(sessions)
+        for (skew in listOf(0L, -500L, 500L, -600L, -1_000L)) {
+            val clock = now(1_002_000, offset + skew)
+            assertFalse("Unchanged stream, wall skew $skew", close.reopenedIn(sessions, clock, sessions.first().at))
+            val reopened = sessions + mark(resumed, offset + 1_001_000)
+            assertTrue("Reopen after a repeated trail, wall skew $skew", close.reopenedIn(reopened, clock, sessions.first().at))
+        }
+    }
+
+    @Test fun aResumeInALaterBootCannotStandInForATrailLostAtReboot() {
+        val trail = listOf(mark(resumed, offset + 999_000))
+        val close = closed(trail)
+        // The unflushed trail was lost at reboot; the first resume of the new boot is the same activity.
+        val stream = listOf(startup(offset + 2_000_000), mark(resumed, offset + 2_010_000))
+        assertTrue(close.reopenedIn(stream, now(20_000, offset + 1_990_000, boot = 2), stream.first().at))
+        val older = listOf(mark(resumed, offset + 500_000), mark(paused, offset + 600_000), startup(offset + 700_000))
+        assertTrue("Only the close's own boot can hold its trail",
+            close.reopenedIn(older + stream, now(20_000, offset + 1_990_000, boot = 2), older.first().at))
+        assertFalse(close.reopenedIn(older + stream.first(), now(20_000, offset + 1_990_000, boot = 2), older.first().at))
     }
 
     @Test fun rebootKeepsTheTrailOrderAndALostTrailCountsOnlyLaterBoots() {
