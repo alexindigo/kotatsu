@@ -251,7 +251,9 @@ class HomeMenuInstrumentedTest {
         val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
         val start = SystemClock.elapsedRealtime()
         val failure = runCatching { automation.boundedShell("/system/bin/kotatsu_missing_test_command", 1) }.exceptionOrNull()
-        assertNotNull("A missing command must fail instead of hanging on its output pipe", failure)
+        assertTrue("A missing command must report its exit status, not EOF success or a timeout: $failure",
+            failure is ShellCommandFailure)
+        assertEquals(127, (failure as ShellCommandFailure).exitCode)
         assertTrue("The shell deadline must bound missing-command reads", SystemClock.elapsedRealtime() - start < 5000)
     }
 

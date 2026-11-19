@@ -72,17 +72,7 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
                 }
             } },
             { fixtureMain { Unit } }, // onDestroy must have returned, not merely cleared instance.
-            { await("Accessibility pair did not restore exactly") {
-                if (values() == value) true else {
-                    // Android can rewrite this flag while processing the enabled-service change.
-                    restoreSecureSetting(ACCESSIBILITY, value.accessibility, ::shell)
-                    false
-                }
-            } },
-            { await("Accessibility pair did not persist exactly") {
-                val stored = persistedSecureSettings(::shell)
-                (stored[ENABLED] ?: "null") == value.enabled && (stored[ACCESSIBILITY] ?: "null") == value.accessibility
-            } },
+            { awaitExactActionServiceSettingsPersisted(value, ::shell) },
         )
     }
     override fun close() {
@@ -107,6 +97,39 @@ internal fun restoreSecureSetting(key: String, original: String, shell: (String)
         "" -> "content call --uri content://settings/secure --method PUT_secure --arg $key --extra value:s:"
         else -> "settings put secure $key $original"
     })
+}
+
+/** Keep ownership until cache and disk agree: a framework write can arrive between observations. */
+internal fun awaitExactActionServiceSettingsPersisted(
+    expected: ActionServiceSettingsFixture.Values,
+    shell: (String) -> String,
+) {
+    fun current() = ActionServiceSettingsFixture.Values(
+        shell("settings get secure enabled_accessibility_services"),
+        shell("settings get secure accessibility_enabled"),
+    )
+    val deadline = SystemClock.elapsedRealtime() + 15_000
+    var live: ActionServiceSettingsFixture.Values? = null
+    var persisted: ActionServiceSettingsFixture.Values? = null
+    while (SystemClock.elapsedRealtime() < deadline) {
+        live = current()
+        if (live.accessibility != expected.accessibility) {
+            // Android derives this flag from service/UiAutomation callbacks. A matching
+            // cache sample does not mean all those callbacks or disk writes have finished.
+            restoreSecureSetting("accessibility_enabled", expected.accessibility, shell)
+        } else if (live == expected) {
+            val stored = persistedSecureSettings(shell)
+            persisted = ActionServiceSettingsFixture.Values(
+                stored["enabled_accessibility_services"] ?: "null",
+                stored["accessibility_enabled"] ?: "null",
+            )
+            // Also reject a framework rewrite that arrived while disk was being read.
+            live = current()
+            if (persisted == expected && live == expected) return
+        }
+        Thread.sleep(25)
+    }
+    throw AssertionError("Accessibility pair did not persist exactly: expected=$expected live=$live persisted=$persisted")
 }
 
 /** SettingsProvider readback is cached; a fixture must also leave its owned service disabled on

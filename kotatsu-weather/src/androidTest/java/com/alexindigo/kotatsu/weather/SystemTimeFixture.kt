@@ -1,5 +1,7 @@
 package com.alexindigo.kotatsu.weather
 
+import com.gezimos.katapult.fixtureCleanup
+
 import android.os.ParcelFileDescriptor
 import android.os.SystemClock
 import android.util.Log
@@ -48,25 +50,19 @@ internal class SystemTimeFixture : AutoCloseable {
     }
 
     override fun close() {
-        // Try every restoration even if an earlier restore operation fails; propagate all failures.
-        var failure: Throwable? = null
-        fun restore(operation: () -> Unit) { try { operation() } catch (error: Throwable) {
-            if (failure == null) failure = error else failure!!.addSuppressed(error)
-        } }
-        restore { setZone(zone) }
-        restore { setTime(wall + SystemClock.elapsedRealtime() - elapsed) }
-        for ((key, value) in listOf("auto_time" to autoTime, "auto_time_zone" to autoZone)) {
-            restore {
+        fixtureCleanup(
+            { setZone(zone) },
+            { setTime(wall + SystemClock.elapsedRealtime() - elapsed) },
+            *listOf("auto_time" to autoTime, "auto_time_zone" to autoZone).map { (key, value) -> {
                 shell(if (value == "null") "settings delete global $key" else "settings put global $key $value")
                 assertEquals("Restore $key", value, shell("settings get global $key").trim())
-            }
-        }
-        restore {
-            assertEquals(zone, shell("getprop persist.sys.timezone").trim())
-            assertEquals(zone, ZoneId.systemDefault().id)
-            assertTrue("Restore wall time", kotlin.math.abs(System.currentTimeMillis() - (wall + SystemClock.elapsedRealtime() - elapsed)) < 5000)
-            Log.i("SystemTimeFixture", "RESTORED time/zone=$zone/auto_time=$autoTime/auto_time_zone=$autoZone")
-        }
-        failure?.let { throw it }
+            } }.toTypedArray(),
+            {
+                assertEquals(zone, shell("getprop persist.sys.timezone").trim())
+                assertEquals(zone, ZoneId.systemDefault().id)
+                assertTrue("Restore wall time", kotlin.math.abs(System.currentTimeMillis() - (wall + SystemClock.elapsedRealtime() - elapsed)) < 5000)
+                Log.i("SystemTimeFixture", "RESTORED time/zone=$zone/auto_time=$autoTime/auto_time_zone=$autoZone")
+            },
+        )
     }
 }

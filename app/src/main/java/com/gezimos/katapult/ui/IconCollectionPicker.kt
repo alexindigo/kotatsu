@@ -16,7 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
+import com.gezimos.katapult.ui.input.PaperTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -99,7 +99,7 @@ fun IconCollectionPicker(
         Spacer(Modifier.height(10.dp))
         Box(Modifier.fillMaxWidth().border(1.5.dp, LocalInk.current).padding(10.dp)) {
             val searchLabel = stringResource(R.string.search_icons)
-            BasicTextField(
+            PaperTextField(
                 value = query,
                 onValueChange = { query = it.take(160); requestedPage = 0 },
                 enabled = !saving,

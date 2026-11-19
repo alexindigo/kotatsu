@@ -21,5 +21,5 @@ internal class ControlledPreviewExpiry : Handler(Looper.getMainLooper()), AutoCl
         removeCallbacks(action)
         post(action)
     }
-    override fun close() { removeCallbacksAndMessages(null); expiration = null }
+    override fun close() = fixtureCleanup({ removeCallbacksAndMessages(null) }, { expiration = null })
 }

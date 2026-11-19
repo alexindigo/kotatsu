@@ -224,7 +224,7 @@ class EdgeActionsInstrumentedTest {
             }
             error("Edge settings pagination never ended")
         }
-        try {
+        withFixtureCleanup({ instrumentation.runOnMainSync { activity.finish() } }) {
             instrumentation.runOnMainSync { activity.setContent {
                 var revision by remember { mutableIntStateOf(0) }
                 @Suppress("UNUSED_VARIABLE") val observed = revision
@@ -249,7 +249,7 @@ class EdgeActionsInstrumentedTest {
             assertTrue("Hiding controls changed the saved Home choice", store.homeEnabled)
             assertEquals(EdgeAction.SIDE_SCREEN, store.action(ScreenEdge.LEFT))
             assertEquals(EdgeAction.CAMERA, store.action(ScreenEdge.RIGHT))
-        } finally { instrumentation.runOnMainSync { activity.finish() } }
+        }
     }
 
     @Test fun sideScreenAndExplicitNothingRoundTripOnEitherEdge() = withStore { prefs, store ->

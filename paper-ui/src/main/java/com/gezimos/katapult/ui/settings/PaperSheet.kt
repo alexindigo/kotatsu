@@ -39,6 +39,7 @@ import com.gezimos.katapult.paper.R
 import com.gezimos.katapult.ui.LatoFamily
 import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.LocalSurface
+import com.gezimos.katapult.ui.input.currentWindowEditorInput
 
 /** Retains the page visually while excluding its entire subtree from modal input. */
 @Composable
@@ -63,6 +64,7 @@ fun PaperSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier,
     val ink = LocalInk.current
     val focus = remember { FocusRequester() }
     val inputMode = LocalInputModeManager.current.inputMode
+    val editorInput = currentWindowEditorInput()
     Box(modifier.fillMaxSize().semantics { dialog() }, contentAlignment = Alignment.BottomCenter) {
         Box(Modifier.fillMaxSize().clearAndSetSemantics {}
             .focusProperties { canFocus = false }.clickable(onClick = onDismiss))
@@ -96,7 +98,9 @@ fun PaperSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier,
             .verticalScroll(rememberScrollState())
             .padding(start = 16.dp, end = 16.dp, bottom = 10.dp), content = content)
     }
-    LaunchedEffect(inputMode) { if (inputMode == InputMode.Keyboard) focus.requestFocus() }
+    LaunchedEffect(inputMode) {
+        if (inputMode == InputMode.Keyboard && editorInput?.owner?.hasFocusedEditor != true) focus.requestFocus()
+    }
 }
 
 /** Page-header grammar within the sheet's existing content inset and scroll owner. */

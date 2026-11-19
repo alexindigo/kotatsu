@@ -42,15 +42,19 @@ internal class AndroidSettingsTaskFixture : AutoCloseable {
         }
 
         private fun removeSettingsTasks() {
-            for (stack in current()) {
-                check(stack.packages == setOf(SETTINGS)) {
-                    "Cannot remove Settings stack containing unowned Activities: $stack"
-                }
-                // This documented API31 command removes the identified task stack, not the process.
-                shell("am stack remove ${stack.id}")
+            withFixtureCleanup({
+                fixtureAwait("Android Settings tasks survived their UI scope") { current().isEmpty() }
+                assertEmpty()
+            }) {
+                fixtureCleanup(*current().map { stack -> {
+                    check(stack.packages == setOf(SETTINGS)) {
+                        "Cannot remove Settings stack containing unowned Activities: $stack"
+                    }
+                    // This documented API31 command removes the identified task stack, not the process.
+                    shell("am stack remove ${stack.id}")
+                    Unit
+                } }.toTypedArray())
             }
-            fixtureAwait("Android Settings tasks survived their UI scope") { current().isEmpty() }
-            assertEmpty()
         }
     }
 }

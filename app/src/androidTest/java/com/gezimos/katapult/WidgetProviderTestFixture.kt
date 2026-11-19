@@ -42,18 +42,13 @@ internal class WidgetProviderTestFixture(private val context: Context) : AutoClo
     }
 
     override fun close() {
-        var failure: Throwable? = null
-        for ((component, original) in originals.entries.reversed()) {
-            try {
-                val action = if (original.enabled == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) "default-state" else "enable"
-                shell(action, component)
-                val restored = awaitObserved("Provider restoration for $component to $original", { state(component) }, { it == original })
-                Log.i("WidgetProviderFixture", "restored $component observed=$restored")
-            } catch (error: Throwable) {
-                if (failure == null) failure = error else failure.addSuppressed(error)
-            }
-        }
-        failure?.let { throw it }
+        fixtureCleanup(*originals.entries.reversed().map { (component, original) -> {
+            val action = if (original.enabled == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) "default-state" else "enable"
+            shell(action, component)
+            val restored = awaitObserved("Provider restoration for $component to $original", { state(component) }, { it == original })
+            Log.i("WidgetProviderFixture", "restored $component observed=$restored")
+            Unit
+        } }.toTypedArray())
     }
 
     private fun state(component: ComponentName) = State(context.packageManager.getComponentEnabledSetting(component),

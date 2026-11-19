@@ -4,21 +4,32 @@ import android.app.ActivityManager
 import android.os.SystemClock
 import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
-import org.junit.rules.ExternalResource
+import com.gezimos.katapult.fixtureCleanup
+import com.gezimos.katapult.withFixtureCleanup
+import org.junit.rules.TestRule
+import org.junit.runner.Description
+import org.junit.runners.model.Statement
 import java.io.IOException
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ConcurrentHashMap
 
 /** Editor tests own refresh ingress before binding a widget, through the last cleanup write.
  * A fetch latch alone is not a drain: ForecastRefresher persists AFTER fetch returns. */
-internal class RefreshQuiescenceFixture : ExternalResource() {
+internal class RefreshQuiescenceFixture : TestRule {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val prefs get() = context.getSharedPreferences("weather", 0)
     private lateinit var before: Map<String, *>
     private lateinit var ingress: HeldRefreshIngress
 
-    override fun before() {
+    override fun apply(base: Statement, description: Description) = object : Statement() {
+        override fun evaluate() {
+            before()
+            withFixtureCleanup({ after() }) { base.evaluate() }
+        }
+    }
+
+    private fun before() {
         ingress = HeldRefreshIngress()
         // Pre-existing real fetches must finish before taking the preference snapshot. New
         // fetches are already held and cannot publish into the test's deliberate revision.
@@ -26,15 +37,14 @@ internal class RefreshQuiescenceFixture : ExternalResource() {
             ingress.awaitPreviouslyRunningWorkers()
             before = prefs.all
         } catch (error: Throwable) {
-            try { ingress.close() } catch (cleanup: Throwable) { error.addSuppressed(cleanup) }
-            throw error
+            fixtureCleanup({ ingress.close() }, failure = error)
         }
     }
 
     fun attemptRefreshWhileHeld(location: Location, fahrenheit: Boolean, reply: Parsed.Valid,
         now: java.time.Instant, zone: java.time.ZoneId) = ingress.attemptRefreshWhileHeld(location, fahrenheit, reply, now, zone)
 
-    override fun after() {
+    private fun after() {
         ingress.use {
             it.drain()
             val edit = prefs.edit().clear()

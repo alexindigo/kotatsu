@@ -27,7 +27,6 @@ import com.gezimos.katapult.util.IconCollection
 import com.gezimos.katapult.util.IconUtility
 import org.json.JSONObject
 import org.junit.Assert.*
-import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.io.File
@@ -40,9 +39,13 @@ class IconPickerInstrumentedTest {
     private val proofFiles = mutableSetOf<File>()
     private var retainColdProof = false
 
-    @After fun removeOwnedProofFiles() {
-        if (!retainColdProof) for (file in proofFiles) {
-            assertTrue("Could not remove test proof $file", !file.exists() || file.delete())
+    @get:org.junit.Rule val proofCleanup = org.junit.rules.TestRule { base, _ ->
+        object : org.junit.runners.model.Statement() {
+            override fun evaluate() = withFixtureCleanup({
+                if (!retainColdProof) fixtureCleanup(*proofFiles.map { file -> {
+                    assertTrue("Could not remove test proof $file", !file.exists() || file.delete())
+                } }.toTypedArray())
+            }) { base.evaluate() }
         }
     }
 

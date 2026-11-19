@@ -40,9 +40,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.text.BasicTextField
+import com.gezimos.katapult.ui.input.PaperTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
@@ -753,7 +752,7 @@ fun SettingsScreen(
                     color = LocalInk.current,
                     modifier = Modifier.padding(top = 8.dp, bottom = 8.dp),
                 )
-                BasicTextField(
+                PaperTextField(
                     value = minutesText,
                     onValueChange = { v ->
                         val digits = v.text.filter { it.isDigit() }.take(2)
@@ -1052,10 +1051,9 @@ private fun LockscreenMessageSheet(
     onConfirm: (String) -> Unit,
     title: String = stringResource(R.string.lockscreen_message),
 ) {
-    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
-
     SettingsPage(title, onDismiss, imePadding = true) {
-        BasicTextField(
+        PaperTextField(
+            autofocus = true,
             value = textFieldValue,
             onValueChange = onValueChange,
             singleLine = true,
@@ -1064,12 +1062,10 @@ private fun LockscreenMessageSheet(
             modifier = Modifier
                 .fillMaxWidth()
                 .border(2.5.dp, LocalInk.current)
-                .padding(12.dp)
-                .focusRequester(focusRequester),
+                .padding(12.dp),
         )
         SheetAction(stringResource(R.string.save)) { onConfirm(textFieldValue.text.trim()) }
         SheetAction(stringResource(R.string.cancel), onDismiss)
-        LaunchedEffect(Unit) { focusRequester.requestFocus() }
     }
 }
 

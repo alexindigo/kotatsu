@@ -50,6 +50,10 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.gezimos.katapult.util.PrefsManager
 import com.gezimos.katapult.util.SystemChrome
 import java.util.UUID
+import com.gezimos.katapult.ui.input.WindowEditorInput
+import com.gezimos.katapult.ui.input.WindowEditorInputScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 
 @Composable
 fun BottomSheet(
@@ -92,8 +96,19 @@ fun BottomSheet(
     }
 
     DisposableEffect(sheetDialog) {
+        val lifecycle = view.findViewTreeLifecycleOwner()?.lifecycle
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> sheetDialog.editorInput.stop()
+                Lifecycle.Event.ON_RESUME -> sheetDialog.editorInput.resume()
+                Lifecycle.Event.ON_DESTROY -> sheetDialog.editorInput.close()
+                else -> Unit
+            }
+        }
+        lifecycle?.addObserver(observer)
         sheetDialog.show()
         onDispose {
+            lifecycle?.removeObserver(observer)
             sheetDialog.dismiss()
             sheetDialog.disposeComposition()
         }
@@ -158,6 +173,7 @@ private class BottomSheetDialog(
 ), ViewRootForInspector {
 
     private val dialogLayout: BottomSheetDialogLayout
+    val editorInput: WindowEditorInput
     private val activity = composeView.context as? Activity
     private var insetsListener: View.OnApplyWindowInsetsListener? = null
 
@@ -181,6 +197,7 @@ private class BottomSheetDialog(
         }
 
         setContentView(dialogLayout)
+        editorInput = WindowEditorInput.get(window)
         dialogLayout.setViewTreeLifecycleOwner(composeView.findViewTreeLifecycleOwner())
         dialogLayout.setViewTreeViewModelStoreOwner(composeView.findViewTreeViewModelStoreOwner())
         dialogLayout.setViewTreeSavedStateRegistryOwner(composeView.findViewTreeSavedStateRegistryOwner())
@@ -226,12 +243,17 @@ private class BottomSheetDialog(
         dialogLayout.setContent(parent) {
             val palette = LocalPalette.current
             SideEffect { SystemChrome.apply(checkNotNull(window), palette, hideStatusBar, paintBackground = false) }
-            content()
+            WindowEditorInputScope(editorInput, content)
         }
     }
 
     fun updateOnDismiss(newOnDismiss: () -> Unit) {
         onDismiss = newOnDismiss
+    }
+
+    override fun dismiss() {
+        editorInput.close()
+        super.dismiss()
     }
 
     fun disposeComposition() {

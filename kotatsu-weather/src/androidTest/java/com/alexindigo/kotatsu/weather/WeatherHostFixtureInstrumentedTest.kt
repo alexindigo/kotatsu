@@ -6,6 +6,31 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class WeatherHostFixtureInstrumentedTest {
+    @Test fun failedHostReleaseStillDeletesAllocationAndRestoresPreferences() {
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val context = instrumentation.targetContext
+        val prefs = context.getSharedPreferences("weather", 0)
+        val before = prefs.all
+        val original = RefreshJobService.fetcher
+        val body = AssertionError("Original test failure")
+        val release = AssertionError("Host stop failed")
+        withFixtureCleanup(
+            { RefreshJobService.fetcher = original },
+            { instrumentation.uiAutomation.dropShellPermissionIdentity() },
+        ) {
+            RefreshJobService.fetcher = { _, _, _ -> throw java.io.IOException("Fixture response") }
+            val previous = RefreshJobService.fetcher
+            val fixture = WeatherHostFixture(stopListening = { host -> host.stopListening(); throw release })
+            val id = fixture.id
+            val failure = runCatching { fixture.use { throw body } }.exceptionOrNull()
+            assertSame(body, failure)
+            assertSame(release, body.suppressed.single())
+            assertEquals(before, prefs.all)
+            assertNull(android.appwidget.AppWidgetManager.getInstance(context).getAppWidgetInfo(id))
+            assertSame(previous, RefreshJobService.fetcher)
+        }
+    }
+
     @Test fun failedTeardownBodyRestoresOriginalFetcherAfterSuccessfulDrain() {
         val original = RefreshJobService.fetcher
         withFixtureCleanup(
