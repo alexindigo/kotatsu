@@ -308,7 +308,21 @@ class RecentAppsInstrumentedTest {
                 assertEquals(100L, fixture.service.serviceInfo.notificationTimeout)
             }
             fixture.open()
-            fixture.overlay.await("Closed target still listed") { fixture.overlay.has("Recent apps") && !fixture.overlay.has(label) }
+            try {
+                fixture.overlay.await("Closed target still listed") { fixture.overlay.has("Recent apps") && !fixture.overlay.has(label) }
+            } catch (failure: AssertionError) {
+                val manager = context.getSystemService(android.app.usage.UsageStatsManager::class.java)
+                val events = manager.queryEvents(tapped - 10000, System.currentTimeMillis())
+                val event = android.app.usage.UsageEvents.Event()
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(event)
+                    if (event.packageName == target || event.packageName == home) {
+                        android.util.Log.i("RecentCloseProbe", "event package=${event.packageName} type=${event.eventType} at=${event.timeStamp}")
+                    }
+                }
+                android.util.Log.i("RecentCloseProbe", "reopened title=${fixture.overlay.has("Recent apps")} target=${fixture.overlay.has(label)} closed=${source.closed()} history=${source.history()}")
+                throw failure
+            }
             fixture.back()
             main { context.startActivity(launch) }
             ui.await("Closed target did not reopen") { ui.packageVisible(target) }
@@ -339,15 +353,66 @@ class RecentAppsInstrumentedTest {
         }, actions = arrayOf<() -> Unit>({ store.edit().clear().apply { saved.forEach { (key, value) -> putLong(key, value as Long) } }.commit() }))
     }
 
+    @Test fun androidAdapterDoesNotTreatTheClosingPauseAsReuse() {
+        val packageName = BackgroundProcessFixture.PACKAGE_NAME
+        val store = context.getSharedPreferences("recent_apps", 0)
+        val saved = store.all
+        val source = AndroidRecentApps(context)
+        withFixtureCleanup(body = {
+            store.edit().clear().commit()
+            BackgroundProcessFixture().use { fixture ->
+                val manager = context.getSystemService(android.app.usage.UsageStatsManager::class.java)
+                fun latestResume(): Long {
+                    val events = manager.queryEvents(System.currentTimeMillis() - 60000, Long.MAX_VALUE)
+                    val event = android.app.usage.UsageEvents.Event()
+                    var latest = 0L
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(event)
+                        if (event.packageName == packageName && event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                            latest = maxOf(latest, event.timeStamp)
+                        }
+                    }
+                    return latest
+                }
+                val previousResume = latestResume()
+                fixture.foreground()
+                var foregroundUse = 0L
+                ui.await("Fixture has no foreground usage") {
+                    foregroundUse = latestResume()
+                    foregroundUse > previousResume
+                }
+                // Keep the intentional close-before-pause ordering in Android's
+                // usage clock, independently of corrections to wall time.
+                val at = foregroundUse
+                source.close(listOf(packageName), at)
+                fixture.background()
+                ui.await("Fixture pause has not updated aggregate usage") {
+                    (manager.queryAndAggregateUsageStats(at - 60000, System.currentTimeMillis())[packageName]?.lastTimeUsed ?: 0) > at
+                }
+                assertFalse("A later pause is not a reuse", recentApps(source.history(), context.packageName, source.closed())
+                    .any { it.packageName == packageName })
+                main { source.launch(packageName) }
+                ui.await("A real resume must restore the closed app") {
+                    recentApps(source.history(), context.packageName, source.closed()).any { it.packageName == packageName }
+                }
+                assertFalse("Reuse proof must outlive Android's event retention", AndroidRecentApps(context).closed().containsKey(packageName))
+            }
+        }, actions = arrayOf<() -> Unit>({ store.edit().clear().apply {
+            saved.forEach { (key, value) -> putLong(key, value as Long) }
+        }.commit() }))
+        assertEquals(saved, store.all)
+    }
+
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
         val packageName = BackgroundProcessFixture.PACKAGE_NAME
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
         val choice = prefs.all["collect_usage_stats"]
         val closedStore = context.getSharedPreferences("recent_apps", 0)
-        val previousClose = closedStore.all[packageName]
+        val savedClosed = closedStore.all
         prefs.edit().putBoolean("collect_usage_stats", true).commit()
         val source = AndroidRecentApps(context)
         withFixtureCleanup(body = {
+          closedStore.edit().clear().commit()
           BackgroundProcessFixture().use { fixture ->
             fixture.foreground()
             fixture.background()
@@ -367,8 +432,9 @@ class RecentAppsInstrumentedTest {
           }
         }, actions = arrayOf<() -> Unit>(
             { prefs.edit().apply { if (choice == null) remove("collect_usage_stats") else putBoolean("collect_usage_stats", choice as Boolean) }.commit() },
-            { closedStore.edit().apply { if (previousClose == null) remove(packageName) else putLong(packageName, previousClose as Long) }.commit() },
+            { closedStore.edit().clear().apply { savedClosed.forEach { (key, value) -> putLong(key, value as Long) } }.commit() },
         ))
+        assertEquals(savedClosed, closedStore.all)
     }
 
     @Test fun cachedUidDoesNotMakeTheStoppingProcessKillEligible() {
