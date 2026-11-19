@@ -5,6 +5,11 @@ import android.app.usage.UsageEvents
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.os.SystemClock
+import android.provider.Settings
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.UUID
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -18,7 +23,7 @@ import com.gezimos.katapult.util.UsageHelper
 interface RecentAppsSource {
     fun available(): Boolean
     fun history(): List<RecentApp>
-    fun closed(): Map<String, Long>
+    fun closed(): Map<String, RecentClose>
     fun close(packages: List<String>, at: Long)
     fun launch(packageName: String)
     fun canOpenAccess(): Boolean = true
@@ -34,30 +39,26 @@ class AndroidRecentApps(private val context: Context,
     override fun history(): List<RecentApp> {
         if (!available()) return emptyList()
         val now = System.currentTimeMillis()
-        val manager = context.getSystemService(UsageStatsManager::class.java)
-        val since = now - 30L * 86_400_000
-        val history = manager.queryAndAggregateUsageStats(since, now).values
+        val history = context.getSystemService(UsageStatsManager::class.java)
+            .queryAndAggregateUsageStats(now - 30L * 86_400_000, now).values
         val closed = closed()
-        val opened = mutableMapOf<String, Long>()
+        val reopened = mutableMapOf<String, String>()
         if (closed.isNotEmpty()) {
-            // Aggregate lastTimeUsed also advances on pause, not just resume. Usage
-            // timestamps can lead wall time after a small Android clock correction.
-            val through = maxOf(now, history.maxOfOrNull { it.lastTimeUsed } ?: now)
-            val events = manager.queryEvents(minOf(now, maxOf(since, closed.values.min())), through + 1)
-            val event = UsageEvents.Event()
-            while (events.hasNextEvent()) {
-                events.getNextEvent(event)
-                val at = closed[event.packageName] ?: continue
-                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED && event.timeStamp > at) {
-                    opened[event.packageName] = maxOf(opened[event.packageName] ?: 0, event.timeStamp)
+            // Aggregate lastTimeUsed also advances on pause; only a resume after the close is reuse.
+            val observed = observe(closed.keys, 0)
+            closed.forEach { (packageName, record) ->
+                if (record.reopenedIn(observed.events.getValue(packageName), observed.clock, observed.earliest)) {
+                    reopened[packageName] = record.id
                 }
             }
             // Retire proven reuse so it survives Android's shorter event retention.
             // A history load must never erase a newer close recorded during its query.
-            if (opened.isNotEmpty()) synchronized(store) {
+            if (reopened.isNotEmpty()) synchronized(store) {
+                val current = closed().toMutableMap()
                 val edit = store.edit()
-                opened.keys.forEach { packageName ->
-                    if (store.getLong(packageName, 0) == closed[packageName]) edit.remove(packageName)
+                reopened.keys.forEach { packageName ->
+                    retireClose(current, packageName, closed.getValue(packageName))
+                    if (packageName !in current) edit.remove(packageName)
                 }
                 edit.apply()
             }
@@ -66,15 +67,56 @@ class AndroidRecentApps(private val context: Context,
             val launch = context.packageManager.getLaunchIntentForPackage(usage.packageName) ?: return@mapNotNull null
             val info = context.packageManager.resolveActivity(launch, 0) ?: return@mapNotNull null
             RecentApp(usage.packageName, info.loadLabel(context.packageManager).toString(), usage.lastTimeUsed,
-                if (usage.packageName in closed) opened[usage.packageName] ?: 0 else usage.lastTimeUsed)
+                reopened[usage.packageName])
         }
     }
-    override fun closed() = store.all.mapNotNull { (key, value) -> (value as? Long)?.let { key to it } }.toMap()
+    private class Observation(val clock: UsageClock, val earliest: Long?, val events: Map<String, List<UsageMark>>)
+    private fun boot() = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+    /** One query from [since] to the newest retained event, in Android's order; offset only if no clock change overlapped. */
+    private fun observe(packages: Set<String>, since: Long): Observation {
+        val before = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+        val stream = context.getSystemService(UsageStatsManager::class.java).queryEvents(since, Long.MAX_VALUE)
+        val elapsed = SystemClock.elapsedRealtime()
+        val offset = System.currentTimeMillis() - elapsed
+        val events = packages.associateWith { mutableListOf<UsageMark>() }
+        var earliest: Long? = null
+        val event = UsageEvents.Event()
+        while (stream.hasNextEvent()) {
+            stream.getNextEvent(event)
+            if (earliest == null) earliest = event.timeStamp
+            val kind = when (event.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED -> UsageKind.RESUMED
+                UsageEvents.Event.ACTIVITY_PAUSED -> UsageKind.PAUSED
+                UsageEvents.Event.ACTIVITY_STOPPED -> UsageKind.STOPPED
+                UsageEvents.Event.DEVICE_STARTUP -> UsageKind.STARTUP
+                else -> continue
+            }
+            val mark = UsageMark(kind, event.className, event.timeStamp)
+            if (kind == UsageKind.STARTUP) events.values.forEach { it += mark.copy(className = null) }
+            else events[event.packageName]?.add(mark)
+        }
+        val stable = kotlin.math.abs(offset - before) <= RecentClose.SAMPLE_TOLERANCE
+        return Observation(UsageClock(boot(), elapsed, offset.takeIf { stable }), earliest, events)
+    }
+    override fun closed(): Map<String, RecentClose> = store.all.mapNotNull { (packageName, value) ->
+        when (value) {
+            is Long -> RecentClose("v0.7.0:$value", value, null, null) // Released before close records had identity.
+            is String -> runCatching { closeRecord(JSONObject(value)) }.getOrNull()
+            else -> null
+        }?.let { packageName to it }
+    }.toMap()
     override fun close(packages: List<String>, at: Long) {
         packages.forEach(requestStop)
         synchronized(store) {
+            // The latest events usually lie within a day; a short trail needs the whole retained stream.
+            val recent = observe(packages.toSet(), System.currentTimeMillis() - 86_400_000)
+            val observed = if (recent.events.values.all { marks -> marks.count { it.kind != UsageKind.STARTUP } >= RecentClose.TRAIL }) recent
+                else observe(packages.toSet(), 0)
             val edit = store.edit()
-            packages.forEach { edit.putLong(it, at) }
+            packages.forEach { packageName ->
+                val trail = observed.events.getValue(packageName).filter { it.kind != UsageKind.STARTUP }.takeLast(RecentClose.TRAIL)
+                edit.putString(packageName, closeJson(RecentClose(UUID.randomUUID().toString(), at, observed.clock, trail)).toString())
+            }
             edit.apply()
         }
     }
@@ -91,6 +133,23 @@ class AndroidRecentApps(private val context: Context,
         return true
     }
     override fun canOpenAccess() = !prefs.sensitiveChoice(SensitiveChoice.USAGE_STATS) || UsageHelper.canOpenSettings(context)
+}
+
+private fun closeJson(record: RecentClose) = JSONObject().put("id", record.id).put("at", record.at).apply {
+    record.clock?.let { put("boot", it.boot).put("elapsed", it.elapsed).put("offset", it.offset ?: JSONObject.NULL) }
+    put("trail", JSONArray().apply { record.trail.orEmpty().forEach { mark ->
+        put(JSONObject().put("kind", mark.kind.name).put("class", mark.className ?: JSONObject.NULL).put("at", mark.at))
+    } })
+}
+
+private fun closeRecord(json: JSONObject): RecentClose {
+    val clock = if (json.has("boot")) UsageClock(json.getInt("boot"), json.getLong("elapsed"),
+        if (json.isNull("offset")) null else json.getLong("offset")) else null
+    val trail = json.getJSONArray("trail").let { array -> (0 until array.length()).map { index ->
+        array.getJSONObject(index).let { UsageMark(UsageKind.valueOf(it.getString("kind")),
+            if (it.isNull("class")) null else it.getString("class"), it.getLong("at")) }
+    } }
+    return RecentClose(json.getString("id"), json.getLong("at"), clock, trail)
 }
 
 class RecentApps(private val source: RecentAppsSource, private val ownPackage: String,

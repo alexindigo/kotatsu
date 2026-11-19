@@ -22,19 +22,35 @@ import com.gezimos.katapult.ui.settings.WholeRowList
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TestRule
+import org.junit.runners.model.Statement
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 class RecentAppsInstrumentedTest {
-    @get:Rule val accessibility = ConnectedUiStateRule()
-    @get:Rule val usageAccess = UsageAccessRule()
+    @get:Rule(order = 1) val accessibility = ConnectedUiStateRule()
+    @get:Rule(order = 2) val usageAccess = UsageAccessRule()
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
     private val now = 1_800_000_000_000L
     private val actionLabel get() = context.getString(recentAppActionLabel(android.os.Build.VERSION.SDK_INT))
+
+    // Every method can start real history readers through MainActivity/service.
+    // Restore the complete typed store only after those producers have stopped.
+    @get:Rule(order = 0) val closeRecords = TestRule { base, _ -> object : Statement() {
+        override fun evaluate() {
+            val store = context.getSharedPreferences("recent_apps", 0)
+            val saved = preferenceSnapshot(store)
+            withFixtureCleanup(body = {
+                assertTrue(store.edit().clear().commit())
+                base.evaluate()
+            }, actions = arrayOf<() -> Unit>({ ConnectedUiStateFixture.quiesceOwnedProducers() },
+                { restorePreferenceSnapshot(store, saved) }))
+        }
+    } }
 
     private fun assertUsageConsentIsVisibleAndOff() {
         val label = context.getString(R.string.policy_usage_stats)
@@ -54,7 +70,7 @@ class RecentAppsInstrumentedTest {
         var accessDestination = true
         var accessLaunchSucceeds = true
         var historyOverride: List<RecentApp>? = null
-        val closed = mutableMapOf<String, Long>()
+        val closed = mutableMapOf<String, RecentClose>()
         val kills = mutableListOf<List<String>>()
         val launches = mutableListOf<String>()
         override fun available() = access
@@ -65,7 +81,9 @@ class RecentAppsInstrumentedTest {
             RecentApp("messages", "Messages", now - 300_000),
             RecentApp("notes", "Mudita Notes", now))
         override fun closed() = closed.toMap()
-        override fun close(packages: List<String>, at: Long) { kills += packages; packages.forEach { closed[it] = at } }
+        override fun close(packages: List<String>, at: Long) { kills += packages; packages.forEach {
+            closed[it] = RecentClose(java.util.UUID.randomUUID().toString(), at, null, emptyList())
+        } }
         override fun launch(packageName: String) { launches += packageName }
         override fun canOpenAccess() = accessDestination
         override fun openAccess(): Boolean { launches += "access"; return accessLaunchSucceeds }
@@ -97,6 +115,31 @@ class RecentAppsInstrumentedTest {
             assertFalse(PlatformUiDriver(instrumentation, context.getString(R.string.recent_apps)).windowVisible())
             assertEquals(Screen.HOME, activity.viewModel.screen)
         }, actions = arrayOf<() -> Unit>({ main { activity.finish() } }))
+    }
+
+    @Test fun closeRecordFixtureRestoresEveryAppAndTypeAfterSuccessAndFailure() {
+        val store = context.getSharedPreferences("recent_apps", 0)
+        store.edit().putLong("unrelated.legacy", 1200).putString("unrelated.current", "saved record").commit()
+        val saved = preferenceSnapshot(store)
+        for (fail in listOf(false, true)) {
+            val failure = AssertionError("History reader failed")
+            val body = object : Statement() {
+                override fun evaluate() {
+                    assertTrue(store.all.isEmpty())
+                    // A reader may retire any app, not only its row-launch target.
+                    store.edit().putString("new.close", "temporary").commit()
+                    if (fail) throw failure
+                }
+            }
+            try {
+                closeRecords.apply(body, org.junit.runner.Description.EMPTY).evaluate()
+                assertFalse(fail)
+            } catch (caught: AssertionError) {
+                assertTrue(fail)
+                assertSame(failure, caught)
+            }
+            assertEquals(saved, preferenceSnapshot(store))
+        }
     }
 
     @Test fun recentAppsOffDoesNotOpenTheServiceOverlay() = RecentOverlayFixture().use { fixture ->
@@ -197,9 +240,6 @@ class RecentAppsInstrumentedTest {
 
     @Test fun overlayRowLaunchAndUsageHandoffRemoveTheWindow() = RecentOverlayFixture().use { fixture ->
         val target = "org.chromium.webview_shell"
-        val closed = context.getSharedPreferences("recent_apps", 0)
-        val previous = closed.all[target]
-        closed.edit().remove(target).commit()
         withFixtureCleanup(body = {
             val intent = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
             main { context.startActivity(intent) }
@@ -254,7 +294,6 @@ class RecentAppsInstrumentedTest {
             }
         }, actions = arrayOf<() -> Unit>(
             { fixture.shell("appops set ${context.packageName} GET_USAGE_STATS allow") },
-            { closed.edit().apply { if (previous == null) remove(target) else putLong(target, previous as Long) }.commit() },
         ))
     }
 
@@ -271,10 +310,7 @@ class RecentAppsInstrumentedTest {
             val model = page.javaClass.getDeclaredField("model").apply { isAccessible = true }.get(page) as RecentApps
             RecentApps::class.java.getDeclaredField("source").apply { isAccessible = true }.set(model, source)
         }
-        val store = context.getSharedPreferences("recent_apps", 0)
-        val saved = store.all
         withFixtureCleanup(body = {
-            store.edit().clear().commit()
             val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
             val label = context.packageManager.resolveActivity(launch, 0)!!.loadLabel(context.packageManager).toString()
             val home = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME),
@@ -299,7 +335,7 @@ class RecentAppsInstrumentedTest {
             android.util.Log.i("RecentCloseProbe", marker)
             closeRow(label)
             ui.await("Bottom Close did not end on Home") { !fixture.overlay.windowVisible() && ui.packageVisible(home) }
-            ui.await("Bottom Close not recorded") { (source.closed()[target] ?: 0) >= tapped }
+            ui.await("Bottom Close not recorded") { (source.closed()[target]?.at ?: 0) >= tapped }
             val trace = fixture.shell("logcat -d -v brief").substringAfter(marker)
             assertTrue("Close must observe Home, not just reach the timeout: $trace", trace.contains("Home observed before background stop"))
             assertFalse("Close used fallback instead of window confirmation", trace.contains("Home observation timed out"))
@@ -350,16 +386,13 @@ class RecentAppsInstrumentedTest {
             }
             fixture.back()
             ui.await("Background Close changed underlying activity") { ui.has("Brightness level") }
-        }, actions = arrayOf<() -> Unit>({ store.edit().clear().apply { saved.forEach { (key, value) -> putLong(key, value as Long) } }.commit() }))
+        }, actions = emptyArray())
     }
 
     @Test fun androidAdapterDoesNotTreatTheClosingPauseAsReuse() {
         val packageName = BackgroundProcessFixture.PACKAGE_NAME
-        val store = context.getSharedPreferences("recent_apps", 0)
-        val saved = store.all
         val source = AndroidRecentApps(context)
         withFixtureCleanup(body = {
-            store.edit().clear().commit()
             BackgroundProcessFixture().use { fixture ->
                 val manager = context.getSystemService(android.app.usage.UsageStatsManager::class.java)
                 fun latestResume(): Long {
@@ -397,22 +430,52 @@ class RecentAppsInstrumentedTest {
                 }
                 assertFalse("Reuse proof must outlive Android's event retention", AndroidRecentApps(context).closed().containsKey(packageName))
             }
-        }, actions = arrayOf<() -> Unit>({ store.edit().clear().apply {
-            saved.forEach { (key, value) -> putLong(key, value as Long) }
-        }.commit() }))
-        assertEquals(saved, store.all)
+        }, actions = emptyArray())
+    }
+
+    @Test fun backwardClockCorrectionKeepsClosedAppHiddenUntilAnActualRelaunch() = RecentOverlayFixture().use { fixture ->
+        val target = "org.chromium.webview_shell"
+        val source = AndroidRecentApps(context)
+        val wall = System.currentTimeMillis()
+        val elapsed = SystemClock.elapsedRealtime()
+        val auto = fixture.shell("settings get global auto_time").trim()
+        fun setTime(at: Long) {
+            fixture.shell("su 0 cmd alarm set-time $at")
+            assertTrue(kotlin.math.abs(System.currentTimeMillis() - at) < 3000)
+            context.getSystemService(android.app.usage.UsageStatsManager::class.java)
+                .queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, at - 30L * 86_400_000, at)
+        }
+        withFixtureCleanup(body = {
+            val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(target))
+            main { context.startActivity(launch) }
+            ui.await("Clock fixture did not launch") { ui.packageVisible(target) }
+            fixture.settings()
+            source.close(listOf(target), System.currentTimeMillis())
+            val id = source.closed().getValue(target).id
+            fixture.shell("settings put global auto_time 0")
+            setTime(wall - 36L * 3_600_000)
+            assertFalse("Clock correction alone must not restore a closed app",
+                recentApps(source.history(), context.packageName, source.closed()).any { it.packageName == target })
+            assertEquals(id, source.closed().getValue(target).id)
+            main { context.startActivity(launch) }
+            ui.await("Clock fixture did not relaunch") { ui.packageVisible(target) }
+            ui.await("A real resume after backward correction must restore the closed app") {
+                recentApps(source.history(), context.packageName, source.closed()).any { it.packageName == target }
+            }
+            assertFalse(AndroidRecentApps(context).closed().containsKey(target))
+        }, actions = arrayOf<() -> Unit>(
+            { setTime(wall + SystemClock.elapsedRealtime() - elapsed) },
+            { fixture.shell(if (auto == "null") "settings delete global auto_time" else "settings put global auto_time $auto") },
+        ))
     }
 
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
         val packageName = BackgroundProcessFixture.PACKAGE_NAME
         val prefs = context.getSharedPreferences("katapult_prefs", 0)
         val choice = prefs.all["collect_usage_stats"]
-        val closedStore = context.getSharedPreferences("recent_apps", 0)
-        val savedClosed = closedStore.all
         prefs.edit().putBoolean("collect_usage_stats", true).commit()
         val source = AndroidRecentApps(context)
         withFixtureCleanup(body = {
-          closedStore.edit().clear().commit()
           BackgroundProcessFixture().use { fixture ->
             fixture.foreground()
             fixture.background()
@@ -421,7 +484,7 @@ class RecentAppsInstrumentedTest {
             source.close(listOf(packageName), at)
             ui.await("killBackgroundProcesses did not stop background fixture") { shell("pidof $packageName").isBlank() }
             val recreated = AndroidRecentApps(context)
-            assertEquals(at, recreated.closed()[packageName])
+            assertEquals(at, recreated.closed()[packageName]?.at)
             assertFalse(recentApps(listOf(before), context.packageName, recreated.closed()).any { it.packageName == packageName })
             SystemClock.sleep(50)
             main { recreated.launch(packageName) }
@@ -432,9 +495,7 @@ class RecentAppsInstrumentedTest {
           }
         }, actions = arrayOf<() -> Unit>(
             { prefs.edit().apply { if (choice == null) remove("collect_usage_stats") else putBoolean("collect_usage_stats", choice as Boolean) }.commit() },
-            { closedStore.edit().clear().apply { savedClosed.forEach { (key, value) -> putLong(key, value as Long) } }.commit() },
         ))
-        assertEquals(savedClosed, closedStore.all)
     }
 
     @Test fun cachedUidDoesNotMakeTheStoppingProcessKillEligible() {

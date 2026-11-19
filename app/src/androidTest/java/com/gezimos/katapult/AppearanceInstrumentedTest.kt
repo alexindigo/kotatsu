@@ -77,7 +77,7 @@ class AppearanceInstrumentedTest {
             val now = System.currentTimeMillis()
             val source = object : RecentAppsSource by adapter {
                 override fun history() = (1..30).map { RecentApp("fixture.$it", "Recent fixture $it", now - it * 60_000L) }
-                override fun closed() = emptyMap<String, Long>()
+                override fun closed() = emptyMap<String, RecentClose>()
             }
             main {
                 val page = fixture.service.javaClass.getDeclaredField("recentPage").apply { isAccessible = true }.get(fixture.service)!!
@@ -161,7 +161,7 @@ class AppearanceInstrumentedTest {
             val source = object : RecentAppsSource {
                 override fun available() = true
                 override fun history() = listOf(RecentApp("fixture.notes", "Notes fixture", now))
-                override fun closed() = emptyMap<String, Long>()
+                override fun closed() = emptyMap<String, RecentClose>()
                 override fun close(packages: List<String>, at: Long) = Unit
                 override fun launch(packageName: String) = Unit
                 override fun canOpenAccess() = false
