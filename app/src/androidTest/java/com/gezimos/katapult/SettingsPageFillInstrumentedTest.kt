@@ -29,6 +29,11 @@ class SettingsPageFillInstrumentedTest {
     private val ui = PlatformUiDriver(instrumentation)
     private fun text(id: Int) = context.getString(id)
 
+    // Whole-group pagination cannot create more pages than groups.
+    private fun hasPage(number: Int, maxPages: Int) = (number..maxPages).any { count ->
+        ui.has(context.getString(R.string.paper_page, number, count))
+    }
+
     private fun withActivity(block: (MainActivity) -> Unit) {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
@@ -136,7 +141,7 @@ class SettingsPageFillInstrumentedTest {
                     ui.click(text(R.string.paper_next_page))
                     val number = ++page
                     ui.await("$id pager did not advance") {
-                        ui.find { it.contentDescription?.toString()?.startsWith("Page $number of ") == true } != null
+                        hasPage(number, category.groups.size)
                     }
                 }
             } while (next)
@@ -149,15 +154,18 @@ class SettingsPageFillInstrumentedTest {
     @Test fun edgeActionsFillTheFirstPageWithoutOverlappingTheNotice() = withActivity { activity ->
         // The non-Mudita emulator does not expose the production navigation entry.
         // Render the real Edge swipes definition with its On state and shared Notice.
+        val definition = AtomicReference<SettingsCategory>()
         instrumentation.runOnMainSync { activity.setContent {
             Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
-                PaperIndexRenderer(edgeSwipesCategory(true, true, EdgeAction.SIDE_SCREEN, EdgeAction.CAMERA,
-                    true, {}, {}, { _, _ -> }), {}, notice = reminder())
+                val category = edgeSwipesCategory(true, true, EdgeAction.SIDE_SCREEN, EdgeAction.CAMERA,
+                    true, {}, {}, { _, _ -> })
+                SideEffect { definition.set(category) }
+                PaperIndexRenderer(category, {}, notice = reminder())
             }
         } }
         // The page title has the same text as the master; locate its unique help instead.
         ui.await("Edge master did not publish On") { ui.checked(text(R.string.edge_swipes_help)) == true }
-        assertTrue("Must start on page 1", ui.find { it.contentDescription?.toString()?.startsWith("Page 1 of ") == true } != null)
+        assertTrue("Must start on page 1", hasPage(1, definition.get().groups.size))
         ui.await("Edge actions fit above the Notice but were deferred to page 2") {
             ui.has(text(R.string.edge_actions)) && ui.has(text(R.string.edge_left)) && ui.has(text(R.string.edge_right))
         }

@@ -45,7 +45,7 @@ def cleanup_violations(source):
         if not re.fullmatch(r'\s*fixtureCleanup\(\*actions,\s*failure\s*=\s*failure\)\s*', body):
             errors.append((code.count('\n', 0, match.start()) + 1, 'use withFixtureCleanup instead of raw finally'))
     for match in re.finditer(r'\bfixtureCleanup\s*\(', code):
-        if re.search(r'\bfun\s*$', code[:match.start()]) or re.search(r'\bfun[^\n{]*=\s*$', code[:match.start()]):
+        if re.search(r'\bfun\s*$', code[:match.start()]) or re.search(r'\bfun[^{};]*=\s*$', code[:match.start()]):
             continue
         end = closing(code, code.index('(', match.start()))
         if end is None:
@@ -66,7 +66,7 @@ def cleanup_violations(source):
                 break
             # A wrapper can itself be the entire function body. Its enclosing
             # class/file is not part of this cleanup sequence.
-            if re.search(r'\bfun[^\n{]*=\s*[^{};]*$', code[:opening]):
+            if re.search(r'\bfun[^{};]*=\s*[^{};]*$', code[:opening]):
                 break
             wrapper_end = closing(code, opening)
             if wrapper_end is None:
@@ -160,6 +160,28 @@ class AndroidFixtureCleanupTest(unittest.TestCase):
                             other.close()
                         }}
                     }}'''))
+
+    def test_multiline_expression_bodied_signatures_are_function_boundaries(self):
+        for signature in ('close(\n)', 'close(\n    reason: String,\n): Unit'):
+            for wrapper in ('main', 'onMain', 'fixtureMain', 'instrumentation.runOnMainSync'):
+                for body in ('fixtureCleanup({ first.close() })',
+                             'onMain { fixtureCleanup({ first.close() }) }'):
+                    with self.subTest(signature=signature, wrapper=wrapper, body=body):
+                        self.assertEqual([], cleanup_violations(f'''class Fixture {{
+                            override fun {signature} = {wrapper} {{ {body} }}
+                            fun exercise() {{ other.close() }}
+                        }}'''))
+                        self.assertTrue(cleanup_violations(f'''class Fixture {{
+                            override fun {signature} {{
+                                {wrapper} {{ {body} }}
+                                other.close()
+                            }}
+                        }}'''))
+            with self.subTest(signature=signature, body='direct cleanup'):
+                self.assertEqual([], cleanup_violations(f'''class Fixture {{
+                    override fun {signature} = fixtureCleanup({{ first.close() }})
+                    fun exercise() {{ other.close() }}
+                }}'''))
 
 
 if __name__ == '__main__':
