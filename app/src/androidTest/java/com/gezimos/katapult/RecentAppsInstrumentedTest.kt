@@ -469,6 +469,21 @@ class RecentAppsInstrumentedTest {
         ))
     }
 
+    @Test fun closeWithoutUsageConsentStopsTheAppButReadsAndKeepsNoUsageData() {
+        val packageName = "fixture.closed.without.consent"
+        val stops = mutableListOf<String>()
+        val source = AndroidRecentApps(context, requestStop = { stops += it })
+        main { com.gezimos.katapult.util.PrefsManager(context).setSensitiveChoice(com.gezimos.katapult.util.SensitiveChoice.USAGE_STATS, false) }
+        assertFalse(source.available())
+        source.close(listOf(packageName), 1234)
+        assertEquals(listOf(packageName), stops)
+        val record = source.closed().getValue(packageName)
+        assertEquals(1234L, record.at)
+        assertNull("A close without usage consent must not keep usage-derived data", record.anchor)
+        val stored = org.json.JSONObject(checkNotNull(context.getSharedPreferences("recent_apps", 0).getString(packageName, null)))
+        assertEquals(setOf("id", "at"), stored.keys().asSequence().toSet())
+    }
+
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
         val packageName = BackgroundProcessFixture.PACKAGE_NAME
         val prefs = context.getSharedPreferences("katapult_prefs", 0)

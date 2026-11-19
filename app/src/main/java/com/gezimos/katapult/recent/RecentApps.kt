@@ -72,24 +72,31 @@ class AndroidRecentApps(private val context: Context,
     private class View(val clock: UsageClock, val months: List<Long>, val events: Map<String, List<UsageMark>>)
     private val usage get() = context.getSystemService(UsageStatsManager::class.java)
     private fun offset() = System.currentTimeMillis() - SystemClock.elapsedRealtime()
-    /** Runs [queries] between two clock samples; the offset is kept only if no clock change overlapped them. */
-    private fun <T> sampled(queries: () -> T): Pair<UsageClock, T> {
-        val before = offset()
-        val result = queries()
-        val after = offset()
-        val boot = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
-        return UsageClock(boot, after.takeIf { kotlin.math.abs(after - before) <= RecentClose.SAMPLE_TOLERANCE }) to result
+    /** Runs [queries] between monthly-interval and clock samples, retrying while a clock change or rebase overlaps them. */
+    private fun <T> sampled(queries: () -> T): Triple<UsageClock?, List<Long>, T> {
+        var last: Triple<UsageClock?, List<Long>, T>? = null
+        for (attempt in 1..3) {
+            val before = offset()
+            val monthsBefore = months()
+            val result = queries()
+            val months = months()
+            val offset = usageOffset(before, offset(), monthsBefore, months)
+            val boot = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+            last = Triple(offset?.let { UsageClock(boot, it) }, months, result)
+            if (offset != null) break
+        }
+        return checkNotNull(last)
     }
     private fun events(since: Long, until: Long, each: (UsageEvents.Event) -> Unit) {
         val stream = usage.queryEvents(since, until)
         val event = UsageEvents.Event()
         while (stream.hasNextEvent()) { stream.getNextEvent(event); each(event) }
     }
-    /** Starts of the retained monthly usage intervals; Android shifts them with every event on a clock change. */
+    /** Starts of the retained monthly usage intervals; Android shifts them with every event on a rebase. */
     private fun months() = usage.queryUsageStats(UsageStatsManager.INTERVAL_MONTHLY, 0, Long.MAX_VALUE)
-        .map { it.firstTimeStamp }.distinct()
+        .map { it.firstTimeStamp }.distinct().sorted()
     private fun view(packages: Set<String>): View {
-        val (clock, result) = sampled {
+        val (clock, months, result) = sampled {
             val events = packages.associateWith { mutableListOf<UsageMark>() }
             events(0, Long.MAX_VALUE) { event ->
                 when (event.eventType) {
@@ -97,36 +104,35 @@ class AndroidRecentApps(private val context: Context,
                     UsageEvents.Event.ACTIVITY_RESUMED -> events[event.packageName]?.add(UsageMark(UsageKind.RESUMED, event.timeStamp))
                 }
             }
-            months() to events
+            events
         }
-        return View(clock, result.first, result.second)
+        // An unsettled sample decides nothing: the apps stay hidden until the next load.
+        return View(clock ?: UsageClock(-1, null), months, result)
     }
-    private fun anchors(packages: Set<String>): Map<String, CloseAnchor> {
-        var captured: Pair<UsageClock, Map<String, CloseAnchor>>? = null
-        // A clock change during these queries would mix bases; a retry samples a settled clock.
-        for (attempt in 1..3) {
-            captured = sampled {
-                // Every pre-close resume is either in this window or before its start; every later event is after both.
-                val since = System.currentTimeMillis() - 3_600_000
-                val position = packages.associateWith { since }.toMutableMap()
-                events(since, Long.MAX_VALUE) { event ->
-                    if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED && event.packageName in position) {
-                        position[event.packageName] = maxOf(position.getValue(event.packageName), event.timeStamp)
-                    }
+    /** Null when a clock change or rebase overlapped every attempt; the close then keeps only its wall time. */
+    private fun anchors(packages: Set<String>, closedAt: Long): Map<String, CloseAnchor>? {
+        val (clock, months, result) = sampled {
+            // Every pre-close resume Android has recorded is in this window or before its start.
+            val since = System.currentTimeMillis() - 3_600_000
+            val position = packages.associateWith { since }.toMutableMap()
+            events(since, Long.MAX_VALUE) { event ->
+                if (event.eventType == UsageEvents.Event.ACTIVITY_RESUMED && event.packageName in position) {
+                    position[event.packageName] = maxOf(position.getValue(event.packageName), event.timeStamp)
                 }
-                // Android adds the boot's startup when it unlocks the user, normally soon after booting.
-                val booted = System.currentTimeMillis() - SystemClock.elapsedRealtime()
-                var startup: Long? = null
-                events(booted - 60_000, booted + 6 * 3_600_000) { event ->
-                    if (event.eventType == UsageEvents.Event.DEVICE_STARTUP) startup = event.timeStamp
-                }
-                val month = months().maxOrNull()
-                position.mapValues { (_, at) -> CloseAnchor(UsageClock(-1, null), at, month, startup) }
             }
-            if (captured.first.offset != null) break
+            // Android adds the boot's startup when it unlocks the user, normally soon after booting.
+            val booted = System.currentTimeMillis() - SystemClock.elapsedRealtime()
+            var startup: Long? = null
+            events(booted - 60_000, booted + 6 * 3_600_000) { event ->
+                if (event.eventType == UsageEvents.Event.DEVICE_STARTUP) startup = event.timeStamp
+            }
+            position to startup
         }
-        val (clock, anchors) = checkNotNull(captured)
-        return anchors.mapValues { (_, anchor) -> anchor.copy(clock = clock) }
+        clock ?: return null
+        val offset = checkNotNull(clock.offset)
+        return result.first.mapValues { (_, position) ->
+            CloseAnchor(clock, position, closedAt + offset, months.lastOrNull(), result.second)
+        }
     }
     override fun closed(): Map<String, RecentClose> = store.all.mapNotNull { (packageName, value) ->
         when (value) {
@@ -136,12 +142,14 @@ class AndroidRecentApps(private val context: Context,
         }?.let { packageName to it }
     }.toMap()
     override fun close(packages: List<String>, at: Long) {
+        val closedAt = SystemClock.elapsedRealtime()
         packages.forEach(requestStop)
         synchronized(store) {
-            val anchors = anchors(packages.toSet())
+            // The same usage gate as history(): without it, no usage data is read or kept.
+            val anchors = if (available()) anchors(packages.toSet(), closedAt) else null
             val edit = store.edit()
             packages.forEach { packageName ->
-                edit.putString(packageName, closeJson(RecentClose(UUID.randomUUID().toString(), at, anchors.getValue(packageName))).toString())
+                edit.putString(packageName, closeJson(RecentClose(UUID.randomUUID().toString(), at, anchors?.get(packageName))).toString())
             }
             edit.apply()
         }
@@ -163,16 +171,17 @@ class AndroidRecentApps(private val context: Context,
 
 private fun JSONObject.optional(key: String) = if (isNull(key)) null else getLong(key)
 
+/** A close without an anchor stores only its id and wall time. */
 private fun closeJson(record: RecentClose) = JSONObject().put("id", record.id).put("at", record.at).apply {
     record.anchor?.let { anchor ->
         put("boot", anchor.clock.boot).put("offset", anchor.clock.offset ?: JSONObject.NULL).put("position", anchor.position)
-            .put("month", anchor.month ?: JSONObject.NULL).put("startup", anchor.startup ?: JSONObject.NULL)
+            .put("boundary", anchor.boundary).put("month", anchor.month ?: JSONObject.NULL).put("startup", anchor.startup ?: JSONObject.NULL)
     }
 }
 
 private fun closeRecord(json: JSONObject) = RecentClose(json.getString("id"), json.getLong("at"),
-    CloseAnchor(UsageClock(json.getInt("boot"), json.optional("offset")), json.getLong("position"),
-        json.optional("month"), json.optional("startup")))
+    if (!json.has("position")) null else CloseAnchor(UsageClock(json.getInt("boot"), json.optional("offset")),
+        json.getLong("position"), json.getLong("boundary"), json.optional("month"), json.optional("startup")))
 
 class RecentApps(private val source: RecentAppsSource, private val ownPackage: String,
     private val dismissed: () -> Unit = {},

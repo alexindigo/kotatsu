@@ -17,7 +17,7 @@ class RecentAppsTest {
     private val before = listOf(startup(booted), resume(o + 900_000), resume(o + 950_000), resume(o + 990_000))
     private fun closed(position: Long = o + 990_000, boot: Int = 1, offset: Long? = o, month: Long? = this.month,
         startup: Long? = booted, id: String = "close") =
-        RecentClose(id, o + 1_000_000, CloseAnchor(UsageClock(boot, offset), position, month, startup))
+        RecentClose(id, o + 1_000_000, CloseAnchor(UsageClock(boot, offset), position, o + 1_000_000, month, startup))
     /** [shift] is the rebase Android applied to every stored time; [offset] is the clock sample of this view. */
     private fun view(events: List<UsageMark>, offset: Long? = o, shift: Long = 0, boot: Int = 1, months: List<Long> = this.months) =
         UsageView(UsageClock(boot, offset), months.map { it + shift }, events)
@@ -85,38 +85,83 @@ class RecentAppsTest {
     }
 
     @Test fun withoutOneMonthlyStartTheCloseIsBoundedByAndroidsTolerance() {
-        val stream = before + resume(o + 999_000 - 9_000 + 2_000)
+        val stream = before + resume(o + 1_002_000)
         for (missing in listOf(closed(month = null), closed().copy(anchor = closed().anchor!!.copy(month = month + 30 * day)))) {
             assertFalse("A resume inside the tolerance may precede the close", missing.reopenedIn(view(stream)))
-            assertTrue(missing.reopenedIn(view(before + resume(o + 990_000 + 6_001), o)))
-            assertTrue(missing.reopenedIn(view(before + resume(o + 990_000 + 3_000 + 6_001), o + 3_000)))
+            assertTrue(missing.reopenedIn(view(before + resume(o + 997_000 + 6_001), o)))
+            assertTrue(missing.reopenedIn(view(before + resume(o + 997_000 + 3_000 + 6_001), o + 3_000)))
         }
         val twoStarts = listOf(month - 2_000, month + 2_000)
         assertFalse("Two interval starts within the bound do not decide the shift",
-            closed().reopenedIn(view(before + resume(o + 991_000), months = twoStarts)))
+            closed().reopenedIn(view(before + resume(o + 1_001_000), months = twoStarts)))
         assertFalse("A clock change during the query defers the decision",
             closed().reopenedIn(view(before + resume(o + 1_100_000), offset = null)))
         assertFalse("Unknown clock at close", closed(offset = null).reopenedIn(view(before + resume(o + 1_100_000))))
     }
 
     @Test fun rebootCountsLaterBootsAndTheCloseBootAfterTheClose() {
+        // The next boot starts at wall o + 4_990_000 and is unlocked 10 s later.
         val later = startup(o + 5_000_000)
-        val boot2 = 2
-        assertFalse(closed().reopenedIn(view(before + later, boot = boot2)))
-        assertTrue("Reopen in the next boot", closed().reopenedIn(view(before + later + resume(o + 5_010_000), boot = boot2)))
+        val boot2 = o + 4_990_000
+        assertFalse(closed().reopenedIn(view(before + later, boot2, boot = 2)))
+        assertTrue("Reopen in the next boot", closed().reopenedIn(view(before + later + resume(o + 5_010_000), boot2, boot = 2)))
         assertTrue("Reopen after the close, before the reboot",
-            closed().reopenedIn(view(before + resume(o + 1_001_000) + later, boot = boot2)))
+            closed().reopenedIn(view(before + resume(o + 1_001_000) + later, boot2, boot = 2)))
         val back = -36 * 3_600_000L
-        assertTrue("The close boot's startup carries Android's later rebase",
-            closed().reopenedIn(view((before + resume(o + 1_001_000) + later).shifted(back), boot = boot2)))
-        assertFalse(closed().reopenedIn(view((before + later).shifted(back), boot = boot2)))
+        assertTrue("The close boot's startup and monthly start carry Android's later rebase",
+            closed().reopenedIn(view((before + resume(o + 1_001_000) + later).shifted(back), boot2 + back, back, 2)))
+        assertFalse(closed().reopenedIn(view((before + later).shifted(back), boot2 + back, back, 2)))
         val third = startup(o + 9_000_000)
-        assertTrue("Two boots since the close", closed().reopenedIn(view(before + later + resume(o + 5_010_000) + third, boot = 3)))
-        assertFalse(closed().reopenedIn(view(before + later + third, boot = 3)))
-        assertTrue("Later startups older than retention", closed().reopenedIn(view(listOf(resume(o + 9_010_000)), boot = 3)))
+        val boot3 = o + 8_990_000
+        assertTrue("Two boots since the close", closed().reopenedIn(view(before + later + resume(o + 5_010_000) + third, boot3, boot = 3)))
+        assertFalse(closed().reopenedIn(view(before + later + third, boot3, boot = 3)))
+        assertTrue("This boot's startup older than retention", closed().reopenedIn(view(listOf(resume(o + 9_010_000)), boot3, boot = 3)))
+        assertFalse(closed().reopenedIn(view(listOf(resume(o + 990_000)), boot3, boot = 3)))
         assertFalse("Pre-close resumes of earlier boots are not reuse",
-            closed().reopenedIn(view(listOf(startup(o - 2 * day), resume(o - day)) + before + later, boot = boot2)))
+            closed().reopenedIn(view(listOf(startup(o - 2 * day), resume(o - day)) + before + later, boot2, boot = 2)))
         assertFalse("An unknown close boot decides nothing", closed(boot = -1).reopenedIn(view(before + resume(o + 1_001_000))))
+    }
+
+    @Test fun cr4624663351ABootNeverUnlockedHasNoStartupAndCannotShiftTheBootBoundary() {
+        // Boot 2 was never unlocked: no startup. Boot 3 was unlocked at wall o + 9_000_000.
+        val third = startup(o + 9_000_000)
+        val boot3 = o + 8_990_000
+        assertFalse(closed().reopenedIn(view(before + third, boot3, boot = 3)))
+        assertTrue("A resume after this boot's verified startup", closed().reopenedIn(view(before + third + resume(o + 9_010_000), boot3, boot = 3)))
+        assertTrue("A resume after the close in its own verified boot",
+            closed().reopenedIn(view(before + resume(o + 1_001_000) + third, boot3, boot = 3)))
+        assertFalse("Without this boot's startup and the close boot's, nothing is verified",
+            closed(startup = null).reopenedIn(view(before.drop(1) + resume(o + 1_001_000), boot3, boot = 3)))
+    }
+
+    @Test fun aStartupAndroidDroppedAtRolloverFallsBackToTheBootsBeginning() {
+        // Boot 3 began at wall o + 8_990_000; its startup was dropped when its first event rolled the day over.
+        val boot3 = o + 8_990_000
+        assertTrue("A resume stamped after this boot began", closed().reopenedIn(view(before + resume(o + 9_010_000), boot3, boot = 3)))
+        assertTrue(closed(startup = null, month = null).reopenedIn(view(listOf(resume(o + 990_000), resume(boot3 + 3_001)), boot3, boot = 3)))
+        assertFalse("Within the tolerance of the boot's beginning", closed(startup = null, month = null)
+            .reopenedIn(view(listOf(resume(o + 990_000), resume(boot3 + 3_000)), boot3, boot = 3)))
+        assertFalse("Pre-close resumes stamped before this boot", closed().reopenedIn(view(before, boot3, boot = 3)))
+        // With this boot's startup verified, only resumes after it count.
+        val third = startup(boot3 + 10_000)
+        assertFalse(closed().reopenedIn(view(before + third, boot3, boot = 3)))
+        assertTrue(closed().reopenedIn(view(before + third + resume(boot3 + 20_000), boot3, boot = 3)))
+    }
+
+    @Test fun cr4624663342AResumeAndroidPostedLateCannotPassForAQuickReopen() {
+        // Android stamped this resume 4 s before the close but recorded it after the anchor query.
+        for (drift in listOf(0L, 1_000L, -1_000L)) {
+            val late = before + resume(o + 996_000)
+            assertFalse("Delayed pre-close resume, drift $drift", closed().reopenedIn(view(late, o + drift)))
+            assertTrue("Reopen 50 ms after the close, drift $drift", closed().reopenedIn(view(late + resume(o + 1_000_050), o + drift)))
+        }
+    }
+
+    @Test fun cr4624663337ASampleThatStraddlesARebaseIsRejected() {
+        val months = listOf(month - 30 * day, month)
+        assertEquals(o + 300, usageOffset(o, o + 300, months, months))
+        assertNull("Android rebased between the event and interval reads", usageOffset(o, o + 300, months, months.map { it + 2_150 }))
+        assertNull("The wall clock changed during the reads", usageOffset(o, o + 1_500, months, months))
     }
 
     @Test fun aCloseWithoutRecentResumesOrAReleasedRecordUsesItsOwnEvidence() {
@@ -124,8 +169,9 @@ class RecentAppsTest {
         val close = closed(position = window)
         assertFalse(close.reopenedIn(view(listOf(startup(booted), resume(window - 60_000)))))
         assertTrue(close.reopenedIn(view(listOf(startup(booted), resume(window - 60_000), resume(o + 1_000_500)))))
-        assertFalse(legacy(100).reopenedIn(view(listOf(resume(100)))))
-        assertTrue(legacy(100).reopenedIn(view(listOf(resume(101)))))
+        // Released and unanchored records only know the wall time; Android's clock may lead it by its tolerance.
+        assertFalse(legacy(100).reopenedIn(view(listOf(resume(100 + 3_000)))))
+        assertTrue(legacy(100).reopenedIn(view(listOf(resume(100 + 3_001)))))
     }
 
     @Test fun historyIsUniqueLaunchableInputOldestFirstAndClosedUntilReused() {
