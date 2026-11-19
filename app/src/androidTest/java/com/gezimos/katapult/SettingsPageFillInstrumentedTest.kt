@@ -77,6 +77,28 @@ class SettingsPageFillInstrumentedTest {
         }.getBoundsInScreen(it)
     }
 
+    private fun renderedEntries(entries: List<SettingsEntry>): List<SettingsEntry> = entries.mapNotNull { entry ->
+        ui.find(entry.help.ifEmpty { entry.title })?.let { node ->
+            entry to Rect().also(node::getBoundsInScreen)
+        }
+    }.sortedWith(compareBy({ it.second.top }, { it.second.left })).map { it.first }
+
+    @Test fun entryAuditObservesWithinPageReordering() = withActivity { activity ->
+        val entries = listOf(SettingsEntry.Metadata("first", "First row", "One"),
+            SettingsEntry.Metadata("second", "Second row", "Two"))
+        val reversed = entries.reversed()
+        instrumentation.runOnMainSync { activity.setContent {
+            Box(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+                PaperIndexRenderer(SettingsCategory("order", "Order audit",
+                    listOf(SettingsGroup("rows", "Rows", reversed))), {})
+            }
+        } }
+        ui.await("Reversed fixture rows not rendered") { entries.all { ui.has(it.title) } }
+        val observed = renderedEntries(entries).map { it.id }
+        assertEquals(reversed.map { it.id }, observed)
+        assertNotEquals("The audit must reject within-page reordering", entries.map { it.id }, observed)
+    }
+
     /** Reproducible before/after evidence of every chapter, with real kit measurements. */
     @Test fun captureEveryCategoryAndMeasuredPageMap() = withActivity { activity ->
         val output = File(context.getExternalFilesDir(null), "settings-page-fill").apply { mkdirs() }
@@ -132,7 +154,7 @@ class SettingsPageFillInstrumentedTest {
             var page = 1
             do {
                 instrumentation.waitForIdleSync()
-                val visible = entries.filter { ui.has(it.help.ifEmpty { it.title }) }
+                val visible = renderedEntries(entries)
                 seen += visible.map { it.id }
                 report.appendLine("  page=$page entries=${visible.map { it.id }}")
                 capture(output, "$id-$mode-page-$page.png")
