@@ -64,6 +64,10 @@ def cleanup_violations(source):
             opening = parents[-1]
             if not re.search(r'\b(?:main|onMain|fixtureMain|runOnMainSync)\s*$', code[:opening]):
                 break
+            # A wrapper can itself be the entire function body. Its enclosing
+            # class/file is not part of this cleanup sequence.
+            if re.search(r'\bfun[^\n{]*=\s*[^{};]*$', code[:opening]):
+                break
             wrapper_end = closing(code, opening)
             if wrapper_end is None:
                 break
@@ -139,6 +143,23 @@ class AndroidFixtureCleanupTest(unittest.TestCase):
             fixtureCleanup({ stop() })
             main { host.deleteAppWidgetId(id) }
         }'''))
+
+    def test_main_thread_wrappers_stop_at_expression_bodied_functions(self):
+        for wrapper in ('main', 'onMain', 'fixtureMain', 'instrumentation.runOnMainSync'):
+            for body in ('fixtureCleanup({ first.close() })',
+                         'onMain { fixtureCleanup({ first.close() }) }'):
+                with self.subTest(wrapper=wrapper, body=body):
+                    for separator in (' ', '\n                            '):
+                        self.assertEqual([], cleanup_violations(f'''class Fixture {{
+                            override fun close() ={separator}{wrapper} {{ {body} }}
+                            fun exercise() {{ other.close() }}
+                        }}'''))
+                    self.assertTrue(cleanup_violations(f'''class Fixture {{
+                        override fun close() {{
+                            {wrapper} {{ {body} }}
+                            other.close()
+                        }}
+                    }}'''))
 
 
 if __name__ == '__main__':
