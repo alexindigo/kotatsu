@@ -192,6 +192,22 @@ Debug APKs are written under each app's `build/outputs/apk/debug/`: `app/`, `kot
 
 See [release tooling](docs/RELEASE_TOOLING.md) for the three-APK identity gate, build receipts and asset naming.
 
+## Tests
+
+Before opening a pull request, run the quick checks: build, unit tests, lint and the tools tests.
+
+```sh
+./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest \
+  :weather-api:testDebugUnitTest :weather-mudita:testDebugUnitTest \
+  :kotatsu-weather:testDebugUnitTest :kotatsu-weather:assembleDebugAndroidTest \
+  :kotatsu-notes:testDebugUnitTest :kotatsu-notes:assembleDebugAndroidTest
+python3 -B -m unittest discover -s tools/tests -p 'test_*.py'
+```
+
+If you changed a screen, also run its connected test class on an API 31 emulator, for example `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gezimos.katapult.SettingsPageFillInstrumentedTest`. `tools/ci/prepare-emulator.sh device <evidence-dir>` sets a booted device up the way the tests expect, and `tools/ci/run-connected.sh` runs a suite the way CI does.
+
+Every pull request runs the full connected suites in CI on a fresh emulator: Kotatsu in four shards, Weather, Notes and Mudita. A pull request merges only when the "CI summary" check passes. When a UI wait times out, the failing test saves a window dump and logcat; CI attaches them to the run.
+
 ## Troubleshooting
 
 ### Notification indicator not showing
