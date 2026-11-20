@@ -3,13 +3,17 @@ package com.gezimos.katapult
 import android.app.Instrumentation
 import android.app.UiAutomation
 import android.graphics.Rect
+import android.os.ParcelFileDescriptor
 import android.os.SystemClock
+import android.util.Xml
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import android.accessibilityservice.AccessibilityServiceInfo
+import java.io.File
+import org.xmlpull.v1.XmlSerializer
 
 /** Test-only public UI input; no adopted shell permissions or production hooks. */
 class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: String? = null) {
@@ -33,7 +37,72 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
             if (predicate()) return
             SystemClock.sleep(80)
         }
-        throw AssertionError(message)
+        val failure = AssertionError(message)
+        // Evidence must never replace the timeout as the reported failure.
+        runCatching { recordFailure(failure) }.exceptionOrNull()?.let(failure::addSuppressed)
+        throw failure
+    }
+
+    /**
+     * Saves what the timed-out await could observe under the target's external files,
+     * `failure-dumps/<test>-<uptime>/`. CI and the VM runner pull that directory.
+     */
+    private fun recordFailure(failure: AssertionError) {
+        val test = failure.stackTrace.firstNotNullOfOrNull { frame ->
+            runCatching {
+                Class.forName(frame.className).methods.firstOrNull {
+                    it.name == frame.methodName && it.isAnnotationPresent(org.junit.Test::class.java)
+                }?.let { "${frame.className}.${frame.methodName}" }
+            }.getOrNull()
+        } ?: "unknown"
+        val directory = File(context.getExternalFilesDir(null), "failure-dumps/$test-${SystemClock.uptimeMillis()}")
+        check(directory.mkdirs()) { "Could not create $directory" }
+        File(directory, "message.txt").writeText(failure.stackTraceToString())
+        File(directory, "windows.xml").outputStream().use { output ->
+            val xml = Xml.newSerializer()
+            xml.setOutput(output, "UTF-8")
+            xml.startDocument("UTF-8", true)
+            xml.startTag(null, "windows")
+            for (window in windows()) {
+                xml.startTag(null, "window")
+                xml.attribute(null, "id", window.id.toString())
+                xml.attribute(null, "type", window.type.toString())
+                xml.attribute(null, "title", window.title?.toString().orEmpty())
+                xml.attribute(null, "layer", window.layer.toString())
+                xml.attribute(null, "active", window.isActive.toString())
+                xml.attribute(null, "focused", window.isFocused.toString())
+                window.root?.let { writeNode(xml, it) }
+                xml.endTag(null, "window")
+            }
+            xml.endTag(null, "windows")
+            xml.endDocument()
+        }
+        automation.executeShellCommand("logcat -d -v threadtime -t 3000").use { log ->
+            ParcelFileDescriptor.AutoCloseInputStream(log).use { input ->
+                File(directory, "logcat.txt").outputStream().use { input.copyTo(it) }
+            }
+        }
+    }
+
+    private fun writeNode(xml: XmlSerializer, node: AccessibilityNodeInfo) {
+        if (!node.refresh()) return
+        val bounds = Rect().also(node::getBoundsInScreen)
+        xml.startTag(null, "node")
+        xml.attribute(null, "class", node.className?.toString().orEmpty())
+        xml.attribute(null, "package", node.packageName?.toString().orEmpty())
+        xml.attribute(null, "resource-id", node.viewIdResourceName.orEmpty())
+        xml.attribute(null, "text", node.text?.toString().orEmpty())
+        xml.attribute(null, "content-desc", node.contentDescription?.toString().orEmpty())
+        xml.attribute(null, "pane-title", node.paneTitle?.toString().orEmpty())
+        xml.attribute(null, "bounds", bounds.toShortString())
+        xml.attribute(null, "visible", node.isVisibleToUser.toString())
+        xml.attribute(null, "enabled", node.isEnabled.toString())
+        xml.attribute(null, "clickable", node.isClickable.toString())
+        xml.attribute(null, "checkable", node.isCheckable.toString())
+        xml.attribute(null, "checked", node.isChecked.toString())
+        xml.attribute(null, "focused", node.isFocused.toString())
+        for (index in 0 until node.childCount) node.getChild(index)?.let { writeNode(xml, it) }
+        xml.endTag(null, "node")
     }
 
     fun find(label: String): AccessibilityNodeInfo? = find {
