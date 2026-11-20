@@ -107,7 +107,7 @@ class WeatherSettlingInstrumentedTest {
                     throw AssertionError("Initial host: id=${widget.id}, hint=${fixture.manager.getAppWidgetOptions(widget.id)}, " +
                         "description=${description()}, black=${hasBlack(bitmap())}, sameReceipt=${bitmap() === beforePulse}", failure)
                 }
-                val normal = bitmap()
+                val firstNormal = bitmap()
                 val spoken = description()
                 assertTrue("Both fixture rows reach the host", spoken.contains("School"))
                 if (recreateWhileVisible) {
@@ -148,8 +148,27 @@ class WeatherSettlingInstrumentedTest {
                     }
                     return@use
                 }
+                // Force a later valid normal receipt after the first oracle was captured.
+                // Real options callbacks can do this too (e.g. a changed timeline needle).
+                main {
+                    val options = fixture.manager.getAppWidgetOptions(widget.id)
+                    val width = options.getInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) + 1
+                    options.putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, width)
+                    options.putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, width)
+                    fixture.manager.updateAppWidgetOptions(widget.id, options)
+                }
+                await("A later normal provider receipt must reach the still-visible host") {
+                    val received = bitmap()
+                    hasBlack(received) && !received.sameAs(firstNormal) && description() == spoken
+                }
                 capture("normal")
-                main { host.hideWidgets(context) }
+                // Snapshot at the visibility boundary: the host retains the LAST visible receipt.
+                // Separate main calls let a queued provider callback replace its cache after our read.
+                val normal = main {
+                    val received = (view.findViewById<ImageView>(image).drawable as BitmapDrawable).bitmap
+                    host.hideWidgets(context)
+                    received
+                }
                 await("Hidden options delivered a grey picture, not just an options acknowledgement") { !hasBlack(bitmap()) && !bitmap().sameAs(normal) }
                 val settling = bitmap()
                 assertEquals(spoken, description())
@@ -160,6 +179,7 @@ class WeatherSettlingInstrumentedTest {
                     state.beginEpoch(); state.recheck(true) { false }
                     LockscreenWidgetHost.pulseVisible(context, state, listOf(widget))
                     replay = (view.findViewById<ImageView>(image).drawable as BitmapDrawable).bitmap
+                    assertFalse("Wake must not replay the superseded first normal receipt", replay.sameAs(firstNormal))
                     assertTrue("One-hour wake synchronously replays normal before fresh callback", replay.sameAs(normal))
                 }
                 await("Wake pulse delivers a new normal RemoteViews picture") { bitmap() !== replay && hasBlack(bitmap()) }
