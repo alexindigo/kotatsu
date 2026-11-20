@@ -1,0 +1,135 @@
+name: Connected tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: connected-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Unit tests, lint, Python tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Unit tests and lint
+        run: ./gradlew --no-daemon testDebugUnitTest lintDebug
+      - name: Python tools tests
+        run: python3 -B -m unittest discover -s tools/tests -p 'test_*.py'
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: check-reports
+          path: |
+            */build/reports/
+            */build/test-results/
+          if-no-files-found: ignore
+
+  build:
+    name: Build APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Debug and androidTest APKs
+        run: ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: apks
+          path: '*/build/outputs/apk/**/*.apk'
+          if-no-files-found: error
+          retention-days: 7
+
+  connected:
+    name: Connected ${{ matrix.suite }} ${{ matrix.shard }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: kotatsu, shard: 0/4, id: kotatsu-0 }
+          - { suite: kotatsu, shard: 1/4, id: kotatsu-1 }
+          - { suite: kotatsu, shard: 2/4, id: kotatsu-2 }
+          - { suite: kotatsu, shard: 3/4, id: kotatsu-3 }
+          - { suite: weather, shard: '', id: weather }
+          - { suite: notes, shard: '', id: notes }
+          - { suite: mudita, shard: '', id: mudita }
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: apks
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      # Read-only input only: a cached AVD would carry a used device into the next run.
+      - name: System image cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: /usr/local/lib/android/sdk/system-images/android-31/default/x86_64
+          key: system-image-android-31-default-x86_64-r05
+      - name: Connected suite
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
+        with:
+          api-level: 31
+          target: default
+          arch: x86_64
+          profile: pixel
+          avd-name: kompakt_api31
+          sdcard-path-or-size: 512M
+          emulator-build: 16428233
+          emulator-options: -no-window -no-audio -no-boot-anim -no-metrics -gpu swangle -no-snapshot -skin 480x800
+          disable-animations: false
+          pre-emulator-launch-script: bash tools/ci/prepare-emulator.sh configure-avd "$ANDROID_AVD_HOME/kompakt_api31.avd"
+          script: bash tools/ci/prepare-emulator.sh device results/device && SHARD='${{ matrix.shard }}' bash tools/ci/run-connected.sh ${{ matrix.suite }} results
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: results-${{ matrix.id }}
+          path: results/
+          if-no-files-found: ignore
+
+  summary:
+    name: CI summary
+    if: always()
+    needs: [checks, build, connected]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: results-*
+          path: results
+      - name: Per-suite counts
+        run: python3 tools/ci/junit.py summary results
+      - name: Required jobs
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "checks build connected: $RESULTS"
+          for result in $RESULTS; do [ "$result" = success ] || exit 1; done
