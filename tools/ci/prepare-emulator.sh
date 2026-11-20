@@ -179,6 +179,8 @@ def run(*args):
     return result.stdout
 def preferences():
     return run('shell', 'run-as', package, 'cat', 'shared_prefs/katapult_prefs.xml')
+# Reinstall preserves data; reset before first launch so reruns use fresh defaults too.
+print(run('shell', 'pm', 'clear', package), flush=True)
 print(run('shell', 'am', 'start', '-W', '-n', package + '/com.gezimos.katapult.MainActivity'), flush=True)
 deadline = time.monotonic() + 90
 clicked = False

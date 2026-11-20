@@ -23,7 +23,11 @@ declare -A TEST_PACKAGE=(
 [[ -v TARGET[$suite] ]] || { echo "unknown suite: $suite" >&2; exit 2; }
 prep() { bash "$CI_DIR/prepare-emulator.sh" "$@"; }
 module=$(prep module "$suite")
-[[ -f $module/build.gradle.kts ]] || { echo "$suite: module absent"; exit 0; }
+if [[ ! -f $module/build.gradle.kts ]]; then
+    echo "$suite: module absent" >&2
+    [[ $suite == notes ]] && exit 0
+    exit 1
+fi
 mkdir -p "$results"
 args=()
 name=$suite
