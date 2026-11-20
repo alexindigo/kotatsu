@@ -16,8 +16,9 @@ data class UsageClock(val boot: Int, val offset: Long?)
  * its 2 s tolerance. Android rebases all stored event times and usage-interval starts by one common
  * shift, so the monthly interval start [month] gives the exact shift within a boot, and together
  * with the boot's DEVICE_STARTUP time [startup] it locates the close's boot after a reboot.
+ * Without usage consent only the clocks are recorded: [position], [month] and [startup] are null.
  */
-data class CloseAnchor(val clock: UsageClock, val position: Long, val boundary: Long, val month: Long?, val startup: Long?)
+data class CloseAnchor(val clock: UsageClock, val position: Long?, val boundary: Long, val month: Long?, val startup: Long?)
 
 /** One query of Android's retained usage data: this package's resumes and all startups in Android's order. */
 data class UsageView(val clock: UsageClock, val months: List<Long>, val events: List<UsageMark>)
@@ -26,22 +27,36 @@ data class UsageView(val clock: UsageClock, val months: List<Long>, val events: 
 fun usageOffset(before: Long, after: Long, monthsBefore: List<Long>, monthsAfter: List<Long>): Long? =
     after.takeIf { kotlin.math.abs(after - before) <= RecentClose.SAMPLE_TOLERANCE && monthsBefore == monthsAfter }
 
-/** [anchor] is null for records from v0.7.0, and for closes recorded while usage access was not allowed. */
+/**
+ * Where to look for this boot's DEVICE_STARTUP, which began at wall time [booted]. Android adds it when the user
+ * first unlocks the boot, normally soon after booting; a later first unlock needs the rest of the boot.
+ */
+fun startupWindows(booted: Long, now: Long): List<Pair<Long, Long>> {
+    val early = booted + 6 * 3_600_000L
+    return listOf(booted - 60_000 to early) + if (now > early) listOf(early to Long.MAX_VALUE) else emptyList()
+}
+
+/** Only a startup stamped after this boot began belongs to it; an earlier boot's startup cannot fill the gap. */
+fun bootStartup(booted: Long, stamps: List<Long>): Long? = stamps.lastOrNull { it >= booted - RecentClose.OFFSET_TOLERANCE }
+
+/** [anchor] is null for records from v0.7.0, and for closes whose clock samples never settled. */
 data class RecentClose(val id: String, val at: Long, val anchor: CloseAnchor?) {
     /** Unprovable evidence keeps the app hidden: only a resume certainly after the close is reuse. */
     fun reopenedIn(view: UsageView): Boolean {
         val events = view.events
         fun resumedAfter(after: Long, from: Int = 0) =
             (from until events.size).any { events[it].kind == UsageKind.RESUMED && events[it].at > after }
-        // Android's usage clock is within its tolerance of the wall clock that set [at].
+        // A sample that straddled a clock change or rebase mixes bases; it decides nothing until the next load.
+        val now = view.clock.offset ?: return false
+        // Only the wall time [at] is known; Android's usage clock is within its tolerance of it. A forward rebase
+        // since the close can still move an earlier resume past this bound: v0.7.0 recorded nothing more.
         val anchor = anchor ?: return resumedAfter(at + OFFSET_TOLERANCE)
         // Android records events on a handler, so a resume stamped before the close can appear only after the
         // anchor query. [boundary] is the close in Android's usage clock only within its 2 s tolerance, so such a
         // resume is rejected unless it was stamped within OFFSET_TOLERANCE of the close. Inside that window it is
         // indistinguishable from a genuine quick reopen; the window is kept so that quick reopens restore the app.
-        fun closed(shift: Long) = maxOf(anchor.position, anchor.boundary - OFFSET_TOLERANCE) + shift
+        fun closed(shift: Long) = maxOf(anchor.position ?: Long.MIN_VALUE, anchor.boundary - OFFSET_TOLERANCE) + shift
         if (anchor.clock.boot < 0 || view.clock.boot < anchor.clock.boot) return false
-        val now = view.clock.offset ?: return false
         if (view.clock.boot == anchor.clock.boot) {
             val change = now - (anchor.clock.offset ?: return false)
             // Android's shift is within this bound of the clock-sample change; interval starts are weeks apart.
@@ -53,22 +68,20 @@ data class RecentClose(val id: String, val at: Long, val anchor: CloseAnchor?) {
         }
         // A boot only gets a startup once the user unlocks it, so boot counts cannot index startups.
         val startups = events.indices.filter { events[it].kind == UsageKind.STARTUP }
-        // This boot's startup is stamped after it began; every later event belongs to this boot.
+        // The close's boot begins at the startup whose shift also moves the close's monthly start. That shift
+        // places the close exactly; Android's timestamp order alone is not boot order after a backward clock change.
+        val located = if (anchor.month == null || anchor.startup == null) null else startups.map { it to events[it].at - anchor.startup }
+            .singleOrNull { (_, shift) -> anchor.month + shift in view.months }
+        if (located != null) return resumedAfter(closed(located.second), located.first + 1)
+        // Otherwise only timestamps can place this boot, under Android's own assumption that the wall clock did not
+        // move backward while the phone was off: UsageStatsDatabase.init deletes future-dated files instead of
+        // ordering them (L177-193). This boot's startup is stamped after it began ([now] is wall minus elapsed time),
+        // and Android 12 can drop it: UserUsageStatsService.init adds it without marking the stats changed
+        // (L154-166), and when the first event after boot rolls the day over, persistActiveStats skips unchanged
+        // stats (L609-611, rolloverStats L625-670). A resume must follow that startup when there is one, and be
+        // stamped after both this boot began and the close's own boundary.
         val current = startups.lastOrNull()?.takeIf { events[it].at >= now - OFFSET_TOLERANCE }
-        if (current != null && resumedAfter(Long.MIN_VALUE, current + 1)) return true
-        // Android 12 can drop a boot's startup: UserUsageStatsService.init adds it without marking the stats
-        // changed (L154-166), and when the first event after boot rolls the day over, persistActiveStats skips
-        // unchanged stats (L609-611, rolloverStats L625-670). Without a verified startup, a resume stamped after
-        // this boot began ([now] is wall minus elapsed time) is reuse. That assumes the wall clock did not move
-        // backward while the phone was off, as Android does: UsageStatsDatabase.init deletes future-dated files
-        // instead of ordering them (L177-193).
-        if (current == null && resumedAfter(now + OFFSET_TOLERANCE)) return true
-        // The close's boot begins at the startup whose shift also moves the close's monthly start.
-        val month = anchor.month ?: return false
-        val startup = anchor.startup ?: return false
-        val (index, shift) = startups.map { it to events[it].at - startup }
-            .singleOrNull { (_, shift) -> month + shift in view.months } ?: return false
-        return resumedAfter(closed(shift), index + 1)
+        return resumedAfter(maxOf(now, anchor.boundary) + OFFSET_TOLERANCE, (current ?: -1) + 1)
     }
 
     companion object {

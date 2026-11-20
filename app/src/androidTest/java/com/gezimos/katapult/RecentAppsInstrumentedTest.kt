@@ -479,9 +479,46 @@ class RecentAppsInstrumentedTest {
         assertEquals(listOf(packageName), stops)
         val record = source.closed().getValue(packageName)
         assertEquals(1234L, record.at)
-        assertNull("A close without usage consent must not keep usage-derived data", record.anchor)
+        val anchor = checkNotNull(record.anchor) { "A close without usage consent still keeps its clocks" }
+        assertNull("A close without usage consent must not keep usage-derived data", anchor.position)
+        assertNull(anchor.month)
+        assertNull(anchor.startup)
         val stored = org.json.JSONObject(checkNotNull(context.getSharedPreferences("recent_apps", 0).getString(packageName, null)))
-        assertEquals(setOf("id", "at"), stored.keys().asSequence().toSet())
+        assertEquals(setOf("id", "at", "boot", "offset", "boundary"), stored.keys().asSequence().toSet())
+    }
+
+    @Test fun aRelaunchRightAfterTheStopRequestIsReuseNotTheCloseAnchor() {
+        val packageName = BackgroundProcessFixture.PACKAGE_NAME
+        withFixtureCleanup(body = {
+            BackgroundProcessFixture().use { fixture ->
+                val manager = context.getSystemService(android.app.usage.UsageStatsManager::class.java)
+                fun latestResume(): Long {
+                    val events = manager.queryEvents(System.currentTimeMillis() - 60000, Long.MAX_VALUE)
+                    val event = android.app.usage.UsageEvents.Event()
+                    var latest = 0L
+                    while (events.hasNextEvent()) {
+                        events.getNextEvent(event)
+                        if (event.packageName == packageName && event.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) {
+                            latest = maxOf(latest, event.timeStamp)
+                        }
+                    }
+                    return latest
+                }
+                fixture.foreground()
+                fixture.background()
+                val launch = checkNotNull(context.packageManager.getLaunchIntentForPackage(packageName))
+                val source = AndroidRecentApps(context, requestStop = {
+                    // The app is relaunched as soon as its stop is requested, and Android records that resume.
+                    val stopped = latestResume()
+                    main { context.startActivity(launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+                    ui.await("Relaunch after the stop not recorded") { latestResume() > stopped }
+                })
+                source.close(listOf(packageName), System.currentTimeMillis())
+                ui.await("A relaunch after the stop must restore the app") {
+                    recentApps(source.history(), context.packageName, source.closed()).any { it.packageName == packageName }
+                }
+            }
+        }, actions = emptyArray())
     }
 
     @Test fun androidAdapterKillsBackgroundProcessAndPersistsCloseUntilReuse() {
