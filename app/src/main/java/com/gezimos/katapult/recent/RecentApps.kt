@@ -29,6 +29,10 @@ interface RecentAppsSource {
     fun openAccess(): Boolean
 }
 
+/** One boot's startup search; startups are added only when a boot is first unlocked. */
+private data class BootStartup(val boot: Int, val months: List<Long>, val startup: Long?)
+@Volatile private var bootStartup: BootStartup? = null
+
 class AndroidRecentApps(private val context: Context,
     private val requestStop: (String) -> Unit = { context.getSystemService(ActivityManager::class.java).killBackgroundProcesses(it) },
     private val launching: (String) -> Unit = {}) : RecentAppsSource {
@@ -120,19 +124,29 @@ class AndroidRecentApps(private val context: Context,
                     position[event.packageName] = maxOf(position.getValue(event.packageName), event.timeStamp)
                 }
             }
-            // Android adds the boot's startup when it unlocks the user, normally soon after booting.
-            val booted = System.currentTimeMillis() - SystemClock.elapsedRealtime()
-            var startup: Long? = null
-            events(booted - 60_000, booted + 6 * 3_600_000) { event ->
-                if (event.eventType == UsageEvents.Event.DEVICE_STARTUP) startup = event.timeStamp
-            }
-            position to startup
+            position to startup()
         }
         clock ?: return null
         val offset = checkNotNull(clock.offset)
         return result.first.mapValues { (_, position) ->
             CloseAnchor(clock, position, closedAt + offset, months.lastOrNull(), result.second)
         }
+    }
+    /** This boot's DEVICE_STARTUP. The result holds for the boot until Android rebases its stored times, which also moves the monthly interval starts. */
+    private fun startup(): Long? {
+        val boot = Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1)
+        val months = months()
+        bootStartup?.takeIf { it.boot == boot && it.months == months }?.let { return it.startup }
+        val booted = offset()
+        var startup: Long? = null
+        for ((since, until) in startupWindows(booted, System.currentTimeMillis())) {
+            val stamps = mutableListOf<Long>()
+            events(since, until) { if (it.eventType == UsageEvents.Event.DEVICE_STARTUP) stamps += it.timeStamp }
+            startup = bootStartup(booted, stamps) ?: continue
+            break
+        }
+        bootStartup = BootStartup(boot, months, startup)
+        return startup
     }
     override fun closed(): Map<String, RecentClose> = store.all.mapNotNull { (packageName, value) ->
         when (value) {
@@ -143,10 +157,15 @@ class AndroidRecentApps(private val context: Context,
     }.toMap()
     override fun close(packages: List<String>, at: Long) {
         val closedAt = SystemClock.elapsedRealtime()
-        packages.forEach(requestStop)
         synchronized(store) {
-            // The same usage gate as history(): without it, no usage data is read or kept.
-            val anchors = if (available()) anchors(packages.toSet(), closedAt) else null
+            // Capture the close before stopping the apps, so a relaunch after the stop cannot become the anchor.
+            val anchors = try {
+                // The same usage gate as history(): without it, only the clocks are kept, never usage data.
+                if (available()) anchors(packages.toSet(), closedAt) else offset().let { offset ->
+                    val clock = UsageClock(Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, -1), offset)
+                    packages.associateWith { CloseAnchor(clock, null, closedAt + offset, null, null) }
+                }
+            } finally { packages.forEach(requestStop) }
             val edit = store.edit()
             packages.forEach { packageName ->
                 edit.putString(packageName, closeJson(RecentClose(UUID.randomUUID().toString(), at, anchors?.get(packageName))).toString())
@@ -169,19 +188,21 @@ class AndroidRecentApps(private val context: Context,
     override fun canOpenAccess() = !prefs.sensitiveChoice(SensitiveChoice.USAGE_STATS) || UsageHelper.canOpenSettings(context)
 }
 
-private fun JSONObject.optional(key: String) = if (isNull(key)) null else getLong(key)
+private fun JSONObject.optional(key: String) = if (!has(key) || isNull(key)) null else getLong(key)
 
-/** A close without an anchor stores only its id and wall time. */
+/** A close without an anchor stores only its id and wall time; usage-derived fields are omitted when unknown. */
 private fun closeJson(record: RecentClose) = JSONObject().put("id", record.id).put("at", record.at).apply {
     record.anchor?.let { anchor ->
-        put("boot", anchor.clock.boot).put("offset", anchor.clock.offset ?: JSONObject.NULL).put("position", anchor.position)
-            .put("boundary", anchor.boundary).put("month", anchor.month ?: JSONObject.NULL).put("startup", anchor.startup ?: JSONObject.NULL)
+        put("boot", anchor.clock.boot).put("offset", anchor.clock.offset ?: JSONObject.NULL).put("boundary", anchor.boundary)
+        anchor.position?.let { put("position", it) }
+        anchor.month?.let { put("month", it) }
+        anchor.startup?.let { put("startup", it) }
     }
 }
 
 private fun closeRecord(json: JSONObject) = RecentClose(json.getString("id"), json.getLong("at"),
-    if (!json.has("position")) null else CloseAnchor(UsageClock(json.getInt("boot"), json.optional("offset")),
-        json.getLong("position"), json.getLong("boundary"), json.optional("month"), json.optional("startup")))
+    if (!json.has("boundary")) null else CloseAnchor(UsageClock(json.getInt("boot"), json.optional("offset")),
+        json.optional("position"), json.getLong("boundary"), json.optional("month"), json.optional("startup")))
 
 class RecentApps(private val source: RecentAppsSource, private val ownPackage: String,
     private val dismissed: () -> Unit = {},

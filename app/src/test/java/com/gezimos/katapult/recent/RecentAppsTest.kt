@@ -15,7 +15,7 @@ class RecentAppsTest {
     private fun List<UsageMark>.shifted(by: Long) = map { it.copy(at = it.at + by) }
     private fun legacy(at: Long) = RecentClose("v0.7.0:$at", at, null)
     private val before = listOf(startup(booted), resume(o + 900_000), resume(o + 950_000), resume(o + 990_000))
-    private fun closed(position: Long = o + 990_000, boot: Int = 1, offset: Long? = o, month: Long? = this.month,
+    private fun closed(position: Long? = o + 990_000, boot: Int = 1, offset: Long? = o, month: Long? = this.month,
         startup: Long? = booted, id: String = "close") =
         RecentClose(id, o + 1_000_000, CloseAnchor(UsageClock(boot, offset), position, o + 1_000_000, month, startup))
     /** [shift] is the rebase Android applied to every stored time; [offset] is the clock sample of this view. */
@@ -172,6 +172,46 @@ class RecentAppsTest {
         // Released and unanchored records only know the wall time; Android's clock may lead it by its tolerance.
         assertFalse(legacy(100).reopenedIn(view(listOf(resume(100 + 3_000)))))
         assertTrue(legacy(100).reopenedIn(view(listOf(resume(100 + 3_001)))))
+    }
+
+    @Test fun cr4625337579AnUnsettledSampleDecidesNothingForAnUnanchoredClose() {
+        // A forward rebase overlapped the reads: the pre-close resume already moved past the wall-time bound.
+        val moved = listOf(resume(100 + 60_000))
+        assertFalse(legacy(100).reopenedIn(view(moved, offset = null)))
+        assertTrue("A settled load keeps the wall-time check", legacy(100).reopenedIn(view(listOf(resume(100 + 3_001)))))
+    }
+
+    @Test fun aCloseWithoutUsageConsentKeepsItsClocksThroughARebase() {
+        // Without consent only the clocks are recorded; the close's place is then bounded by Android's tolerance.
+        val clocks = closed(position = null, month = null, startup = null)
+        val forward = 60_000L
+        val stream = listOf(resume(o + 999_000 + forward))
+        assertFalse("A forward rebase moves an earlier resume, not the close", clocks.reopenedIn(view(stream, o + forward, forward)))
+        assertTrue(clocks.reopenedIn(view(stream + resume(o + 1_003_001 + forward), o + forward, forward)))
+        assertFalse("Still within the tolerance", clocks.reopenedIn(view(stream + resume(o + 1_003_000 + forward), o + forward, forward)))
+    }
+
+    @Test fun cr4625337584TimestampOrderIsNotBootOrderAfterABackwardClockChange() {
+        // The wall clock went back while the phone was off: boot 2 began at wall o + 500_000, before the close,
+        // and its startup sorts before boot 1's pre-close resumes kept in the surviving daily file.
+        val boot2 = o + 500_000
+        val overlapping = (before + startup(boot2 + 10_000)).sortedBy { it.at }
+        assertFalse("Located close boot", closed().reopenedIn(view(overlapping, boot2, boot = 2)))
+        assertFalse("Close boot not located", closed(startup = null).reopenedIn(view(overlapping, boot2, boot = 2)))
+        assertTrue("A resume stamped after the close restores the app",
+            closed().reopenedIn(view((overlapping + resume(o + 1_100_000)).sortedBy { it.at }, boot2, boot = 2)))
+        assertTrue(closed(startup = null).reopenedIn(view((overlapping + resume(o + 1_100_000)).sortedBy { it.at }, boot2, boot = 2)))
+    }
+
+    @Test fun cr4625337575AStartupAfterALateFirstUnlockIsStillThisBoots() {
+        val hour = 3_600_000L
+        assertEquals(listOf(booted - 60_000 to booted + 6 * hour), startupWindows(booted, booted + 2 * hour))
+        val windows = startupWindows(booted, booted + 9 * hour)
+        assertEquals(2, windows.size)
+        val late = booted + 8 * hour
+        assertTrue("The rest of the boot is searched", windows.any { (since, until) -> late in since until until })
+        assertEquals(late, bootStartup(booted, listOf(booted - day, late)))
+        assertNull("An earlier boot's startup cannot fill the gap", bootStartup(booted, listOf(booted - 10_000)))
     }
 
     @Test fun historyIsUniqueLaunchableInputOldestFirstAndClosedUntilReused() {
