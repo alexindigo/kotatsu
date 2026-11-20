@@ -46,6 +46,8 @@ def tokenize(source):
         elif value == '"""':
             close = source.find(value, end)
             end = len(source) if close < 0 else close + 3
+            while end < len(source) and source[end] == '"':
+                end += 1
             value = '<literal>'
         elif value in ('"', "'", '`'):
             quote = value
@@ -118,6 +120,53 @@ class SourceScan:
             index = self.pairs[index] + 1 if word in ('(', '[') and index in self.pairs else index + 1
         return None
 
+    def java_body(self, parameters):
+        """Accept a declaration header and its immediate Java body suffix only."""
+        identifier = r'(?:[^\W\d]|\$)(?:\w|\$)*'
+        qualified = rf'{identifier}(?: \. {identifier})*'
+        generic = r'< [\w$.,?&<>\[\] ]+ >'
+        segment = rf'{identifier}(?: {generic})?'
+        result_type = rf'{segment}(?: \. {segment})*(?: \[ \])*'
+        modifiers = {'public', 'protected', 'private', 'static', 'final', 'abstract',
+                     'synchronized', 'native', 'strictfp', 'default'}
+        name = parameters - 1
+        if not re.fullmatch(identifier, self.words[name]):
+            return None
+        start = name - 1
+        while start >= 0 and self.words[start] not in ('{', '}', ';'):
+            # Annotation arguments are part of the header, not preceding calls.
+            start = self.pairs[start] - 1 if self.words[start] in (')', ']') and start in self.pairs else start - 1
+        index = start + 1
+        while index < name:
+            if self.words[index] in modifiers:
+                index += 1
+            elif self.words[index] == '@':
+                index += 1
+                if index >= name or not re.fullmatch(identifier, self.words[index]):
+                    return None
+                index += 1
+                while index + 1 < name and self.words[index] == '.' and re.fullmatch(identifier, self.words[index + 1]):
+                    index += 2
+                if index < name and self.words[index] == '(' and index in self.pairs:
+                    index = self.pairs[index] + 1
+            else:
+                break
+        header = self.words[index:name]
+        if (any(word in header for word in ('fun', 'return', 'throw', 'new', 'val', 'var', 'else'))
+                or not re.fullmatch(rf'(?:{generic} )?{result_type}', ' '.join(header))):
+            return None
+        body = self.pairs[parameters] + 1
+        while self.words[body:body + 2] == ['[', ']']:
+            body += 2
+        if self.words[body:body + 1] == ['throws']:
+            end = body + 1
+            while end < len(self.words) and self.words[end] not in ('{', '}', ';', '=', '('):
+                end += 1
+            if not re.fullmatch(rf'{qualified}(?: , {qualified})*', ' '.join(self.words[body + 1:end])):
+                return None
+            body = end
+        return body if self.words[body:body + 1] == ['{'] and body in self.pairs else None
+
     def find_functions(self):
         functions = []
         for index, word in enumerate(self.words):
@@ -133,22 +182,20 @@ class SourceScan:
                 end = self.pairs.get(body) if self.words[body] == '{' else self.expression_end(body + 1)
                 if end is not None:
                     functions.append(Function(parameters - 1, body + 1, end))
+        # Kotlin function bodies cannot contain Java method declarations.
+        kotlin_functions = tuple(functions)
         # Java has no `fun`: require a declaration header, not a call/control flow.
         controls = {'if', 'for', 'while', 'switch', 'catch', 'synchronized', 'try', 'when'}
         for parameters, word in enumerate(self.words):
             if word != '(' or parameters not in self.pairs or parameters < 2:
                 continue
+            if any(function.start <= parameters < function.end for function in kotlin_functions):
+                continue
             name = parameters - 1
             if self.words[name] in controls or self.words[name - 1] in ('.', '?.'):
                 continue
-            start = name - 1
-            while start >= 0 and self.words[start] not in ('{', '}', ';'):
-                start -= 1
-            header = self.words[start + 1:name]
-            if not header or any(word in header for word in ('fun', '=', 'return', 'new', 'val', 'var', '->')):
-                continue
-            body = self.body_after(parameters)
-            if body is not None and self.words[body] == '{' and body in self.pairs:
+            body = self.java_body(parameters)
+            if body is not None:
                 functions.append(Function(name, body + 1, self.pairs[body]))
         return sorted(functions, key=lambda function: function.start)
 
@@ -371,6 +418,57 @@ class AndroidFixtureCleanupTest(unittest.TestCase):
                 other.close();
             }
         }'''))
+
+    def test_kotlin_calls_are_not_java_method_declarations(self):
+        for preparation in ('prepare()', 'prepare(value)', 'prepare()\nprepareMore()',
+                            'if (ready) prepare()', 'prepare'):
+            for declaration in ('', 'fun close()'):
+                with self.subTest(preparation=preparation, declaration=declaration):
+                    source = f'''{declaration} {{
+                        {preparation}
+                        fixtureCleanup({{ first.close() }})
+                        main {{ other.close() }}
+                    }}'''
+                    scan = SourceScan(source)
+                    self.assertEqual(['close'] if declaration else [],
+                                     [scan.words[index] for index in scan.declarations])
+                    self.assertEqual(1, len(cleanup_violations(source)))
+                    self.assertEqual([], cleanup_violations(source.replace('other.close()', 'readBack()')))
+        self.assertTrue(cleanup_violations('''fun close() {
+            prepare
+            main() { fixtureCleanup({ first.close() }) }
+            other.close()
+        }'''))
+
+    def test_java_annotations_types_and_throws_keep_method_boundaries(self):
+        for signature in ('@Override public void close()',
+                          '@Cleanup(order = 1) public void close()',
+                          'protected java.util.List<String> close() throws First, pkg.Second',
+                          'public <T extends AutoCloseable> T[] close() throws Exception',
+                          'public String close()[]'):
+            with self.subTest(signature=signature):
+                source = f'''class Fixture {{
+                    {signature} {{ fixtureCleanup(first::close); }}
+                    void exercise() {{ other.close(); }}
+                }}'''
+                scan = SourceScan(source)
+                self.assertEqual(['close', 'exercise'],
+                                 [scan.words[function.name] for function in scan.functions])
+                self.assertEqual([], cleanup_violations(source))
+
+    def test_raw_string_closing_quote_runs_preserve_following_cleanup(self):
+        for quotes in (3, 4, 5, 7):
+            with self.subTest(quotes=quotes):
+                source = '''fun close() {
+                    val label = """text''' + '"' * quotes + '''
+                    fixtureCleanup({ first.close() })
+                    other.close()
+                }'''
+                tokens = list(tokenize(source))
+                self.assertEqual(1, sum(token.value == '<literal>' for token in tokens))
+                self.assertEqual(2, sum(token.value == 'close' for token in tokens[5:]))
+                self.assertEqual([(3, 'cleanup after fixtureCleanup can be skipped')],
+                                 cleanup_violations(source))
 
     def test_lexer_skips_nested_comments_and_opaque_literals(self):
         self.assertEqual([], cleanup_violations('''fun close() {
