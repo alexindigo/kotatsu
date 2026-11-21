@@ -85,14 +85,37 @@ writes. That API requires duration, not dtend, for an exception request.
 
 ## Bridge recovery and description ownership
 
-Every provider mutation has a durable before/after intent in the mapping store.
-The mapping replacement/removal and intent acknowledgement commit atomically.
-Reconcile pending writes before a fresh diff, including before treating unmapped
-phone rows as new events. Standard uploads carry a private CUSTOM_APP_URI marker
-(no CUSTOM_APP_PACKAGE or server sync id); recover it even on tombstoned rows.
-Mudita imports record the pre-insert id set and expected model; recover only a
-unique new matching row. An ambiguous/uncertain result retains the intent and
-reports an incomplete pass rather than inserting again or guessing ownership.
+Every provider mutation has an item-owned durable before/after intent. Identity
+reservations, mapping replacement/removal and intent acknowledgement are atomic.
+Recover each pending write before a fresh diff; reserve only its identities,
+never stop unrelated sync. Persist provider-confirmed success separately from
+readback equality. A later edit must remain different from the intended baseline.
+Unconfirmed writes with drift stay unresolved instead of enabling an overwrite.
+Not-yet-applied retirement rechecks current selection, recurrence identity and
+horizon membership through the same scope predicate used by the diff.
+
+Standard uploads carry a private CUSTOM_APP_URI marker (no CUSTOM_APP_PACKAGE
+or server sync id); recover it even on tombstoned rows. New Mudita imports carry
+a UUID receipt encoded in invisible format characters in the description
+transport. The adapter extracts this as metadata, preserves it on updates and
+never sends it to CalendarContract or includes it in content fingerprints.
+Only a provider-returned ID or a unique exact provider-stored receipt establishes
+ownership. A matching independent event without that receipt is never adopted.
+Ambiguous or missing evidence reserves the affected item without blindly
+repeating insertion; unowned receipt-bearing rows are not uploaded as new events.
+
+`BridgeEngine.resolvePending` and the serialized `SyncRuntime.resolve` accept an
+explicit external result: `Applied(providerId)` for an insertion, `Applied()`
+for a mutation, or an operator assertion `NotApplied`. This is not automatic
+inference from absence or content equality. Settings UI remains part 2. Removing
+or copying private metadata externally destroys evidence; this is not an
+exactly-once guarantee after such destruction. Schema 3 is fresh-install-only,
+as were the earlier unpublished bridge schemas; unsupported upgrades preserve
+the old database and stop rather than reset it.
+
+Pass results distinguish retryable provider failures from unresolved evidence.
+Runtime preserves status and propagates failures to job completion for retry;
+intentional missing-permission/incompatible-schema stops do not request retry.
 
 Mapping provenance records whether a generated location first line was added.
 Ordinary description lines, including ones beginning with Location:, are not
@@ -101,3 +124,5 @@ suffix identifies generated lines, and a separate invisible body-boundary marker
 survives replacement of the whole generated line. Deleting a generated line
 cannot consume the ordinary body line it exposes. Location line separators are
 normalized to spaces for display only; the server location stays unchanged.
+The body marker is removed, not used as a slicing offset: ordinary text inserted
+before or after it participates in fingerprints and reaches the standard side.

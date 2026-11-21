@@ -193,14 +193,14 @@ class BridgeEngineTest {
         val writes = phone.writes
         engine.pass(now)
         assertEquals(writes, phone.writes); assertEquals("New remote", phone.rows.values.single().title)
-        assertNull(store.pending())
+        assertTrue(store.pending().isEmpty())
     }
     @Test fun interruptedPhoneDeletionNeverUploadsTheRemovedCopy() {
         seed(); server.rows.clear(); store.failSave = true
         try { engine.pass(now); fail("Expected death") } catch (_: ProcessDeath) { }
         engine.pass(now)
         assertTrue(phone.rows.isEmpty()); assertTrue(server.rows.isEmpty()); assertTrue(store.rows.isEmpty())
-        assertNull(store.pending())
+        assertTrue(store.pending().isEmpty())
     }
     @Test fun interruptedStandardUpdateAcknowledgesWithoutRepeatingOrLosingEdits() {
         val p = seed(); phone.rows[p.id] = p.copy(title = "Phone change"); store.failSave = true
@@ -208,24 +208,24 @@ class BridgeEngineTest {
         val writes = server.writes
         engine.pass(now)
         assertEquals(writes, server.writes); assertEquals("Phone change", server.rows[EventKey(1)]!!.title)
-        assertNull(store.pending())
+        assertTrue(store.pending().isEmpty())
     }
     @Test fun interruptedStandardDeletionDoesNotResurrectEitherCopy() {
         seed(); phone.rows.clear(); store.failSave = true
         try { engine.pass(now); fail("Expected death") } catch (_: ProcessDeath) { }
         engine.pass(now)
         assertTrue(phone.rows.isEmpty()); assertTrue(server.rows.isEmpty()); assertTrue(store.rows.isEmpty())
-        assertNull(store.pending())
+        assertTrue(store.pending().isEmpty())
     }
     @Test fun failedExpiredEditRetainsCopyAndMappingUntilTheProviderAcceptsIt() {
         val occurrence = event().copy(recurring = true, instanceStart = event().start)
         server.rows[occurrence.key] = occurrence; engine.pass(now)
         val p = phone.rows.values.single(); phone.rows[p.id] = p.copy(title = "Not lost")
         server.allowUpdate = false; engine.pass(now + BridgeEngine.WEEK)
-        assertEquals(1, phone.rows.size); assertEquals(1, store.rows.size); assertNotNull(store.pending())
+        assertEquals(1, phone.rows.size); assertEquals(1, store.rows.size); assertTrue(store.pending().isNotEmpty())
         server.allowUpdate = true; engine.pass(now + BridgeEngine.WEEK)
         assertEquals("Not lost", server.rows[occurrence.key]!!.title)
-        assertTrue(phone.rows.isEmpty()); assertTrue(store.rows.isEmpty()); assertNull(store.pending())
+        assertTrue(phone.rows.isEmpty()); assertTrue(store.rows.isEmpty()); assertTrue(store.pending().isEmpty())
     }
     @Test fun expiredOccurrenceMovedBackIntoTheWindowKeepsItsPhoneIdentity() {
         val occurrence = event().copy(recurring = true, instanceStart = event().start)
@@ -243,19 +243,20 @@ class BridgeEngineTest {
         store.prepare(intent)
         phone.rows[10] = mapper.toMudita(remote).copy(id = 10); phone.rows[11] = mapper.toMudita(remote).copy(id = 11)
         engine.pass(now)
-        assertEquals(2, phone.rows.size); assertEquals(1, server.rows.size); assertEquals(intent, store.pending())
+        assertEquals(2, phone.rows.size); assertEquals(3, server.rows.size); assertEquals(listOf(intent), store.pending())
+        assertTrue(store.rows.values.none { it.standardKey == remote.key })
         assertTrue(store.status.contains("incomplete"))
     }
     @Test fun uncertainInsertWithNoRecoverableRowIsNeverBlindlyRepeated() {
         engine.pass(now)
         val remote = event(); server.rows[remote.key] = remote
         store.prepare(WriteIntent(kind = WriteKind.IMPORT, phoneAfter = mapper.toMudita(remote), standardBefore = remote, attempted = true))
-        engine.pass(now); assertEquals(0, phone.writes); assertNotNull(store.pending())
+        engine.pass(now); assertEquals(0, phone.writes); assertTrue(store.pending().isNotEmpty())
         store.intent = null
         val p = MuditaEvent(10, "Phone", "Body", now, now + 1000); phone.rows[10] = p
         store.prepare(WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = p,
             standardAfter = mapper.toStandard(p, event().copy(id = 0, location = "")), attempted = true))
-        engine.pass(now); assertEquals(0, server.writes); assertNotNull(store.pending())
+        engine.pass(now); assertEquals(0, server.writes); assertTrue(store.pending().isNotEmpty())
     }
     @Test fun ordinaryLocationTextOnNewPhoneEventsIsUploadedIntact() {
         engine.pass(now)
@@ -268,7 +269,7 @@ class BridgeEngineTest {
         val remote = event(); server.rows[remote.key] = remote
         store.prepare(WriteIntent(kind = WriteKind.IMPORT, phoneAfter = mapper.toMudita(remote), standardBefore = remote))
         phone.schema = false; engine.pass(now)
-        assertEquals(0, phone.writes); assertNotNull(store.pending())
+        assertEquals(0, phone.writes); assertTrue(store.pending().isNotEmpty())
     }
     @Test fun importReadbackDriftKeepsIdentityAndReconcilesThePhoneEditNextPass() {
         engine.pass(now); server.rows[event().key] = event()
@@ -296,7 +297,7 @@ class BridgeEngineTest {
         settings = settings.copy(calendars = emptySet())
         engine.pass(now)
         assertEquals(before, server.rows[EventKey(1)]); assertEquals(0, server.writes)
-        assertTrue(phone.rows.isEmpty()); assertTrue(store.rows.isEmpty()); assertNull(store.pending())
+        assertTrue(phone.rows.isEmpty()); assertTrue(store.rows.isEmpty()); assertTrue(store.pending().isEmpty())
     }
     @Test fun unattemptedUploadDoesNotWriteToANoLongerSyncingDestination() {
         engine.pass(now)
@@ -305,7 +306,188 @@ class BridgeEngineTest {
         store.prepare(WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = p, standardAfter = mapper.toStandard(p, template)))
         server.calendarList = listOf(SyncCalendar(1, "dav", false))
         engine.pass(now)
-        assertEquals(0, server.writes); assertEquals(p, phone.rows[p.id]); assertNull(store.pending())
+        assertEquals(0, server.writes); assertEquals(p, phone.rows[p.id]); assertTrue(store.pending().isEmpty())
+    }
+
+    @Test fun aSoleIndependentMatchIsNeverClaimedAsAnUnknownImport() {
+        engine.pass(now); val remote = event(); server.rows[remote.key] = remote
+        store.prepare(WriteIntent(kind = WriteKind.IMPORT, phoneAfter = mapper.toMudita(remote),
+            standardBefore = remote, attempted = true))
+        phone.rows[20] = mapper.toMudita(remote).copy(id = 20, preReminder = true)
+        engine.pass(now)
+        assertTrue(store.rows.values.none { it.standardKey == remote.key })
+        server.rows.remove(remote.key); engine.pass(now)
+        assertTrue(phone.rows[20]!!.preReminder)
+    }
+    @Test fun anUnknownImportDoesNotSuspendUnrelatedEditsImportsOrUploads() {
+        val existing = seed()
+        val pending = event(2); server.rows[pending.key] = pending
+        store.prepare(WriteIntent(kind = WriteKind.IMPORT, phoneAfter = mapper.toMudita(pending),
+            standardBefore = pending, attempted = true))
+        server.rows[event().key] = event().copy(title = "Remote update")
+        server.rows[event(3).key] = event(3)
+        phone.rows[50] = MuditaEvent(50, "Independent", "New", now, now + 1000)
+        engine.pass(now)
+        assertEquals("Remote update", phone.rows[existing.id]!!.title)
+        assertTrue(store.rows.values.any { it.standardKey == event(3).key })
+        assertTrue(server.rows.values.any { it.title == "Independent" })
+        assertTrue(store.pending().isNotEmpty())
+    }
+    @Test fun successfulPhoneUpdateDoesNotOverwriteAnEditBeforeReadback() {
+        val original = seed(); server.rows[event().key] = event().copy(title = "B")
+        phone.afterUpdate = { id -> phone.rows[id] = phone.rows[id]!!.copy(title = "C", preReminder = true) }
+        engine.pass(now); engine.pass(now)
+        assertEquals("C", phone.rows[original.id]!!.title)
+        assertEquals("C", server.rows[event().key]!!.title)
+        assertTrue(phone.rows[original.id]!!.preReminder)
+    }
+    @Test fun pendingRetirementRechecksSelectionAndKeepsTheExistingReminder() {
+        val original = seed(); phone.rows[original.id] = original.copy(preReminder = true)
+        val before = phone.rows[original.id]!!
+        store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = store.rows.values.single(), phoneBefore = before))
+        engine.pass(now)
+        assertEquals(before, phone.rows[original.id])
+        assertEquals(original.id, store.rows.values.single().muditaId)
+    }
+    @Test fun pendingRetirementRechecksRecurrenceAndTheCurrentHorizon() {
+        val occurrence = event().copy(recurring = true, instanceStart = event().start)
+        server.rows[occurrence.key] = occurrence; engine.pass(now)
+        val row = store.rows.values.single(); val before = phone.rows[row.muditaId]!!.copy(preReminder = true)
+        phone.rows[row.muditaId] = before
+        store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = before))
+        engine.pass(now)
+        assertEquals(before, phone.rows[row.muditaId])
+        store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = before))
+        engine.pass(now + BridgeEngine.WEEK)
+        assertTrue(phone.rows.isEmpty())
+    }
+
+    @Test fun receiptRecoversAnUnknownImportEvenAfterPhoneContentChanges() {
+        engine.pass(now); server.rows[event().key] = event()
+        phone.afterInsert = { id ->
+            phone.rows[id] = phone.rows[id]!!.copy(title = "Edited after commit")
+            throw ProcessDeath()
+        }
+        try { engine.pass(now); fail("Expected death") } catch (_: ProcessDeath) { }
+        val p = phone.rows.values.single()
+        assertTrue(p.insertReceipts.isNotEmpty()); assertNull(store.pending().single().insertedId)
+        engine.pass(now); engine.pass(now)
+        assertEquals(1, phone.rows.size); assertEquals(1, server.rows.size)
+        assertEquals("Edited after commit", server.rows.values.single().title)
+    }
+    @Test fun multipleUnknownWritesReserveOnlyTheirOwnItemsAndCanBeResolvedExplicitly() {
+        engine.pass(now)
+        val remote = event(); server.rows[remote.key] = remote
+        val p = MuditaEvent(10, "Upload", "Body", now, now + 1000); phone.rows[p.id] = p
+        val a = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = mapper.toMudita(remote), attempted = true)
+        val b = WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = p,
+            standardAfter = mapper.toStandard(p, event().copy(id = 0, location = "")), attempted = true)
+        store.prepare(a); store.prepare(b)
+        assertFalse(engine.pass(now).retry); assertEquals(2, store.pending().size)
+        engine.resolvePending(now, a.id, WriteResolution.NotApplied)
+        engine.resolvePending(now, b.id, WriteResolution.NotApplied)
+        engine.pass(now)
+        assertTrue(store.pending().isEmpty()); assertEquals(2, store.rows.size)
+        assertEquals(2, phone.rows.size); assertEquals(2, server.rows.size)
+    }
+    @Test fun anUnconfirmedUpdateWithDriftRemainsReservedInsteadOfOverwritingThePhone() {
+        val p = seed(); val source = event().copy(title = "B"); server.rows[source.key] = source
+        val intent = WriteIntent(kind = WriteKind.PHONE_UPDATE, mapping = store.rows.values.single(),
+            phoneBefore = p, phoneAfter = mapper.toMudita(source, p), standardBefore = source, attempted = true)
+        store.prepare(intent); phone.rows[p.id] = p.copy(title = "C")
+        server.rows[event(2).key] = event(2)
+        engine.pass(now); engine.pass(now)
+        assertEquals("C", phone.rows[p.id]!!.title); assertEquals("B", server.rows[source.key]!!.title)
+        assertEquals(listOf(intent), store.pending()); assertEquals(2, phone.rows.size)
+        engine.resolvePending(now, intent.id, WriteResolution.Applied())
+        engine.pass(now)
+        assertEquals("C", server.rows[source.key]!!.title); assertTrue(store.pending().isEmpty())
+    }
+    @Test fun confirmedUpdateSurvivesDeathBeforeAcknowledgementAndPreservesANewerEdit() {
+        val p = seed(); server.rows[event().key] = event().copy(title = "B")
+        phone.afterUpdate = { id -> phone.rows[id] = phone.rows[id]!!.copy(title = "C") }
+        store.failSave = true
+        try { engine.pass(now); fail("Expected death") } catch (_: ProcessDeath) { }
+        assertTrue(store.pending().single().confirmed)
+        engine.pass(now)
+        assertEquals("C", phone.rows[p.id]!!.title); assertEquals("C", server.rows[event().key]!!.title)
+    }
+    @Test fun retirementStillRemovesACopyWhenItsRecurrenceIdentityIsObsolete() {
+        val p = seed(); val row = store.rows.values.single()
+        server.rows[event().key] = event().copy(recurring = true)
+        store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = p, attempted = true))
+        engine.pass(now)
+        assertTrue(phone.rows.isEmpty()); assertTrue(store.rows.isEmpty())
+        assertNotNull(server.rows[event().key])
+    }
+    @Test fun vanishedPendingRetirementNeverTurnsIntoAUserDeletionOfTheStandardEvent() {
+        val p = seed(); val row = store.rows.values.single()
+        store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = p, attempted = true))
+        phone.rows.clear()
+        engine.pass(now)
+        assertEquals(event(), server.rows[event().key])
+        assertEquals(1, phone.rows.size); assertEquals(0, server.writes)
+        assertTrue(store.pending().isEmpty())
+    }
+    @Test fun alreadyConvergedContentAdvancesTheBaselineWithoutIssuingAnotherWrite() {
+        val p = seed(); val source = event().copy(title = "B"); server.rows[source.key] = source
+        phone.rows[p.id] = mapper.toMudita(source, p)
+        val writes = phone.writes
+        engine.pass(now); val saves = store.saves
+        engine.pass(now)
+        assertEquals(writes, phone.writes); assertEquals(saves, store.saves)
+        assertEquals(mapper.standardFingerprint(source), store.rows.values.single().standardFingerprint)
+    }
+    @Test fun oneProviderExceptionDoesNotAbortAnotherItemOrDisappearFromRetry() {
+        engine.pass(now); server.rows[event().key] = event(); server.rows[event(2).key] = event(2)
+        phone.afterInsert = { throw IllegalStateException("Provider failed after committing") }
+        val result = engine.pass(now)
+        assertTrue(result.retry); assertEquals(0, result.unresolved)
+        assertEquals(1, store.pending().size); assertEquals(1, store.rows.size)
+        assertTrue(store.rows.values.any { it.standardKey == event(2).key })
+        val recovered = engine.pass(now)
+        assertFalse(recovered.retry); assertEquals(0, recovered.unresolved)
+        assertEquals(2, store.rows.size); assertEquals(2, phone.rows.size)
+    }
+    @Test fun duplicateOrConflictingReceiptsStayUnownedWithoutBlockingIndependentUploads() {
+        engine.pass(now); val remote = event(); server.rows[remote.key] = remote
+        val intent = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = mapper.toMudita(remote), attempted = true)
+        store.prepare(intent)
+        phone.rows[10] = mapper.toMudita(remote).copy(id = 10, insertReceipts = setOf(intent.id))
+        phone.rows[11] = phone.rows[10]!!.copy(id = 11)
+        phone.rows[12] = phone.rows[10]!!.copy(id = 12, insertReceipts = setOf(intent.id, "12345678-1234-1234-1234-123456789abc"))
+        phone.rows[20] = MuditaEvent(20, "Independent", "Body", now, now + 1000)
+        val result = engine.pass(now)
+        assertFalse(result.retry); assertTrue(result.unresolved > 0)
+        assertEquals(listOf(intent), store.pending())
+        assertEquals(listOf(20L), store.rows.keys.toList())
+        assertEquals(2, server.rows.size)
+    }
+    @Test fun anExternalAppliedInsertResultRequiresAnIdentityAndDoesNotRepeatTheInsert() {
+        engine.pass(now); val remote = event(); server.rows[remote.key] = remote
+        val intent = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = mapper.toMudita(remote), attempted = true)
+        store.prepare(intent); phone.rows[10] = mapper.toMudita(remote).copy(id = 10)
+        try { engine.resolvePending(now, intent.id, WriteResolution.Applied()); fail("Expected missing identity") }
+        catch (_: IllegalStateException) { }
+        engine.resolvePending(now, intent.id, WriteResolution.Applied(10))
+        engine.pass(now)
+        assertTrue(store.pending().isEmpty()); assertEquals(0, phone.writes)
+        assertEquals(10L, store.rows.values.single().muditaId)
+    }
+    @Test fun aReceiptCopiedOntoAnAlreadyMappedRowCannotReassignItsOwnership() {
+        val p = seed(); val row = store.rows.values.single()
+        val remote = event(2); server.rows[remote.key] = remote
+        val intent = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = mapper.toMudita(remote), attempted = true)
+        store.prepare(intent)
+        phone.rows[p.id] = p.copy(insertReceipts = setOf(intent.id))
+        engine.pass(now)
+        assertEquals(row.standardKey, store.rows[p.id]!!.standardKey)
+        assertEquals(listOf(intent), store.pending())
+        assertEquals(1, phone.rows.size)
     }
 
     private class ProcessDeath : Error()
@@ -313,6 +495,7 @@ class BridgeEngineTest {
         val rows = linkedMapOf<Long, MuditaEvent>(); var schema = true; var writes = 0; var onRead: (() -> Unit)? = null
         private var nextId = 1L
         var afterInsert: ((Long) -> Unit)? = null
+        var afterUpdate: ((Long) -> Unit)? = null
         override fun schemaOk() = schema
         override fun all(): List<MuditaEvent> { val snapshot = rows.values.toList(); onRead?.also { onRead = null; it() }; return snapshot }
         override fun insert(event: MuditaEvent): Long {
@@ -321,7 +504,11 @@ class BridgeEngineTest {
             afterInsert?.also { afterInsert = null; it(id) }
             return id
         }
-        override fun update(id: Long, event: MuditaEvent): Boolean { writes++; rows[id] = event.copy(id = id); return true }
+        override fun update(id: Long, event: MuditaEvent): Boolean {
+            writes++; rows[id] = event.copy(id = id)
+            afterUpdate?.also { afterUpdate = null; it(id) }
+            return true
+        }
         override fun delete(id: Long): Boolean { writes++; return rows.remove(id) != null }
     }
     private class Server : StandardCalendarPort {
@@ -352,21 +539,28 @@ class BridgeEngineTest {
     }
     private class MemoryMappings : MappingStore {
         val rows = linkedMapOf<Long, Mapping>(); var saves = 0; var failSave = false
-        var intent: WriteIntent? = null
+        val intents = linkedMapOf<String, WriteIntent>()
+        var intent: WriteIntent?
+            get() = intents.values.singleOrNull()
+            set(value) { intents.clear(); if (value != null) intents[value.id] = value }
         override fun all() = rows.values.toList()
         override fun save(mapping: Mapping) {
             if (failSave) { failSave = false; throw ProcessDeath() }
             saves++; rows[mapping.muditaId] = mapping
         }
         override fun remove(muditaId: Long) { rows.remove(muditaId) }
-        override fun pending() = intent
-        override fun prepare(intent: WriteIntent) { check(this.intent == null || this.intent!!.id == intent.id); this.intent = intent }
+        override fun pending() = intents.values.toList()
+        override fun prepare(intent: WriteIntent) {
+            check(intents.values.none { it.id != intent.id && it.reservations.intersect(intent.reservations).isNotEmpty() })
+            intents[intent.id] = intent
+        }
         override fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?) {
-            check(intent?.id == intentId)
+            check(intentId in intents)
+            if (mapping != null) check(rows.values.none { it.muditaId == mapping.muditaId && it.standardKey != mapping.standardKey })
             if (failSave) { failSave = false; throw ProcessDeath() }
             if (removeMuditaId != null) remove(removeMuditaId)
             if (mapping != null) save(mapping)
-            intent = null
+            intents.remove(intentId)
         }
         override var firstRunDone = false
         override var status = ""

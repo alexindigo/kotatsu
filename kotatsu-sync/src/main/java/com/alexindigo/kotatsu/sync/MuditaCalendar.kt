@@ -6,16 +6,18 @@ import android.content.ContentValues
 import android.net.Uri
 
 class MuditaCalendar(private val resolver: ContentResolver) : MuditaCalendarPort {
-    override fun schemaOk(): Boolean = try {
+    override fun schemaOk(): Boolean =
         resolver.query(URI, null, null, null, null)?.use { it.columnNames.toList() == COLUMNS } ?: false
-    } catch (_: RuntimeException) { false }
 
     override fun all(): List<MuditaEvent> = resolver.query(URI, null, null, null, null)?.use { cursor ->
         check(cursor.columnNames.toList() == COLUMNS) { "Mudita Calendar schema changed" }
         buildList {
-            while (cursor.moveToNext()) add(MuditaEvent(cursor.getLong(0), cursor.getString(1).orEmpty(),
-                cursor.getString(2).orEmpty(), cursor.getLong(3), cursor.getLong(4), cursor.getInt(5) != 0,
-                cursor.getInt(7) != 0))
+            while (cursor.moveToNext()) {
+                val (description, receipt) = InsertReceipt.decode(cursor.getString(2).orEmpty())
+                add(MuditaEvent(cursor.getLong(0), cursor.getString(1).orEmpty(),
+                    description, cursor.getLong(3), cursor.getLong(4), cursor.getInt(5) != 0,
+                    cursor.getInt(7) != 0, receipt))
+            }
         }
     } ?: error("Mudita Calendar provider is absent")
 
@@ -25,7 +27,7 @@ class MuditaCalendar(private val resolver: ContentResolver) : MuditaCalendarPort
     override fun delete(id: Long): Boolean = resolver.delete(ContentUris.withAppendedId(URI, id), null, null) == 1
 
     private fun values(event: MuditaEvent) = ContentValues().apply {
-        put("id", event.id); put("title", event.title); put("desc", event.description)
+        put("id", event.id); put("title", event.title); put("desc", InsertReceipt.encode(event.description, event.insertReceipts))
         put("startDateTime", event.start); put("endDateTime", event.end)
         put("isAllDayEvent", event.allDay); put("isPreReminderSet", event.preReminder)
     }

@@ -5,6 +5,7 @@ data class MuditaEvent(
     val id: Long = 0, val title: String, val description: String,
     val start: Long, val end: Long, val allDay: Boolean = false,
     val preReminder: Boolean = false,
+    val insertReceipts: Set<String> = emptySet(),
 )
 
 data class SyncCalendar(val id: Long, val accountType: String, val syncing: Boolean) {
@@ -53,7 +54,7 @@ interface MappingStore {
     fun all(): List<Mapping>
     fun save(mapping: Mapping)
     fun remove(muditaId: Long)
-    fun pending(): WriteIntent?
+    fun pending(): List<WriteIntent>
     fun prepare(intent: WriteIntent)
     /** Mapping changes and intent removal are one durable transaction. */
     fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?)

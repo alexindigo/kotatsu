@@ -17,12 +17,15 @@ class FakeCalendarProvider : ContentProvider() {
     private val rows = linkedMapOf<Long, ContentValues>()
     private var nextId = 1L
     private var schema2 = false
+    private var failInsert = false
+    private var failQuery = false
     private val matcher = UriMatcher(UriMatcher.NO_MATCH).apply {
         addURI("com.mudita.calendar", "events", 1); addURI("com.mudita.calendar", "events/#", 2)
     }
     override fun onCreate() = true
     override fun getType(uri: Uri): String = "vnd.android.cursor.dir/vnd.mudita.event"
     @Synchronized override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): Cursor {
+        if (failQuery) { failQuery = false; error("Injected provider query failure") }
         require(matcher.match(uri) == 1) { "Unknown URI: $uri" }
         val columns = COLUMNS.copyOf().apply { if (schema2) this[2] = "description" }
         return MatrixCursor(columns).apply {
@@ -32,6 +35,7 @@ class FakeCalendarProvider : ContentProvider() {
     @Synchronized override fun insert(uri: Uri, values: ContentValues?): Uri? {
         require(matcher.match(uri) == 1) { "Unknown URI: $uri" }
         val model = model(values) ?: return null
+        if (failInsert) { failInsert = false; return null }
         val id = nextId++; model.put("id", id); rows[id] = model
         return ContentUris.withAppendedId(uri, id)
     }
@@ -51,6 +55,8 @@ class FakeCalendarProvider : ContentProvider() {
     }
     @Synchronized override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
         if (BuildConfig.DEBUG && method == "schema") { schema2 = extras?.getBoolean("schema2", false) ?: false; return Bundle.EMPTY }
+        if (BuildConfig.DEBUG && method == "failInsert") { failInsert = true; return Bundle.EMPTY }
+        if (BuildConfig.DEBUG && method == "failQuery") { failQuery = true; return Bundle.EMPTY }
         return super.call(method, arg, extras)
     }
     private fun model(values: ContentValues?): ContentValues? {

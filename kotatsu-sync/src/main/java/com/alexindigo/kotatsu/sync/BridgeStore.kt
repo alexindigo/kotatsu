@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import org.json.JSONArray
 import org.json.JSONObject
 
-class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge.db", null, 2), MappingStore {
+class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge.db", null, 3), MappingStore {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE pairs (mudita_id INTEGER PRIMARY KEY, event_id INTEGER NOT NULL, instance_start INTEGER, calendar_id INTEGER NOT NULL, mudita_fp TEXT NOT NULL, standard_fp TEXT NOT NULL, generated_location INTEGER NOT NULL)")
         db.execSQL("CREATE UNIQUE INDEX event_pair ON pairs(event_id, COALESCE(instance_start, -1))")
@@ -16,7 +16,8 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
     }
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = error("Unsupported bridge schema upgrade")
     private fun createIntents(db: SQLiteDatabase) {
-        db.execSQL("CREATE TABLE write_intent (singleton INTEGER PRIMARY KEY CHECK(singleton = 1), payload TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE write_intent (id TEXT PRIMARY KEY, payload TEXT NOT NULL)")
+        db.execSQL("CREATE TABLE write_reservation (identity TEXT PRIMARY KEY, intent_id TEXT NOT NULL)")
     }
     override fun all(): List<Mapping> = readableDatabase.rawQuery("SELECT * FROM pairs ORDER BY mudita_id", null).use { c ->
         buildList { while (c.moveToNext()) add(Mapping(c.getLong(0), EventKey(c.getLong(1),
@@ -39,24 +40,35 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
         } finally { db.endTransaction() }
     }
     override fun remove(muditaId: Long) { writableDatabase.delete("pairs", "mudita_id = ?", arrayOf(muditaId.toString())) }
-    override fun pending(): WriteIntent? = readableDatabase.rawQuery("SELECT payload FROM write_intent", null).use {
-        if (it.moveToFirst()) IntentJson.decode(it.getString(0)) else null
+    override fun pending(): List<WriteIntent> = readableDatabase.rawQuery("SELECT payload FROM write_intent ORDER BY rowid", null).use { c ->
+        buildList { while (c.moveToNext()) add(IntentJson.decode(c.getString(0))) }
     }
     override fun prepare(intent: WriteIntent) {
-        val existing = pending()
-        check(existing == null || existing.id == intent.id) { "A calendar write is already pending" }
-        writableDatabase.insertWithOnConflict("write_intent", null, ContentValues().apply {
-            put("singleton", 1); put("payload", IntentJson.encode(intent))
-        }, SQLiteDatabase.CONFLICT_REPLACE).also { check(it != -1L) }
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.delete("write_reservation", "intent_id = ?", arrayOf(intent.id))
+            for (identity in intent.reservations) db.insertOrThrow("write_reservation", null, ContentValues().apply {
+                put("identity", identity); put("intent_id", intent.id)
+            })
+            val values = ContentValues().apply { put("id", intent.id); put("payload", IntentJson.encode(intent)) }
+            if (db.update("write_intent", values, "id = ?", arrayOf(intent.id)) == 0)
+                db.insertOrThrow("write_intent", null, values)
+            db.setTransactionSuccessful()
+        } finally { db.endTransaction() }
     }
     override fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?) {
         val db = writableDatabase
         db.beginTransaction()
         try {
-            check(pending()?.id == intentId) { "Calendar write identity changed" }
+            check(pending().any { it.id == intentId }) { "Calendar write identity changed" }
+            if (mapping != null) check(all().none { it.muditaId == mapping.muditaId && it.standardKey != mapping.standardKey }) {
+                "Cannot reassign an already mapped phone identity"
+            }
             if (removeMuditaId != null) remove(removeMuditaId)
             if (mapping != null) save(mapping)
-            db.delete("write_intent", "singleton = 1", null)
+            db.delete("write_reservation", "intent_id = ?", arrayOf(intentId))
+            db.delete("write_intent", "id = ?", arrayOf(intentId))
             db.setTransactionSuccessful()
         } finally { db.endTransaction() }
     }
@@ -80,6 +92,7 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
 private object IntentJson {
     fun encode(i: WriteIntent): String = JSONObject().apply {
         put("id", i.id); put("kind", i.kind.name); put("attempted", i.attempted); put("inserted", i.insertedId)
+        put("confirmed", i.confirmed)
         put("phoneIds", JSONArray(i.phoneIdsBefore.toList()))
         put("mapping", i.mapping?.let { m -> JSONObject().apply {
             put("phone", m.muditaId); put("event", m.standardKey.eventId); put("instance", m.standardKey.instanceStart)
@@ -92,6 +105,7 @@ private object IntentJson {
     private fun phone(p: MuditaEvent?): JSONObject? = p?.let { JSONObject().apply {
         put("id", p.id); put("title", p.title); put("description", p.description)
         put("start", p.start); put("end", p.end); put("allDay", p.allDay); put("reminder", p.preReminder)
+        put("receipts", JSONArray(p.insertReceipts.toList()))
     } }
     private fun standard(s: StandardEvent?): JSONObject? = s?.let { JSONObject().apply {
         put("id", s.id); put("calendar", s.calendarId); put("title", s.title); put("description", s.description)
@@ -100,7 +114,8 @@ private object IntentJson {
     } }
     private fun JSONObject.longOrNull(key: String) = if (isNull(key)) null else getLong(key)
     private fun phone(p: JSONObject?) = p?.let { MuditaEvent(it.getLong("id"), it.getString("title"),
-        it.getString("description"), it.getLong("start"), it.getLong("end"), it.getBoolean("allDay"), it.getBoolean("reminder")) }
+        it.getString("description"), it.getLong("start"), it.getLong("end"), it.getBoolean("allDay"), it.getBoolean("reminder"),
+        it.getJSONArray("receipts").let { ids -> (0 until ids.length()).map { index -> ids.getString(index) }.toSet() }) }
     private fun standard(s: JSONObject?) = s?.let { StandardEvent(it.getLong("id"), it.getLong("calendar"),
         it.getString("title"), it.getString("description"), it.getString("location"), it.getLong("start"), it.getLong("end"),
         it.getBoolean("allDay"), it.getBoolean("recurring"), it.getString("zone"), it.longOrNull("instance")) }
@@ -113,7 +128,7 @@ private object IntentJson {
         return WriteIntent(j.getString("id"), WriteKind.valueOf(j.getString("kind")), mapping,
             phone(j.optJSONObject("phoneBefore")), phone(j.optJSONObject("phoneAfter")),
             standard(j.optJSONObject("standardBefore")), standard(j.optJSONObject("standardAfter")),
-            (0 until ids.length()).map { ids.getLong(it) }.toSet(), j.getBoolean("attempted"), j.longOrNull("inserted"))
+            (0 until ids.length()).map { ids.getLong(it) }.toSet(), j.getBoolean("attempted"), j.longOrNull("inserted"), j.getBoolean("confirmed"))
     }
 }
 

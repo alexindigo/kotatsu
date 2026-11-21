@@ -6,6 +6,17 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class EventMapperTest {
+    @Test fun textBeforeTheBodyMarkerIsStillBodyText() {
+        val mapper = EventMapper()
+        val source = StandardEvent(1, 1, "Title", "Body", "Home", 1, 2)
+        val phone = mapper.toMudita(source)
+        val edited = phone.copy(description = phone.description.replace(EventMapper.BODY_MARKER,
+            "Added " + EventMapper.BODY_MARKER))
+        assertEquals("Added Body", mapper.toStandard(edited, source, true).description)
+        assertNotEquals(mapper.muditaFingerprint(phone, true), mapper.muditaFingerprint(edited, true))
+        val withoutHeader = edited.copy(description = edited.description.substringAfter('\n'))
+        assertEquals("Added Body", mapper.toStandard(withoutHeader, source, true).description)
+    }
     private val mapper = EventMapper(ZoneId.of("America/Los_Angeles"))
     private val standard = StandardEvent(1, 2, "Dinner", "Bring food", "Home", 1000, 2000)
 

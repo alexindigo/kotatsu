@@ -25,12 +25,25 @@ object SyncRuntime {
                 store.status = "stopped: calendar permission not granted"; return
             }
             try {
-                BridgeEngine(MuditaCalendar(context.contentResolver), StandardCalendar(context.contentResolver),
+                val result = BridgeEngine(MuditaCalendar(context.contentResolver), StandardCalendar(context.contentResolver),
                     store, PreferenceSyncConfig(context)).pass(System.currentTimeMillis())
+                if (result.retry) throw RetryPass()
             } catch (error: Exception) {
-                store.status = "stopped: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"
+                if (error !is RetryPass) store.status = "calendar pass incomplete: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"
+                throw error
             }
         }
+    }
+
+    private class RetryPass : Exception("Retryable calendar provider operation")
+
+    /** Explicit evidence from a future settings/manual-resolution caller; serialized with passes. */
+    fun resolve(context: Context, id: String, resolution: WriteResolution) = enqueue {
+        BridgeStore(context).use { store ->
+            BridgeEngine(MuditaCalendar(context.contentResolver), StandardCalendar(context.contentResolver),
+                store, PreferenceSyncConfig(context)).resolvePending(System.currentTimeMillis(), id, resolution)
+        }
+        pass(context)
     }
 
     fun arm(context: Context, replaceWatch: Boolean = false) {

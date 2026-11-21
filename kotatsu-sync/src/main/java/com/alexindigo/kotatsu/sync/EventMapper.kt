@@ -13,6 +13,7 @@ class EventMapper(private val zone: ZoneId = ZoneId.systemDefault()) {
         description = (if (event.location.isNotEmpty()) "Location: ${oneLine(event.location)}$LOCATION_MARKER\n$BODY_MARKER" else "") + event.description,
         start = toLocal(event.start, event.allDay), end = toLocal(event.end, event.allDay),
         allDay = event.allDay, preReminder = current?.preReminder ?: false,
+        insertReceipts = current?.insertReceipts.orEmpty(),
     )
 
     fun toStandard(event: MuditaEvent, current: StandardEvent, generatedLocation: Boolean = false): StandardEvent = current.copy(
@@ -23,11 +24,13 @@ class EventMapper(private val zone: ZoneId = ZoneId.systemDefault()) {
 
     fun body(description: String, generatedLocation: Boolean): String {
         if (!generatedLocation) return description
-        // The body boundary survives replacing the whole generated line, including its suffix.
-        val boundary = description.indexOf(BODY_MARKER)
-        if (boundary >= 0) return description.substring(boundary + BODY_MARKER.length)
-        return if (description.substringBefore('\n').endsWith(LOCATION_MARKER))
-            description.substringAfter('\n', "") else description
+        // A boundary is removable framing, not the start of user data. Text may precede it.
+        val first = description.substringBefore('\n')
+        val hasHeader = first.endsWith(LOCATION_MARKER) ||
+            (first.startsWith("Location: ") && description.contains('\n') &&
+                description.substringAfter('\n').contains(BODY_MARKER))
+        val body = if (hasHeader) description.substringAfter('\n', "") else description
+        return body.replace(BODY_MARKER, "")
     }
 
     fun muditaFingerprint(event: MuditaEvent, generatedLocation: Boolean = false): String = hash(event.title, body(event.description, generatedLocation),
