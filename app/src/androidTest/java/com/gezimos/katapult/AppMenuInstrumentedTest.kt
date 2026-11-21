@@ -19,7 +19,7 @@ class AppMenuInstrumentedTest {
     private val camera = AppModel(testContext.packageName, "Open Camera", AppMenuShortcutTarget::class.java.name)
     private lateinit var calculator: AppModel
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
-    private fun shell(command: String): String = instrumentation.platformAutomation.boundedShell(command)
+    private fun shell(command: String): String = instrumentation.platformAutomation.acknowledgedShell(command)
     private fun resolvedHome(): android.content.ComponentName? {
         val info = context.packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             ?.activityInfo ?: return null

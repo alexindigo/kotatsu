@@ -19,6 +19,7 @@ import org.xmlpull.v1.XmlSerializer
 class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: String? = null) {
     private val context = instrumentation.targetContext
     private val automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
+    private var acknowledgedFullscreenWindow: Int? = null
 
     private fun windows(): List<AccessibilityWindowInfo> {
         // Another test helper can reconnect UiAutomation via its default getter, resetting service flags.
@@ -34,13 +35,29 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
     fun await(message: String, timeoutMs: Long = 8000, predicate: () -> Boolean) {
         val end = SystemClock.uptimeMillis() + timeoutMs
         while (SystemClock.uptimeMillis() < end) {
-            if (predicate()) return
+            if (!acknowledgeFullscreenHint() && predicate()) return
             SystemClock.sleep(80)
         }
         val failure = AssertionError(message)
         // Evidence must never replace the timeout as the reported failure.
         runCatching { recordFailure(failure) }.exceptionOrNull()?.let(failure::addSuppressed)
         throw failure
+    }
+
+    /** Android can post this input-owning tutorial after app content has already appeared.
+     * Resolve that owner at every await boundary, not with a one-shot GOT IT text lookup.
+     * Send one action per real window and observe its removal before evaluating app state. */
+    private fun acknowledgeFullscreenHint(): Boolean {
+        if (paneTitle != null) return false
+        val title = find { it.packageName == "android" &&
+            it.viewIdResourceName == "android:id/immersive_cling_title" } ?: return false
+        val button = find { it.windowId == title.windowId && it.packageName == "android" &&
+            it.viewIdResourceName == "android:id/ok" && it.isVisibleToUser && it.isEnabled } ?: return true
+        if (acknowledgedFullscreenWindow != title.windowId) {
+            check(button.performAction(AccessibilityNodeInfo.ACTION_CLICK)) { "Android fullscreen tutorial rejected acknowledgement" }
+            acknowledgedFullscreenWindow = title.windowId
+        }
+        return true
     }
 
     /**

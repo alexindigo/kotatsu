@@ -3,12 +3,10 @@ package com.gezimos.katapult
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.UiAutomation
 import android.content.ComponentName
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
-import android.os.ParcelFileDescriptor
 import android.view.View
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
@@ -21,6 +19,7 @@ import com.gezimos.katapult.util.SensitiveAccess
 import org.junit.Assert.*
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 import java.util.UUID
 
 /** Real OS posts -> listener -> shared source -> rendered consumers. No synthetic badge feed. */
@@ -31,9 +30,7 @@ class UnreadBadgesInstrumentedTest {
     private val context = instrumentation.targetContext
     private val ui = PlatformUiDriver(instrumentation)
 
-    private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
-        instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-            .executeShellCommand(command)).bufferedReader().use { it.readText() }
+    private fun shell(command: String): String = instrumentation.platformAutomation.acknowledgedShell(command)
 
     private fun <T> main(read: () -> T): T {
         var result: Result<T>? = null
@@ -41,7 +38,11 @@ class UnreadBadgesInstrumentedTest {
         return result!!.getOrThrow()
     }
 
-    @Test fun realListenerDeliversUnreadTotalsToHomeGridScreensaverAndLockscreenRows() {
+    @Test fun realListenerDeliversUnreadTotalsToHomeGridScreensaverAndLockscreenRows() = exerciseUnread(false)
+
+    @Test fun fullscreenTutorialCannotConcealRealUnreadDelivery() = exerciseUnread(true)
+
+    private fun exerciseUnread(forceFullscreenHint: Boolean) {
         val manager = context.getSystemService(NotificationManager::class.java)
         val listener = ComponentName(context, NotificationListener::class.java)
         val wasAllowed = manager.isNotificationListenerAccessGranted(listener)
@@ -52,6 +53,7 @@ class UnreadBadgesInstrumentedTest {
             "screensaver_enabled", "screensaver_show_notifications", "screensaver_update_mode",
             "rename_${context.packageName}", "lockscreen_widget_excluded", "app_order")
         val saved = keys.associateWith { raw.all[it] }
+        val fullscreenConfirmation = if (forceFullscreenHint) shell("settings get secure immersive_mode_confirmations").trim() else null
         val channel = "unread-${UUID.randomUUID()}"
         val tag = channel
         var activity: MainActivity? = null
@@ -69,6 +71,7 @@ class UnreadBadgesInstrumentedTest {
                 (BadgeSources.counts(context)[context.packageName] ?: 0) == expected
         }
         withFixtureCleanup(body = {
+            if (forceFullscreenHint) shell("settings delete secure immersive_mode_confirmations")
             main {
                 prefs.onboardingComplete = true
                 prefs.notificationIndicators = true
@@ -124,6 +127,14 @@ class UnreadBadgesInstrumentedTest {
             screensaver = instrumentation.startActivitySync(Intent(context, ScreensaverActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }) as ScreensaverActivity
+            if (forceFullscreenHint) {
+                // Force Android's delayed input-owner change before asking the shared driver
+                // to observe app content. A one-shot check at Activity launch cannot own this.
+                fixtureAwait("The real Android fullscreen tutorial did not acquire focus") {
+                    ui.find { it.packageName == "android" && it.viewIdResourceName == "android:id/immersive_cling_title" } != null
+                }
+                assertFalse("App observation must not bypass the focused tutorial", ui.has("A unread fixture"))
+            }
             ui.await("Screensaver did not render the shared unread total") { ui.has("A unread fixture") && ui.has("8") }
             post(1, 4)
             ui.await("Real listener update did not reach the static screensaver") { ui.has("A unread fixture") && ui.has("5") }
@@ -153,6 +164,17 @@ class UnreadBadgesInstrumentedTest {
             ui.await("Production lock-screen row did not render the same total") { ui.has("A unread fixture") && ui.has("5") }
         }, actions = arrayOf<() -> Unit>(
             { ConnectedUiStateFixture.quiesceOwnedProducers() },
+            { if (fullscreenConfirmation != null) {
+                // The native initial value may be empty rather than absent. Preserve both;
+                // Runtime.exec tokenization cannot express an empty argument directly.
+                val restore = File.createTempFile("fullscreen-restore-", ".sh", context.getExternalFilesDir(null))
+                withFixtureCleanup({ check(restore.delete()) }) {
+                    restore.writeText(if (fullscreenConfirmation == "null") "settings delete secure immersive_mode_confirmations\n"
+                        else "settings put secure immersive_mode_confirmations '${fullscreenConfirmation.replace("'", "'\\''")}'\n")
+                    shell("sh ${restore.absolutePath}")
+                }
+                assertEquals(fullscreenConfirmation, shell("settings get secure immersive_mode_confirmations").trim())
+            } },
             { fixtureCleanup(*(1..5).map { id -> { manager.cancel(tag, id) } }.toTypedArray()) },
             { manager.deleteNotificationChannel(channel) },
             { if (!wasAllowed) shell("cmd notification disallow_listener ${listener.flattenToString()}") },

@@ -33,7 +33,7 @@ internal class RecentOverlayFixture : AutoCloseable {
     }
     fun shell(command: String): String =
         instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-            .boundedShell(command)
+            .acknowledgedShell(command)
     fun settings() {
         // One cross-app handoff can stamp the old app's pause and Settings' resume
         // in the same millisecond. Settle Settings first, then enter Display in a

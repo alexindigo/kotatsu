@@ -25,7 +25,7 @@ class HomeKeyFilterInstrumentedTest {
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
     private fun shell(command: String) =
         instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-            .boundedShell(command)
+            .acknowledgedShell(command)
 
     private fun hardwareHome(count: Int = 1, scan: Int = 172) {
         // InputManager's shell keyevent injection skips InputReader's accessibility filter.
