@@ -18,6 +18,7 @@ class EventMapper(private val zone: ZoneId = ZoneId.systemDefault()) {
     fun toStandard(event: MuditaEvent, current: StandardEvent): StandardEvent = current.copy(
         title = event.title, description = body(event.description), start = toUtc(event.start, event.allDay),
         end = toUtc(event.end, event.allDay), allDay = event.allDay,
+        timeZone = when { event.allDay -> "UTC"; current.allDay -> zone.id; else -> current.timeZone },
     )
 
     fun body(description: String): String = if (description.startsWith("Location: "))

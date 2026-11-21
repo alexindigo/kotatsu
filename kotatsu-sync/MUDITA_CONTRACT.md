@@ -57,3 +57,11 @@ currently read flag. No reminder JSON is written. CalendarContract Reminders
 are never inserted, updated or deleted by the bridge. A full-model Mudita
 update still rebuilds its internal alarm identifiers; it cannot preserve them
 byte-for-byte. The flag is the only reminder choice the converter accepts.
+
+## Standard-calendar all-day transitions
+
+Per approved addendum 2, phone edits preserve a timed event's zone unless its
+all-day flag changes. Timed -> all-day writes UTC midnight dates and zone UTC;
+all-day -> timed uses the current device zone. All-day -> all-day stays UTC.
+This also applies to individual recurrence exceptions. Android requires this
+normalization; an all-day event has no zone of its own.
