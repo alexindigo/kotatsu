@@ -56,8 +56,11 @@ pre-reminder. These are generated alarm ids, not server reminder values.
 
 Per the approved no-reminders addendum, neither field participates in bridge
 fingerprints. New Mudita rows set isPreReminderSet=false; updates retain the
-currently read flag. No reminder JSON is written. CalendarContract Reminders
-are never inserted, updated or deleted by the bridge. A full-model Mudita
+currently read flag. No reminder JSON is written. Per addendum 3, a newly
+created recurrence exception inherits the base event's CalendarContract
+reminders unchanged (platform cloning for RRULE, an atomic provider batch for
+RDATE). The bridge never changes reminders on existing rows, and phone uploads
+get none. A full-model Mudita
 update still rebuilds its internal alarm identifiers; it cannot preserve them
 byte-for-byte. The flag is the only reminder choice the converter accepts.
 
@@ -79,3 +82,21 @@ events as a sync adapter, like DAVx5 does, rather than as unsynced local series.
 RRULE exceptions use CalendarProvider's CONTENT_EXCEPTION_URI so the platform
 clones unsupported fields, attendees and reminders without bridge-side reminder
 writes. That API requires duration, not dtend, for an exception request.
+
+## Bridge recovery and description ownership
+
+Every provider mutation has a durable before/after intent in the mapping store.
+The mapping replacement/removal and intent acknowledgement commit atomically.
+Reconcile pending writes before a fresh diff, including before treating unmapped
+phone rows as new events. Standard uploads carry a private CUSTOM_APP_URI marker
+(no CUSTOM_APP_PACKAGE or server sync id); recover it even on tombstoned rows.
+Mudita imports record the pre-insert id set and expected model; recover only a
+unique new matching row. An ambiguous/uncertain result retains the intent and
+reports an incomplete pass rather than inserting again or guessing ownership.
+
+Mapping provenance records whether a generated location first line was added.
+Ordinary description lines, including ones beginning with Location:, are not
+stripped from unprefixed rows or phone uploads. An invisible format-character
+suffix identifies generated lines; deleting a generated line cannot consume
+the ordinary body line it exposes. Location line separators are
+normalized to spaces for display only; the server location stays unchanged.

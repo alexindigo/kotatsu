@@ -14,6 +14,7 @@ object SyncRuntime {
     const val WATCH_JOB = 0x4b5301
     const val PERIODIC_JOB = 0x4b5302
     const val HORIZON_JOB = 0x4b5303
+    const val BOOT_JOB = 0x4b5304
     private val lane = Executors.newSingleThreadExecutor()
     fun enqueue(work: () -> Unit) = lane.submit(work)
 
@@ -26,7 +27,7 @@ object SyncRuntime {
             try {
                 BridgeEngine(MuditaCalendar(context.contentResolver), StandardCalendar(context.contentResolver),
                     store, PreferenceSyncConfig(context)).pass(System.currentTimeMillis())
-            } catch (error: RuntimeException) {
+            } catch (error: Exception) {
                 store.status = "stopped: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"
             }
         }
@@ -47,5 +48,15 @@ object SyncRuntime {
             schedule(JobInfo.Builder(PERIODIC_JOB, ComponentName(context, PeriodicPassJob::class.java)).setPeriodic(15 * 60 * 1000L))
         if (scheduler.getPendingJob(HORIZON_JOB) == null)
             schedule(JobInfo.Builder(HORIZON_JOB, ComponentName(context, HorizonJob::class.java)).setPeriodic(24 * 60 * 60 * 1000L))
+    }
+    fun armBoot(context: Context) {
+        // Queue the pass even if recurring-job scheduling is rejected; attempt both responsibilities.
+        PassLifecycle.boot({ arm(context) }, {
+            val scheduler = context.getSystemService(JobScheduler::class.java)
+            check(scheduler.schedule(JobInfo.Builder(BOOT_JOB, ComponentName(context, BootPassJob::class.java))
+                .setMinimumLatency(0).setOverrideDeadline(0).build()) == JobScheduler.RESULT_SUCCESS) {
+                "Could not schedule boot calendar pass"
+            }
+        })
     }
 }

@@ -3,12 +3,15 @@ package com.alexindigo.kotatsu.sync
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
+import android.content.ContentProviderOperation
 import android.database.Cursor
 import android.net.Uri
+import android.provider.CalendarContract
+import android.provider.CalendarContract.Attendees
 import android.provider.CalendarContract.Calendars
 import android.provider.CalendarContract.Events
 import android.provider.CalendarContract.Instances
-import java.time.Duration
+import android.provider.CalendarContract.Reminders
 
 /** Application writes, never sync-adapter writes: CalendarProvider owns dirty/deleted flags. */
 class StandardCalendar(private val resolver: ContentResolver) : StandardCalendarPort {
@@ -49,10 +52,14 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
         }.singleOrNull()
     }
 
-    override fun insert(calendarId: Long, event: StandardEvent): Long? =
+    override fun insert(calendarId: Long, event: StandardEvent, intentId: String?): Long? =
         resolver.insert(Events.CONTENT_URI, fields(event).apply {
             put(Events.CALENDAR_ID, calendarId); put(Events.EVENT_TIMEZONE, if (event.allDay) "UTC" else event.timeZone)
+            if (intentId != null) put(Events.CUSTOM_APP_URI, INSERT_MARKER + intentId)
         })?.let(ContentUris::parseId)
+
+    override fun findInsert(intentId: String): Long? = query(Events.CONTENT_URI, arrayOf(Events._ID),
+        "${Events.CUSTOM_APP_URI} = ?", arrayOf(INSERT_MARKER + intentId)) { it.getLong(0) }.singleOrNull()
 
     override fun update(key: EventKey, event: StandardEvent): Boolean {
         if (key.instanceStart == null) return resolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, key.eventId),
@@ -61,15 +68,8 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
         if (existing != null) return resolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, existing.event.id),
             fields(event, includeZone = true), null, null) == 1
         val original = raw(key.eventId) ?: return false
-        val base = original.event
         if (original.hasRule) return insertRuleException(key, event, canceled = false)
-        return resolver.insert(Events.CONTENT_URI, fields(event).apply {
-            put(Events.CALENDAR_ID, base.calendarId); put(Events.EVENT_TIMEZONE, event.timeZone)
-            put(Events.EVENT_LOCATION, base.location)
-            put(Events.ORIGINAL_ID, key.eventId); put(Events.ORIGINAL_INSTANCE_TIME, key.instanceStart)
-            put(Events.ORIGINAL_SYNC_ID, original.syncId)
-            put(Events.ORIGINAL_ALL_DAY, base.allDay)
-        }) != null
+        return insertDateException(key, event, original, canceled = false)
     }
 
     override fun delete(key: EventKey): Boolean {
@@ -80,12 +80,40 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
         val event = read(key) ?: return false
         val original = raw(key.eventId) ?: return false
         if (original.hasRule) return insertRuleException(key, event, canceled = true)
-        return resolver.insert(Events.CONTENT_URI, fields(event).apply {
-            put(Events.CALENDAR_ID, event.calendarId); put(Events.EVENT_TIMEZONE, event.timeZone)
+        return insertDateException(key, event, original, canceled = true)
+    }
+
+    private fun insertDateException(key: EventKey, event: StandardEvent, original: Raw, canceled: Boolean): Boolean {
+        val values = fields(event, includeZone = true).apply {
+            put(Events.CALENDAR_ID, original.event.calendarId); put(Events.EVENT_LOCATION, original.event.location)
             put(Events.ORIGINAL_ID, key.eventId); put(Events.ORIGINAL_INSTANCE_TIME, key.instanceStart)
-            put(Events.ORIGINAL_SYNC_ID, original.syncId)
-            put(Events.ORIGINAL_ALL_DAY, event.allDay); put(Events.STATUS, Events.STATUS_CANCELED)
-        }) != null
+            put(Events.ORIGINAL_SYNC_ID, original.syncId); put(Events.ORIGINAL_ALL_DAY, original.event.allDay)
+            if (canceled) put(Events.STATUS, Events.STATUS_CANCELED)
+        }
+        // RDATE has no platform cloning URI. Preserve unsupported event and related metadata,
+        // atomically with the exception row. A failed batch cannot strand an empty exception.
+        query(ContentUris.withAppendedId(Events.CONTENT_URI, key.eventId), EXCEPTION_METADATA, null, null) { c ->
+            for ((index, column) in EXCEPTION_METADATA.withIndex()) when (c.getType(index)) {
+                Cursor.FIELD_TYPE_STRING -> values.put(column, c.getString(index))
+                Cursor.FIELD_TYPE_INTEGER -> values.put(column, c.getLong(index))
+            }
+        }
+        val operations = arrayListOf(ContentProviderOperation.newInsert(Events.CONTENT_URI).withValues(values).build())
+        val reminders = query(Reminders.CONTENT_URI, arrayOf(Reminders.MINUTES, Reminders.METHOD),
+            "${Reminders.EVENT_ID} = ?", arrayOf(key.eventId.toString())) { CalendarReminder(it.getInt(0), it.getInt(1)) }
+        for (reminder in exceptionReminders(reminders)) operations.add(ContentProviderOperation.newInsert(Reminders.CONTENT_URI)
+            .withValueBackReference(Reminders.EVENT_ID, 0).withValue(Reminders.MINUTES, reminder.minutes)
+            .withValue(Reminders.METHOD, reminder.method).build())
+        query(Attendees.CONTENT_URI, ATTENDEE_METADATA, "${Attendees.EVENT_ID} = ?", arrayOf(key.eventId.toString())) { c ->
+            val attendee = ContentValues()
+            for ((index, column) in ATTENDEE_METADATA.withIndex()) when (c.getType(index)) {
+                Cursor.FIELD_TYPE_STRING -> attendee.put(column, c.getString(index))
+                Cursor.FIELD_TYPE_INTEGER -> attendee.put(column, c.getLong(index))
+            }
+            operations.add(ContentProviderOperation.newInsert(Attendees.CONTENT_URI).withValues(attendee)
+                .withValueBackReference(Attendees.EVENT_ID, 0).build())
+        }
+        return resolver.applyBatch(CalendarContract.AUTHORITY, operations).firstOrNull()?.uri != null
     }
 
     private fun fields(event: StandardEvent, includeZone: Boolean = false) = ContentValues().apply {
@@ -111,7 +139,7 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
     private fun rawEvents(selection: String, args: Array<String>): List<Raw> = query(Events.CONTENT_URI, PROJECTION, selection, args) { c ->
         val recurring = !c.getString(9).isNullOrEmpty() || !c.getString(10).isNullOrEmpty()
         val begin = c.getLong(5)
-        val end = if (!c.isNull(6)) c.getLong(6) else begin + Duration.parse(c.getString(11)).toMillis()
+        val end = if (!c.isNull(6)) c.getLong(6) else begin + calendarDurationMillis(c.getString(11))
         Raw(StandardEvent(c.getLong(0), c.getLong(1), c.getString(2).orEmpty(), c.getString(3).orEmpty(),
             c.getString(4).orEmpty(), begin, end, c.getInt(7) != 0, recurring, c.getString(8).orEmpty()),
             if (c.isNull(12)) null else c.getLong(12), if (c.isNull(13)) null else c.getLong(13), c.getInt(14), c.getInt(15) != 0,
@@ -126,6 +154,12 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
     }.build()
     private fun marks(count: Int): String = List(count) { "?" }.joinToString(",")
     companion object {
+        private const val INSERT_MARKER = "kotatsu-sync:insert:"
+        private val EXCEPTION_METADATA = arrayOf(Events.ACCESS_LEVEL, Events.AVAILABILITY, Events.ORGANIZER,
+            Events.GUESTS_CAN_MODIFY, Events.GUESTS_CAN_INVITE_OTHERS, Events.GUESTS_CAN_SEE_GUESTS)
+        private val ATTENDEE_METADATA = arrayOf(Attendees.ATTENDEE_NAME, Attendees.ATTENDEE_EMAIL,
+            Attendees.ATTENDEE_RELATIONSHIP, Attendees.ATTENDEE_TYPE, Attendees.ATTENDEE_STATUS,
+            Attendees.ATTENDEE_IDENTITY, Attendees.ATTENDEE_ID_NAMESPACE)
         private val PROJECTION = arrayOf(Events._ID, Events.CALENDAR_ID, Events.TITLE, Events.DESCRIPTION,
             Events.EVENT_LOCATION, Events.DTSTART, Events.DTEND, Events.ALL_DAY, Events.EVENT_TIMEZONE,
             Events.RRULE, Events.RDATE, Events.DURATION, Events.ORIGINAL_ID, Events.ORIGINAL_INSTANCE_TIME,

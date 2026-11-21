@@ -41,8 +41,9 @@ class CalendarBridgeInstrumentedTest {
             })!!
         }
         f.pass(); val phone = f.phone.all().single()
-        assertEquals("Location: Original place\nBody", phone.description)
-        assertTrue(f.phone.update(phone.id, phone.copy(title = "Phone edit", description = "Location: Ignored\nEdited", preReminder = true)))
+        assertEquals("Location: Original place${EventMapper.LOCATION_MARKER}\nBody", phone.description)
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Phone edit",
+            description = phone.description.replace("Original place", "Ignored").replace("Body", "Edited"), preReminder = true)))
         f.pass()
         val actual = f.standard.read(EventKey(id))!!
         assertEquals("Phone edit", actual.title); assertEquals("Edited", actual.description); assertEquals("Original place", actual.location)
@@ -166,6 +167,269 @@ class CalendarBridgeInstrumentedTest {
         assertEquals(phone.start + 3600000, actual.start)
     }
 
+    @Test fun interruptedPhoneImportRecoversAcrossDatabaseReopen() = scenario { f ->
+        f.store.firstRunDone = true; f.insert(location = "Home")
+        val interrupted = object : MuditaCalendarPort by f.phone {
+            override fun insert(event: MuditaEvent): Long? {
+                f.phone.insert(event); throw SimulatedDeath()
+            }
+        }
+        try { BridgeEngine(interrupted, f.standard, f.store, f.config).pass(f.now); fail("Expected death") }
+        catch (_: SimulatedDeath) { }
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertEquals(1, f.phone.all().size); assertEquals(1, f.standard.events(setOf(f.calendarId)).size)
+        assertEquals(1, f.store.all().size)
+    }
+
+    @Test fun interruptedStandardUploadRecoversAcrossDatabaseReopen() = scenario { f ->
+        f.store.firstRunDone = true
+        f.phone.insert(MuditaEvent(title = "Phone", description = "Body", start = f.now + 1000, end = f.now + 2000))
+        val interrupted = object : StandardCalendarPort by f.standard {
+            override fun insert(calendarId: Long, event: StandardEvent, intentId: String?): Long? {
+                f.standard.insert(calendarId, event, intentId); throw SimulatedDeath()
+            }
+        }
+        try { BridgeEngine(f.phone, interrupted, f.store, f.config).pass(f.now); fail("Expected death") }
+        catch (_: SimulatedDeath) { }
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertEquals(1, f.phone.all().size); assertEquals(1, f.standard.events(setOf(f.calendarId)).size)
+        assertEquals(1, f.store.all().size)
+    }
+
+    @Test fun standaloneBecomingSeriesRetiresTheOldIdentity() = scenario { f ->
+        val id = f.insert(); f.pass()
+        f.resolver.update(f.syncUri(ContentUris.withAppendedId(Events.CONTENT_URI, id)), ContentValues().apply {
+            put(Events.RRULE, "FREQ=WEEKLY;COUNT=20"); put(Events.DURATION, "PT1H"); putNull(Events.DTEND)
+        }, null, null)
+        val expected = f.standard.instances(setOf(f.calendarId), f.now, f.now + 8 * BridgeEngine.WEEK).size
+        f.pass(); assertEquals(expected, f.phone.all().size)
+        assertTrue(f.store.all().all { it.standardKey.instanceStart != null })
+        assertNotNull(f.standard.read(EventKey(id)))
+    }
+
+    @Test fun expiredOccurrenceEditsAndDeletesReachTheRealProvider() = scenario { f ->
+        f.insert(recurring = true); f.pass()
+        val rows = f.store.all().sortedBy { it.standardKey.instanceStart }
+        val edited = f.phone.all().single { it.id == rows[0].muditaId }
+        assertTrue(f.phone.update(edited.id, edited.copy(title = "Edited before expiry")))
+        assertTrue(f.phone.delete(rows[1].muditaId))
+        f.pass(f.now + 2 * BridgeEngine.WEEK)
+        assertEquals("Edited before expiry", f.standard.read(rows[0].standardKey)!!.title)
+        assertNull(f.standard.read(rows[1].standardKey))
+        assertTrue(f.store.all().none { it.standardKey in rows.take(2).map { row -> row.standardKey } })
+    }
+
+    @Test fun locationRenderingDoesNotConsumeOrdinaryDescriptionText() = scenario { f ->
+        val id = f.insert()
+        val ordinary = "Location: Gate A\nBring ID"
+        f.resolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, id), ContentValues().apply {
+            put(Events.DESCRIPTION, ordinary)
+        }, null, null)
+        f.pass(); var phone = f.phone.all().single()
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Title edit"))); f.pass()
+        assertEquals(ordinary, f.standard.read(EventKey(id))!!.description)
+        f.resolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, id), ContentValues().apply {
+            put(Events.EVENT_LOCATION, "Building\r\nRoom")
+        }, null, null)
+        f.pass(); phone = f.phone.all().single()
+        assertEquals(3, phone.description.lines().size)
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Another title"))); f.pass()
+        assertEquals(ordinary, f.standard.read(EventKey(id))!!.description)
+        assertEquals("Building\r\nRoom", f.standard.read(EventKey(id))!!.location)
+    }
+
+    @Test fun expiredOccurrenceMovedIntoTheWindowKeepsTheExistingPhoneRow() = scenario { f ->
+        f.insert(recurring = true); f.pass()
+        val row = f.store.all().minBy { it.standardKey.instanceStart!! }
+        val phone = f.phone.all().single { it.id == row.muditaId }
+        assertTrue(f.phone.update(phone.id, phone.copy(start = phone.start + 2 * BridgeEngine.WEEK,
+            end = phone.end + 2 * BridgeEngine.WEEK)))
+        f.pass(f.now + BridgeEngine.WEEK)
+        assertTrue(f.phone.all().any { it.id == phone.id })
+        assertEquals(phone.start + 2 * BridgeEngine.WEEK, f.standard.read(row.standardKey)!!.start)
+        assertEquals(f.standard.instances(setOf(f.calendarId), f.now + BridgeEngine.WEEK,
+            f.now + 9 * BridgeEngine.WEEK).size, f.phone.all().size)
+    }
+
+    @Test fun rdateExceptionKeepsBaseRemindersAndDoesNotChangeExistingOnes() = scenario { f ->
+        val id = f.insert()
+        val stamp = java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC)
+        val dates = listOf(f.now + 3600000, f.now + BridgeEngine.WEEK + 3600000)
+            .joinToString(",") { stamp.format(Instant.ofEpochMilli(it)) }
+        f.resolver.update(f.syncUri(ContentUris.withAppendedId(Events.CONTENT_URI, id)), ContentValues().apply {
+            put(Events.RDATE, dates); put(Events.DURATION, "PT1H"); putNull(Events.DTEND)
+        }, null, null)
+        val reminders = listOf(10 to Reminders.METHOD_ALERT, 60 to Reminders.METHOD_EMAIL)
+        for ((minutes, method) in reminders) f.resolver.insert(Reminders.CONTENT_URI, ContentValues().apply {
+            put(Reminders.EVENT_ID, id); put(Reminders.MINUTES, minutes); put(Reminders.METHOD, method)
+        })!!
+        f.resolver.insert(CalendarContract.Attendees.CONTENT_URI, ContentValues().apply {
+            put(CalendarContract.Attendees.EVENT_ID, id); put(CalendarContract.Attendees.ATTENDEE_NAME, "Guest")
+            put(CalendarContract.Attendees.ATTENDEE_EMAIL, "guest@example.invalid")
+            put(CalendarContract.Attendees.ATTENDEE_TYPE, CalendarContract.Attendees.TYPE_REQUIRED)
+            put(CalendarContract.Attendees.ATTENDEE_RELATIONSHIP, CalendarContract.Attendees.RELATIONSHIP_ATTENDEE)
+            put(CalendarContract.Attendees.ATTENDEE_STATUS, CalendarContract.Attendees.ATTENDEE_STATUS_ACCEPTED)
+        })!!
+        f.pass(); val row = f.store.all().minBy { it.standardKey.instanceStart!! }
+        val phone = f.phone.all().single { it.id == row.muditaId }
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "RDATE edit"))); f.pass()
+        val exceptionId = f.resolver.query(Events.CONTENT_URI, arrayOf(Events._ID),
+            "${Events.ORIGINAL_ID} = ? AND ${Events.ORIGINAL_INSTANCE_TIME} = ?",
+            arrayOf(id.toString(), row.standardKey.instanceStart.toString()), null)!!.use {
+            assertTrue(it.moveToFirst()); it.getLong(0)
+        }
+        fun readReminders(eventId: Long) = f.resolver.query(Reminders.CONTENT_URI,
+            arrayOf(Reminders.MINUTES, Reminders.METHOD), "${Reminders.EVENT_ID} = ?",
+            arrayOf(eventId.toString()), Reminders.MINUTES)!!.use { c ->
+            buildList { while (c.moveToNext()) add(c.getInt(0) to c.getInt(1)) }
+        }
+        assertEquals(reminders, readReminders(exceptionId)); assertEquals(reminders, readReminders(id))
+        f.resolver.query(CalendarContract.Attendees.CONTENT_URI, arrayOf(CalendarContract.Attendees.ATTENDEE_EMAIL),
+            "${CalendarContract.Attendees.EVENT_ID} = ?", arrayOf(exceptionId.toString()), null)!!.use {
+            assertTrue(it.moveToFirst()); assertEquals("guest@example.invalid", it.getString(0)); assertEquals(1, it.count)
+        }
+        f.resolver.update(Reminders.CONTENT_URI, ContentValues().apply { put(Reminders.MINUTES, 15) },
+            "${Reminders.EVENT_ID} = ? AND ${Reminders.MINUTES} = ?", arrayOf(exceptionId.toString(), "10"))
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Second edit"))); f.pass()
+        assertEquals(listOf(15 to Reminders.METHOD_ALERT, 60 to Reminders.METHOD_EMAIL), readReminders(exceptionId))
+        assertEquals(reminders, readReminders(id))
+    }
+
+    @Test fun calendarProviderDurationDialectDoesNotStopCalendarReads() = scenario { f ->
+        for (duration in listOf("P1W", "P3600S", "PT3600S", "P1D")) {
+            val id = f.insert(recurring = true)
+            f.resolver.update(f.syncUri(ContentUris.withAppendedId(Events.CONTENT_URI, id)), ContentValues().apply {
+                put(Events.DURATION, duration)
+            }, null, null)
+            assertNotNull(f.standard.read(EventKey(id)))
+        }
+        assertEquals(4, f.standard.events(setOf(f.calendarId)).size)
+        f.pass(); assertTrue(f.phone.all().isNotEmpty())
+    }
+
+    @Test fun bootSchedulesImmediatelyEvenWhenTheProviderLaneIsBusy() = scenario { f ->
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val blocked = SyncRuntime.enqueue { entered.countDown(); check(release.await(15, TimeUnit.SECONDS)) }
+        withFixtureCleanup({ release.countDown() }, { blocked.get(15, TimeUnit.SECONDS) }) {
+            assertTrue(entered.await(5, TimeUnit.SECONDS))
+            f.insert()
+            BootReceiver().onReceive(f.context, Intent(Intent.ACTION_BOOT_COMPLETED))
+            val scheduler = f.context.getSystemService(JobScheduler::class.java)
+            // The boot job owns its own lifetime, independently of the occupied provider executor.
+            assertNotNull(scheduler.getPendingJob(0x4b5304))
+            assertNotNull(scheduler.getPendingJob(SyncRuntime.PERIODIC_JOB))
+            assertNotNull(scheduler.getPendingJob(SyncRuntime.HORIZON_JOB))
+            assertTrue(f.phone.all().isEmpty())
+            release.countDown()
+            f.await { f.phone.all().size == 1 }
+        }
+    }
+
+    @Test fun interruptedPhoneUpdateIsRecoveredWithoutDuplicateRows() = scenario { f ->
+        val id = f.insert(); f.pass()
+        f.resolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, id), ContentValues().apply { put(Events.TITLE, "Server edit") }, null, null)
+        interruptBeforeAcknowledgement(f)
+        assertEquals("Server edit", f.phone.all().single().title); assertEquals(1, f.store.all().size)
+    }
+    @Test fun interruptedPhoneDeleteDoesNotResurrectTheStandardEvent() = scenario { f ->
+        val id = f.insert(); f.pass(); assertTrue(f.standard.delete(EventKey(id)))
+        interruptBeforeAcknowledgement(f)
+        assertTrue(f.phone.all().isEmpty()); assertTrue(f.store.all().isEmpty()); assertNull(f.standard.read(EventKey(id)))
+    }
+    @Test fun interruptedOccurrenceEditRecoversItsExistingException() = scenario { f ->
+        f.insert(recurring = true); f.pass()
+        val row = f.store.all().minBy { it.standardKey.instanceStart!! }
+        val phone = f.phone.all().single { it.id == row.muditaId }
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Recovered exception")))
+        interruptBeforeAcknowledgement(f)
+        assertEquals("Recovered exception", f.standard.read(row.standardKey)!!.title)
+        f.resolver.query(Events.CONTENT_URI, arrayOf(Events._ID),
+            "${Events.ORIGINAL_ID} = ? AND ${Events.ORIGINAL_INSTANCE_TIME} = ?",
+            arrayOf(row.standardKey.eventId.toString(), row.standardKey.instanceStart.toString()), null)!!.use { assertEquals(1, it.count) }
+        assertEquals(8, f.phone.all().size)
+    }
+    @Test fun interruptedOccurrenceDeleteDoesNotRecreateTheCancelledInstance() = scenario { f ->
+        f.insert(recurring = true); f.pass()
+        val row = f.store.all().minBy { it.standardKey.instanceStart!! }
+        assertTrue(f.phone.delete(row.muditaId)); interruptBeforeAcknowledgement(f)
+        assertNull(f.standard.read(row.standardKey)); assertEquals(7, f.phone.all().size)
+        assertTrue(f.store.all().none { it.standardKey == row.standardKey })
+    }
+    @Test fun movedEventInUnselectedCalendarLosesOnlyItsPhoneCopy() = scenario { f ->
+        val id = f.insert(); f.pass()
+        val other = ContentUris.parseId(f.resolver.insert(f.syncUri(Calendars.CONTENT_URI), ContentValues().apply {
+            put(Calendars.ACCOUNT_NAME, f.account.name); put(Calendars.ACCOUNT_TYPE, f.account.type)
+            put(Calendars.NAME, "Unselected"); put(Calendars.OWNER_ACCOUNT, f.account.name)
+            put(Calendars.CALENDAR_ACCESS_LEVEL, Calendars.CAL_ACCESS_OWNER); put(Calendars.SYNC_EVENTS, 1)
+        })!!)
+        withFixtureCleanup({ f.resolver.delete(f.syncUri(Calendars.CONTENT_URI), "${Calendars._ID} = ?", arrayOf(other.toString())) }) {
+            f.resolver.update(f.syncUri(ContentUris.withAppendedId(Events.CONTENT_URI, id)), ContentValues().apply {
+                put(Events.CALENDAR_ID, other)
+            }, null, null)
+            f.pass(); assertTrue(f.phone.all().isEmpty()); assertTrue(f.store.all().isEmpty())
+            assertEquals(other, f.standard.read(EventKey(id))!!.calendarId)
+        }
+    }
+    @Test fun ruleExceptionStillInheritsTheBaseReminders() = scenario { f ->
+        val id = f.insert(recurring = true)
+        for (minutes in listOf(10, 60)) f.resolver.insert(Reminders.CONTENT_URI, ContentValues().apply {
+            put(Reminders.EVENT_ID, id); put(Reminders.MINUTES, minutes); put(Reminders.METHOD, Reminders.METHOD_ALERT)
+        })!!
+        f.pass(); val row = f.store.all().minBy { it.standardKey.instanceStart!! }
+        val phone = f.phone.all().single { it.id == row.muditaId }
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "RRULE edit"))); f.pass()
+        val exceptionId = f.resolver.query(Events.CONTENT_URI, arrayOf(Events._ID),
+            "${Events.ORIGINAL_ID} = ? AND ${Events.ORIGINAL_INSTANCE_TIME} = ?",
+            arrayOf(id.toString(), row.standardKey.instanceStart.toString()), null)!!.use { assertTrue(it.moveToFirst()); it.getLong(0) }
+        f.resolver.query(Reminders.CONTENT_URI, arrayOf(Reminders.MINUTES), "${Reminders.EVENT_ID} = ?",
+            arrayOf(exceptionId.toString()), Reminders.MINUTES)!!.use { c ->
+            assertEquals(listOf(10, 60), buildList { while (c.moveToNext()) add(c.getInt(0)) })
+        }
+    }
+
+    @Test fun failedMappingCommitRetainsBothThePreviousMappingAndTheIntent() = scenario { f ->
+        f.insert(); f.insert(); f.pass()
+        val before = f.store.all(); assertEquals(2, before.size)
+        val row = before.first()
+        val phone = f.phone.all().single { it.id == row.muditaId }
+        val intent = WriteIntent(kind = WriteKind.PHONE_UPDATE, mapping = row, phoneBefore = phone,
+            phoneAfter = phone, standardBefore = f.standard.read(row.standardKey))
+        f.store.prepare(intent)
+        try {
+            // Force the unique standard-identity constraint to fail after removing the old mapping.
+            f.store.acknowledge(intent.id, before.last().copy(muditaId = Long.MAX_VALUE), row.muditaId)
+            fail("Expected mapping constraint failure")
+        } catch (_: android.database.sqlite.SQLiteConstraintException) { }
+        BridgeStore(f.context).use {
+            assertEquals(before, it.all()); assertEquals(intent, it.pending())
+        }
+    }
+
+    @Test fun reopenedPendingWriteRespectsTheCurrentCalendarSelection() = scenario { f ->
+        val id = f.insert(); f.pass()
+        val row = f.store.all().single(); val before = f.standard.read(EventKey(id))!!
+        val phone = f.phone.all().single().copy(title = "Pending edit")
+        assertTrue(f.phone.update(phone.id, phone))
+        f.store.prepare(WriteIntent(kind = WriteKind.STANDARD_UPDATE, mapping = row, phoneBefore = phone,
+            standardBefore = before, standardAfter = EventMapper().toStandard(phone, before, row.generatedLocation)))
+        f.config.write(SyncSettings(emptySet(), null))
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertEquals(before, f.standard.read(EventKey(id)))
+        assertTrue(f.phone.all().isEmpty()); assertTrue(f.store.all().isEmpty()); assertNull(f.store.pending())
+    }
+
+    private fun interruptBeforeAcknowledgement(f: Fixture) {
+        val interrupted = object : MappingStore by f.store {
+            override fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?) { throw SimulatedDeath() }
+        }
+        try { BridgeEngine(f.phone, f.standard, interrupted, f.config).pass(f.now); fail("Expected death") }
+        catch (_: SimulatedDeath) { }
+        assertNotNull(f.store.pending())
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertNull(f.store.pending())
+    }
+
+    private class SimulatedDeath : Error()
     private fun scenario(body: (Fixture) -> Unit) {
         val f = Fixture()
         withFixtureCleanup(
@@ -173,7 +437,9 @@ class CalendarBridgeInstrumentedTest {
             { f.schema(false); f.phone.all().forEach { check(f.phone.delete(it.id)) } },
             { if (f.calendarId >= 0) f.resolver.delete(f.syncUri(Calendars.CONTENT_URI), "${Calendars._ID} = ?", arrayOf(f.calendarId.toString())) },
             { if (f.accountAdded) check(AccountManager.get(f.context).removeAccountExplicitly(f.account)) },
-            { f.store.writableDatabase.delete("pairs", null, null); f.store.writableDatabase.delete("state", null, null); f.store.close() },
+            { f.store.writableDatabase.delete("pairs", null, null) },
+            { f.store.writableDatabase.delete("state", null, null) },
+            { f.store.writableDatabase.delete("write_intent", null, null); f.store.close() },
             { f.config.write(f.previous) },
         ) { f.setup(); body(f) }
     }
@@ -216,7 +482,7 @@ class CalendarBridgeInstrumentedTest {
                 else put(Events.DTEND, start + 3600000)
             })!!)
         }
-        fun pass() { BridgeEngine(phone, standard, store, config).pass(now) }
+        fun pass(at: Long = now) { BridgeEngine(phone, standard, store, config).pass(at) }
         fun syncUri(uri: Uri): Uri = uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
             .appendQueryParameter(Calendars.ACCOUNT_NAME, account.name).appendQueryParameter(Calendars.ACCOUNT_TYPE, account.type).build()
         fun schema(enabled: Boolean) {

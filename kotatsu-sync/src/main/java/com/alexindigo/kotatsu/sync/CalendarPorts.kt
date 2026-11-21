@@ -36,7 +36,9 @@ interface StandardCalendarPort {
     fun events(calendarIds: Set<Long>): List<StandardEvent>
     fun instances(calendarIds: Set<Long>, start: Long, end: Long): List<StandardEvent>
     fun read(key: EventKey): StandardEvent?
-    fun insert(calendarId: Long, event: StandardEvent): Long?
+    fun insert(calendarId: Long, event: StandardEvent, intentId: String? = null): Long?
+    /** Includes tombstoned rows, so recovery cannot resurrect an already deleted upload. */
+    fun findInsert(intentId: String): Long?
     fun update(key: EventKey, event: StandardEvent): Boolean
     fun delete(key: EventKey): Boolean
 }
@@ -44,12 +46,17 @@ interface StandardCalendarPort {
 data class Mapping(
     val muditaId: Long, val standardKey: EventKey, val calendarId: Long,
     val muditaFingerprint: String, val standardFingerprint: String,
+    val generatedLocation: Boolean = false,
 )
 
 interface MappingStore {
     fun all(): List<Mapping>
     fun save(mapping: Mapping)
     fun remove(muditaId: Long)
+    fun pending(): WriteIntent?
+    fun prepare(intent: WriteIntent)
+    /** Mapping changes and intent removal are one durable transaction. */
+    fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?)
     var firstRunDone: Boolean
     var status: String
 }
