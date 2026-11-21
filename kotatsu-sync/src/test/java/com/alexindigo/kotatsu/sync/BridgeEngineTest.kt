@@ -55,7 +55,7 @@ class BridgeEngineTest {
         phone.rows[11] = MuditaEvent(11, "Local", "Upload", now, now + 1000)
         engine.pass(now)
         assertEquals(2, server.rows.size); assertEquals(2, phone.rows.size); assertEquals(2, store.rows.size)
-        assertTrue(store.firstRunDone); assertEquals("Location: Home${EventMapper.LOCATION_MARKER}\nBody", phone.rows[10]!!.description)
+        assertTrue(store.firstRunDone); assertEquals("Location: Home${EventMapper.LOCATION_MARKER}\n${EventMapper.BODY_MARKER}Body", phone.rows[10]!!.description)
         val writes = phone.writes + server.writes
         engine.pass(now); assertEquals(writes, phone.writes + server.writes)
     }

@@ -10,7 +10,7 @@ import java.time.ZoneOffset
 class EventMapper(private val zone: ZoneId = ZoneId.systemDefault()) {
     fun toMudita(event: StandardEvent, current: MuditaEvent? = null): MuditaEvent = MuditaEvent(
         id = current?.id ?: 0, title = event.title,
-        description = (if (event.location.isNotEmpty()) "Location: ${oneLine(event.location)}$LOCATION_MARKER\n" else "") + event.description,
+        description = (if (event.location.isNotEmpty()) "Location: ${oneLine(event.location)}$LOCATION_MARKER\n$BODY_MARKER" else "") + event.description,
         start = toLocal(event.start, event.allDay), end = toLocal(event.end, event.allDay),
         allDay = event.allDay, preReminder = current?.preReminder ?: false,
     )
@@ -21,9 +21,14 @@ class EventMapper(private val zone: ZoneId = ZoneId.systemDefault()) {
         timeZone = when { event.allDay -> "UTC"; current.allDay -> zone.id; else -> current.timeZone },
     )
 
-    fun body(description: String, generatedLocation: Boolean): String = if (generatedLocation &&
-        description.substringBefore('\n').endsWith(LOCATION_MARKER))
-        description.substringAfter('\n', "") else description
+    fun body(description: String, generatedLocation: Boolean): String {
+        if (!generatedLocation) return description
+        // The body boundary survives replacing the whole generated line, including its suffix.
+        val boundary = description.indexOf(BODY_MARKER)
+        if (boundary >= 0) return description.substring(boundary + BODY_MARKER.length)
+        return if (description.substringBefore('\n').endsWith(LOCATION_MARKER))
+            description.substringAfter('\n', "") else description
+    }
 
     fun muditaFingerprint(event: MuditaEvent, generatedLocation: Boolean = false): String = hash(event.title, body(event.description, generatedLocation),
         event.start.toString(), event.end.toString(), event.allDay.toString())
@@ -50,5 +55,6 @@ class EventMapper(private val zone: ZoneId = ZoneId.systemDefault()) {
     companion object {
         // Invisible format characters keep the agreed visible first line while identifying bridge text.
         const val LOCATION_MARKER = "\u2063\u2060\u2063"
+        const val BODY_MARKER = "\u2063\u2060\u2060\u2063"
     }
 }

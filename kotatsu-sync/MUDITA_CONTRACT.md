@@ -97,6 +97,7 @@ reports an incomplete pass rather than inserting again or guessing ownership.
 Mapping provenance records whether a generated location first line was added.
 Ordinary description lines, including ones beginning with Location:, are not
 stripped from unprefixed rows or phone uploads. An invisible format-character
-suffix identifies generated lines; deleting a generated line cannot consume
-the ordinary body line it exposes. Location line separators are
+suffix identifies generated lines, and a separate invisible body-boundary marker
+survives replacement of the whole generated line. Deleting a generated line
+cannot consume the ordinary body line it exposes. Location line separators are
 normalized to spaces for display only; the server location stays unchanged.

@@ -41,7 +41,7 @@ class CalendarBridgeInstrumentedTest {
             })!!
         }
         f.pass(); val phone = f.phone.all().single()
-        assertEquals("Location: Original place${EventMapper.LOCATION_MARKER}\nBody", phone.description)
+        assertEquals("Location: Original place${EventMapper.LOCATION_MARKER}\n${EventMapper.BODY_MARKER}Body", phone.description)
         assertTrue(f.phone.update(phone.id, phone.copy(title = "Phone edit",
             description = phone.description.replace("Original place", "Ignored").replace("Body", "Edited"), preReminder = true)))
         f.pass()
@@ -236,6 +236,19 @@ class CalendarBridgeInstrumentedTest {
         assertTrue(f.phone.update(phone.id, phone.copy(title = "Another title"))); f.pass()
         assertEquals(ordinary, f.standard.read(EventKey(id))!!.description)
         assertEquals("Building\r\nRoom", f.standard.read(EventKey(id))!!.location)
+    }
+
+    @Test fun replacingTheWholeLocationLinePreservesTheServerLocationAndBodyBoundary() = scenario { f ->
+        val id = f.insert(location = "Original place"); f.pass()
+        val phone = f.phone.all().single()
+        val body = phone.description.substringAfter('\n').replace("Body", "Edited body")
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Phone edit", description = "Location: Elsewhere\n$body")))
+        f.pass()
+        val actual = f.standard.read(EventKey(id))!!
+        assertEquals("Edited body", actual.description); assertEquals("Original place", actual.location)
+        assertTrue(f.phone.update(phone.id, phone.copy(title = "Another edit", description = body)))
+        f.pass()
+        assertEquals("Edited body", f.standard.read(EventKey(id))!!.description)
     }
 
     @Test fun expiredOccurrenceMovedIntoTheWindowKeepsTheExistingPhoneRow() = scenario { f ->

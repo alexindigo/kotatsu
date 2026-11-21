@@ -11,11 +11,11 @@ class EventMapperTest {
 
     @Test fun locationIsOneLeadingLineAndNeverWrittenBack() {
         val phone = mapper.toMudita(standard)
-        assertEquals("Location: Home${EventMapper.LOCATION_MARKER}\nBring food", phone.description)
+        assertEquals("Location: Home${EventMapper.LOCATION_MARKER}\n${EventMapper.BODY_MARKER}Bring food", phone.description)
         val edited = mapper.toStandard(phone.copy(description = phone.description.replace("Home", "Elsewhere").replace("Bring food", "Changed")), standard, true)
         assertEquals("Changed", edited.description)
         assertEquals("Home", edited.location)
-        assertEquals("Location: Home${EventMapper.LOCATION_MARKER}\nChanged", mapper.toMudita(edited).description)
+        assertEquals("Location: Home${EventMapper.LOCATION_MARKER}\n${EventMapper.BODY_MARKER}Changed", mapper.toMudita(edited).description)
     }
 
     @Test fun reminderFlagIsPreservedButExcludedFromFingerprint() {
@@ -50,6 +50,12 @@ class EventMapperTest {
         val phone = mapper.toMudita(event)
         val withoutGeneratedLine = phone.copy(description = phone.description.substringAfter('\n'))
         assertEquals(event.description, mapper.toStandard(withoutGeneratedLine, event, true).description)
+    }
+    @Test fun replacingTheWholeGeneratedLineStillCannotLeakItIntoTheServerBody() {
+        val phone = mapper.toMudita(standard)
+        val changed = phone.copy(description = "Location: Elsewhere\n" + phone.description.substringAfter('\n').replace("Bring food", "Changed"))
+        assertEquals("Changed", mapper.toStandard(changed, standard, true).description)
+        assertEquals("Home", mapper.toStandard(changed, standard, true).location)
     }
 
     @Test fun timedInstantsRoundTrip() {
