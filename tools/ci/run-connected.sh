@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs one connected suite from prebuilt debug/androidTest APKs on a booted API 31 emulator.
-# Usage, from the repository root: [SHARD=<index>/<count>] [CLASS=<a,b>] tools/ci/run-connected.sh <kotatsu|weather|notes|mudita> <results-dir>
+# Usage, from the repository root: [SHARD=<index>/<count>] [CLASS=<a,b>] tools/ci/run-connected.sh <kotatsu|weather|notes|mudita|sync> <results-dir>
 # Results: <results-dir>/TEST-*.xml (JUnit), instrument.txt, prep logs and failure-dumps/.
 set -Eeuo pipefail
 [[ $# == 2 ]] || { sed -n '3p' "$0" >&2; exit 2; }
@@ -13,12 +13,14 @@ declare -A TARGET=(
     [weather]=com.alexindigo.kotatsu.weather.debug
     [notes]=com.alexindigo.kotatsu.notes.debug
     [mudita]=com.gezimos.katapult.weather.mudita.test
+    [sync]=com.alexindigo.kotatsu.sync.debug
 )
 declare -A TEST_PACKAGE=(
     [kotatsu]=com.alexindigo.kotatsu.debug.test
     [weather]=com.alexindigo.kotatsu.weather.debug.test
     [notes]=com.alexindigo.kotatsu.notes.debug.test
     [mudita]=com.gezimos.katapult.weather.mudita.test
+    [sync]=com.alexindigo.kotatsu.sync.debug.test
 )
 [[ -v TARGET[$suite] ]] || { echo "unknown suite: $suite" >&2; exit 2; }
 prep() { bash "$CI_DIR/prepare-emulator.sh" "$@"; }
@@ -41,7 +43,7 @@ fi
 started=$SECONDS
 prep install "$suite" "$results/prep"
 # Kotatsu's own APK was installed and onboarded by prepare; libraries have only a test APK.
-if [[ $suite == weather || $suite == notes ]]; then timeout 120 "$ADB" install -r "$(prep apk "$module" debug)"; fi
+if [[ $suite == weather || $suite == notes || $suite == sync ]]; then timeout 120 "$ADB" install -r "$(prep apk "$module" debug)"; fi
 timeout 120 "$ADB" install -r -t "$(prep apk "$module" androidTest)"
 runner=$(timeout 30 "$ADB" shell pm list instrumentation | tr -d '\r' |
     sed -n "s|^instrumentation:${TEST_PACKAGE[$suite]}/\([^ ]*\) (target=${TARGET[$suite]})$|\1|p")

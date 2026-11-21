@@ -47,6 +47,9 @@ Insert and update both use `v3.a.a`, which ignores an incoming `reminder`
 entirely. It constructs H3.f(false, emptyList), reads isPreReminderSet, then
 rebuilds the reminder object through `A0.d.B(event)`. H3.f contains a Boolean
 and a list of integer alarm identifiers, not a portable list of offsets.
+The exact reflected JSON shape is `{"d":true,"e":[12345]}` (or
+`{"d":false,"e":[]}`). DEX field inspection confirms names `d` and `e`;
+JADX's `f1888d`/`f1889e` are decompiler aliases, not JSON keys.
 `A0.d.B` creates no identifiers for an all-day/past event, one for a future
 timed event, and possibly a second when isPreReminderSet requests a five-minute
 pre-reminder. These are generated alarm ids, not server reminder values.
@@ -65,3 +68,14 @@ all-day flag changes. Timed -> all-day writes UTC midnight dates and zone UTC;
 all-day -> timed uses the current device zone. All-day -> all-day stays UTC.
 This also applies to individual recurrence exceptions. Android requires this
 normalization; an all-day event has no zone of its own.
+
+## Standard recurrence identity
+
+The standard adapter preserves the series event id and ORIGINAL_INSTANCE_TIME
+as each occurrence's identity, including moved exceptions. ORIGINAL_SYNC_ID
+must refer to the original server id, never to the exception id. The bridge
+never invents or writes a server `_sync_id`. Connected fixtures seed server
+events as a sync adapter, like DAVx5 does, rather than as unsynced local series.
+RRULE exceptions use CalendarProvider's CONTENT_EXCEPTION_URI so the platform
+clones unsupported fields, attendees and reminders without bridge-side reminder
+writes. That API requires duration, not dtend, for an exception request.

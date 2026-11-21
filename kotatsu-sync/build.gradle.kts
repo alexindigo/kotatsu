@@ -1,6 +1,7 @@
 plugins { alias(libs.plugins.android.application) }
 
 android {
+    sourceSets.getByName("androidTest").kotlin.directories += rootProject.file("test-fixtures/src/androidTest/java").path
     namespace = "com.alexindigo.kotatsu.sync"
     compileSdk { version = release(36) { minorApiLevel = 1 } }
     defaultConfig {

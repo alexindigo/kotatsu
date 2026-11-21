@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Emulator fixture only. Its authority conflicts with the stock Calendar app. -->
+    <application android:label="Fake Mudita Calendar (tests only)" android:allowBackup="false">
+        <provider android:name=".FakeCalendarProvider" android:authorities="com.mudita.calendar" android:exported="true" />
+    </application>
+</manifest>

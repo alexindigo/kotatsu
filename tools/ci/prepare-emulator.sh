@@ -9,13 +9,14 @@ set -Eeuo pipefail
 CI_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 ADB=${ADB:-adb}
 export ANDROID_SERIAL=${ANDROID_SERIAL:-emulator-5554}
-declare -A MODULE=([kotatsu]=app [weather]=kotatsu-weather [notes]=kotatsu-notes [mudita]=weather-mudita)
+declare -A MODULE=([kotatsu]=app [weather]=kotatsu-weather [notes]=kotatsu-notes [mudita]=weather-mudita [sync]=kotatsu-sync [fake-calendar]=fake-mudita-calendar)
 # Single dependency owner: consumer -> provider:APK-kind. A missing Notes module is optional.
 declare -A REQUIRED=(
     [kotatsu]='weather:debug weather:androidTest notes:debug notes:androidTest'
     [weather]=''
     [notes]=''
     [mudita]=''
+    [sync]='fake-calendar:debug'
 )
 
 log() { printf '%s %s\n' "$(date -Is)" "$*"; }

@@ -200,7 +200,8 @@ Before opening a pull request, run the quick checks: build, unit tests, lint and
 ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest \
   :weather-api:testDebugUnitTest :weather-mudita:testDebugUnitTest \
   :kotatsu-weather:testDebugUnitTest :kotatsu-weather:assembleDebugAndroidTest \
-  :kotatsu-notes:testDebugUnitTest :kotatsu-notes:assembleDebugAndroidTest
+  :kotatsu-notes:testDebugUnitTest :kotatsu-notes:assembleDebugAndroidTest \
+  :kotatsu-sync:testDebugUnitTest :kotatsu-sync:lintDebug :kotatsu-sync:assembleDebugAndroidTest
 python3 -B -m unittest discover -s tools/tests -p 'test_*.py'
 ```
 
