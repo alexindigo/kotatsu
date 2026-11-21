@@ -161,8 +161,10 @@ internal class WriteJournal(
             WriteKind.PHONE_DELETE -> {
                 val row = checkNotNull(intent.mapping)
                 val current = phoneNow(row.muditaId)
-                if (intent.confirmed || current == null) return finish(intent, remove = row.muditaId)
+                if (intent.confirmed || (intent.attempted && current == null)) return finish(intent, remove = row.muditaId)
+                // An obsolete, unattempted retirement must not erase a user-deletion baseline.
                 if (scope.includes(standard.read(row.standardKey), row.standardKey)) return finish(intent)
+                if (current == null) return finish(intent, remove = row.muditaId)
                 if (current != intent.phoneBefore) return if (intent.attempted) WriteOutcome.UNRESOLVED else finish(intent)
                 intent = intent.copy(attempted = true); store.prepare(intent)
                 if (!phone.delete(row.muditaId)) return WriteOutcome.RETRY

@@ -27,6 +27,13 @@ class BridgeEngine(
         val handled = rows.map { it.muditaId }.toMutableSet()
         val claimed = rows.map { it.standardKey }.toMutableSet()
         var firstRunComplete = true
+        var uploadRetry = false
+        fun uploadNew(event: MuditaEvent): Boolean {
+            if (destination == null) return false
+            val outcome = upload(event, destination, journal)
+            if (outcome == WriteOutcome.RETRY) uploadRetry = true
+            return outcome == WriteOutcome.DONE
+        }
         if (!mappings.firstRunDone) {
             for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) }) {
                 val match = remote.values.firstOrNull { it.key !in claimed && !journal.reserved(it.key) && sameIdentity(event, mapper.toMudita(it)) }
@@ -36,7 +43,7 @@ class BridgeEngine(
                         mapper.muditaFingerprint(event, match.location.isNotEmpty()), "", match.location.isNotEmpty())
                     mappings.save(row); rows.add(row)
                     claimed.add(match.key); handled.add(event.id)
-                } else if (destination != null && upload(event, destination, journal) == WriteOutcome.DONE) {
+                } else if (uploadNew(event)) {
                     handled.add(event.id)
                 } else firstRunComplete = false
             }
@@ -105,13 +112,14 @@ class BridgeEngine(
         }
         if (mappings.firstRunDone) {
             for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) }) {
-                if (destination == null || upload(event, destination, journal) != WriteOutcome.DONE) firstRunComplete = false
+                if (!uploadNew(event)) firstRunComplete = false
             }
         }
         val pending = mappings.pending().size
-        mappings.status = if (firstRunComplete && !journal.retry && pending == 0) "calendar pass complete"
-            else "calendar pass incomplete: $pending pending writes; retry=${journal.retry}"
-        return PassResult(journal.retry, journal.unresolved)
+        val retry = journal.retry || uploadRetry
+        mappings.status = if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
+            else "calendar pass incomplete: $pending pending writes; retry=$retry"
+        return PassResult(retry, journal.unresolved)
     }
 
     private fun upload(event: MuditaEvent, calendarId: Long, journal: WriteJournal): WriteOutcome {
