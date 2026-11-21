@@ -490,6 +490,23 @@ class BridgeEngineTest {
         assertEquals(1, phone.rows.size)
     }
 
+    @Test fun firstRunAfterReinstallStillMatchesRowsWithHistoricalReceipts() {
+        val remote = event(); server.rows[remote.key] = remote
+        phone.rows[10] = mapper.toMudita(remote).copy(id = 10,
+            insertReceipts = setOf("12345678-1234-1234-1234-123456789abc"))
+        engine.pass(now)
+        assertEquals(1, phone.rows.size); assertEquals(1, server.rows.size)
+        assertEquals(10L, store.rows.values.single().muditaId)
+    }
+    @Test fun aNewIndependentCopyWithHistoricalReceiptIsNotQuarantinedForever() {
+        engine.pass(now)
+        phone.rows[10] = MuditaEvent(10, "Independent copy", "Body", now, now + 1000,
+            insertReceipts = setOf("12345678-1234-1234-1234-123456789abc"))
+        engine.pass(now)
+        assertEquals(1, server.rows.size); assertEquals(10L, store.rows.values.single().muditaId)
+        assertEquals("Body", server.rows.values.single().description)
+    }
+
     private class ProcessDeath : Error()
     private class Phone : MuditaCalendarPort {
         val rows = linkedMapOf<Long, MuditaEvent>(); var schema = true; var writes = 0; var onRead: (() -> Unit)? = null

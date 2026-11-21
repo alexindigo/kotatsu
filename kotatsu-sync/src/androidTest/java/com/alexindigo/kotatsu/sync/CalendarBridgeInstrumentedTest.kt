@@ -632,6 +632,30 @@ class CalendarBridgeInstrumentedTest {
         assertEquals(originalMapping, f.store.all().single())
     }
 
+    @Test fun firstRunWithHistoricalProviderReceiptsKeepsTheExistingPhoneRow() = scenario { f ->
+        val id = f.insert(location = "Home"); f.pass()
+        val original = f.phone.all().single()
+        assertTrue(original.insertReceipts.isNotEmpty())
+        // Simulate the bridge's first-run state after reinstall, not loss of the phone provider.
+        f.store.remove(original.id); f.store.firstRunDone = false
+        f.pass()
+        assertEquals(original, f.phone.all().single())
+        assertEquals(EventKey(id), f.store.all().single().standardKey)
+        assertEquals(1, f.standard.events(setOf(f.calendarId)).size)
+    }
+
+    @Test fun independentCopyWithHistoricalReceiptUploadsWithoutLeakingTheReceipt() = scenario { f ->
+        f.insert(); f.pass()
+        val original = f.phone.all().single()
+        val copy = f.phone.insert(original.copy(id = 0, title = "Independent copy"))!!
+        f.pass()
+        val row = f.store.all().single { it.muditaId == copy }
+        val standard = f.standard.read(row.standardKey)!!
+        assertEquals("Independent copy", standard.title); assertEquals("Body", standard.description)
+        assertEquals(2, f.standard.events(setOf(f.calendarId)).size)
+        assertTrue(f.store.pending().isEmpty())
+    }
+
     private class SimulatedDeath : Error()
     private fun scenario(body: (Fixture) -> Unit) {
         val f = Fixture()

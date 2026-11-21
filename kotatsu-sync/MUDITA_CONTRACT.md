@@ -102,7 +102,10 @@ never sends it to CalendarContract or includes it in content fingerprints.
 Only a provider-returned ID or a unique exact provider-stored receipt establishes
 ownership. A matching independent event without that receipt is never adopted.
 Ambiguous or missing evidence reserves the affected item without blindly
-repeating insertion; unowned receipt-bearing rows are not uploaded as new events.
+repeating insertion; rows carrying a pending import's receipt are reserved even
+when that receipt is duplicated or conflicts with another receipt. Historical
+receipts with no pending owner do not quarantine events: the agreed first-run
+matching and new-phone-event upload rules still apply, including after reinstall.
 
 `BridgeEngine.resolvePending` and the serialized `SyncRuntime.resolve` accept an
 explicit external result: `Applied(providerId)` for an insertion, `Applied()`

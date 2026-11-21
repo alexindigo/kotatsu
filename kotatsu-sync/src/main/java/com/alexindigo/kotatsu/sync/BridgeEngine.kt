@@ -28,7 +28,7 @@ class BridgeEngine(
         val claimed = rows.map { it.standardKey }.toMutableSet()
         var firstRunComplete = true
         if (!mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it.id) && it.insertReceipts.isEmpty() }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) }) {
                 val match = remote.values.firstOrNull { it.key !in claimed && !journal.reserved(it.key) && sameIdentity(event, mapper.toMudita(it)) }
                 if (match != null) {
                     // A first-run match adopts the server version, including its description.
@@ -104,18 +104,14 @@ class BridgeEngine(
             }
         }
         if (mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it.id) && it.insertReceipts.isEmpty() }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) }) {
                 if (destination == null || upload(event, destination, journal) != WriteOutcome.DONE) firstRunComplete = false
             }
         }
-        val orphaned = phone.values.count {
-            it.insertReceipts.isNotEmpty() && it.id !in handled && !journal.reserved(it.id) &&
-                mappings.all().none { row -> row.muditaId == it.id }
-        }
-        val pending = mappings.pending().size + orphaned
+        val pending = mappings.pending().size
         mappings.status = if (firstRunComplete && !journal.retry && pending == 0) "calendar pass complete"
             else "calendar pass incomplete: $pending pending writes; retry=${journal.retry}"
-        return PassResult(journal.retry, journal.unresolved + orphaned)
+        return PassResult(journal.retry, journal.unresolved)
     }
 
     private fun upload(event: MuditaEvent, calendarId: Long, journal: WriteJournal): WriteOutcome {

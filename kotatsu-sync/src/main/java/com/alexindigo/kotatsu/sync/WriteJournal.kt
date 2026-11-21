@@ -54,6 +54,9 @@ internal class WriteJournal(
     private val deferred = mutableSetOf<String>()
     fun reserved(phoneId: Long) = phoneIdentity(phoneId) in reservedIdentities()
     fun reserved(key: EventKey) = standardIdentity(key) in reservedIdentities()
+    fun reserved(event: MuditaEvent) = reserved(event.id) || store.pending().any {
+        it.kind == WriteKind.IMPORT && it.id in event.insertReceipts
+    }
     private fun reservedIdentities() = store.pending().flatMap { it.reservations }.toSet() + deferred
     fun recover() { for (intent in store.pending()) attempt(intent) }
     fun write(original: WriteIntent): WriteOutcome {
