@@ -4,5 +4,12 @@
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <queries><provider android:authorities="com.mudita.calendar" /></queries>
-    <application android:label="Kotatsu Sync" android:allowBackup="false" android:supportsRtl="true" />
+    <application android:label="Kotatsu Sync" android:allowBackup="false" android:supportsRtl="true">
+        <service android:name=".CalendarChangedJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+        <service android:name=".PeriodicPassJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+        <service android:name=".HorizonJob" android:permission="android.permission.BIND_JOB_SERVICE" android:exported="true" />
+        <receiver android:name=".BootReceiver" android:exported="false">
+            <intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter>
+        </receiver>
+    </application>
 </manifest>
