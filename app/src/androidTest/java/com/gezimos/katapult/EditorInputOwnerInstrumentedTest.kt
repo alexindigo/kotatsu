@@ -44,7 +44,7 @@ class EditorInputOwnerInstrumentedTest {
     private fun withHome(test: (ActivityScenario<MainActivity>) -> Unit) {
         val preferences = context.getSharedPreferences("katapult_prefs", 0)
         val before = preferences.all.toMap()
-        val original = shell("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME")
+        val original = instrumentation.platformAutomation.readShell("cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME")
             .trim().lineSequence().last()
         shell("cmd package set-home-activity ${context.packageName}/${MainActivity::class.java.name}")
         withFixtureCleanup(
@@ -109,7 +109,7 @@ class EditorInputOwnerInstrumentedTest {
     private fun captureFailure() {
         val directory = File(context.getExternalFilesDir(null), "editor-owner-${android.os.SystemClock.uptimeMillis()}")
         check(directory.mkdir())
-        for (service in listOf("window", "input_method", "activity")) File(directory, "$service.txt").writeText(shell("dumpsys $service"))
+        for (service in listOf("window", "input_method", "activity")) File(directory, "$service.txt").writeText(instrumentation.platformAutomation.readShell("dumpsys $service"))
         val bitmap = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES).takeScreenshot()
         File(directory, "screen.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         bitmap.recycle()

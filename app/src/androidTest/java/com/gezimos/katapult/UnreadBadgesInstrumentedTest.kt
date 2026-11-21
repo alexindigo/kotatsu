@@ -53,7 +53,7 @@ class UnreadBadgesInstrumentedTest {
             "screensaver_enabled", "screensaver_show_notifications", "screensaver_update_mode",
             "rename_${context.packageName}", "lockscreen_widget_excluded", "app_order")
         val saved = keys.associateWith { raw.all[it] }
-        val fullscreenConfirmation = if (forceFullscreenHint) shell("settings get secure immersive_mode_confirmations").trim() else null
+        val fullscreenConfirmation = if (forceFullscreenHint) instrumentation.platformAutomation.readShell("settings get secure immersive_mode_confirmations").trim() else null
         val channel = "unread-${UUID.randomUUID()}"
         val tag = channel
         var activity: MainActivity? = null
@@ -173,7 +173,7 @@ class UnreadBadgesInstrumentedTest {
                         else "settings put secure immersive_mode_confirmations '${fullscreenConfirmation.replace("'", "'\\''")}'\n")
                     shell("sh ${restore.absolutePath}")
                 }
-                assertEquals(fullscreenConfirmation, shell("settings get secure immersive_mode_confirmations").trim())
+                assertEquals(fullscreenConfirmation, instrumentation.platformAutomation.readShell("settings get secure immersive_mode_confirmations").trim())
             } },
             { fixtureCleanup(*(1..5).map { id -> { manager.cancel(tag, id) } }.toTypedArray()) },
             { manager.deleteNotificationChannel(channel) },

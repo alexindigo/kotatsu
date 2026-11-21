@@ -32,7 +32,7 @@ internal class BackgroundProcessFixture(
         instrumentation.runOnMainSync { home.viewModel.screen = Screen.HOME; context.startActivity(launch) }
         ui.await("Real close fixture not foreground") { ui.packageVisible(PACKAGE_NAME) }
         ui.await("Real close fixture has no process") {
-            pid = shell("pidof $PACKAGE_NAME")
+            pid = instrumentation.platformAutomation.readProcessIds(PACKAGE_NAME)
             pid.toIntOrNull() != null
         }
     }
@@ -45,14 +45,11 @@ internal class BackgroundProcessFixture(
         ui.await("Home did not regain foreground") { ui.packageVisible(context.packageName) }
         var adjustment = ""
         ui.await("Fixture process did not become natively kill-eligible") {
-            adjustment = shell("cat /proc/$pid/oom_score_adj")
-            killEligible(adjustment) && shell("pidof $PACKAGE_NAME") == pid
+            adjustment = instrumentation.platformAutomation.readShell("cat /proc/$pid/oom_score_adj")
+            killEligible(adjustment) && instrumentation.platformAutomation.readProcessIds(PACKAGE_NAME) == pid
         }
         android.util.Log.i("BackgroundProcessFixture", "ready package=$PACKAGE_NAME pid=$pid oom_score_adj=$adjustment")
     }
-
-    private fun shell(command: String): String = ParcelFileDescriptor.AutoCloseInputStream(
-        instrumentation.platformAutomation.executeShellCommand(command)).bufferedReader().use { it.readText().trim() }
 
     override fun close() { state.close() }
 }

@@ -35,7 +35,7 @@ internal class AndroidSettingsTaskFixture : AutoCloseable {
         }
 
         private fun shell(command: String) = InstrumentationRegistry.getInstrumentation().platformAutomation.acknowledgedShell(command)
-        private fun current() = settingsStacks(shell("dumpsys activity activities"))
+        private fun current() = settingsStacks(InstrumentationRegistry.getInstrumentation().platformAutomation.readShell("dumpsys activity activities"))
 
         fun assertEmpty() {
             check(current().isEmpty()) { "Stale Android Settings tasks remain: ${current()}" }

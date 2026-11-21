@@ -19,20 +19,51 @@ import java.util.concurrent.atomic.AtomicReference
 /** Normal fixture operations are ordered by their exit acknowledgement, not a per-command
  * wall-clock guess. The connected runner owns the hard run deadline and emulator teardown;
  * abandoning an in-flight mutation here lets it race subsequent fixture restoration. */
-internal fun UiAutomation.acknowledgedShell(command: String): String = shellCompletion(command, null)
+internal fun UiAutomation.acknowledgedShell(command: String): String {
+    check(ObservationDeadline.current() == null) { "Acknowledged mutations cannot run inside an observation predicate; use readShell for queries" }
+    return shellCompletion(command, null)
+}
+
+/** Read-only commands may be abandoned. Never borrow a fresh budget inside an await. */
+internal fun UiAutomation.readShell(command: String, timeoutMs: Long? = null): String {
+    require(timeoutMs == null || timeoutMs > 0)
+    val deadline = ObservationDeadline.current()
+    deadline?.checkRemaining()
+    val budget = listOfNotNull(timeoutMs, deadline?.remainingMs()).minOrNull() ?: 10_000L
+    if (budget == 0L) { checkNotNull(deadline).checkRemaining() }
+    try {
+        val output = shellCompletion(command, budget)
+        deadline?.checkRemaining()
+        return output
+    } catch (failure: AssertionError) {
+        if (failure.cause is TimeoutException) deadline?.checkRemaining()
+        throw failure
+    }
+}
+
+/** pidof's documented absent-process result is exit 1, not a failed observation. */
+internal fun UiAutomation.readProcessIds(packageName: String): String = try {
+    readShell("pidof $packageName")
+} catch (failure: ShellCommandFailure) {
+    if (failure.exitCode == 1) "" else throw failure
+}
 
 /** Explicitly bounded operation, for callers that own cancellation of their command. */
-internal fun UiAutomation.boundedShell(command: String, timeoutSeconds: Long): String = shellCompletion(command, timeoutSeconds)
+internal fun UiAutomation.boundedShell(command: String, timeoutSeconds: Long): String {
+    require(timeoutSeconds > 0)
+    // This caller already owns cancellation. An enclosing observation can only shorten it.
+    return readShell(command, TimeUnit.SECONDS.toMillis(timeoutSeconds))
+}
 
 /** Returns trimmed stdout only after a confirmed zero exit.
  * UiAutomation's remote launch errors can yield either EOF or a pipe that never closes;
  * neither EOF nor empty output establishes command success. Arguments retain Runtime.exec's
  * whitespace tokenization: quoting and shell operators are literal, not interpreted here. */
-private fun UiAutomation.shellCompletion(command: String, timeoutSeconds: Long?): String {
+private fun UiAutomation.shellCompletion(command: String, timeoutMs: Long?): String {
     val started = SystemClock.elapsedRealtime()
     val arguments = StringTokenizer(command).toList().map { it.toString() }
     require(arguments.isNotEmpty()) { "Shell command must not be empty" }
-    require(timeoutSeconds == null || timeoutSeconds > 0) { "Shell deadline must be positive" }
+    require(timeoutMs == null || timeoutMs > 0) { "Shell deadline must be positive" }
     Log.i("KotatsuTestShell", "Starting: $command")
     val marker = "\nkotatsu-shell-${UUID.randomUUID()}:"
     val invocation = arguments.joinToString(" ") { "'" + it.replace("'", "'\\''") + "'" }
@@ -75,13 +106,13 @@ private fun UiAutomation.shellCompletion(command: String, timeoutSeconds: Long?)
     }
     withFixtureCleanup(body = {
         try {
-            val output = if (timeoutSeconds == null) result.get() else result.get(timeoutSeconds, TimeUnit.SECONDS)
+            val output = if (timeoutMs == null) result.get() else result.get(timeoutMs, TimeUnit.MILLISECONDS)
             val stdout = confirmedShellStdout(command, output, marker)
             Log.i("KotatsuTestShell", "Acknowledged after ${SystemClock.elapsedRealtime() - started}ms: $command")
             return stdout
         } catch (error: TimeoutException) {
-            Log.i("KotatsuTestShell", "Timed out after ${timeoutSeconds}s: $command")
-            throw AssertionError("Shell command exceeded ${timeoutSeconds}s: $command\nPhase: ${phase.get()}\nObserved stdout: $observed", error)
+            Log.i("KotatsuTestShell", "Timed out after ${timeoutMs}ms: $command")
+            throw AssertionError("Shell command exceeded ${timeoutMs}ms: $command\nPhase: ${phase.get()}\nObserved stdout: $observed", error)
         } catch (error: ExecutionException) {
             throw AssertionError("Shell command failed: $command", error.cause)
         }

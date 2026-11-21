@@ -44,6 +44,7 @@ class ScreenshotInstrumentedTest {
     private val ui = PlatformUiDriver(instrumentation)
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
     private fun shell(command: String) = automation.acknowledgedShell(command)
+    private fun read(command: String) = automation.readShell(command)
     private fun capture(name: String) {
         val bitmap = automation.takeScreenshot()
         png(bitmap, name)
@@ -67,7 +68,7 @@ class ScreenshotInstrumentedTest {
         val raw = context.getSharedPreferences("katapult_prefs", 0)
         val before = raw.all
         val animationScales = listOf("window_animation_scale", "transition_animation_scale", "animator_duration_scale")
-            .associateWith { shell("settings get global $it") }
+            .associateWith { read("settings get global $it") }
         var activity: MainActivity? = null
         withFixtureCleanup(
             { ConnectedUiStateFixture.closeOwnedActivities() },
@@ -364,7 +365,7 @@ class ScreenshotInstrumentedTest {
     private fun imageUri(id: Long) = android.content.ContentUris.withAppendedId(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id)
 
     private fun previewWindow(): String? = Regex("Window #[0-9]+ Window\\{[^\\n]* Screenshot preview\\}:([\\s\\S]*?)(?=\\n  Window #|\\z)")
-        .find(shell("dumpsys window windows"))?.value
+        .find(read("dumpsys window windows"))?.value
 
     @Test fun screenOffRemovesTheServiceOwnedPreviewAndPassesKeysThrough() = withService { service, _ ->
         val before = pictures()
@@ -407,7 +408,7 @@ class ScreenshotInstrumentedTest {
         withFixtureCleanup(body = {
             main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
             ui.await("Origin app missing") { ui.has("Brightness level") }
-            val keyboard = Regex("/dev/input/event[0-9]+").find(shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
+            val keyboard = Regex("/dev/input/event[0-9]+").find(read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
             fun key(code: Int, value: Int) {
                 assertEquals("", shell("su 0 sendevent $keyboard 1 $code $value"))
                 assertEquals("", shell("su 0 sendevent $keyboard 0 0 0"))

@@ -26,14 +26,15 @@ class HomeKeyFilterInstrumentedTest {
     private fun shell(command: String) =
         instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
             .acknowledgedShell(command)
+    private fun read(command: String) = instrumentation.platformAutomation.readShell(command)
 
     private fun hardwareHome(count: Int = 1, scan: Int = 172) {
         // InputManager's shell keyevent injection skips InputReader's accessibility filter.
         // Use the owned emulator keyboard's real evdev stream, not a direct service callback.
-        val devices = shell("su 0 getevent -pl").split("add device ")
+        val devices = read("su 0 getevent -pl").split("add device ")
         val keyboard = devices.single { it.contains("KEY_HOMEPAGE") }
         val path = Regex("/dev/input/event[0-9]+").find(keyboard)!!.value
-        assertTrue(shell("cat /system/usr/keylayout/Generic.kl").contains("key 172   HOME"))
+        assertTrue(read("cat /system/usr/keylayout/Generic.kl").contains("key 172   HOME"))
         repeat(count) {
             assertEquals("", shell("su 0 sendevent $path 1 $scan 1"))
             assertEquals("", shell("su 0 sendevent $path 0 0 0"))
@@ -47,13 +48,13 @@ class HomeKeyFilterInstrumentedTest {
         fixture.settings()
         val origin = fixture.resumedTask()
         val keyboard = Regex("/dev/input/event[0-9]+").find(
-            shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
+            read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
         val marker = "ELIGIBILITY ${SystemClock.uptimeMillis()}"
         android.util.Log.i("KotatsuHomeProbe", marker)
         shell("su 0 sendevent $keyboard 1 172 1"); shell("su 0 sendevent $keyboard 0 0 0")
         withFixtureCleanup(body = {
             ui.await("HOME DOWN was not consumed") {
-                shell("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(marker)
+                read("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(marker)
                     .lineSequence().any { it.contains("action=0 consumed=true") }
             }
             main { fixture.home.viewModel.prefs.homeButtonRecentApps = false }
@@ -130,15 +131,15 @@ class HomeKeyFilterInstrumentedTest {
             main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
             ui.await("Origin subpage missing") { ui.has("Brightness level") }
-            val resumed = shell("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") }
-            val focused = shell("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }
+            val resumed = read("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") }
+            val focused = read("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }
             launches.clear()
             java.io.File(context.getExternalFilesDir(null), "key-filter-system.txt").writeText(
-                shell("dumpsys accessibility") + "\nINPUT\n" + shell("dumpsys input"))
+                read("dumpsys accessibility") + "\nINPUT\n" + read("dumpsys input"))
             hardwareHome(2)
             ui.await("Filtered pair did not open Recent apps", 10000) { overlay.windowVisible() }
-            assertEquals(resumed, shell("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") })
-            assertEquals(focused, shell("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") })
+            assertEquals(resumed, read("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") })
+            assertEquals(focused, read("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") })
             assertTrue("Opening must not launch any Activity", launches.isEmpty())
             assertFalse("Pair must not start Home between the app and Recent apps", launches.any { it.hasCategory(Intent.CATEGORY_HOME) })
             hardwareHome(scan = 158)
@@ -147,7 +148,7 @@ class HomeKeyFilterInstrumentedTest {
             ui.await("Second filtered pair did not reopen") { overlay.windowVisible() }
             hardwareHome(2)
             ui.await("Filtered pair did not remove overlay") { !overlay.windowVisible() && ui.has("Brightness level") }
-            assertEquals(resumed, shell("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") })
+            assertEquals(resumed, read("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") })
             // Other keys and onboarding/reorder do not enter the pending HOME state.
             val callback = LockscreenWidgetService::class.java.getDeclaredMethod("onKeyEvent", KeyEvent::class.java).apply { isAccessible = true }
             main {
@@ -170,7 +171,7 @@ class HomeKeyFilterInstrumentedTest {
             android.util.Log.i("KotatsuHomeProbe", singleMarker)
             hardwareHome()
             ui.await("Single key did not reach Home") { ui.packageVisible(defaultHome) }
-            val singleTrace = shell("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(singleMarker)
+            val singleTrace = read("logcat -d -v brief -s KotatsuHome:D KotatsuHomeProbe:I").substringAfter(singleMarker)
             val down = checkNotNull(Regex("eventTime=([0-9]+) action=0 consumed=true").find(singleTrace)).groupValues[1].toLong()
             val dispatched = checkNotNull(Regex("path=key single uptime=([0-9]+)").find(singleTrace)).groupValues[1].toLong()
             assertTrue("Single Home must wait from native DOWN, not device discovery", dispatched - down >= 500)
@@ -179,7 +180,7 @@ class HomeKeyFilterInstrumentedTest {
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
             ui.await("Held-key origin missing") { ui.has("Brightness level") }
             val keyboard = Regex("/dev/input/event[0-9]+").find(
-                shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
+                read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") })!!.value
             shell("su 0 sendevent $keyboard 1 172 1"); shell("su 0 sendevent $keyboard 0 0 0")
             withFixtureCleanup(body = {
                 SystemClock.sleep(650)

@@ -34,6 +34,7 @@ internal class RecentOverlayFixture : AutoCloseable {
     fun shell(command: String): String =
         instrumentation.getUiAutomation(android.app.UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
             .acknowledgedShell(command)
+    fun read(command: String): String = instrumentation.platformAutomation.readShell(command)
     fun settings() {
         // One cross-app handoff can stamp the old app's pause and Settings' resume
         // in the same millisecond. Settle Settings first, then enter Display in a
@@ -48,7 +49,7 @@ internal class RecentOverlayFixture : AutoCloseable {
         ui.await("Display settings not foreground") { ui.has("Brightness level") }
     }
     fun key(scan: Int, count: Int = 1) {
-        val keyboard = shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
+        val keyboard = read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
         val path = checkNotNull(Regex("/dev/input/event[0-9]+").find(keyboard)).value
         repeat(count) {
             shell("su 0 sendevent $path 1 $scan 1"); shell("su 0 sendevent $path 0 0 0")
@@ -63,8 +64,8 @@ internal class RecentOverlayFixture : AutoCloseable {
         try { ui.await("Recent apps overlay not attached", 10000) { overlay.windowVisible() } }
         catch (failure: AssertionError) { throw AssertionError(overlay.windowDescriptions(), failure) }
     }
-    fun resumedTask(): String = shell("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") }.trim()
-    fun focusedWindow(): String = shell("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }.trim()
+    fun resumedTask(): String = read("dumpsys activity activities").lineSequence().first { it.contains("mResumedActivity:") }.trim()
+    fun focusedWindow(): String = read("dumpsys window").lineSequence().first { it.contains("mCurrentFocus=") }.trim()
     override fun close() {
         fixtureCleanup(
             { accessibility?.let { fixtureMain { it.service.onInterrupt() } } },

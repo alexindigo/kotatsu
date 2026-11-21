@@ -33,15 +33,15 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
     }
 
     fun await(message: String, timeoutMs: Long = 8000, predicate: () -> Boolean) {
-        val end = SystemClock.uptimeMillis() + timeoutMs
-        while (SystemClock.uptimeMillis() < end) {
-            if (!acknowledgeFullscreenHint() && predicate()) return
-            SystemClock.sleep(80)
+        try {
+            ObservationDeadline.await(message, timeoutMs, 80) {
+                !acknowledgeFullscreenHint() && predicate()
+            }
+        } catch (failure: AssertionError) {
+            // Evidence has its own bounded reads, outside the expired predicate's scope.
+            runCatching { recordFailure(failure) }.exceptionOrNull()?.let(failure::addSuppressed)
+            throw failure
         }
-        val failure = AssertionError(message)
-        // Evidence must never replace the timeout as the reported failure.
-        runCatching { recordFailure(failure) }.exceptionOrNull()?.let(failure::addSuppressed)
-        throw failure
     }
 
     /** Android can post this input-owning tutorial after app content has already appeared.
@@ -94,11 +94,7 @@ class PlatformUiDriver(instrumentation: Instrumentation, private val paneTitle: 
             xml.endTag(null, "windows")
             xml.endDocument()
         }
-        automation.executeShellCommand("logcat -d -v threadtime -t 3000").use { log ->
-            ParcelFileDescriptor.AutoCloseInputStream(log).use { input ->
-                File(directory, "logcat.txt").outputStream().use { input.copyTo(it) }
-            }
-        }
+        File(directory, "logcat.txt").writeText(automation.readShell("logcat -d -v threadtime -t 3000"))
     }
 
     private fun writeNode(xml: XmlSerializer, node: AccessibilityNodeInfo) {
