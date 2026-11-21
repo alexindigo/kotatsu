@@ -31,7 +31,7 @@ class SwipeOwnersInstrumentedTest {
     }
 
     private fun swipe(x1: Int, y1: Int, x2: Int, y2: Int, duration: Int = 250) {
-        instrumentation.platformAutomation.boundedShell("input swipe $x1 $y1 $x2 $y2 $duration")
+        instrumentation.platformAutomation.acknowledgedShell("input swipe $x1 $y1 $x2 $y2 $duration")
         instrumentation.waitForIdleSync()
     }
 

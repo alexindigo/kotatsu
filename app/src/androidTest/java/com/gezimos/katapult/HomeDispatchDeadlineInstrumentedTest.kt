@@ -48,7 +48,7 @@ class HomeDispatchDeadlineInstrumentedTest {
             })
         }
         val native = File(context.getExternalFilesDir(null), "home-native-pair.sh")
-        val keyboard = fixture.shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
+        val keyboard = fixture.read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
         val path = checkNotNull(Regex("/dev/input/event[0-9]+").find(keyboard)).value
         native.writeText("exec 2>&1\nset -e\n" +
             "sendevent $path 1 172 1\nsendevent $path 0 0 0\nsleep 0.03\n" +
@@ -68,7 +68,7 @@ class HomeDispatchDeadlineInstrumentedTest {
                 fixture.ui.await("Native HOME pair did not open overlay", 15000) { fixture.overlay.windowVisible() }
                 // Include Android's 500ms accessibility-dispatch deadline, not just overlay attachment.
                 SystemClock.sleep(750)
-                val log = fixture.shell("logcat -d -v threadtime -s KotatsuHomeProbe:I ActivityTaskManager:I KotatsuHome:D")
+                val log = fixture.read("logcat -d -v threadtime -s KotatsuHomeProbe:I ActivityTaskManager:I KotatsuHome:D")
                 File(context.getExternalFilesDir(null), "home-dispatch-$dismiss.log").writeText(log)
                 assertTrue("Missing trace marker", log.contains(marker))
                 val trace = log.substringAfter(marker)

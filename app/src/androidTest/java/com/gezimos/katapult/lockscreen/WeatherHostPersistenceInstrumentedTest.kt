@@ -9,6 +9,7 @@ import android.os.ParcelFileDescriptor
 import android.widget.ImageView
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.gezimos.katapult.readProcessIds
 import com.gezimos.katapult.MainActivity
 import com.gezimos.katapult.PlatformUiDriver
 import com.gezimos.katapult.WidgetHostTestFixture
@@ -108,11 +109,11 @@ class WeatherHostPersistenceInstrumentedTest {
             // Revoke from outside Weather: Android kills that process, just as one-time revocation does.
             context.startActivity(Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             instrumentation.waitForIdleSync()
-            val oldPid = shell("pidof $weather").trim()
+            val oldPid = instrumentation.platformAutomation.readProcessIds(weather)
             assertTrue(oldPid.isNotEmpty())
             shell("pm revoke $weather android.permission.ACCESS_FINE_LOCATION")
             shell("pm revoke $weather android.permission.ACCESS_COARSE_LOCATION")
-            ui.await("Permission revocation did not kill Weather", 10_000) { shell("pidof $weather").trim() != oldPid }
+            ui.await("Permission revocation did not kill Weather", 10_000) { instrumentation.platformAutomation.readProcessIds(weather) != oldPid }
             openIcon(); ui.await("Permission-death recreation lost a place") { hasTwoPlaces() }; ui.click("Done")
         }, actions = arrayOf<() -> Unit>(
             { instrumentation.platformAutomation.dropShellPermissionIdentity() },

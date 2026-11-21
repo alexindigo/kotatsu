@@ -92,7 +92,7 @@ class SettingsKeepPageInstrumentedTest {
             if (ui.find("Overflow choice")?.isVisibleToUser == true) return
             val viewport = android.graphics.Rect()
             ui.find { it.className == "android.widget.ScrollView" && it.isScrollable }!!.getBoundsInScreen(viewport)
-            instrumentation.platformAutomation.boundedShell("input swipe ${viewport.centerX()} ${viewport.bottom - 20} ${viewport.centerX()} ${viewport.top + 20} 250")
+            instrumentation.platformAutomation.acknowledgedShell("input swipe ${viewport.centerX()} ${viewport.bottom - 20} ${viewport.centerX()} ${viewport.top + 20} 250")
             instrumentation.waitForIdleSync()
         }
         fail("Overflow choice was not revealed")

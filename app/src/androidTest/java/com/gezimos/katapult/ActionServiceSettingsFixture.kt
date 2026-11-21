@@ -33,9 +33,9 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
     private fun connectedService() = LockscreenWidgetService::class.java.getDeclaredField("instance")
         .apply { isAccessible = true }.get(null) as? LockscreenWidgetService
     val service: LockscreenWidgetService get() = fixtureMain { checkNotNull(connectedService()) }
-    private fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(automation.executeShellCommand(command))
-        .bufferedReader().use { it.readText().trim() }
-    fun values() = Values(shell("settings get secure $ENABLED"), shell("settings get secure $ACCESSIBILITY"))
+    private fun shell(command: String) = automation.acknowledgedShell(command)
+    private fun read(command: String) = automation.readShell(command)
+    fun values() = Values(read("settings get secure $ENABLED"), read("settings get secure $ACCESSIBILITY"))
     init {
         try {
             val enabled = when {
@@ -72,7 +72,7 @@ internal class ActionServiceSettingsFixture private constructor(on: Boolean?, ex
                 }
             } },
             { fixtureMain { Unit } }, // onDestroy must have returned, not merely cleared instance.
-            { awaitExactActionServiceSettingsPersisted(value, ::shell) },
+            { awaitExactActionServiceSettingsPersisted(value, ::read, ::shell) },
         )
     }
     override fun close() {
@@ -102,23 +102,25 @@ internal fun restoreSecureSetting(key: String, original: String, shell: (String)
 /** Keep ownership until cache and disk agree: a framework write can arrive between observations. */
 internal fun awaitExactActionServiceSettingsPersisted(
     expected: ActionServiceSettingsFixture.Values,
+    read: ((String) -> String)? = null,
     shell: (String) -> String,
 ) {
-    fun current() = ActionServiceSettingsFixture.Values(
-        shell("settings get secure enabled_accessibility_services"),
-        shell("settings get secure accessibility_enabled"),
-    )
     val deadline = SystemClock.elapsedRealtime() + 15_000
+    fun query(command: String) = ObservationDeadline.readUntil(deadline) { (read ?: shell)(command) }
+    fun current() = ActionServiceSettingsFixture.Values(
+        query("settings get secure enabled_accessibility_services"),
+        query("settings get secure accessibility_enabled"),
+    )
     var live: ActionServiceSettingsFixture.Values? = null
     var persisted: ActionServiceSettingsFixture.Values? = null
-    while (SystemClock.elapsedRealtime() < deadline) {
+    try { while (SystemClock.elapsedRealtime() < deadline) {
         live = current()
         if (live.accessibility != expected.accessibility) {
             // Android derives this flag from service/UiAutomation callbacks. A matching
             // cache sample does not mean all those callbacks or disk writes have finished.
             restoreSecureSetting("accessibility_enabled", expected.accessibility, shell)
         } else if (live == expected) {
-            val stored = persistedSecureSettings(shell)
+            val stored = persistedSecureSettings(::query)
             persisted = ActionServiceSettingsFixture.Values(
                 stored["enabled_accessibility_services"] ?: "null",
                 stored["accessibility_enabled"] ?: "null",
@@ -128,6 +130,8 @@ internal fun awaitExactActionServiceSettingsPersisted(
             if (persisted == expected && live == expected) return
         }
         Thread.sleep(25)
+    } } catch (expired: ObservationDeadline.Expired) {
+        if (ObservationDeadline.current() != null) throw expired
     }
     throw AssertionError("Accessibility pair did not persist exactly: expected=$expected live=$live persisted=$persisted")
 }
@@ -140,14 +144,11 @@ internal fun awaitActionServiceSettingsPersisted(original: String, shell: (Strin
         ComponentName.unflattenFromString(it)?.className == service
     } == true
     val expected = enabled(original)
-    val deadline = SystemClock.elapsedRealtime() + 15_000
-    while (SystemClock.elapsedRealtime() < deadline) {
+    ObservationDeadline.await("Action Service setting did not persist its original enabled state", 15_000, 25) {
         // API31 persists ABX, not text XML. Decode to stdout without modifying the file.
         val value = persistedSecureSettings(shell)["enabled_accessibility_services"]
-        if (enabled(value) == expected) return
-        Thread.sleep(25)
+        enabled(value) == expected
     }
-    throw AssertionError("Action Service setting did not persist its original enabled state")
 }
 
 private fun persistedSecureSettings(shell: (String) -> String): Map<String, String> {

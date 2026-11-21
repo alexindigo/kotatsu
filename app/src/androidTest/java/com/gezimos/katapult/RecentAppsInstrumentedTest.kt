@@ -290,7 +290,7 @@ class RecentAppsInstrumentedTest {
             fixture.overlay.click("Open")
             ui.await("Usage handoff left the overlay attached") { !fixture.overlay.windowVisible() }
             ui.await("Usage access destination missing") {
-                fixture.shell("dumpsys activity activities").lineSequence().any { it.contains("mResumedActivity:") && it.contains("AppUsageAccessSettingsActivity") }
+                fixture.read("dumpsys activity activities").lineSequence().any { it.contains("mResumedActivity:") && it.contains("AppUsageAccessSettingsActivity") }
             }
         }, actions = arrayOf<() -> Unit>(
             { fixture.shell("appops set ${context.packageName} GET_USAGE_STATS allow") },
@@ -336,7 +336,7 @@ class RecentAppsInstrumentedTest {
             closeRow(label)
             ui.await("Bottom Close did not end on Home") { !fixture.overlay.windowVisible() && ui.packageVisible(home) }
             ui.await("Bottom Close not recorded") { (source.closed()[target]?.at ?: 0) >= tapped }
-            val trace = fixture.shell("logcat -d -v brief").substringAfter(marker)
+            val trace = fixture.read("logcat -d -v brief").substringAfter(marker)
             assertTrue("Close must observe Home, not just reach the timeout: $trace", trace.contains("Home observed before background stop"))
             assertFalse("Close used fallback instead of window confirmation", trace.contains("Home observation timed out"))
             main {
@@ -438,7 +438,7 @@ class RecentAppsInstrumentedTest {
         val source = AndroidRecentApps(context)
         val wall = System.currentTimeMillis()
         val elapsed = SystemClock.elapsedRealtime()
-        val auto = fixture.shell("settings get global auto_time").trim()
+        val auto = fixture.read("settings get global auto_time").trim()
         fun setTime(at: Long) {
             fixture.shell("su 0 cmd alarm set-time $at")
             assertTrue(kotlin.math.abs(System.currentTimeMillis() - at) < 3000)
@@ -534,7 +534,7 @@ class RecentAppsInstrumentedTest {
             val before = source.history().single { it.packageName == packageName }
             val at = System.currentTimeMillis()
             source.close(listOf(packageName), at)
-            ui.await("killBackgroundProcesses did not stop background fixture") { shell("pidof $packageName").isBlank() }
+            ui.await("killBackgroundProcesses did not stop background fixture") { instrumentation.platformAutomation.readProcessIds(packageName).isBlank() }
             val recreated = AndroidRecentApps(context)
             assertEquals(at, recreated.closed()[packageName]?.at)
             assertFalse(recentApps(listOf(before), context.packageName, recreated.closed()).any { it.packageName == packageName })

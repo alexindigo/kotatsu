@@ -37,7 +37,7 @@ class HomeMenuInstrumentedTest {
     }
 
     private fun hold(f: RecentOverlayFixture, paired: Boolean = false, body: () -> Unit = {}) {
-        val keyboard = f.shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
+        val keyboard = f.read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
         val path = Regex("/dev/input/event[0-9]+").find(keyboard)!!.value
         fun edge(value: Int) {
             assertEquals("", f.shell("su 0 sendevent $path 1 172 $value"))
@@ -167,7 +167,7 @@ class HomeMenuInstrumentedTest {
         val before = pictures()
         main { PrefsManager(context).homeButtonScreenshot = true }
         f.settings()
-        val keyboard = f.shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
+        val keyboard = f.read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
         val path = Regex("/dev/input/event[0-9]+").find(keyboard)!!.value
         fun key(scan: Int, value: Int) {
             f.shell("su 0 sendevent $path 1 $scan $value"); f.shell("su 0 sendevent $path 0 0 0")
@@ -201,10 +201,10 @@ class HomeMenuInstrumentedTest {
         fun setVolume(value: Int) = withAudioSettings { audio.setStreamVolume(stream, value, 0) }
         fun volumePanelVisible(): Boolean {
             val window = Regex("Window #[0-9]+ Window\\{[^\\n]* VolumeDialogImpl\\}:([\\s\\S]*?)(?=\\n  Window #|\\z)")
-                .find(f.shell("dumpsys window"))?.value ?: return false
+                .find(f.read("dumpsys window"))?.value ?: return false
             return window.contains("isVisible=true") && window.contains("Surface: shown=true")
         }
-        val keyboard = f.shell("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
+        val keyboard = f.read("su 0 getevent -pl").split("add device ").single { it.contains("KEY_HOMEPAGE") }
         val path = Regex("/dev/input/event[0-9]+").find(keyboard)!!.value
         val native = File(context.getExternalFilesDir(null), "home-menu-volume.sh")
         withFixtureCleanup(body = {

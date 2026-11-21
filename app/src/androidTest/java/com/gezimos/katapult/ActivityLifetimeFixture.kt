@@ -63,10 +63,5 @@ internal fun <T> fixtureMain(action: () -> T): T {
 }
 
 internal fun fixtureAwait(message: String, ready: () -> Boolean) {
-    val deadline = SystemClock.elapsedRealtime() + 15_000
-    while (SystemClock.elapsedRealtime() < deadline) {
-        if (ready()) return
-        SystemClock.sleep(25)
-    }
-    throw AssertionError(message)
+    ObservationDeadline.await(message, 15_000, 25, ready)
 }

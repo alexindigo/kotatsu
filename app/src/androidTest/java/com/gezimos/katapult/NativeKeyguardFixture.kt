@@ -18,18 +18,13 @@ class NativeKeyguardFixture(private val unlockBeforeClear: NativeKeyguardFixture
     private val keyguard = context.getSystemService(KeyguardManager::class.java)
     private val power = context.getSystemService(PowerManager::class.java)
     private val display = context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)
-    private val disabled = shell("locksettings get-disabled")
+    private val disabled = automation.readShell("locksettings get-disabled")
     private var pinSet = false
 
-    private fun shell(command: String) = automation.boundedShell(NativeFixtureCommand.checked(command))
+    private fun shell(command: String) = automation.acknowledgedShell(NativeFixtureCommand.checked(command))
 
     private fun await(message: String, ready: () -> Boolean) {
-        val end = SystemClock.elapsedRealtime() + 15_000
-        while (SystemClock.elapsedRealtime() < end) {
-            if (ready()) return
-            SystemClock.sleep(25)
-        }
-        throw AssertionError(message)
+        ObservationDeadline.await(message, 15_000, 25, ready)
     }
 
     fun setPin() {
@@ -109,8 +104,8 @@ class NativeKeyguardFixture(private val unlockBeforeClear: NativeKeyguardFixture
                 sleep()
             } },
             {
-                shell("locksettings set-disabled $disabled")
-                assertEquals(disabled, shell("locksettings get-disabled"))
+                assertEquals("Lock screen disabled set to $disabled", shell("locksettings set-disabled $disabled"))
+                assertEquals(disabled, automation.readShell("locksettings get-disabled"))
             },
             { unlock() },
         )
@@ -159,7 +154,7 @@ internal class NativeDisplayFixture : AutoCloseable {
     }
 }
 
-/** boundedShell preserves Runtime.exec(String) arguments, not shell syntax. `input keyevent`
+/** The shell helper preserves Runtime.exec(String) arguments, not shell syntax. `input keyevent`
  * treats following tokens as more keys: an accidental compound swipe can inject SYSRQ. */
 internal object NativeFixtureCommand {
     fun checked(command: String): String {

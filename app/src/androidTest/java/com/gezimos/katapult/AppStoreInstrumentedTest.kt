@@ -67,11 +67,6 @@ class AppStoreInstrumentedTest {
                 current.window.insetsController?.hide(WindowInsets.Type.navigationBars())
             }
             instrumentation.waitForIdleSync()
-            ui.await("Neither contents nor the emulator fullscreen hint appeared") {
-                ui.has("GOT IT") || ui.has("Got it") ||
-                    ui.has(context.getString(if (packages.installed.isEmpty()) R.string.app_store_absent else R.string.app_store_open))
-            }
-            if (ui.has("GOT IT")) ui.click("GOT IT") else if (ui.has("Got it")) ui.click("Got it")
             ui.await("App Store summary did not render in the phone-sized contents") {
                 ui.has(context.getString(if (packages.installed.isEmpty()) R.string.app_store_absent else R.string.app_store_open))
             }
