@@ -43,7 +43,7 @@ class ScreenshotInstrumentedTest {
     private val automation get() = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
     private val ui = PlatformUiDriver(instrumentation)
     private fun main(action: () -> Unit) = instrumentation.runOnMainSync(action)
-    private fun shell(command: String) = automation.boundedShell(command)
+    private fun shell(command: String) = automation.acknowledgedShell(command)
     private fun capture(name: String) {
         val bitmap = automation.takeScreenshot()
         png(bitmap, name)

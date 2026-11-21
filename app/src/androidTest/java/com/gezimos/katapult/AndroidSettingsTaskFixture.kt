@@ -34,7 +34,7 @@ internal class AndroidSettingsTaskFixture : AutoCloseable {
             return stacks.map { (id, packages) -> Stack(id, packages) }.filter { SETTINGS in it.packages }
         }
 
-        private fun shell(command: String) = InstrumentationRegistry.getInstrumentation().platformAutomation.boundedShell(command)
+        private fun shell(command: String) = InstrumentationRegistry.getInstrumentation().platformAutomation.acknowledgedShell(command)
         private fun current() = settingsStacks(shell("dumpsys activity activities"))
 
         fun assertEmpty() {

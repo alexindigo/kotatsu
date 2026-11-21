@@ -45,6 +45,7 @@ class NativeKeyguardFixtureInstrumentedTest {
     }
 
     @Test fun repeatedReadinessAndWakePreserveFocusedNativePin() {
+        val keyguard = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(KeyguardManager::class.java)
         NativeKeyguardFixture().use { fixture ->
             fixture.setPin()
             fixture.sleep()
@@ -56,6 +57,8 @@ class NativeKeyguardFixtureInstrumentedTest {
             }
             fixture.unlock()
         }
+        assertFalse("The fixture must acknowledge PIN removal before returning", keyguard.isDeviceSecure)
+        assertFalse("The fixture must return with its native keyguard unlocked", keyguard.isKeyguardLocked)
     }
 
     /** Same native-only rapid sleep/wake/swipe as the investigation. A lost touch must not

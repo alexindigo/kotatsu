@@ -33,7 +33,7 @@ class UsageAccessRule : TestRule {
                     else -> error("Unsupported usage AppOp mode $value")
                 }
                 instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES)
-                    .boundedShell("appops set ${context.packageName} GET_USAGE_STATS $name")
+                    .acknowledgedShell("appops set ${context.packageName} GET_USAGE_STATS $name")
                 val deadline = SystemClock.uptimeMillis() + 5000
                 while (mode() != value && SystemClock.uptimeMillis() < deadline) SystemClock.sleep(25)
                 check(mode() == value) { "Usage AppOp did not become $name" }

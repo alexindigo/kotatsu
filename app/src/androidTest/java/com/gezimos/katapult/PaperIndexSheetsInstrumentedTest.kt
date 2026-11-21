@@ -187,7 +187,6 @@ class PaperIndexSheetsInstrumentedTest {
             activity.window.insetsController?.hide(android.view.WindowInsets.Type.navigationBars())
         }
         instrumentation.waitForIdleSync()
-        if (ui.has("GOT IT")) ui.click("GOT IT") else if (ui.has("Got it")) ui.click("Got it")
         withFixtureCleanup({ instrumentation.runOnMainSync { activity.finish() } }) { block(activity) }
     }
 }
