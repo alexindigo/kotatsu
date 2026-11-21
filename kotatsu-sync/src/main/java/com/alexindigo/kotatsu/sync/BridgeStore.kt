@@ -61,9 +61,14 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
         val db = writableDatabase
         db.beginTransaction()
         try {
-            check(pending().any { it.id == intentId }) { "Calendar write identity changed" }
-            if (mapping != null) check(all().none { it.muditaId == mapping.muditaId && it.standardKey != mapping.standardKey }) {
-                "Cannot reassign an already mapped phone identity"
+            db.rawQuery("SELECT 1 FROM write_intent WHERE id = ?", arrayOf(intentId)).use {
+                check(it.moveToFirst()) { "Calendar write identity changed" }
+            }
+            if (mapping != null) db.rawQuery("SELECT event_id, instance_start FROM pairs WHERE mudita_id = ?",
+                arrayOf(mapping.muditaId.toString())).use {
+                if (it.moveToFirst()) check(EventKey(it.getLong(0), if (it.isNull(1)) null else it.getLong(1)) == mapping.standardKey) {
+                    "Cannot reassign an already mapped phone identity"
+                }
             }
             if (removeMuditaId != null) remove(removeMuditaId)
             if (mapping != null) save(mapping)

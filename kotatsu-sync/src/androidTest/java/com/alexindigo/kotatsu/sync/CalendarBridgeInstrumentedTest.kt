@@ -577,6 +577,69 @@ class CalendarBridgeInstrumentedTest {
         assertEquals(original, f.phone.all().single()); assertEquals(row.muditaId, f.store.all().single().muditaId)
         assertTrue(f.store.pending().isEmpty())
     }
+    @Test fun unattemptedRetirementReopenPreservesAUserDeletionWhenEligibleAgain() = scenario { f ->
+        val id = f.insert(); f.pass()
+        val original = f.phone.all().single(); val row = f.store.all().single()
+        f.config.write(SyncSettings(emptySet(), null))
+        f.store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = original))
+        assertTrue(f.phone.delete(original.id))
+        f.config.write(SyncSettings(setOf(f.calendarId), f.calendarId))
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertNull(f.standard.read(EventKey(id))); assertTrue(f.phone.all().isEmpty())
+        assertTrue(f.store.all().isEmpty()); assertTrue(f.store.pending().isEmpty())
+    }
+    @Test fun unattemptedRetirementReopenStillAppliesANewerStandardWinner() = scenario { f ->
+        val id = f.insert(); f.pass()
+        val original = f.phone.all().single(); val row = f.store.all().single()
+        f.store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = original))
+        assertTrue(f.phone.delete(original.id))
+        f.resolver.update(ContentUris.withAppendedId(Events.CONTENT_URI, id), ContentValues().apply {
+            put(Events.TITLE, "Server winner")
+        }, null, null)
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertEquals("Server winner", f.phone.all().single().title)
+        assertEquals("Server winner", f.standard.read(EventKey(id))!!.title)
+        assertEquals(EventKey(id), f.store.all().single().standardKey)
+        assertTrue(f.store.pending().isEmpty())
+    }
+    @Test fun acknowledgementChecksOnlyTheRequestedIntentIdentity() = scenario { f ->
+        val first = f.standard.read(EventKey(f.insert()))!!
+        val second = f.standard.read(EventKey(f.insert()))!!
+        val a = WriteIntent(kind = WriteKind.IMPORT, standardBefore = first, phoneAfter = EventMapper().toMudita(first))
+        val b = WriteIntent(kind = WriteKind.IMPORT, standardBefore = second, phoneAfter = EventMapper().toMudita(second))
+        f.store.prepare(a); f.store.prepare(b)
+        // A sentinel payload makes unrelated decoding observable without a timing threshold.
+        f.store.writableDatabase.execSQL("UPDATE write_intent SET payload = ? WHERE id = ?", arrayOf("not decoded", b.id))
+        f.store.acknowledge(a.id, null, null)
+        f.store.readableDatabase.rawQuery("SELECT id, payload FROM write_intent", null).use {
+            assertTrue(it.moveToFirst()); assertEquals(b.id, it.getString(0))
+            assertEquals("not decoded", it.getString(1)); assertEquals(1, it.count)
+        }
+        f.store.prepare(b)
+        BridgeStore(f.context).use { assertEquals(listOf(b), it.pending()) }
+    }
+    @Test fun acknowledgementChecksNullableOccurrenceOwnershipAndRollsBackReassignment() = scenario { f ->
+        val key = EventKey(f.insert())
+        val standalone = Mapping(10, key, f.calendarId, "phone", "standard")
+        f.store.save(standalone)
+        val intent = WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = standalone)
+        f.store.prepare(intent)
+        val occurrence = standalone.copy(standardKey = key.copy(instanceStart = f.now))
+        try { f.store.acknowledge(intent.id, occurrence, standalone.muditaId); fail("Expected ownership conflict") }
+        catch (_: IllegalStateException) { }
+        assertEquals(listOf(standalone), f.store.all()); assertEquals(listOf(intent), f.store.pending())
+        f.store.acknowledge(intent.id, standalone.copy(muditaFingerprint = "updated"), null)
+        assertEquals("updated", f.store.all().single().muditaFingerprint); assertTrue(f.store.pending().isEmpty())
+        f.store.save(occurrence)
+        f.store.prepare(intent)
+        try { f.store.acknowledge(intent.id, standalone, null); fail("Expected reverse ownership conflict") }
+        catch (_: IllegalStateException) { }
+        assertEquals(listOf(occurrence), f.store.all()); assertEquals(listOf(intent), f.store.pending())
+        f.store.acknowledge(intent.id, occurrence, null)
+        try { f.store.acknowledge("absent", null, occurrence.muditaId); fail("Expected missing intent") }
+        catch (_: IllegalStateException) { }
+        assertEquals(listOf(occurrence), f.store.all())
+    }
 
     @Test fun itemReservationsAndAcknowledgementsAreAtomicAndIndependent() = scenario { f ->
         f.store.firstRunDone = true
