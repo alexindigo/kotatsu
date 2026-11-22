@@ -178,15 +178,23 @@ CalendarContract read/edit/readback, and a real phone-to-external-account move.
 Each move is one non-yielding ContactsProvider batch: assert the source version,
 account and non-deleted state and target Settings, insert the target raw contact,
 copy all MIME rows (`data1`-`data15`, resource package and primary flags), explicitly
-aggregate it with the source, then delete the source. Target rows use ordinary
+aggregate it with the source, then delete the source and restore aggregate-wide
+super-primary selections. These defaults are deferred for every MIME type until
+source deletion: duplicating them during aggregation makes Android clear both
+copies. Per-raw primary flags are copied directly; defaults owned by other raw
+contacts are not replaced. Target rows use ordinary
 application writes: ContactsProvider sets dirty state for DAVx5, and no server
 source id/sync metadata is invented. A failed assertion or later batch operation
 rolls back. A lost result after commit is safe to retry: the local source no longer
 exists. Starred, ringtone and send-to-voicemail choices are retained.
 
 Two account/provider-owned references must be translated, not blindly copied:
-photo `data14` is a file id, so the full display-photo bytes are supplied to the
-new photo row and Android regenerates its file/thumbnail; group membership
+photo `data14` is a file id, so each row's full image is read from
+`DisplayPhoto.CONTENT_URI/<PHOTO_FILE_ID>`, not the raw contact's primary-photo
+URI. The bytes are supplied to the new photo row and Android regenerates its
+file/thumbnail. Connected tests compare two distinct full-size images and their
+primary/super-primary flags, phone/email defaults, and a joined raw contact's
+independent default. Group membership
 `data1` is an account-owned group id, so the group title/notes are matched or
 created in the destination within the same batch (source group version checked).
 New groups retain the source's visibility flag; an existing target group's own

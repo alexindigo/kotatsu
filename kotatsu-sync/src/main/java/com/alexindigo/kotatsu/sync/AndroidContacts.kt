@@ -53,8 +53,9 @@ class AndroidContacts(private val context: Context) : ContactsPort {
         // DATA14 is a provider-owned file id. Supply the actual full-size image,
         // not that id or just the thumbnail, so the new raw contact owns its photo.
         for (row in data.filter { it.getAsString(Data.MIMETYPE) == Photo.CONTENT_ITEM_TYPE }) {
-            if (row.getAsLong(Photo.PHOTO_FILE_ID) != null) {
-                val photo = uri.buildUpon().appendPath(RawContacts.DisplayPhoto.CONTENT_DIRECTORY).build()
+            val fileId = row.getAsLong(Photo.PHOTO_FILE_ID)
+            if (fileId != null) {
+                val photo = ContentUris.withAppendedId(ContactsContract.DisplayPhoto.CONTENT_URI, fileId)
                 row.put(Photo.PHOTO, checkNotNull(resolver.openInputStream(photo)).use { it.readBytes() })
             }
             row.remove(Photo.PHOTO_FILE_ID)
@@ -76,6 +77,7 @@ class AndroidContacts(private val context: Context) : ContactsPort {
             withValue(RawContacts.DATA_SET, destination.dataSet)
         }.build())
         val groups = mutableMapOf<Long, Pair<Long?, Int?>>()
+        val superPrimaryInserts = mutableListOf<Int>()
         for (row in data) {
             val builder = ContentProviderOperation.newInsert(Data.CONTENT_URI)
                 .withValueBackReference(Data.RAW_CONTACT_ID, insert)
@@ -85,6 +87,12 @@ class AndroidContacts(private val context: Context) : ContactsPort {
                 row.remove(GroupMembership.GROUP_ROW_ID)
                 if (group.first != null) builder.withValue(GroupMembership.GROUP_ROW_ID, group.first)
                 else builder.withValueBackReference(GroupMembership.GROUP_ROW_ID, checkNotNull(group.second))
+            }
+            // Do not duplicate an aggregate-wide default while source and copy
+            // coexist: aggregation clears conflicting super-primary flags.
+            if (row.getAsInteger(Data.IS_SUPER_PRIMARY) == 1) {
+                superPrimaryInserts.add(operations.size)
+                row.put(Data.IS_SUPER_PRIMARY, 0)
             }
             operations.add(builder.withValues(row).build())
         }
@@ -96,6 +104,11 @@ class AndroidContacts(private val context: Context) : ContactsPort {
             .withValue(AggregationExceptions.RAW_CONTACT_ID1, source.id)
             .withValueBackReference(AggregationExceptions.RAW_CONTACT_ID2, insert).withExpectedCount(1).build())
         operations.add(ContentProviderOperation.newDelete(uri).withExpectedCount(1).build())
+        // Restore every MIME type's selected default only after the source is
+        // gone, still atomically. Other raw contacts' defaults stay untouched.
+        for (index in superPrimaryInserts) operations.add(ContentProviderOperation.newUpdate(Data.CONTENT_URI)
+            .withSelection("${Data._ID} = ?", arrayOf("0")).withSelectionBackReference(0, index)
+            .withValue(Data.IS_SUPER_PRIMARY, 1).withExpectedCount(1).build())
         return try {
             val result = resolver.applyBatch(ContactsContract.AUTHORITY, operations)
             checkNotNull(result[insert].uri)

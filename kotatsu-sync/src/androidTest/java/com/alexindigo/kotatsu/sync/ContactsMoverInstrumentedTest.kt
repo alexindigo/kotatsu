@@ -11,6 +11,8 @@ import android.content.ContentProvider
 import android.content.ContentResolver
 import android.content.ContextWrapper
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
 import android.os.SystemClock
@@ -157,6 +159,58 @@ class ContactsMoverInstrumentedTest {
         }
     }
 
+    @Test fun multiplePhotosKeepTheirOwnFullSizeImagesAndPrimaryFlags() = scenario { f ->
+        val source = f.insert("Two distinct photos")
+        val photoIds = listOf(Color.RED, Color.BLUE).mapIndexed { index, color ->
+            val image = Bitmap.createBitmap(800, 800, Bitmap.Config.ARGB_8888)
+            image.eraseColor(color)
+            val bytes = ByteArrayOutputStream().use { out -> image.compress(Bitmap.CompressFormat.PNG, 100, out); out.toByteArray() }
+            image.recycle()
+            ContentUris.parseId(f.resolver.insert(Data.CONTENT_URI, ContentValues().apply {
+                put(Data.RAW_CONTACT_ID, source); put(Data.MIMETYPE, Photo.CONTENT_ITEM_TYPE); put(Photo.PHOTO, bytes)
+                put(Data.IS_PRIMARY, if (index == 0) 1 else 0); put(Data.IS_SUPER_PRIMARY, if (index == 0) 1 else 0)
+            })!!)
+        }
+        f.resolver.update(ContentUris.withAppendedId(Data.CONTENT_URI, photoIds.first()), ContentValues().apply {
+            put(Data.IS_PRIMARY, 1); put(Data.IS_SUPER_PRIMARY, 1)
+        }, null, null)
+        val before = f.photos(source)
+        assertEquals(setOf("red", "blue"), before.map { it.image }.toSet())
+        assertEquals(2, before.size); assertEquals(1, before.count { it.primary == 1 && it.superPrimary == 1 })
+        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        val target = f.rawIn(f.personal).single()
+        assertEquals(before.sortedBy { it.image }, f.photos(target).sortedBy { it.image })
+        assertTrue(f.rawIn(null).isEmpty()); assertEquals(1, f.liveAggregateCount())
+    }
+
+    @Test fun phoneAndEmailDefaultsSurviveTheCopyAggregateDeleteTransaction() = scenario { f ->
+        val source = f.insert("Selected fields")
+        for ((mime, values) in listOf(Phone.CONTENT_ITEM_TYPE to listOf("2025550181", "2025550182"),
+            Email.CONTENT_ITEM_TYPE to listOf("chosen@example.invalid", "other@example.invalid"))) {
+            for ((index, value) in values.withIndex()) f.resolver.insert(Data.CONTENT_URI, row(mime, value, 1).apply {
+                put(Data.RAW_CONTACT_ID, source); put(Data.IS_PRIMARY, if (index == 0) 1 else 0)
+                put(Data.IS_SUPER_PRIMARY, if (index == 0) 1 else 0)
+            })!!
+        }
+        val before = f.data(source)
+        assertEquals(2, before.count { it[2] == "1" })
+        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(before, f.data(f.rawIn(f.personal).single()))
+    }
+
+    @Test fun movingJoinedRawContactDoesNotReplaceAnotherRawContactsDefault() = scenario { f ->
+        val other = f.insert("Joined default", "2025550183", f.family)
+        val source = f.insert("Joined default", "2025550183")
+        assertEquals(f.aggregate(other), f.aggregate(source))
+        f.resolver.update(Data.CONTENT_URI, ContentValues().apply { put(Data.IS_SUPER_PRIMARY, 1) },
+            "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?", arrayOf(other.toString(), Phone.CONTENT_ITEM_TYPE))
+        val beforeOther = f.data(other); val beforeSource = f.data(source)
+        assertEquals(1, beforeOther.count { it[2] == "1" }); assertEquals(0, beforeSource.count { it[2] == "1" })
+        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(beforeOther, f.data(other)); assertEquals(beforeSource, f.data(f.rawIn(f.personal).single()))
+        assertEquals(f.aggregate(other), f.aggregate(f.rawIn(f.personal).single()))
+    }
+
     @Test fun rawContactChangeJobMovesToConfiguredPersonalAndRearms() = scenario { f ->
         f.config.write(ContactsSettings(personal = f.personal, family = f.family))
         SyncRuntime.ensureArmed(f.context, queuePass = false)
@@ -231,6 +285,7 @@ class ContactsMoverInstrumentedTest {
             { for (account in f.added) check(AccountManager.get(f.context).removeAccountExplicitly(account)) },
         ) { f.setup(); body(f) }
     }
+    private data class StoredPhoto(val image: String, val width: Int, val height: Int, val primary: Int, val superPrimary: Int)
     private class Fixture {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
@@ -299,6 +354,25 @@ class ContactsMoverInstrumentedTest {
             arrayOf(Contacts.IN_VISIBLE_GROUP), null, null, null)!!.use { check(it.moveToFirst()); it.getInt(0) }
         fun displayPhoto(id: Long): ByteArray = resolver.openInputStream(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id)
             .buildUpon().appendPath(RawContacts.DisplayPhoto.CONTENT_DIRECTORY).build())!!.use { it.readBytes() }
+        fun photos(rawId: Long): List<StoredPhoto> = resolver.query(Data.CONTENT_URI,
+            arrayOf(Photo.PHOTO_FILE_ID, Data.IS_PRIMARY, Data.IS_SUPER_PRIMARY),
+            "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?", arrayOf(rawId.toString(), Photo.CONTENT_ITEM_TYPE), Data._ID)!!.use { c ->
+            val fileIds = mutableSetOf<Long>()
+            buildList { while (c.moveToNext()) {
+                assertFalse(c.isNull(0)); assertTrue(fileIds.add(c.getLong(0)))
+                val uri = ContentUris.withAppendedId(ContactsContract.DisplayPhoto.CONTENT_URI, c.getLong(0))
+                val bitmap = resolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it) }!!
+                withFixtureCleanup({ bitmap.recycle() }) {
+                    val pixel = bitmap.getPixel(bitmap.width / 2, bitmap.height / 2)
+                    val image = when {
+                        Color.red(pixel) > 200 && Color.blue(pixel) < 30 -> "red"
+                        Color.blue(pixel) > 200 && Color.red(pixel) < 30 -> "blue"
+                        else -> error("Full-size photo content changed")
+                    }
+                    add(StoredPhoto(image, bitmap.width, bitmap.height, c.getInt(1), c.getInt(2)))
+                }
+            } }
+        }
         fun data(id: Long): List<List<String?>> = resolver.query(Data.CONTENT_URI,
             (listOf(Data.MIMETYPE, Data.IS_PRIMARY, Data.IS_SUPER_PRIMARY) + (1..15).map { "data$it" }).toTypedArray(),
             "${Data.RAW_CONTACT_ID} = ?", arrayOf(id.toString()), Data._ID)!!.use { c -> buildList {
