@@ -462,6 +462,56 @@ class CalendarBridgeInstrumentedTest {
         PassLifecycle.run({ SyncRuntime.pass(f.context) }, {}, { completions.add(it) })
         assertEquals(listOf(true), completions)
         assertTrue(f.store.status.contains("incomplete"))
+        assertNotNull(f.store.syncStatus.lastPassAt)
+        assertTrue(f.store.syncStatus.stopReason!!.contains("incomplete"))
+    }
+
+    @Test fun runtimeStatusPersistsPassTimeAndLogicalChangesIncludingANoOp() = scenario { f ->
+        f.insert()
+        val started = System.currentTimeMillis()
+        val first = SyncRuntime.pass(f.context)
+        assertEquals(1, first.changes); assertNull(first.stopReason)
+        assertTrue(first.lastPassAt!! >= started)
+        BridgeStore(f.context).use { assertEquals(first, it.syncStatus) }
+        val second = SyncRuntime.pass(f.context)
+        assertEquals(0, second.changes); assertNull(second.stopReason)
+        assertTrue(second.lastPassAt!! >= first.lastPassAt!!)
+        BridgeStore(f.context).use { assertEquals(second, it.syncStatus) }
+    }
+
+    @Test fun runtimeStatusPersistsIntentionalStopsWithoutRequestingRetry() = scenario { f ->
+        val denied = object : android.content.ContextWrapper(f.context) {
+            override fun checkSelfPermission(permission: String): Int = if (permission == Manifest.permission.READ_CALENDAR)
+                android.content.pm.PackageManager.PERMISSION_DENIED else super.checkSelfPermission(permission)
+        }
+        val missing = SyncRuntime.pass(denied)
+        assertEquals("calendar permission not granted", missing.stopReason); assertEquals(0, missing.changes)
+        BridgeStore(f.context).use { assertEquals(missing, it.syncStatus) }
+        f.schema(true)
+        val schema = SyncRuntime.pass(f.context)
+        assertEquals("Mudita Calendar missing or incompatible schema", schema.stopReason); assertEquals(0, schema.changes)
+        BridgeStore(f.context).use { assertEquals(schema, it.syncStatus) }
+    }
+
+    @Test fun unresolvedEvidenceRemainsVisibleInTypedStatusAndIsNotAProviderRetry() = scenario { f ->
+        f.store.firstRunDone = true
+        val remote = f.standard.read(EventKey(f.insert()))!!
+        f.store.prepare(WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = EventMapper().toMudita(remote), attempted = true))
+        val status = SyncRuntime.pass(f.context)
+        assertEquals(0, status.changes); assertTrue(status.stopReason!!.contains("1 pending writes"))
+        assertTrue(f.phone.all().isEmpty())
+        BridgeStore(f.context).use { assertEquals(status, it.syncStatus); assertEquals(1, it.pending().size) }
+    }
+
+    @Test fun typedStatusRoundTripsNullsAndReplacesAllFieldsTogether() = scenario { f ->
+        f.store.writableDatabase.delete("state", "name = ?", arrayOf("sync_status"))
+        assertEquals(SyncStatus(), f.store.syncStatus)
+        val stopped = SyncStatus(System.currentTimeMillis(), 12, "A plain stop reason\nwith details")
+        f.store.syncStatus = stopped
+        BridgeStore(f.context).use { assertEquals(stopped, it.syncStatus) }
+        f.store.syncStatus = SyncStatus()
+        BridgeStore(f.context).use { assertEquals(SyncStatus(), it.syncStatus) }
     }
 
     @Test fun runtimeQueryFailureRetriesButAnIncompatibleSchemaStopsWithoutRetry() = scenario { f ->

@@ -7,6 +7,7 @@ set -Eeuo pipefail
 E=$1
 mkdir -p "$E"
 ADB=${ADB:-/srv/kotatsu/android-sdk/platform-tools/adb}
+export ANDROID_SERIAL=emulator-5554
 P=com.alexindigo.kotatsu.sync.debug
 APK=kotatsu-sync/build/outputs/apk/debug/kotatsu-sync-debug.apk
 poll_pass() {

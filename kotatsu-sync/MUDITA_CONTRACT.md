@@ -186,3 +186,26 @@ contact or invent a DAVx5 source id to fake that key. Inspected Mudita Phone
 phone raw-contact id. Evidence: the sibling `dial-cp2` and
 `messages-contactutil` JSON/text files. This is a platform account-transfer detail,
 not a claim of a live Phone/Messages UI or server round-trip test.
+
+The one-time Family action persists its destination and the snapshot of local
+raw-contact ids before the first batch. Failed/interrupted items retain that
+intent across database reopen; an automatic pass resumes Family for those ids
+and reserves them from Personal. Contacts created after that snapshot still go
+to Personal. Completed batches remove their own local candidates, so a crash
+before clearing the one-time intent cannot duplicate a contact. A missing target
+or permission retains the pending action rather than rerouting it.
+
+## Plain pass status
+
+`BridgeStore.syncStatus` stores `SyncStatus(lastPassAt, changes, stopReason)` as a
+single state row; no calendar-bridge schema/version bump is needed. The timestamp
+is the completion time of the latest bridge attempt or one-time action, not a
+claim that DAVx5 reached the server. `changes` counts provider-confirmed logical
+event mutations plus moved raw contacts in that attempt, not mapping saves,
+copied Data rows, or recovery acknowledgements. A no-op writes a fresh timestamp
+and zero changes. Stops, unresolved evidence and exceptions store a plain reason;
+transient provider failures additionally request job retry after saving status.
+Scheduling failures retain the latest pass time/count and replace the reason.
+Unconfigured automatic contacts movement is inactive; a configured but unavailable
+destination or missing permission is a stop. The calendar and contacts have
+independent permission/availability results, combined into one status.

@@ -15,6 +15,23 @@ class BridgeEngineTest {
     private fun event(id: Long = 1) = StandardEvent(id, 1, "Title $id", "Body", "Home", now + 1000, now + 2000)
     private fun seed(): MuditaEvent { server.rows[EventKey(1)] = event(); engine.pass(now); return phone.rows.values.single() }
 
+    @Test fun statusCountsProviderMutationsButNotStableMappings() {
+        server.rows[EventKey(1)] = event()
+        assertEquals(1, engine.pass(now).changes)
+        assertEquals(0, engine.pass(now).changes)
+        server.rows[EventKey(1)] = event().copy(title = "Changed")
+        assertEquals(1, engine.pass(now).changes)
+        phone.rows.clear()
+        assertEquals(1, engine.pass(now).changes)
+        assertEquals(0, engine.pass(now).changes)
+    }
+    @Test fun stoppedPassHasPlainReasonAndNoChanges() {
+        phone.schema = false
+        val result = engine.pass(now)
+        assertEquals(0, result.changes); assertEquals("Mudita Calendar missing or incompatible schema", result.stopReason)
+        assertFalse(result.retry)
+    }
+
     @Test fun standardNewEditDelete() {
         val original = seed()
         server.rows[EventKey(1)] = event().copy(title = "Changed")

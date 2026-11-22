@@ -32,7 +32,7 @@ internal class SyncScope(val chosen: Set<Long>, private val now: Long, private v
 }
 
 enum class WriteOutcome { DONE, RETRY, UNRESOLVED }
-data class PassResult(val retry: Boolean = false, val unresolved: Int = 0)
+data class PassResult(val retry: Boolean = false, val unresolved: Int = 0, val changes: Int = 0, val stopReason: String? = null)
 
 /** External evidence/decision, never an inference from a fingerprint or a missing row. */
 sealed class WriteResolution {
@@ -45,6 +45,7 @@ internal class WriteJournal(
     private val phone: MuditaCalendarPort, private val standard: StandardCalendarPort,
     private val store: MappingStore, private val mapper: EventMapper,
     private val scope: SyncScope,
+    private val changed: () -> Unit = {},
 ) {
     var retry = false
         private set
@@ -120,6 +121,7 @@ internal class WriteJournal(
                     store.prepare(intent)
                     val id = phone.insert(desired)
                     if (id == null) return WriteOutcome.RETRY
+                    changed()
                     intent = intent.copy(insertedId = id, confirmed = true); store.prepare(intent)
                 }
                 if (intent.insertedId == null) return WriteOutcome.UNRESOLVED
@@ -134,6 +136,7 @@ internal class WriteJournal(
                     if (desired.calendarId !in scope.chosen || phoneNow(source.id) != source) return finish(intent)
                     intent = intent.copy(attempted = true); store.prepare(intent)
                     id = standard.insert(desired.calendarId, desired, intent.id) ?: return WriteOutcome.RETRY
+                    changed()
                 }
                 intent = intent.copy(insertedId = id, confirmed = true); store.prepare(intent)
                 val actual = standard.read(EventKey(id))
@@ -153,6 +156,7 @@ internal class WriteJournal(
                     if (!scope.includes(source, source.key) || current != before || standard.read(source.key) != source) return finish(intent)
                     intent = intent.copy(attempted = true); store.prepare(intent)
                     if (!phone.update(before.id, desired)) return WriteOutcome.RETRY
+                    changed()
                     intent = intent.copy(confirmed = true); store.prepare(intent)
                 }
                 phoneNow(before.id) // Readback is observation, never a replacement for provider evidence.
@@ -168,6 +172,7 @@ internal class WriteJournal(
                 if (current != intent.phoneBefore) return if (intent.attempted) WriteOutcome.UNRESOLVED else finish(intent)
                 intent = intent.copy(attempted = true); store.prepare(intent)
                 if (!phone.delete(row.muditaId)) return WriteOutcome.RETRY
+                changed()
                 intent = intent.copy(confirmed = true); store.prepare(intent)
                 return finish(intent, remove = row.muditaId)
             }
@@ -182,6 +187,7 @@ internal class WriteJournal(
                     if (!scope.identity(before, before.key) || current != before || phoneNow(source.id) != source) return finish(intent)
                     intent = intent.copy(attempted = true); store.prepare(intent)
                     if (!standard.update(before.key, desired)) return WriteOutcome.RETRY
+                    changed()
                     intent = intent.copy(confirmed = true); store.prepare(intent)
                 }
                 standard.read(before.key)
@@ -197,6 +203,7 @@ internal class WriteJournal(
                     if (!scope.identity(before, before.key) || current != before || phoneNow(row.muditaId) != null) return finish(intent)
                     intent = intent.copy(attempted = true); store.prepare(intent)
                     if (!standard.delete(before.key)) return WriteOutcome.RETRY
+                    changed()
                     intent = intent.copy(confirmed = true); store.prepare(intent)
                 }
                 return finish(intent, remove = row.muditaId)

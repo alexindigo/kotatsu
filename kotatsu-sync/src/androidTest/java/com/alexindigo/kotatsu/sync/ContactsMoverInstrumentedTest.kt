@@ -82,26 +82,7 @@ class ContactsMoverInstrumentedTest {
     @Test fun importedSimMoveNeverReadsOrMutatesTheSimProviders() = scenario { f ->
         f.insert("Imported SIM", "2025550123")
         val authorities = mutableListOf<String?>()
-        val tracked = ContentResolver.wrap(object : ContentProvider() {
-            override fun onCreate() = true
-            override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): android.database.Cursor? {
-                authorities.add(uri.authority)
-                return f.resolver.query(uri, projection, selection, selectionArgs, sortOrder)
-            }
-            override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
-                authorities.add(ContactsContract.AUTHORITY)
-                return f.resolver.call(ContactsContract.AUTHORITY_URI, method, arg, extras)
-            }
-            override fun applyBatch(operations: ArrayList<ContentProviderOperation>): Array<android.content.ContentProviderResult> {
-                authorities.addAll(operations.map { it.uri.authority })
-                return f.resolver.applyBatch(ContactsContract.AUTHORITY, operations)
-            }
-            override fun getType(uri: Uri) = null
-            override fun insert(uri: Uri, values: ContentValues?) = throw AssertionError("Expected atomic batch")
-            override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = throw AssertionError("Expected atomic batch")
-            override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = throw AssertionError("No SIM deletion")
-        })
-        val context = object : ContextWrapper(f.context) { override fun getContentResolver() = tracked }
+        val context = f.trackedContext(onAuthority = { authorities.add(it) })
         assertEquals(ContactsResult(1), ContactsMover(AndroidContacts(context)).moveExisting(f.family))
         assertTrue(authorities.isNotEmpty()); assertEquals(setOf(ContactsContract.AUTHORITY), authorities.toSet())
         assertEquals(1, f.rawIn(f.family).size); assertTrue(f.rawIn(null).isEmpty())
@@ -189,11 +170,47 @@ class ContactsMoverInstrumentedTest {
         val id = f.insert("One-time")
         f.config.write(ContactsSettings(family = f.family))
         assertEquals(ContactsResult(1), SyncRuntime.moveExistingContacts(f.context).get(15, TimeUnit.SECONDS))
+        BridgeStore(f.context).use {
+            assertEquals(1, it.syncStatus.changes); assertNotNull(it.syncStatus.lastPassAt)
+            assertNull(it.syncStatus.stopReason); assertNull(it.pendingContactsMove)
+        }
         assertEquals(1, f.rawIn(f.family).size)
         val remaining = f.insert("Keep")
         f.resolver.update(Settings.CONTENT_URI, ContentValues().apply { put(Settings.SHOULD_SYNC, 0) }, "account_name = ?", arrayOf(f.family.name))
         assertNotNull(ContactsMover(f.port).moveExisting(f.family).stopReason)
         assertEquals(listOf(remaining), f.rawIn(null)); assertFalse(f.rawIn(null).contains(id))
+    }
+
+    @Test fun failedFamilyActionResumesAcrossReopenWithoutRoutingOldContactsToPersonalOrNewOnesToFamily() = scenario { f ->
+        val old = f.insert("Existing")
+        f.config.write(ContactsSettings(personal = f.personal, family = f.family))
+        val failed = f.trackedContext(beforeBatch = { throw android.content.OperationApplicationException("Injected batch failure") })
+        val result = SyncRuntime.moveExistingContacts(failed).get(15, TimeUnit.SECONDS)
+        assertTrue(result.retry); assertEquals(0, result.changes); assertNotNull(result.stopReason)
+        BridgeStore(f.context).use {
+            assertEquals(ContactsMove(f.family, setOf(old)), it.pendingContactsMove)
+            assertEquals(result.stopReason, it.syncStatus.stopReason); assertEquals(0, it.syncStatus.changes)
+        }
+        f.insert("New phone contact")
+        val status = SyncRuntime.pass(f.context)
+        assertNull(status.stopReason); assertEquals(2, status.changes)
+        assertEquals(1, f.rawIn(f.family).size); assertEquals(1, f.rawIn(f.personal).size)
+        BridgeStore(f.context).use { assertNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
+    }
+
+    @Test fun contactsPermissionStopIsPersistedAndDoesNotDisableCalendarOrLoseThePendingAction() = scenario { f ->
+        val id = f.insert("Pending")
+        BridgeStore(f.context).use { it.pendingContactsMove = ContactsMove(f.family, setOf(id)) }
+        val denied = object : ContextWrapper(f.context) {
+            override fun checkSelfPermission(permission: String): Int = if (permission == Manifest.permission.WRITE_CONTACTS)
+                android.content.pm.PackageManager.PERMISSION_DENIED else super.checkSelfPermission(permission)
+        }
+        val status = SyncRuntime.pass(denied)
+        assertEquals("contacts permission not granted", status.stopReason); assertEquals(0, status.changes)
+        assertEquals(listOf(id), f.rawIn(null))
+        BridgeStore(f.context).use { assertNotNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
+        assertEquals(1, SyncRuntime.pass(f.context).changes)
+        BridgeStore(f.context).use { assertNull(it.pendingContactsMove) }
     }
 
     private fun row(mime: String, value: String, type: Int? = null) = ContentValues().apply {
@@ -204,6 +221,7 @@ class ContactsMoverInstrumentedTest {
         withFixtureCleanup(
             { f.context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS) },
             { f.config.write(f.previous) },
+            { BridgeStore(f.context).use { it.pendingContactsMove = null } },
             { for (id in f.ownedRawIds + f.rawIn(f.personal) + f.rawIn(f.family)) f.resolver.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id), null, null) },
             { for (account in listOf(f.personal, f.family)) {
                 f.resolver.delete(Settings.CONTENT_URI, "account_name = ?", arrayOf(account.name))
@@ -236,6 +254,28 @@ class ContactsMoverInstrumentedTest {
                 })!!
             }
             check(personal in port.addressBooks() && family in port.addressBooks())
+        }
+        fun trackedContext(onAuthority: (String?) -> Unit = {}, beforeBatch: () -> Unit = {}): android.content.Context {
+            val tracked = ContentResolver.wrap(object : ContentProvider() {
+                override fun onCreate() = true
+                override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): android.database.Cursor? {
+                    onAuthority(uri.authority)
+                    return resolver.query(uri, projection, selection, selectionArgs, sortOrder)
+                }
+                override fun call(method: String, arg: String?, extras: Bundle?): Bundle? {
+                    onAuthority(ContactsContract.AUTHORITY)
+                    return resolver.call(ContactsContract.AUTHORITY_URI, method, arg, extras)
+                }
+                override fun applyBatch(operations: ArrayList<ContentProviderOperation>): Array<android.content.ContentProviderResult> {
+                    operations.forEach { onAuthority(it.uri.authority) }; beforeBatch()
+                    return resolver.applyBatch(ContactsContract.AUTHORITY, operations)
+                }
+                override fun getType(uri: Uri) = null
+                override fun insert(uri: Uri, values: ContentValues?) = throw AssertionError("Expected atomic batch")
+                override fun update(uri: Uri, values: ContentValues?, selection: String?, selectionArgs: Array<out String>?) = throw AssertionError("Expected atomic batch")
+                override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?) = throw AssertionError("No SIM deletion")
+            })
+            return object : ContextWrapper(context) { override fun getContentResolver() = tracked }
         }
         fun insert(name: String?, number: String? = null, account: ContactAccount? = null): Long {
             val id = ContentUris.parseId(resolver.insert(RawContacts.CONTENT_URI, ContentValues().apply {

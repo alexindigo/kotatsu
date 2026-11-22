@@ -7,7 +7,7 @@ import android.database.sqlite.SQLiteOpenHelper
 import org.json.JSONArray
 import org.json.JSONObject
 
-class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge.db", null, 3), MappingStore {
+class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge.db", null, 3), MappingStore, ContactsMoveStore {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL("CREATE TABLE pairs (mudita_id INTEGER PRIMARY KEY, event_id INTEGER NOT NULL, instance_start INTEGER, calendar_id INTEGER NOT NULL, mudita_fp TEXT NOT NULL, standard_fp TEXT NOT NULL, generated_location INTEGER NOT NULL)")
         db.execSQL("CREATE UNIQUE INDEX event_pair ON pairs(event_id, COALESCE(instance_start, -1))")
@@ -91,6 +91,28 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
     override var status: String
         get() = get("status").orEmpty()
         set(value) = set("status", value)
+    /** One state row keeps time/count/reason atomic without changing schema 3. */
+    var syncStatus: SyncStatus
+        get() = get("sync_status")?.let { value -> JSONObject(value).let { j ->
+            SyncStatus(if (j.isNull("at")) null else j.getLong("at"), j.getInt("changes"),
+                if (j.isNull("reason")) null else j.getString("reason"))
+        } } ?: SyncStatus()
+        set(value) = set("sync_status", JSONObject().apply {
+            put("at", value.lastPassAt); put("changes", value.changes); put("reason", value.stopReason)
+        }.toString())
+    override var pendingContactsMove: ContactsMove?
+        get() = get("contacts_move")?.let { value -> JSONObject(value).let { j ->
+            val ids = j.getJSONArray("ids")
+            ContactsMove(ContactAccount(j.getString("name"), j.getString("type"),
+                if (j.isNull("dataSet")) null else j.getString("dataSet")), (0 until ids.length()).map { ids.getLong(it) }.toSet())
+        } }
+        set(value) {
+            if (value == null) writableDatabase.delete("state", "name = ?", arrayOf("contacts_move"))
+            else set("contacts_move", JSONObject().apply {
+                put("name", value.destination.name); put("type", value.destination.type); put("dataSet", value.destination.dataSet)
+                put("ids", JSONArray(value.sourceIds.toList()))
+            }.toString())
+        }
 }
 
 /** Versioned by the owning database schema; no provider models or callbacks are serialized. */

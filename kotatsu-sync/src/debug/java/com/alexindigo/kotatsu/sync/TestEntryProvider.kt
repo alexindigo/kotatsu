@@ -14,6 +14,9 @@ class TestEntryProvider : ContentProvider() {
         val context = checkNotNull(context)
         return BridgeStore(context).use { store -> Bundle().apply {
             putString("status", store.status)
+            putLong("lastPassAt", store.syncStatus.lastPassAt ?: 0)
+            putInt("changes", store.syncStatus.changes)
+            putString("stopReason", store.syncStatus.stopReason)
             putString("jobs", context.getSystemService(JobScheduler::class.java).allPendingJobs.map { it.id }.sorted().joinToString(","))
         } }
     }
