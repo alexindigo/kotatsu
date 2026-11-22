@@ -43,6 +43,22 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
     override fun pending(): List<WriteIntent> = readableDatabase.rawQuery("SELECT payload FROM write_intent ORDER BY rowid", null).use { c ->
         buildList { while (c.moveToNext()) add(IntentJson.decode(c.getString(0))) }
     }
+    override fun tryPrepare(intent: WriteIntent): Boolean {
+        val db = writableDatabase
+        db.beginTransaction()
+        try {
+            db.rawQuery("SELECT 1 FROM write_intent WHERE id = ?", arrayOf(intent.id)).use {
+                if (it.moveToFirst()) return false
+            }
+            for (identity in intent.reservations) db.rawQuery(
+                "SELECT 1 FROM write_reservation WHERE identity = ?", arrayOf(identity)).use {
+                if (it.moveToFirst()) return false
+            }
+            prepare(intent)
+            db.setTransactionSuccessful()
+            return true
+        } finally { db.endTransaction() }
+    }
     override fun prepare(intent: WriteIntent) {
         val db = writableDatabase
         db.beginTransaction()

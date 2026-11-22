@@ -61,11 +61,13 @@ internal class WriteJournal(
     private fun reservedIdentities() = store.pending().flatMap { it.reservations }.toSet() + deferred
     fun recover() { for (intent in store.pending()) attempt(intent) }
     fun write(original: WriteIntent): WriteOutcome {
-        check(original.reservations.none { it in reservedIdentities() }) { "Calendar item already reserved" }
+        fun occupied(): WriteOutcome { unresolved++; return WriteOutcome.UNRESOLVED }
+        if (original.reservations.any { it in reservedIdentities() }) return occupied()
         // Persist the receipt before the provider call. It is not ordinary event content.
         val intent = if (original.kind == WriteKind.IMPORT)
             original.copy(phoneAfter = checkNotNull(original.phoneAfter).copy(insertReceipts = setOf(original.id))) else original
-        store.prepare(intent)
+        // Diff-time checks are advisory. Only the store can acquire all identities atomically.
+        if (!store.tryPrepare(intent)) return occupied()
         return attempt(intent)
     }
     private fun attempt(intent: WriteIntent): WriteOutcome {

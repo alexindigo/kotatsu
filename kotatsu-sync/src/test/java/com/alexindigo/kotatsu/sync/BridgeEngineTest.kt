@@ -619,6 +619,73 @@ class BridgeEngineTest {
         assertEquals("Body", server.rows.values.single().description)
     }
 
+    @Test fun reservationAcquiredAfterDiffSkipsOnlyThatItemAndSurvivesASchemaStop() {
+        store.firstRunDone = true
+        val remote = event(); server.rows[remote.key] = remote
+        server.rows[event(2).key] = event(2)
+        val pending = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = mapper.toMudita(remote), attempted = true)
+        val interleaved = object : StandardCalendarPort by server {
+            var acquired = false
+            override fun read(key: EventKey): StandardEvent? {
+                if (!acquired && key == remote.key) {
+                    acquired = true
+                    // Another owner acquires the item after the diff's reservation check.
+                    store.prepare(pending)
+                }
+                return server.read(key)
+            }
+        }
+        val result = BridgeEngine(phone, interleaved, store,
+            object : SyncConfig { override fun read() = settings }, mapper).pass(now)
+        assertFalse(result.retry); assertEquals(1, result.unresolved)
+        assertEquals(listOf(pending), store.pending())
+        assertEquals(listOf(event(2).key), store.rows.values.map { it.standardKey })
+        phone.schema = false
+        val writes = phone.writes + server.writes
+        assertNotNull(engine.pass(now).stopReason)
+        assertEquals(writes, phone.writes + server.writes); assertEquals(listOf(pending), store.pending())
+        phone.schema = true
+        engine.resolvePending(now, pending.id, WriteResolution.NotApplied)
+        assertFalse(engine.pass(now).retry)
+        assertTrue(store.pending().isEmpty()); assertEquals(2, phone.rows.size); assertEquals(2, store.rows.size)
+    }
+
+    @Test fun atomicAcquisitionLosingToAnotherOwnerDoesNotAbortThePass() {
+        store.firstRunDone = true
+        val remote = event(); server.rows[remote.key] = remote
+        server.rows[event(2).key] = event(2)
+        val pending = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = mapper.toMudita(remote), attempted = true)
+        val interleaved = object : MappingStore by store {
+            var acquired = false
+            override fun tryPrepare(intent: WriteIntent): Boolean {
+                if (!acquired) { acquired = true; store.prepare(pending) }
+                return store.tryPrepare(intent)
+            }
+        }
+        val result = BridgeEngine(phone, server, interleaved,
+            object : SyncConfig { override fun read() = settings }, mapper).pass(now)
+        assertFalse(result.retry); assertEquals(1, result.unresolved)
+        assertEquals(listOf(pending), store.pending())
+        assertEquals(listOf(event(2).key), store.rows.values.map { it.standardKey })
+    }
+
+    @Test fun everyWriteKindSkipsAnExistingReservationWithoutReplacingItsEvidence() {
+        val remote = event(); val p = mapper.toMudita(remote).copy(id = 10)
+        val row = Mapping(p.id, remote.key, remote.calendarId, "phone", "standard")
+        val pending = WriteIntent(kind = WriteKind.PHONE_UPDATE, mapping = row,
+            phoneBefore = p, phoneAfter = p, standardBefore = remote, attempted = true)
+        store.prepare(pending)
+        for (kind in WriteKind.entries) {
+            val journal = WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK))
+            assertEquals(kind.name, WriteOutcome.UNRESOLVED, journal.write(WriteIntent(kind = kind, mapping = row,
+                phoneBefore = p, phoneAfter = p, standardBefore = remote, standardAfter = remote)))
+            assertEquals(listOf(pending), store.pending())
+            assertFalse(journal.retry); assertEquals(0, phone.writes + server.writes)
+        }
+    }
+
     private class ProcessDeath : Error()
     private class Phone : MuditaCalendarPort {
         val rows = linkedMapOf<Long, MuditaEvent>(); var schema = true; var writes = 0; var onRead: (() -> Unit)? = null
@@ -682,6 +749,12 @@ class BridgeEngineTest {
         }
         override fun remove(muditaId: Long) { rows.remove(muditaId) }
         override fun pending() = intents.values.toList()
+        override fun tryPrepare(intent: WriteIntent): Boolean {
+            if (intent.id in intents || intents.values.any { it.reservations.intersect(intent.reservations).isNotEmpty() })
+                return false
+            intents[intent.id] = intent
+            return true
+        }
         override fun prepare(intent: WriteIntent) {
             check(intents.values.none { it.id != intent.id && it.reservations.intersect(intent.reservations).isNotEmpty() })
             intents[intent.id] = intent
