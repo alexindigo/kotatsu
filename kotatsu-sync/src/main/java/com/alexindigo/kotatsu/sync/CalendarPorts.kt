@@ -55,6 +55,8 @@ interface MappingStore {
     fun save(mapping: Mapping)
     fun remove(muditaId: Long)
     fun pending(): List<WriteIntent>
+    /** Atomically acquire a new intent and all its identities; false leaves the existing owner untouched. */
+    fun tryPrepare(intent: WriteIntent): Boolean
     fun prepare(intent: WriteIntent)
     /** Mapping changes and intent removal are one durable transaction. */
     fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?)

@@ -782,6 +782,141 @@ class CalendarBridgeInstrumentedTest {
         assertTrue(f.store.pending().isEmpty())
     }
 
+    @Test fun reservationAcquiredAfterDiffSurvivesSchemaStopAndDatabaseReopen() = directPassScenario { f ->
+        f.store.firstRunDone = true
+        val remote = f.standard.read(EventKey(f.insert()))!!
+        val other = EventKey(f.insert())
+        val pending = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
+            phoneAfter = EventMapper().toMudita(remote), attempted = true)
+        val interleaved = object : StandardCalendarPort by f.standard {
+            var acquired = false
+            override fun read(key: EventKey): StandardEvent? {
+                if (!acquired && key == remote.key) {
+                    acquired = true
+                    BridgeStore(f.context).use { it.prepare(pending) }
+                }
+                return f.standard.read(key)
+            }
+        }
+        val result = BridgeEngine(f.phone, interleaved, f.store, f.config).pass(f.now)
+        assertFalse(result.retry); assertEquals(1, result.unresolved)
+        assertEquals(listOf(pending), f.store.pending())
+        assertEquals(listOf(other), f.store.all().map { it.standardKey })
+        val before = f.phone.all()
+        f.schema(true)
+        BridgeStore(f.context).use {
+            assertNotNull(BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now).stopReason)
+            assertEquals(listOf(pending), it.pending())
+        }
+        f.schema(false); assertEquals(before, f.phone.all())
+        BridgeStore(f.context).use {
+            val engine = BridgeEngine(f.phone, f.standard, it, f.config)
+            engine.resolvePending(f.now, pending.id, WriteResolution.NotApplied)
+            assertFalse(engine.pass(f.now).retry)
+            assertTrue(it.pending().isEmpty()); assertEquals(2, it.all().size)
+        }
+        assertEquals(2, f.phone.all().size); assertEquals(2, f.standard.events(setOf(f.calendarId)).size)
+    }
+
+    @Test fun overlappingPassesCannotRecoverAnotherPassesActiveProviderWrite() = directPassScenario { f ->
+        f.store.firstRunDone = true; f.insert()
+        val diffReady = CountDownLatch(1); val releaseDiff = CountDownLatch(1)
+        val inserting = CountDownLatch(1); val releaseInsert = CountDownLatch(1); val secondStarted = CountDownLatch(1)
+        val pausedDiff = object : StandardCalendarPort by f.standard {
+            var paused = false
+            override fun read(key: EventKey): StandardEvent? {
+                if (!paused) {
+                    paused = true; diffReady.countDown()
+                    check(releaseDiff.await(15, TimeUnit.SECONDS)) { "First diff was not released" }
+                }
+                return f.standard.read(key)
+            }
+        }
+        val paused = object : MuditaCalendarPort by f.phone {
+            override fun insert(event: MuditaEvent): Long? {
+                inserting.countDown()
+                check(releaseInsert.await(15, TimeUnit.SECONDS)) { "Second insertion was not released" }
+                return f.phone.insert(event)
+            }
+        }
+        val first = java.util.concurrent.FutureTask {
+            BridgeStore(f.context).use { BridgeEngine(f.phone, pausedDiff, it, f.config).pass(f.now) }
+        }
+        val second = java.util.concurrent.FutureTask {
+            secondStarted.countDown()
+            BridgeStore(f.context).use { BridgeEngine(paused, f.standard, it, f.config).pass(f.now) }
+        }
+        val firstThread = Thread(first, "first-bridge-pass")
+        val secondThread = Thread(second, "second-bridge-pass")
+        firstThread.start()
+        withFixtureCleanup({ releaseDiff.countDown(); releaseInsert.countDown() }, { first.get(15, TimeUnit.SECONDS) },
+            { if (secondThread.state != Thread.State.NEW) second.get(15, TimeUnit.SECONDS) }) {
+            assertTrue(diffReady.await(10, TimeUnit.SECONDS))
+            secondThread.start(); assertTrue(secondStarted.await(10, TimeUnit.SECONDS))
+            val deadline = SystemClock.uptimeMillis() + 10000
+            fun waitingOnEngine() = secondThread.state == Thread.State.BLOCKED &&
+                secondThread.stackTrace.firstOrNull()?.let { it.className == BridgeEngine::class.java.name && it.methodName == "pass" } == true
+            while (!second.isDone && inserting.count != 0L && !waitingOnEngine() && SystemClock.uptimeMillis() < deadline)
+                SystemClock.sleep(10)
+            assertTrue("Second pass must either wait at entry or reach its held provider write",
+                waitingOnEngine() || inserting.count == 0L)
+            // Before the fix the second pass owns the reservation at this point;
+            // resuming the first diff deterministically throws "Calendar item already reserved".
+            releaseDiff.countDown()
+            val firstResult = withFixtureCleanup({ releaseInsert.countDown() }) { first.get(15, TimeUnit.SECONDS) }
+            assertEquals(1, firstResult.changes)
+            assertEquals(0, second.get(15, TimeUnit.SECONDS).changes)
+            assertEquals("The second pass must not reach a provider mutation", 1L, inserting.count)
+            assertTrue(f.store.pending().isEmpty()); assertEquals(1, f.store.all().size)
+            assertEquals(1, f.phone.all().size)
+        }
+    }
+
+    @Test fun competingDatabaseConnectionsAcquireAllReservationsOrNone() = directPassScenario { f ->
+        val remote = f.standard.read(EventKey(f.insert()))!!
+        val phone = MuditaEvent(10, "Phone", "Body", f.now, f.now + 1000)
+        val a = WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote, phoneAfter = EventMapper().toMudita(remote))
+        val b = WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = phone,
+            standardBefore = remote, standardAfter = remote)
+        val start = CountDownLatch(1)
+        fun contender(intent: WriteIntent) = java.util.concurrent.FutureTask {
+            check(start.await(10, TimeUnit.SECONDS))
+            BridgeStore(f.context).use { it.tryPrepare(intent) }
+        }
+        val first = contender(a); val second = contender(b)
+        Thread(first, "first-reservation").start(); Thread(second, "second-reservation").start()
+        withFixtureCleanup({ start.countDown() }, { first.get(15, TimeUnit.SECONDS) }, { second.get(15, TimeUnit.SECONDS) }) {
+            start.countDown()
+            val won = first.get(15, TimeUnit.SECONDS)
+            assertNotEquals(won, second.get(15, TimeUnit.SECONDS))
+            val winner = if (won) a else b
+            assertEquals(listOf(winner), f.store.pending())
+            assertFalse(f.store.tryPrepare(winner.copy(attempted = true)))
+            assertEquals(listOf(winner), f.store.pending())
+            f.store.readableDatabase.rawQuery("SELECT identity, intent_id FROM write_reservation", null).use { c ->
+                val reservations = buildSet { while (c.moveToNext()) {
+                    assertEquals(winner.id, c.getString(1)); add(c.getString(0))
+                } }
+                assertEquals(winner.reservations, reservations)
+            }
+            f.store.acknowledge(winner.id, null, null)
+            assertTrue(f.store.tryPrepare(if (won) b else a))
+        }
+    }
+
+    /** These tests own the competing passes; a late JobScheduler callback must not add a third. */
+    private fun directPassScenario(body: (Fixture) -> Unit) = scenario { f ->
+        val entered = CountDownLatch(1); val release = CountDownLatch(1)
+        val held = SyncRuntime.enqueue {
+            entered.countDown()
+            check(release.await(60, TimeUnit.SECONDS)) { "Direct-pass fixture did not release the runtime lane" }
+        }
+        withFixtureCleanup({ release.countDown() }, { held.get(15, TimeUnit.SECONDS) }) {
+            assertTrue(entered.await(10, TimeUnit.SECONDS))
+            body(f)
+        }
+    }
+
     private class SimulatedDeath : Error()
     private fun scenario(body: (Fixture) -> Unit) {
         val f = Fixture()

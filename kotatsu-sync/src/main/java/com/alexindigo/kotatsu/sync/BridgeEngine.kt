@@ -8,7 +8,8 @@ class BridgeEngine(
 ) {
     var changes: Int = 0
         private set
-    fun pass(now: Long): PassResult {
+    fun pass(now: Long): PassResult = synchronized(passLock) { passSerialized(now) }
+    private fun passSerialized(now: Long): PassResult {
         changes = 0
         if (!mudita.schemaOk()) {
             mappings.status = "stopped: Mudita Calendar missing or incompatible schema"
@@ -136,7 +137,7 @@ class BridgeEngine(
         return journal.write(WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = event, standardAfter = replacement))
     }
 
-    fun resolvePending(now: Long, id: String, resolution: WriteResolution) {
+    fun resolvePending(now: Long, id: String, resolution: WriteResolution) = synchronized(passLock) {
         check(mudita.schemaOk()) { "Mudita Calendar missing or incompatible schema" }
         val settings = config.read()
         val chosen = settings.calendars.intersect(standard.calendars().filter { it.eligible }.map { it.id }.toSet())
@@ -148,5 +149,10 @@ class BridgeEngine(
     private fun sameIdentity(a: MuditaEvent, b: MuditaEvent): Boolean =
         a.title == b.title && a.start == b.start && a.end == b.end && a.allDay == b.allDay
 
-    companion object { const val WEEK = 7L * 24 * 60 * 60 * 1000 }
+    companion object {
+        const val WEEK = 7L * 24 * 60 * 60 * 1000
+        // Every engine instance uses the app's same provider pair and durable journal.
+        // Keep recovery exclusive with active writes, even for callers outside the runtime lane.
+        private val passLock = Any()
+    }
 }
