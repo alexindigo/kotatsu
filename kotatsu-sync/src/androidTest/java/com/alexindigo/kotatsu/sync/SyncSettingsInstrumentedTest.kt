@@ -367,6 +367,120 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
+    @Test fun queuedCalendarWritesValidateAgainstTheLatestCommittedShownSet() = fixture { f ->
+        PreferenceSyncConfig(context).write(SyncSettings(setOf(f.familyCalendar, f.personalCalendar), f.personalCalendar))
+        val owner = settingsOwner()
+        queuedWrites {
+            owner.shown(f.personalCalendar, false)
+            owner.newEvents(f.personalCalendar)
+            owner.weeks(12)
+            assertTrue("The pending hide is not yet in the UI snapshot", f.personalCalendar in owner.snapshot.settings.calendars)
+        }
+        assertEquals(SyncSettings(setOf(f.familyCalendar), f.familyCalendar, 12), config())
+        assertEquals(config(), owner.snapshot.settings)
+        quiesceJobs()
+        queuedWrites {
+            owner.shown(f.personalCalendar, true)
+            owner.newEvents(f.personalCalendar)
+            owner.weeks(20)
+            assertFalse("Validation must not reject from the old snapshot", f.personalCalendar in owner.snapshot.settings.calendars)
+        }
+        assertEquals(SyncSettings(setOf(f.familyCalendar, f.personalCalendar), f.personalCalendar, 20), config())
+        quiesceJobs()
+        queuedWrites {
+            owner.shown(f.familyCalendar, false)
+            owner.shown(f.personalCalendar, false)
+            owner.newEvents(f.familyCalendar)
+        }
+        assertEquals(SyncSettings(emptySet(), null, 20), config())
+        assertEquals(config(), owner.snapshot.settings)
+    }
+
+    @Test fun queuedCalendarFallbackUsesFreshNamesWithoutDiscardingUnavailableSavedChoices() = fixture { f ->
+        val other = f.calendar("AardvarkR", type)
+        PreferenceSyncConfig(context).write(SyncSettings(setOf(other, f.familyCalendar, f.personalCalendar), f.personalCalendar))
+        val owner = settingsOwner()
+        queuedWrites {
+            SyncRuntime.enqueue {
+                resolver.update(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.familyCalendar)),
+                    ContentValues().apply { put(Calendars.CALENDAR_DISPLAY_NAME, "Personal family") }, null, null)
+            }
+            owner.shown(f.personalCalendar, false)
+            owner.weeks(12)
+            assertEquals("FamilyR", owner.snapshot.calendars.single { it.id == f.familyCalendar }.name)
+        }
+        assertEquals(SyncSettings(setOf(other, f.familyCalendar), f.familyCalendar, 12), config())
+        quiesceJobs()
+        queuedWrites {
+            SyncRuntime.enqueue {
+                resolver.update(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.familyCalendar)),
+                    ContentValues().apply { put(Calendars.SYNC_EVENTS, 0) }, null, null)
+                resolver.update(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.personalCalendar)),
+                    ContentValues().apply { put(Calendars.SYNC_EVENTS, 0) }, null, null)
+            }
+            owner.shown(f.personalCalendar, true)
+            owner.weeks(7)
+        }
+        assertEquals("Availability does not undo a saved choice", f.familyCalendar, config().newEventCalendar)
+        assertEquals("A stale checkbox cannot add an unavailable calendar", setOf(other, f.familyCalendar), config().calendars)
+        assertFalse(owner.snapshot.calendars.any { it.id == f.familyCalendar })
+    }
+
+    @Test fun queuedContactsWritesValidateFreshBooksAndConfirmationReadsTheCommittedTarget() = fixture { f ->
+        val owner = settingsOwner()
+        queuedWrites {
+            SyncRuntime.enqueue {
+                resolver.delete(Settings.CONTENT_URI, "account_name = ? AND account_type = ?", arrayOf(family.name, family.type))
+            }
+            owner.contacts(family)
+            assertTrue("The stale UI still offers the removed book", family in owner.snapshot.books)
+        }
+        assertEquals("Removed book selection must not replace the saved target", personal, PreferenceContactsConfig(context).read().target)
+        quiesceJobs()
+        queuedWrites {
+            SyncRuntime.enqueue {
+                resolver.insert(Settings.CONTENT_URI, ContentValues().apply {
+                    put(Settings.ACCOUNT_NAME, family.name); put(Settings.ACCOUNT_TYPE, family.type)
+                    put(Settings.SHOULD_SYNC, 1); put(Settings.UNGROUPED_VISIBLE, 1)
+                })!!
+            }
+            owner.contacts(family)
+            assertFalse("Validation must see the book added ahead of this write", family in owner.snapshot.books)
+        }
+        assertEquals(family, PreferenceContactsConfig(context).read().target)
+        quiesceJobs()
+        val contact = f.phoneContact("Queued target fixture")
+        queuedWrites {
+            owner.contacts(personal)
+            owner.prepareMove()
+            assertEquals(family, owner.snapshot.contacts.target)
+        }
+        assertEquals(personal, owner.confirmation!!.destination)
+        assertEquals(setOf(contact), owner.confirmation!!.sourceIds)
+        main { owner.cancelMove() }
+    }
+
+    private fun settingsOwner(): SyncSettingsOwner {
+        lateinit var owner: SyncSettingsOwner
+        main { owner = SyncSettingsOwner(context); owner.refresh() }
+        awaitSyncSettings("Owner loaded before blocking the lane") { owner.snapshot.loaded }
+        quiesceJobs()
+        return owner
+    }
+
+    /** Queue real intents behind a latch so UI snapshots cannot race ahead of the assertion. */
+    private fun queuedWrites(writes: () -> Unit) {
+        val entered = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        val blocked = SyncRuntime.enqueue { entered.countDown(); check(release.await(30, TimeUnit.SECONDS)) }
+        withFixtureCleanup({ release.countDown(); blocked.get(15, TimeUnit.SECONDS) }) {
+            assertTrue("Lane blocker entered", entered.await(15, TimeUnit.SECONDS))
+            main(writes)
+        }
+        drain()
+        instrumentation.waitForIdleSync()
+    }
+
     private fun fixture(withAccounts: Boolean = true, body: (Fixture) -> Unit) {
         val f = Fixture()
         withFixtureCleanup({ f.cleanup() }) {

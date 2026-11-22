@@ -64,10 +64,8 @@ class SyncSettingsOwner(context: Context) {
         moveGeneration++
     }
     private fun access(vararg permissions: String) = permissions.all { app.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-    private fun read(): SyncSettingsSnapshot {
-        val calendarAccess = access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
-        val contactsAccess = access(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
-        val calendars = if (!calendarAccess) emptyList() else checkNotNull(app.contentResolver.query(Calendars.CONTENT_URI,
+    private fun calendars(): List<CalendarChoice> = if (!access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) emptyList()
+        else checkNotNull(app.contentResolver.query(Calendars.CONTENT_URI,
             arrayOf(Calendars._ID, Calendars.CALENDAR_DISPLAY_NAME, Calendars.ACCOUNT_TYPE, Calendars.SYNC_EVENTS),
             null, null, "${Calendars.CALENDAR_DISPLAY_NAME} COLLATE NOCASE, ${Calendars._ID}")) { "calendar provider unavailable" }.use { c ->
             buildList { while (c.moveToNext()) {
@@ -75,14 +73,21 @@ class SyncSettingsOwner(context: Context) {
                     add(CalendarChoice(c.getLong(0), c.getString(1).orEmpty()))
             } }
         }
+
+    /** Shown membership is configuration; provider availability must not erase saved identities. */
+    private fun calendarSettings(settings: SyncSettings, available: List<CalendarChoice>): SyncSettings = settings.copy(
+        newEventCalendar = settings.newEventCalendar?.takeIf { it in settings.calendars }
+            ?: defaultCalendar(available.filter { it.id in settings.calendars }))
+
+    private fun read(): SyncSettingsSnapshot {
+        val calendarAccess = access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
+        val contactsAccess = access(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
+        val calendars = calendars()
         val books = if (!contactsAccess) emptyList() else AndroidContacts(app).addressBooks()
             .sortedWith(compareBy<ContactAccount> { it.name.lowercase() }.thenBy { it.type }.thenBy { it.dataSet.orEmpty() })
         val calendarConfig = PreferenceSyncConfig(app)
         val settings = calendarConfig.read()
-        val shown = calendars.filter { it.id in settings.calendars }
-        // Availability is not a user choice: retain unavailable saved identities.
-        val defaultCalendar = if (settings.newEventCalendar == null) defaultCalendar(shown) else settings.newEventCalendar
-        val current = settings.copy(newEventCalendar = defaultCalendar)
+        val current = calendarSettings(settings, calendars)
         var changed = false
         if (current != settings) { calendarConfig.write(current); changed = true }
         val contactsConfig = PreferenceContactsConfig(app)
@@ -100,24 +105,26 @@ class SyncSettingsOwner(context: Context) {
         refreshQueued = true
         update(complete = { refreshQueued = false }) {}
     }
-    fun shown(id: Long, value: Boolean) = update {
-        val config = PreferenceSyncConfig(app)
-        val old = config.read()
-        val calendars = if (value) old.calendars + id else old.calendars - id
-        val chosen = snapshot.calendars.filter { it.id in calendars }
-        config.write(old.copy(calendars = calendars, newEventCalendar = old.newEventCalendar?.takeIf { it in calendars } ?: defaultCalendar(chosen)))
-        SyncRuntime.ensureArmed(app)
+    fun shown(id: Long, value: Boolean) = calendar { old, available ->
+        if (value && available.none { it.id == id }) old
+        else old.copy(calendars = if (value) old.calendars + id else old.calendars - id)
     }
-    fun newEvents(id: Long) = calendar { it.copy(newEventCalendar = id) }
-    fun weeks(weeks: Int) = calendar { it.copy(horizonWeeks = weeks) }
-    private fun calendar(change: (SyncSettings) -> SyncSettings) = update {
+    fun newEvents(id: Long) = calendar { old, _ ->
+        if (id in old.calendars) old.copy(newEventCalendar = id) else old
+    }
+    fun weeks(weeks: Int) = calendar { old, _ -> old.copy(horizonWeeks = weeks) }
+    /** Validate dependencies against fresh inputs on the lane, never the published UI snapshot. */
+    private fun calendar(change: (SyncSettings, List<CalendarChoice>) -> SyncSettings) = update {
         val config = PreferenceSyncConfig(app)
-        config.write(change(config.read()))
+        val available = calendars()
+        config.write(calendarSettings(change(config.read(), available), available))
         SyncRuntime.ensureArmed(app)
     }
     fun contacts(book: ContactAccount) = update {
-        PreferenceContactsConfig(app).write(ContactsSettings(book))
-        SyncRuntime.ensureArmed(app)
+        if (book in AndroidContacts(app).addressBooks()) {
+            PreferenceContactsConfig(app).write(ContactsSettings(book))
+            SyncRuntime.ensureArmed(app)
+        }
     }
     fun syncNow() = update { SyncRuntime.ensureArmed(app) }
     fun prepareMove() {
