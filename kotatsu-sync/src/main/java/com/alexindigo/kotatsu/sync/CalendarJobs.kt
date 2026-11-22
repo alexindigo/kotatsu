@@ -21,7 +21,8 @@ abstract class CalendarPassJob : JobService() {
                 // Content jobs are one-shot: register their successor before finishing.
                 successor = {
                     if (!run.stopped.get()) SyncRuntime.ensureArmed(applicationContext, queuePass = false,
-                        replaceWatch = params.jobId == SyncRuntime.WATCH_JOB)
+                        replaceWatch = params.jobId == SyncRuntime.WATCH_JOB,
+                        replaceContactsWatch = params.jobId == SyncRuntime.CONTACTS_JOB)
                 },
                 finish = { retry -> Handler(Looper.getMainLooper()).post {
                     if (active === run) {
@@ -40,6 +41,7 @@ abstract class CalendarPassJob : JobService() {
 }
 
 class CalendarChangedJob : CalendarPassJob()
+class ContactsChangedJob : CalendarPassJob()
 class PeriodicPassJob : CalendarPassJob()
 class HorizonJob : CalendarPassJob()
 class BootPassJob : CalendarPassJob()

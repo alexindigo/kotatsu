@@ -129,3 +129,60 @@ cannot consume the ordinary body line it exposes. Location line separators are
 normalized to spaces for display only; the server location stays unchanged.
 The body marker is removed, not used as a slicing offset: ordinary text inserted
 before or after it participates in fingerprints and reaches the standard side.
+
+## Mudita Contacts 1.3.1
+
+APK SHA256 `4e96ce48f6404aa353c884e0b9be5dce55516c8674224c0d2792762263f57aa9`.
+REA/JADX evidence remains outside the repo under
+`~/TemporaryFiles/kotatsu/mudita-sync-research/rea/Contacts-jadx-class-*`
+and `~/TemporaryFiles/kotatsu/kotatsu-sync-part2a/contacts-*.json`.
+
+| # | Path | Contract |
+|---|---|---|
+| 1 | `ContactSaveService.createRawContact` | Inserts RawContacts with the chosen account name/type/data set, then Data rows with a raw-contact backreference in one ContactsContract batch. |
+| 2 | `AccountWithDataSet.getLocalAccount` | Uses `RawContacts.getLocalAccountName(context)` and `getLocalAccountType(context)`. These are device framework values, not Mudita-specific string literals. Null-account contacts use null name/type/data set. The bridge uses the same framework helpers, never treats an unknown account as local. |
+| 3 | `DeviceLocalAccountTypeFactory.Default.classifyAccount` | Device-local means null type or the framework's local type. SIM-backed accounts come from `SimContacts.getSimAccounts`; they are separate, read-only sources, not phone contacts to delete. |
+| 4 | `SimContactDaoImpl.loadSimContacts` | Reads `SimPhonebookContract.SimRecords.getContentUri(subscriptionId, EF_ADN)` (not a ContactsContract raw-contact write). |
+| 5 | `SimContact.appendCreateContactOperations` | Import inserts a new raw contact into the user-chosen account and name/phone/email data rows. It writes no SIM record id or imported-SIM flag into ContactsContract. An import into the phone account is therefore an ordinary local candidate; an import directly into a sync account is already there. The bridge never reads or writes ICC/SimPhonebook data. |
+
+Ongoing moves use the chosen Personal address-book account. The explicit one-time
+action uses Family. Both operate on current non-deleted phone raw contacts,
+including previously imported SIM contacts; neither moves a SIM-backed mirror or
+an already-synced raw contact. No phone/SIM permission is requested.
+
+Destination choices come from ContactsContract Settings with `should_sync=1`
+and a registered uploading contacts sync adapter, including empty address books.
+DAVx5 creates one account per address book and installs its provider Settings;
+its parent login account is not a destination. The debug authenticator and no-op
+sync adapter stand in for those address-book accounts only in emulator tests.
+
+Each move is one non-yielding ContactsProvider batch: assert the source version,
+account and non-deleted state and target Settings, insert the target raw contact,
+copy all MIME rows (`data1`-`data15`, resource package and primary flags), explicitly
+aggregate it with the source, then delete the source. Target rows use ordinary
+application writes: ContactsProvider sets dirty state for DAVx5, and no server
+source id/sync metadata is invented. A failed assertion or later batch operation
+rolls back. A lost result after commit is safe to retry: the local source no longer
+exists. Starred, ringtone and send-to-voicemail choices are retained.
+
+Two account/provider-owned references must be translated, not blindly copied:
+photo `data14` is a file id, so the full display-photo bytes are supplied to the
+new photo row and Android regenerates its file/thumbnail; group membership
+`data1` is an account-owned group id, so the group title/notes are matched or
+created in the destination within the same batch (source group version checked).
+New groups retain the source's visibility flag; an existing target group's own
+visibility choice is kept. This prevents a newly copied group from hiding its
+contacts through Android's default invisible-group flag.
+Neither the SIM nor another account's groups are deleted.
+
+Android's explicit aggregation exception aggregates immediately before deleting
+the source. Connected cases verify a stable numeric aggregate id, one contact,
+and the same number/name returned through PhoneLookup, including nameless and
+already-joined contacts. Account-dependent lookup keys are regenerated: an old
+lookup URI can stop resolving. The bridge does not preserve a hidden local raw
+contact or invent a DAVx5 source id to fake that key. Inspected Mudita Phone
+1.3.1 (`d4.d`) and Messages 1.3.1 (`io.sentry.util.l`) resolve numbers through
+`PhoneLookup.ENTERPRISE_CONTENT_FILTER_URI`; they are not keyed by the deleted
+phone raw-contact id. Evidence: the sibling `dial-cp2` and
+`messages-contactutil` JSON/text files. This is a platform account-transfer detail,
+not a claim of a live Phone/Messages UI or server round-trip test.

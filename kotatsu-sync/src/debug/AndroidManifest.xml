@@ -2,6 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
         <provider android:name=".TestEntryProvider" android:authorities="${applicationId}.test-entry" android:exported="true" />
+        <service android:name=".TestContactsSyncService" android:exported="true" android:permission="android.permission.BIND_SYNC_ADAPTER">
+            <intent-filter><action android:name="android.content.SyncAdapter" /></intent-filter>
+            <meta-data android:name="android.content.SyncAdapter" android:resource="@xml/test_contacts_sync" />
+        </service>
         <service android:name=".TestAccountService" android:exported="true" android:permission="android.permission.BIND_ACCOUNT_AUTHENTICATOR">
             <intent-filter><action android:name="android.accounts.AccountAuthenticator" /></intent-filter>
             <meta-data android:name="android.accounts.AccountAuthenticator" android:resource="@xml/test_account" />
