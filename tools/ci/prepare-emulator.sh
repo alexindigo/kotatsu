@@ -16,7 +16,7 @@ declare -A REQUIRED=(
     [weather]=''
     [notes]=''
     [mudita]=''
-    [sync]='fake-calendar:debug'
+    [sync]='fake-calendar:debug fake-calendar:androidTest'
 )
 
 log() { printf '%s %s\n' "$(date -Is)" "$*"; }

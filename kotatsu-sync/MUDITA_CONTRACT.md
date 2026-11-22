@@ -156,6 +156,25 @@ DAVx5 creates one account per address book and installs its provider Settings;
 its parent login account is not a destination. The debug authenticator and no-op
 sync adapter stand in for those address-book accounts only in emulator tests.
 
+On Android 11+, SyncManager filters `getSyncAdapterTypes()` by the caller's
+package visibility (Android 12 `SyncManager.getSyncAdapterTypes`,
+`PackageManagerInternal.filterAppAccess`). The manifest therefore queries the
+`android.content.SyncAdapter` intent, exposing matching adapter packages for both
+contacts and calendar authorities. It retains the Mudita Calendar provider query;
+no package-name allowlist or QUERY_ALL_PACKAGES permission is required.
+The external `fake-mudita-calendar` androidTest APK verifies this from a separate UID,
+with shell-owned setup that does not grant the target implicit visibility.
+
+Production calendar discovery reads `Calendars.ACCOUNT_TYPE` and `SYNC_EVENTS`
+from CalendarContract; it never enumerates AccountManager accounts, resolves an
+authenticator, or loads adapter metadata. Provider account fields remain available
+under calendar permissions even before the adapter visibility fix. Contacts reads
+its account fields from ContactsContract Settings and additionally needs the
+adapter registry. No separate AccountAuthenticator intent query or account-access
+permission is needed by these production paths. The connected external-package
+case checks both adapter registrations and authenticator/service metadata, a
+CalendarContract read/edit/readback, and a real phone-to-external-account move.
+
 Each move is one non-yielding ContactsProvider batch: assert the source version,
 account and non-deleted state and target Settings, insert the target raw contact,
 copy all MIME rows (`data1`-`data15`, resource package and primary flags), explicitly
