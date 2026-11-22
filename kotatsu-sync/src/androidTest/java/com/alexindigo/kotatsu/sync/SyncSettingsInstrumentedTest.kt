@@ -98,7 +98,9 @@ class SyncSettingsInstrumentedTest {
                     ui.selected("Shown PersonalR") && ui.selected("Shown FamilyR")
             }
             val column = Rect().also { ui.find("Shown")!!.getBoundsInScreen(it) }
-            assertEquals(64f * context.resources.displayMetrics.density, column.width().toFloat(), 1f)
+            if (context.resources.configuration.fontScale == 1f)
+                assertEquals(64f * context.resources.displayMetrics.density, column.width().toFloat(), 1f)
+            assertTrue(column.width() >= 64f * context.resources.displayMetrics.density - 1f)
             val control = Rect().also { ui.find("Shown PersonalR")!!.getBoundsInScreen(it) }
             val box = ui.drawings("paper_index_checkbox").single { it.center.y in control.top.toFloat()..control.bottom.toFloat() }
             val leader = ui.drawings("paper_index_leader").single { it.center.y in control.top.toFloat()..control.bottom.toFloat() }
@@ -248,24 +250,64 @@ class SyncSettingsInstrumentedTest {
     }
 
     @Test fun noDavShowsOnlySetupInPlaceOfCalendarAndContactsRows() = fixture(withAccounts = false) {
+        val packages = context.packageManager
+        val expected = listOfNotNull(packages.getLaunchIntentForPackage("at.bitfire.davdroid"),
+            Intent(Intent.ACTION_VIEW, Uri.parse("https://f-droid.org/packages/at.bitfire.davdroid/")))
+            .firstOrNull { it.resolveActivity(packages) != null }
         val activity = open()
         withFixtureCleanup({ close(activity) }) {
-            ui.await("DAVx5"); ui.await("Set up")
+            ui.await("DAVx5"); ui.await(if (expected == null) "Unavailable" else "Set up")
             for (label in listOf("Shown", "New events", "Look ahead", "Contacts go to", "Phone contacts")) assertFalse(ui.has(label))
             ui.await("Last sync"); ui.await("Sync now")
             ui.capture(activity, "no-davx5")
             val handoff = java.util.concurrent.atomic.AtomicReference<Intent>()
             val monitor = object : android.app.Instrumentation.ActivityMonitor() {
                 override fun onStartActivity(intent: Intent): android.app.Instrumentation.ActivityResult? {
-                    if (intent.action != Intent.ACTION_VIEW) return null
                     handoff.set(intent)
                     return android.app.Instrumentation.ActivityResult(Activity.RESULT_CANCELED, null)
                 }
             }
             instrumentation.addMonitor(monitor)
             withFixtureCleanup({ instrumentation.removeMonitor(monitor) }) {
-                ui.click("DAVx5")
-                assertEquals("https://f-droid.org/packages/at.bitfire.davdroid/", handoff.get()?.dataString)
+                if (expected == null) assertNull(ui.find("DAVx5", actionable = true))
+                else {
+                    ui.click("DAVx5")
+                    val actual = checkNotNull(handoff.get())
+                    assertTrue("Setup launches the resolved target", expected.filterEquals(actual))
+                    if (expected.action == Intent.ACTION_VIEW)
+                        assertEquals("https://f-droid.org/packages/at.bitfire.davdroid/", actual.dataString)
+                    else assertEquals("at.bitfire.davdroid", actual.component?.packageName)
+                }
+            }
+        }
+    }
+
+    @Test fun setupWithoutAnyHandlersIsUnavailableBeforeInteraction() = fixture(withAccounts = false) {
+        val packages = context.packageManager
+        val fallback = Intent(Intent.ACTION_VIEW, Uri.parse("https://f-droid.org/packages/at.bitfire.davdroid/"))
+        val handlers = (packages.queryIntentActivities(fallback, PackageManager.MATCH_DEFAULT_ONLY).map { it.activityInfo.packageName } +
+            listOfNotNull(packages.getLaunchIntentForPackage("at.bitfire.davdroid")?.component?.packageName)).distinct()
+        val before = handlers.associateWith(packages::getApplicationEnabledSetting)
+        fun shell(command: String): String = android.os.ParcelFileDescriptor.AutoCloseInputStream(
+            instrumentation.uiAutomation.executeShellCommand(command)).bufferedReader().use { it.readText() }
+        withFixtureCleanup(*before.map { (name, state) -> {
+            val action = if (state == PackageManager.COMPONENT_ENABLED_STATE_DEFAULT) "default-state" else "enable"
+            shell("pm $action --user 0 $name")
+            assertEquals("Package state restored for $name", state, packages.getApplicationEnabledSetting(name))
+        } }.toTypedArray()) {
+            for (name in handlers) {
+                shell("pm disable-user --user 0 $name")
+                assertEquals(PackageManager.COMPONENT_ENABLED_STATE_DISABLED_USER, packages.getApplicationEnabledSetting(name))
+            }
+            assertNull("The fixture removes all HTTPS handlers", fallback.resolveActivity(packages))
+            assertNull("The fixture removes the DAVx5 launcher", packages.getLaunchIntentForPackage("at.bitfire.davdroid"))
+            val activity = open()
+            withFixtureCleanup({ close(activity) }) {
+                ui.await("DAVx5"); ui.await("Unavailable")
+                assertFalse(ui.has("Set up"))
+                assertNull("Unavailable setup must expose no click action", ui.find("DAVx5", actionable = true))
+                ui.awaitPage("Kotatsu Sync")
+                ui.capture(activity, "setup-unavailable")
             }
         }
     }

@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <queries>
         <package android:name="at.bitfire.davdroid" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
         <provider android:authorities="com.mudita.calendar" />
         <intent><action android:name="android.content.SyncAdapter" /></intent>
     </queries>

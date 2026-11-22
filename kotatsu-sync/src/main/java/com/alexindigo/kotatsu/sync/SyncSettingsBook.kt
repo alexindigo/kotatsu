@@ -14,7 +14,7 @@ import java.util.Date
 
 /** Kit composition and navigation only; the owner handles storage and Android. */
 @Composable
-fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Boolean) -> Unit, onSetUp: () -> Unit) {
+fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Boolean) -> Unit, onSetUp: (() -> Unit)?) {
     val state = owner.snapshot
     val navigation = rememberSettingsNavigation()
     val pages = rememberSaveableStateHolder()
@@ -52,8 +52,11 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
                             { onAccess(true) }, actionLabel = stringResource(R.string.allow)))
                         if (!state.contactsAccess) Entry(SettingsEntry.Open("contacts-access", stringResource(R.string.contacts_access), "",
                             { onAccess(false) }, actionLabel = stringResource(R.string.allow)))
-                        if (noDav) Entry(SettingsEntry.Open("davx5", stringResource(R.string.davx5), "", onSetUp,
-                            actionLabel = stringResource(R.string.set_up)))
+                        if (noDav) {
+                            if (onSetUp != null) Entry(SettingsEntry.Open("davx5", stringResource(R.string.davx5), "", onSetUp,
+                                actionLabel = stringResource(R.string.set_up)))
+                            else Entry(SettingsEntry.Metadata("davx5", stringResource(R.string.davx5), stringResource(R.string.unavailable)))
+                        }
                         else {
                             if (state.calendars.isNotEmpty()) Column {
                                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {

@@ -17,6 +17,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.gezimos.katapult.ui.LocalPalette
 import com.gezimos.katapult.ui.PaperPalette
@@ -29,6 +32,7 @@ private object SyncNoIndication : IndicationNodeFactory {
 
 class SyncSettingsActivity : ComponentActivity() {
     private lateinit var owner: SyncSettingsOwner
+    private var setupIntent by mutableStateOf<Intent?>(null)
     private val permission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { owner.refresh() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -41,6 +45,7 @@ class SyncSettingsActivity : ComponentActivity() {
         window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR or View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR
         SyncRuntime.start(this)
         owner = SyncSettingsOwner(this)
+        setupIntent = resolveSetUp()
         setContent {
             CompositionLocalProvider(LocalOnBackPressedDispatcherOwner provides this@SyncSettingsActivity,
                 LocalIndication provides SyncNoIndication, LocalPalette provides palette) {
@@ -48,7 +53,7 @@ class SyncSettingsActivity : ComponentActivity() {
                     SyncSettingsBook(owner, ::finish, { calendar ->
                         permission.launch(if (calendar) arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
                             else arrayOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS))
-                    }, ::setUp)
+                    }, setupIntent?.let { intent -> { startActivity(intent) } })
                 }
             }
         }
@@ -59,12 +64,11 @@ class SyncSettingsActivity : ComponentActivity() {
         }
     }
 
-    private fun setUp() {
-        val intent = packageManager.getLaunchIntentForPackage("at.bitfire.davdroid")
-            ?: Intent(Intent.ACTION_VIEW, Uri.parse("https://f-droid.org/packages/at.bitfire.davdroid/"))
-        startActivity(intent)
-    }
+    private fun resolveSetUp(): Intent? = listOfNotNull(
+        packageManager.getLaunchIntentForPackage("at.bitfire.davdroid"),
+        Intent(Intent.ACTION_VIEW, Uri.parse("https://f-droid.org/packages/at.bitfire.davdroid/")),
+    ).firstOrNull { it.resolveActivity(packageManager) != null }
 
-    override fun onResume() { super.onResume(); owner.resume() }
+    override fun onResume() { super.onResume(); setupIntent = resolveSetUp(); owner.resume() }
     override fun onPause() { owner.pause(); super.onPause() }
 }

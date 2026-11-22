@@ -42,8 +42,13 @@ class HiddenAppsNotifyInstrumentedTest {
             }
     }
 
-    @Test fun hiddenAppsOfferIndependentNotifyChoiceAndRespectExclusion() = preserving(visibilityKeys) {
+    @Test fun hiddenAppsOfferIndependentNotifyChoiceAndRespectExclusion() = hiddenAppsChoices()
+
+    @Test fun enlargedTextKeepsIndependentHiddenAndNotifyChoices() = hiddenAppsChoices(2f)
+
+    private fun hiddenAppsChoices(fontScale: Float? = null) = preserving(visibilityKeys) {
         val app = AppLoader.loadApps(context).filter { !it.stock }.sortedBy { it.label.lowercase() }.first()
+        val displayScale = androidx.compose.runtime.mutableStateOf(1f)
         instrumentation.runOnMainSync {
             prefs.setAppHidden(app.key, false, AppVisibility.hiddenByDefault(app))
             prefs.setNotifyWhileHidden(app.packageName, false)
@@ -57,12 +62,24 @@ class HiddenAppsNotifyInstrumentedTest {
             instrumentation.runOnMainSync {
                 val viewModel = ViewModelProvider(activity)[MainViewModel::class.java]
                 activity.setContent {
-                    SettingsScreen(viewModel, activity.configExporter, activity.configImporter, activity.screensaverWallpaperPicker)
+                    val density = androidx.compose.ui.platform.LocalDensity.current
+                    androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalDensity provides
+                        androidx.compose.ui.unit.Density(density.density, displayScale.value)) {
+                        SettingsScreen(viewModel, activity.configExporter, activity.configImporter, activity.screensaverWallpaperPicker)
+                    }
                 }
             }
             ui.click(context.getString(R.string.section_all_apps))
             ui.click(context.getString(R.string.hidden_apps))
             ui.await("App missing from first Hidden Apps page") { ui.has(app.label) }
+            if (fontScale != null) {
+                val label = context.getString(R.string.hidden_apps_notify_column)
+                val before = Rect().also { ui.find(label)!!.getBoundsInScreen(it) }
+                instrumentation.runOnMainSync { displayScale.value = fontScale }
+                ui.await("Enlarged matrix heading must render before geometry checks") {
+                    Rect().also { ui.find(label)?.getBoundsInScreen(it) }.height() > before.height()
+                }
+            }
             val notify = context.getString(R.string.hidden_apps_notify_column) + ": " + app.label
             assertFalse("Visible app has a Notify box", ui.has(notify))
             val blankHeader = Rect().also { ui.find(context.getString(R.string.hidden_apps_notify_column))!!.getBoundsInScreen(it) }
@@ -76,25 +93,26 @@ class HiddenAppsNotifyInstrumentedTest {
             assertTrue(AppVisibility.isHidden(app, prefs.getHiddenApps(), prefs.getShownDefaultHiddenApps()))
             assertFalse(app.packageName in prefs.getNotifyWhileHiddenApps())
 
-            // The drawing stays centred in its 64dp matrix column; its independent
+            // The drawing stays centred in its measured matrix column; its independent
             // hit region now also owns the leader, rather than shortening the leader.
             val header = Rect().also { ui.find(context.getString(R.string.hidden_apps_notify_column))!!.getBoundsInScreen(it) }
-            assertEquals("Shared column heading retains the matrix width", 64f * context.resources.displayMetrics.density,
-                header.width().toFloat(), 1f)
+            if (displayScale.value == 1f) assertEquals("Default heading retains the matrix width",
+                64f * context.resources.displayMetrics.density, header.width().toFloat(), 1f)
+            assertTrue("Measured heading retains at least 64dp", header.width() >= 64f * context.resources.displayMetrics.density - 1f)
             val cell = Rect().also { ui.find(notify)!!.getBoundsInScreen(it) }
             val row = Rect().also { ui.findAncestor(app.label) { it.isClickable }!!.getBoundsInScreen(it) }
             val box = indexDrawingBounds("paper_index_checkbox").filter {
                 it.center.y >= cell.top && it.center.y <= cell.bottom
             }.maxBy { it.right }
             assertEquals(header.exactCenterX(), box.center.x, 1f)
-            assertTrue("Notify target must retain its entire column", cell.width() >= 64f * context.resources.displayMetrics.density - 1f)
+            assertTrue("Notify target must retain its entire measured column", cell.width() >= header.width() - 1f)
             assertEquals(row.height(), cell.height())
             assertTrue("Notify cell is shorter than 64dp", cell.height() >= 64f * context.resources.displayMetrics.density - 1f)
             val hide = context.getString(R.string.paper_hidden_app, app.label)
             val hideHeader = Rect().also { ui.find(context.getString(R.string.hidden_apps_hidden_column))!!.getBoundsInScreen(it) }
             val hideCell = Rect().also { ui.findAncestor(hide) { it.isClickable }!!.getBoundsInScreen(it) }
             assertEquals(hideHeader.exactCenterX(), hideCell.exactCenterX(), 1f)
-            assertEquals(64f * context.resources.displayMetrics.density, hideCell.width().toFloat(), 1f)
+            assertEquals(hideHeader.width().toFloat(), hideCell.width().toFloat(), 1f)
             assertEquals(cell.height(), hideCell.height())
             assertEquals(true, ui.checked(hide))
 

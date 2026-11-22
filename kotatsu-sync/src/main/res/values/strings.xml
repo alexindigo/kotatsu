@@ -23,6 +23,7 @@
     <string name="sync_now">Sync now</string>
     <string name="davx5">DAVx5</string>
     <string name="set_up">Set up</string>
+    <string name="unavailable">Unavailable</string>
     <string name="move_phone_contacts">Move phone contacts</string>
     <plurals name="move_confirmation">
         <item quantity="one">%1$d contact moves to %2$s. They stay on this phone and sync to your server.</item>
