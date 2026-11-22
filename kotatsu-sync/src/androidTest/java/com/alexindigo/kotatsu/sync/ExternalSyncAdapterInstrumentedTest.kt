@@ -50,7 +50,14 @@ class ExternalSyncAdapterInstrumentedTest {
             put(Data.RAW_CONTACT_ID, f.localId); put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE)
             put(StructuredName.DISPLAY_NAME, "External destination contact")
         })!!
-        assertEquals(ContactsResult(1), ContactsMover(AndroidContacts(f.context)).pass(f.account))
+        f.unrelatedId = ContentUris.parseId(f.resolver.insert(RawContacts.CONTENT_URI, ContentValues())!!)
+        f.resolver.insert(Data.CONTENT_URI, ContentValues().apply {
+            put(Data.RAW_CONTACT_ID, f.unrelatedId); put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE)
+            put(StructuredName.DISPLAY_NAME, "Unrelated local contact")
+        })!!
+        val unrelated = AndroidContacts(f.context).sources().single { it.id == f.unrelatedId }
+        assertEquals(ContactsResult(1), ContactsMover(AndroidContacts(f.context)).pass(f.account, setOf(f.localId)))
+        assertEquals(unrelated, AndroidContacts(f.context).sources().single { it.id == f.unrelatedId })
         f.resolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts._ID, RawContacts.DIRTY),
             "account_name = ? AND account_type = ? AND deleted = 0", arrayOf(f.account.name, TYPE), null)!!.use {
             assertTrue(it.moveToFirst()); assertEquals(1, it.count); assertEquals(1, it.getInt(1))
@@ -65,7 +72,7 @@ class ExternalSyncAdapterInstrumentedTest {
         val f = Fixture()
         withFixtureCleanup(
             { f.context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS) },
-            { for (id in listOf(f.localId, f.destinationId).filter { it >= 0 }) f.resolver.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id), null, null) },
+            { for (id in listOf(f.localId, f.unrelatedId, f.destinationId).filter { it >= 0 }) f.resolver.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id), null, null) },
             { if (f.seedAttempted) f.command("cleanup") },
         ) { f.setup(); body(f) }
     }
@@ -76,6 +83,7 @@ class ExternalSyncAdapterInstrumentedTest {
         val account = ContactAccount("kotatsu-external-test-${UUID.randomUUID()}", TYPE)
         var seedAttempted = false
         var localId = -1L
+        var unrelatedId = -1L
         var destinationId = -1L
         var calendarId = -1L
         fun setup() {

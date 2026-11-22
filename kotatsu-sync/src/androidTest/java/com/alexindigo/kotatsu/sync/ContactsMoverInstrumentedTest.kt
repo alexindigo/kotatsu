@@ -102,18 +102,49 @@ class ContactsMoverInstrumentedTest {
     }
 
     @Test fun failingLateOperationRollsBackInsertedRawDataAndGroup() = scenario { f ->
-        val source = f.insert("Atomic")
-        val before = f.data(source)
-        val operations = arrayListOf(
-            ContentProviderOperation.newInsert(RawContacts.CONTENT_URI).withValue(RawContacts.ACCOUNT_NAME, f.personal.name)
-                .withValue(RawContacts.ACCOUNT_TYPE, f.personal.type).build(),
-            ContentProviderOperation.newInsert(Data.CONTENT_URI).withValueBackReference(Data.RAW_CONTACT_ID, 0)
-                .withValues(row(Note.CONTENT_ITEM_TYPE, "Temporary")).build(),
-            ContentProviderOperation.newDelete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, Long.MAX_VALUE)).withExpectedCount(1).build(),
-        )
-        try { f.resolver.applyBatch(ContactsContract.AUTHORITY, operations); fail("Expected rollback") }
-        catch (_: android.content.OperationApplicationException) { }
-        assertEquals(before, f.data(source)); assertTrue(f.rawIn(f.personal).isEmpty())
+        val source = f.insert("Atomic", "2025550191")
+        f.resolver.update(Data.CONTENT_URI, ContentValues().apply { put(Data.IS_SUPER_PRIMARY, 1) },
+            "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?", arrayOf(source.toString(), Phone.CONTENT_ITEM_TYPE))
+        val image = Bitmap.createBitmap(800, 800, Bitmap.Config.ARGB_8888)
+        val bytes = withFixtureCleanup({ image.recycle() }) {
+            image.eraseColor(Color.RED)
+            ByteArrayOutputStream().use { out -> image.compress(Bitmap.CompressFormat.PNG, 100, out); out.toByteArray() }
+        }
+        f.resolver.insert(Data.CONTENT_URI, ContentValues().apply {
+            put(Data.RAW_CONTACT_ID, source); put(Data.MIMETYPE, Photo.CONTENT_ITEM_TYPE); put(Photo.PHOTO, bytes)
+            put(Data.IS_SUPER_PRIMARY, 1)
+        })!!
+        val group = ContentUris.parseId(f.resolver.insert(Groups.CONTENT_URI, ContentValues().apply {
+            put(Groups.TITLE, "Test category"); put(Groups.NOTES, "Rollback group"); put(Groups.GROUP_VISIBLE, 1)
+        })!!)
+        f.resolver.insert(Data.CONTENT_URI, ContentValues().apply {
+            put(Data.RAW_CONTACT_ID, source); put(Data.MIMETYPE, GroupMembership.CONTENT_ITEM_TYPE); put(GroupMembership.GROUP_ROW_ID, group)
+        })!!
+        val contact = f.port.sources().single { it.id == source }
+        val aggregate = f.aggregate(source); val before = f.data(source)
+        val photos = f.photos(source); val fullPhoto = f.displayPhoto(source)
+        assertEquals(2, before.count { it[2] == "1" }); assertEquals(1, photos.size)
+        val tables = listOf(RawContacts.CONTENT_URI, Data.CONTENT_URI, Groups.CONTENT_URI)
+        val ids = tables.associateWith(f::ids)
+        var failedAtEnd = false
+        val context = f.trackedContext(batch = { operations ->
+            // The real move must include group creation and end with both
+            // phone/photo defaults restored after deleting the source.
+            assertTrue(operations.any { it.isInsert && it.uri == Groups.CONTENT_URI })
+            assertTrue(operations.takeLast(2).all { it.isUpdate && it.uri == Data.CONTENT_URI })
+            operations.add(ContentProviderOperation.newAssertQuery(RawContacts.CONTENT_URI)
+                .withExpectedCount(Int.MAX_VALUE).build())
+            try { f.resolver.applyBatch(ContactsContract.AUTHORITY, operations) }
+            catch (error: android.content.OperationApplicationException) {
+                assertTrue("Must reach the appended failure: $error", error.message.orEmpty().contains(Int.MAX_VALUE.toString()))
+                failedAtEnd = true
+                throw error
+            }
+        })
+        assertFalse(AndroidContacts(context).move(contact, f.personal)); assertTrue(failedAtEnd)
+        assertEquals(contact, f.port.sources().single { it.id == source }); assertEquals(aggregate, f.aggregate(source))
+        assertEquals(before, f.data(source)); assertEquals(photos, f.photos(source)); assertArrayEquals(fullPhoto, f.displayPhoto(source))
+        assertEquals(ids, tables.associateWith(f::ids)); assertTrue(f.rawIn(f.personal).isEmpty())
     }
 
     @Test fun namelessContactAndExistingJoinedContactKeepTheirAggregateIds() = scenario { f ->
@@ -310,7 +341,10 @@ class ContactsMoverInstrumentedTest {
             }
             check(personal in port.addressBooks() && family in port.addressBooks())
         }
-        fun trackedContext(onAuthority: (String?) -> Unit = {}, beforeBatch: () -> Unit = {}): android.content.Context {
+        fun trackedContext(onAuthority: (String?) -> Unit = {}, beforeBatch: () -> Unit = {},
+            batch: (ArrayList<ContentProviderOperation>) -> Array<android.content.ContentProviderResult> = {
+                resolver.applyBatch(ContactsContract.AUTHORITY, it)
+            }): android.content.Context {
             val tracked = ContentResolver.wrap(object : ContentProvider() {
                 override fun onCreate() = true
                 override fun query(uri: Uri, projection: Array<out String>?, selection: String?, selectionArgs: Array<out String>?, sortOrder: String?): android.database.Cursor? {
@@ -323,7 +357,11 @@ class ContactsMoverInstrumentedTest {
                 }
                 override fun applyBatch(operations: ArrayList<ContentProviderOperation>): Array<android.content.ContentProviderResult> {
                     operations.forEach { onAuthority(it.uri.authority) }; beforeBatch()
-                    return resolver.applyBatch(ContactsContract.AUTHORITY, operations)
+                    return batch(operations)
+                }
+                override fun openAssetFile(uri: Uri, mode: String): android.content.res.AssetFileDescriptor? {
+                    onAuthority(uri.authority)
+                    return resolver.openAssetFileDescriptor(uri, mode)
                 }
                 override fun getType(uri: Uri) = null
                 override fun insert(uri: Uri, values: ContentValues?) = throw AssertionError("Expected atomic batch")
@@ -372,6 +410,9 @@ class ContactsMoverInstrumentedTest {
                     add(StoredPhoto(image, bitmap.width, bitmap.height, c.getInt(1), c.getInt(2)))
                 }
             } }
+        }
+        fun ids(uri: Uri): List<Long> = resolver.query(uri, arrayOf("_id"), null, null, "_id")!!.use { c ->
+            buildList { while (c.moveToNext()) add(c.getLong(0)) }
         }
         fun data(id: Long): List<List<String?>> = resolver.query(Data.CONTENT_URI,
             (listOf(Data.MIMETYPE, Data.IS_PRIMARY, Data.IS_SUPER_PRIMARY) + (1..15).map { "data$it" }).toTypedArray(),
