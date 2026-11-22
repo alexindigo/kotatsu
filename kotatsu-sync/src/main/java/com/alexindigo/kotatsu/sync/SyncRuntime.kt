@@ -62,7 +62,7 @@ object SyncRuntime {
         val engine = ContactsTransferEngine(AndroidContacts(context), store)
         return try {
             val settings = PreferenceContactsConfig(context).read()
-            if (!existing && settings.personal == null && store.pendingContactsMove == null) return ContactsResult()
+            if (!existing && settings.target == null && store.pendingContactsMove == null) return ContactsResult()
             if (!permitted(context, Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS))
                 return ContactsResult(stopReason = "contacts permission not granted")
             if (existing) engine.moveExisting(settings) else engine.pass(settings)
@@ -72,6 +72,21 @@ object SyncRuntime {
     }
     fun moveExistingContacts(context: Context) = enqueue {
         BridgeStore(context).use { store ->
+            contactsPass(context, store, existing = true).also { result ->
+                store.syncStatus = SyncStatus(System.currentTimeMillis(), result.changes, result.stopReason)
+                store.status = result.stopReason?.let { "stopped: $it" } ?: "contacts pass complete"
+            }
+        }
+    }
+
+    /** Confirmation carries the exact destination and phone identities shown to the user. */
+    fun moveConfirmedContacts(context: Context, confirmed: ContactsMove) = enqueue {
+        BridgeStore(context).use { store ->
+            val pending = store.pendingContactsMove
+            check(pending == null || pending.destination == confirmed.destination && pending.sourceIds.containsAll(confirmed.sourceIds)) {
+                "contacts move already pending"
+            }
+            if (pending == null) store.pendingContactsMove = confirmed
             contactsPass(context, store, existing = true).also { result ->
                 store.syncStatus = SyncStatus(System.currentTimeMillis(), result.changes, result.stopReason)
                 store.status = result.stopReason?.let { "stopped: $it" } ?: "contacts pass complete"

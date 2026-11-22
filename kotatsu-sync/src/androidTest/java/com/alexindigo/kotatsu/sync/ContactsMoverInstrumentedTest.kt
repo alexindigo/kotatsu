@@ -243,7 +243,7 @@ class ContactsMoverInstrumentedTest {
     }
 
     @Test fun rawContactChangeJobMovesToConfiguredPersonalAndRearms() = scenario { f ->
-        f.config.write(ContactsSettings(personal = f.personal, family = f.family))
+        f.config.write(ContactsSettings(f.personal))
         SyncRuntime.ensureArmed(f.context, queuePass = false)
         f.insert("Triggered contact")
         f.await { f.rawIn(f.personal).size == 1 }
@@ -253,7 +253,7 @@ class ContactsMoverInstrumentedTest {
 
     @Test fun oneTimeRuntimeActionUsesFamilyAndUnavailableTargetDoesNotDeletePhoneData() = scenario { f ->
         val id = f.insert("One-time")
-        f.config.write(ContactsSettings(family = f.family))
+        f.config.write(ContactsSettings(f.family))
         assertEquals(ContactsResult(1), SyncRuntime.moveExistingContacts(f.context).get(15, TimeUnit.SECONDS))
         BridgeStore(f.context).use {
             assertEquals(1, it.syncStatus.changes); assertNotNull(it.syncStatus.lastPassAt)
@@ -268,7 +268,7 @@ class ContactsMoverInstrumentedTest {
 
     @Test fun failedFamilyActionResumesAcrossReopenWithoutRoutingOldContactsToPersonalOrNewOnesToFamily() = scenario { f ->
         val old = f.insert("Existing")
-        f.config.write(ContactsSettings(personal = f.personal, family = f.family))
+        f.config.write(ContactsSettings(f.family))
         val failed = f.trackedContext(beforeBatch = { throw android.content.OperationApplicationException("Injected batch failure") })
         val result = SyncRuntime.moveExistingContacts(failed).get(15, TimeUnit.SECONDS)
         assertTrue(result.retry); assertEquals(0, result.changes); assertNotNull(result.stopReason)
@@ -277,6 +277,7 @@ class ContactsMoverInstrumentedTest {
             assertEquals(result.stopReason, it.syncStatus.stopReason); assertEquals(0, it.syncStatus.changes)
         }
         f.insert("New phone contact")
+        f.config.write(ContactsSettings(f.personal))
         val status = SyncRuntime.pass(f.context)
         assertNull(status.stopReason); assertEquals(2, status.changes)
         assertEquals(1, f.rawIn(f.family).size); assertEquals(1, f.rawIn(f.personal).size)

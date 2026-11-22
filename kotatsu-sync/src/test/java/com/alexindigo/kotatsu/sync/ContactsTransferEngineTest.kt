@@ -21,15 +21,15 @@ class ContactsTransferEngineTest {
                 rows.remove(source); moved[source.id] = destination; return true
             }
         }
-        val settings = ContactsSettings(personal, family)
-        assertTrue(ContactsTransferEngine(port, store).moveExisting(settings).retry)
+        assertTrue(ContactsTransferEngine(port, store).moveExisting(ContactsSettings(family)).retry)
+        val settings = ContactsSettings(personal)
         assertNotNull(store.pendingContactsMove)
         rows.add(PhoneContact(3, 0, null, ContactOrigin.PHONE))
         val partial = ContactsTransferEngine(port, store).pass(settings)
         assertTrue(partial.retry); assertEquals(1, partial.changes)
         assertEquals(mapOf(1L to family, 3L to personal), moved)
         fail = false
-        assertEquals(ContactsResult(1), ContactsTransferEngine(port, store).pass(settings.copy(family = null)))
+        assertEquals(ContactsResult(1), ContactsTransferEngine(port, store).pass(settings))
         assertEquals(family, moved[2]); assertNull(store.pendingContactsMove)
     }
     @Test fun lostFamilyCommitResultDoesNotRepeatOrClaimNewLocalContacts() {
@@ -41,7 +41,7 @@ class ContactsTransferEngineTest {
             override fun sources() = listOf(row)
             override fun move(source: PhoneContact, destination: ContactAccount): Boolean { moved.add(destination); return true }
         }
-        assertEquals(ContactsResult(1), ContactsTransferEngine(port, store).pass(ContactsSettings(personal, family)))
+        assertEquals(ContactsResult(1), ContactsTransferEngine(port, store).pass(ContactsSettings(personal)))
         assertEquals(listOf(personal), moved); assertNull(store.pendingContactsMove)
     }
 }

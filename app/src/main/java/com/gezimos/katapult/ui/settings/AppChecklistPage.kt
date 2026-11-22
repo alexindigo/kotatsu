@@ -1,22 +1,16 @@
 package com.gezimos.katapult.ui.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.*
-import androidx.compose.ui.state.ToggleableState
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.gezimos.katapult.R
 import com.gezimos.katapult.model.AppModel
-import com.gezimos.katapult.ui.LatoFamily
-import com.gezimos.katapult.ui.LocalInk
 
 enum class NotifyCell { NONE, OFF, ON, DISABLED }
 
@@ -33,45 +27,42 @@ fun AppChecklistPage(
     selectAllLabel: String? = null,
     onSelectAll: () -> Unit = {},
 ) {
+    val hiddenColumn = rememberControlColumn(stringResource(R.string.hidden_apps_hidden_column))
+    val notifyColumn = rememberControlColumn(stringResource(R.string.hidden_apps_notify_column))
     PagedSettingsPage(title, apps, onDismiss, header = {
         if (notifyCell != null) {
             SheetText(stringResource(R.string.hidden_apps_notify_desc))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                ColumnLabel(stringResource(R.string.hidden_apps_hidden_column))
+                ColumnLabel(hiddenColumn)
                 Spacer(Modifier.weight(1f))
-                ColumnLabel(stringResource(R.string.hidden_apps_notify_column))
+                ColumnLabel(notifyColumn)
             }
         }
         if (selectAllLabel != null) SheetAction(selectAllLabel, onSelectAll)
     }, row = { app ->
         if (notifyCell == null) CheckboxOption(app.label, app.key in checked) { onToggle(app) }
         else VisibilityRow(app.label, app.key in checked, notifyCell(app),
-            { onToggle(app) }, { onToggleNotify(app) })
+            { onToggle(app) }, { onToggleNotify(app) }, hiddenColumn.width, notifyColumn.width)
     })
-}
-
-@Composable
-private fun ColumnLabel(label: String) {
-    Text(label, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 17.25.sp,
-        color = LocalInk.current, textAlign = TextAlign.Center, modifier = Modifier.width(64.dp))
 }
 
 /** Neither the parent nor the name target contains the right-hand control. */
 @Composable
-private fun VisibilityRow(label: String, hidden: Boolean, notify: NotifyCell, onHide: () -> Unit, onNotify: () -> Unit) {
+private fun VisibilityRow(label: String, hidden: Boolean, notify: NotifyCell, onHide: () -> Unit, onNotify: () -> Unit,
+    hiddenColumnWidth: Dp, notifyColumnWidth: Dp) {
     val hiddenLabel = stringResource(R.string.paper_hidden_app, label)
     val notifyLabel = stringResource(R.string.paper_notify_app, label)
     val unavailable = stringResource(R.string.paper_unavailable)
     val notApplicable = stringResource(R.string.paper_not_applicable)
     Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Box(Modifier.width(64.dp).heightIn(min = 64.dp).fillMaxHeight()
+        Box(Modifier.width(hiddenColumnWidth).heightIn(min = 64.dp).fillMaxHeight()
             .toggleable(hidden, role = Role.Checkbox, onValueChange = { onHide() })
             .semantics { contentDescription = hiddenLabel }, contentAlignment = Alignment.Center) {
             IndexCheckbox(hidden, true)
         }
         PaperCheckboxEntry(label, notifyLabel, notify == NotifyCell.ON, onHide, onNotify,
-            Modifier.weight(1f).heightIn(min = 64.dp), nameChecked = hidden, controlColumnWidth = 64.dp,
+            Modifier.weight(1f).heightIn(min = 64.dp), nameChecked = hidden, controlColumnWidth = notifyColumnWidth,
             checkboxVisible = notify != NotifyCell.NONE,
             checkboxEnabled = notify == NotifyCell.ON || notify == NotifyCell.OFF,
             checkboxStateDescription = when (notify) {

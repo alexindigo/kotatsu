@@ -1,0 +1,33 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Calendar access</string>
+    <string name="contacts_access">Contacts access</string>
+    <string name="allow">Allow</string>
+    <string name="shown">Shown</string>
+    <string name="shown_calendar">Shown %1$s</string>
+    <string name="new_events">New events</string>
+    <string name="look_ahead">Look ahead</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weeks</item>
+    </plurals>
+    <string name="contacts_go_to">Contacts go to</string>
+    <string name="phone_contacts">Phone contacts</string>
+    <string name="move_to">Move to %1$s</string>
+    <string name="last_sync">Last sync</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$s, %2$d change</item>
+        <item quantity="other">%1$s, %2$d changes</item>
+    </plurals>
+    <string name="stopped">Stopped: %1$s</string>
+    <string name="sync_now">Sync now</string>
+    <string name="davx5">DAVx5</string>
+    <string name="set_up">Set up</string>
+    <string name="move_phone_contacts">Move phone contacts</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d contact moves to %2$s. They stay on this phone and sync to your server.</item>
+        <item quantity="other">%1$d contacts move to %2$s. They stay on this phone and sync to your server.</item>
+    </plurals>
+    <string name="move">Move</string>
+    <string name="cancel">Cancel</string>
+</resources>

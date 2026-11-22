@@ -93,6 +93,14 @@ class PaperIndexSheetsInstrumentedTest {
         }
         ui.await("Notify matrix missing") { ui.checked("Notify: Calculator") == true }
         assertTrue(ui.has("Hidden"))
+        val hiddenHeader = android.graphics.Rect().also { ui.find("Hidden")!!.getBoundsInScreen(it) }
+        val notifyHeader = android.graphics.Rect().also { ui.find("Notify")!!.getBoundsInScreen(it) }
+        val hiddenCell = android.graphics.Rect().also { ui.find("Hidden: Calculator")!!.getBoundsInScreen(it) }
+        val notifyCell = android.graphics.Rect().also { ui.find("Notify: Calculator")!!.getBoundsInScreen(it) }
+        assertEquals(64f * context.resources.displayMetrics.density, hiddenHeader.width().toFloat(), 1f)
+        assertEquals(64f * context.resources.displayMetrics.density, notifyHeader.width().toFloat(), 1f)
+        assertEquals(hiddenCell.exactCenterX(), hiddenHeader.exactCenterX(), 1f)
+        assertTrue("Header is above the checkbox rows", notifyHeader.bottom <= notifyCell.top)
         assertFalse(ui.has("Hide"))
         assertEquals(true, ui.checked("Hidden: Calculator"))
         assertEquals(false, ui.checked("Hidden: Camera"))

@@ -1,4 +1,7 @@
-plugins { alias(libs.plugins.android.application) }
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+}
 
 android {
     sourceSets.getByName("androidTest").kotlin.directories += rootProject.file("test-fixtures/src/androidTest/java").path
@@ -17,9 +20,16 @@ android {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+    buildFeatures { compose = true }
 }
 
 dependencies {
+    implementation(project(":paper-ui"))
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.foundation)
     constraints { implementation("org.jetbrains:annotations:23.0.0") }
     testImplementation(libs.junit)
     // Match Notes' instrumented classpath, whose versions are in the offline cache.

@@ -4,7 +4,7 @@ package com.alexindigo.kotatsu.sync
 data class ContactAccount(val name: String, val type: String, val dataSet: String? = null)
 enum class ContactOrigin { PHONE, SIM, OTHER }
 data class PhoneContact(val id: Long, val version: Long, val account: ContactAccount?, val origin: ContactOrigin)
-data class ContactsSettings(val personal: ContactAccount? = null, val family: ContactAccount? = null)
+data class ContactsSettings(val target: ContactAccount? = null)
 data class ContactsResult(val changes: Int = 0, val stopReason: String? = null, val retry: Boolean = false)
 data class ContactsMove(val destination: ContactAccount, val sourceIds: Set<Long>)
 interface ContactsMoveStore { var pendingContactsMove: ContactsMove? }
@@ -38,8 +38,7 @@ class ContactsMover(private val contacts: ContactsPort, private val changed: () 
     fun moveExisting(destination: ContactAccount?, sourceIds: Set<Long>? = null): ContactsResult = pass(destination, sourceIds)
 }
 
-/** Durable one-time intent reserves only its original phone ids. A failed Family
- * move must not silently fall through to Personal on the next automatic pass. */
+/** A durable move keeps its destination even when the setting changes later. */
 class ContactsTransferEngine(private val contacts: ContactsPort, private val store: ContactsMoveStore) {
     var changes = 0
         private set
@@ -49,13 +48,13 @@ class ContactsTransferEngine(private val contacts: ContactsPort, private val sto
         val pending = store.pendingContactsMove
         val results = mutableListOf<ContactsResult>()
         if (pending != null) results.add(resume(pending))
-        if (settings.personal != null) results.add(mover.pass(settings.personal, excluded = pending?.sourceIds.orEmpty()))
+        if (settings.target != null) results.add(mover.pass(settings.target, excluded = pending?.sourceIds.orEmpty()))
         return combine(results)
     }
     fun moveExisting(settings: ContactsSettings): ContactsResult {
         changes = 0
         val pending = store.pendingContactsMove ?: run {
-            val target = settings.family ?: return ContactsResult(stopReason = "contacts address book not selected")
+            val target = settings.target ?: return ContactsResult(stopReason = "contacts address book not selected")
             if (target !in contacts.addressBooks()) return ContactsResult(stopReason = "contacts address book unavailable")
             ContactsMove(target, contacts.sources().filter { it.origin == ContactOrigin.PHONE }.map { it.id }.toSet())
                 .also { store.pendingContactsMove = it }

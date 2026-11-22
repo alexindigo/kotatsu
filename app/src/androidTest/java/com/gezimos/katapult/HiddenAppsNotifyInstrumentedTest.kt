@@ -79,6 +79,8 @@ class HiddenAppsNotifyInstrumentedTest {
             // The drawing stays centred in its 64dp matrix column; its independent
             // hit region now also owns the leader, rather than shortening the leader.
             val header = Rect().also { ui.find(context.getString(R.string.hidden_apps_notify_column))!!.getBoundsInScreen(it) }
+            assertEquals("Shared column heading retains the matrix width", 64f * context.resources.displayMetrics.density,
+                header.width().toFloat(), 1f)
             val cell = Rect().also { ui.find(notify)!!.getBoundsInScreen(it) }
             val row = Rect().also { ui.findAncestor(app.label) { it.isClickable }!!.getBoundsInScreen(it) }
             val box = indexDrawingBounds("paper_index_checkbox").filter {
