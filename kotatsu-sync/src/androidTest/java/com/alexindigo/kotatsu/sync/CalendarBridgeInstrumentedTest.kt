@@ -95,7 +95,7 @@ class CalendarBridgeInstrumentedTest {
 
     @Test fun contentChangeJobRunsPassAfterStandardInsert() = scenario { f ->
         f.store.firstRunDone = true
-        SyncRuntime.arm(f.context)
+        SyncRuntime.ensureArmed(f.context, queuePass = false)
         f.insert()
         f.await { f.phone.all().size == 1 }
         assertEquals("Test event", f.phone.all().single().title)
@@ -336,6 +336,19 @@ class CalendarBridgeInstrumentedTest {
             release.countDown()
             f.await { f.phone.all().size == 1 }
         }
+    }
+
+    @Test fun packageReplacementArmsMissingJobsAndRunsAPassWithoutBootOrUi() = scenario { f ->
+        f.insert()
+        PackageReplacedReceiver().onReceive(f.context, Intent(Intent.ACTION_MY_PACKAGE_REPLACED))
+        f.await { f.phone.all().size == 1 }
+        val scheduler = f.context.getSystemService(JobScheduler::class.java)
+        assertNotNull(scheduler.getPendingJob(SyncRuntime.PERIODIC_JOB))
+        assertNotNull(scheduler.getPendingJob(SyncRuntime.HORIZON_JOB))
+        f.await { scheduler.getPendingJob(SyncRuntime.WATCH_JOB) != null }
+        val before = scheduler.getPendingJob(SyncRuntime.PERIODIC_JOB)
+        SyncRuntime.ensureArmed(f.context, queuePass = false)
+        assertEquals(before, scheduler.getPendingJob(SyncRuntime.PERIODIC_JOB))
     }
 
     @Test fun interruptedPhoneUpdateIsRecoveredWithoutDuplicateRows() = scenario { f ->
@@ -749,6 +762,8 @@ class CalendarBridgeInstrumentedTest {
         var calendarId = -1L
         val now = System.currentTimeMillis()
         fun setup() {
+            context.getSystemService(JobScheduler::class.java).cancelAll()
+            SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS)
             for (permission in listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
                 instrumentation.uiAutomation.grantRuntimePermission(context.packageName, permission)
             accountAdded = AccountManager.get(context).addAccountExplicitly(account, null, null)

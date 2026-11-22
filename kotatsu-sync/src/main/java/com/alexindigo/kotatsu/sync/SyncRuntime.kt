@@ -46,29 +46,38 @@ object SyncRuntime {
         pass(context)
     }
 
-    fun arm(context: Context, replaceWatch: Boolean = false) {
+    /** A component can be started while the package has never received BOOT_COMPLETED. */
+    fun start(context: Context) {
+        try { ensureArmed(context) }
+        catch (error: RuntimeException) {
+            BridgeStore(context).use { it.status = "stopped: bridge scheduling: ${error.message.orEmpty()}" }
+        }
+    }
+
+    @Synchronized
+    fun ensureArmed(context: Context, queuePass: Boolean = true, replaceWatch: Boolean = false) {
         val scheduler = context.getSystemService(JobScheduler::class.java)
         fun schedule(builder: JobInfo.Builder) {
             check(scheduler.schedule(builder.build()) == JobScheduler.RESULT_SUCCESS) { "Could not schedule calendar bridge" }
         }
-        if (replaceWatch || scheduler.getPendingJob(WATCH_JOB) == null) {
+        fun recurring() = SyncArming.ensure(listOf(WATCH_JOB, PERIODIC_JOB, HORIZON_JOB),
+            { id -> !(replaceWatch && id == WATCH_JOB) && scheduler.getPendingJob(id) != null }) { id ->
+            when (id) {
+            WATCH_JOB -> {
             schedule(JobInfo.Builder(WATCH_JOB, ComponentName(context, CalendarChangedJob::class.java))
                 .addTriggerContentUri(JobInfo.TriggerContentUri(CalendarContract.CONTENT_URI,
                     JobInfo.TriggerContentUri.FLAG_NOTIFY_FOR_DESCENDANTS))
                 .setTriggerContentUpdateDelay(200).setTriggerContentMaxDelay(1000))
+            }
+            PERIODIC_JOB -> schedule(JobInfo.Builder(id, ComponentName(context, PeriodicPassJob::class.java)).setPeriodic(15 * 60 * 1000L))
+            HORIZON_JOB -> schedule(JobInfo.Builder(id, ComponentName(context, HorizonJob::class.java)).setPeriodic(24 * 60 * 60 * 1000L))
+            }
         }
-        if (scheduler.getPendingJob(PERIODIC_JOB) == null)
-            schedule(JobInfo.Builder(PERIODIC_JOB, ComponentName(context, PeriodicPassJob::class.java)).setPeriodic(15 * 60 * 1000L))
-        if (scheduler.getPendingJob(HORIZON_JOB) == null)
-            schedule(JobInfo.Builder(HORIZON_JOB, ComponentName(context, HorizonJob::class.java)).setPeriodic(24 * 60 * 60 * 1000L))
-    }
-    fun armBoot(context: Context) {
         // Queue the pass even if recurring-job scheduling is rejected; attempt both responsibilities.
-        PassLifecycle.boot({ arm(context) }, {
-            val scheduler = context.getSystemService(JobScheduler::class.java)
-            check(scheduler.schedule(JobInfo.Builder(BOOT_JOB, ComponentName(context, BootPassJob::class.java))
-                .setMinimumLatency(0).setOverrideDeadline(0).build()) == JobScheduler.RESULT_SUCCESS) {
-                "Could not schedule boot calendar pass"
+        PassLifecycle.boot({ recurring() }, {
+            if (queuePass) SyncArming.ensure(listOf(BOOT_JOB), { scheduler.getPendingJob(it) != null }) { id ->
+                schedule(JobInfo.Builder(id, ComponentName(context, BootPassJob::class.java))
+                    .setMinimumLatency(0).setOverrideDeadline(0))
             }
         })
     }

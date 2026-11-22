@@ -20,8 +20,8 @@ abstract class CalendarPassJob : JobService() {
                 pass = { if (!run.stopped.get()) SyncRuntime.pass(applicationContext) },
                 // Content jobs are one-shot: register their successor before finishing.
                 successor = {
-                    if (!run.stopped.get() && (params.jobId == SyncRuntime.WATCH_JOB || params.jobId == SyncRuntime.BOOT_JOB))
-                        SyncRuntime.arm(applicationContext, replaceWatch = params.jobId == SyncRuntime.WATCH_JOB)
+                    if (!run.stopped.get()) SyncRuntime.ensureArmed(applicationContext, queuePass = false,
+                        replaceWatch = params.jobId == SyncRuntime.WATCH_JOB)
                 },
                 finish = { retry -> Handler(Looper.getMainLooper()).post {
                     if (active === run) {
@@ -48,9 +48,12 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
         // Scheduling is bounded local work. Never keep a broadcast open on the provider lane.
-        try { SyncRuntime.armBoot(context) }
-        catch (error: RuntimeException) {
-            BridgeStore(context).use { it.status = "stopped: boot scheduling: ${error.message.orEmpty()}" }
-        }
+        SyncRuntime.start(context)
+    }
+}
+
+class PackageReplacedReceiver : BroadcastReceiver() {
+    override fun onReceive(context: Context, intent: Intent) {
+        if (intent.action == Intent.ACTION_MY_PACKAGE_REPLACED) SyncRuntime.start(context)
     }
 }
