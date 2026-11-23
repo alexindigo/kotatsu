@@ -37,6 +37,8 @@ data class SyncStatus(
     val changes: Int = 0,
     val stopReasons: Set<SyncStopReason> = emptySet(),
     val availabilityStop: SyncStopReason? = null,
+    val held: List<HeldCalendarLoss> = emptyList(),
+    val contactsWaiting: Int = 0,
 ) {
     fun forDisplay(calendarAccess: Boolean, contactsAccess: Boolean): SyncStatus? {
         if (!calendarAccess || !contactsAccess) return if (lastPassAt == null) null else copy(availabilityStop = null)
@@ -45,5 +47,6 @@ data class SyncStatus(
 
     /** A denied provider has not performed a pass. Keep the previous result. */
     fun afterAttempt(at: Long, changes: Int, reasons: Set<SyncStopReason>): SyncStatus =
-        if (reasons.any { it.accessRequired }) this else SyncStatus(at, changes, reasons)
+        if (reasons.any { it.accessRequired }) this else SyncStatus(at, changes, reasons,
+            held = held, contactsWaiting = contactsWaiting)
 }

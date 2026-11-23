@@ -15,6 +15,102 @@ class BridgeEngineTest {
     private fun event(id: Long = 1) = StandardEvent(id, 1, "Title $id", "Body", "Home", now + 1000, now + 2000)
     private fun seed(): MuditaEvent { server.rows[EventKey(1)] = event(); engine.pass(now); return phone.rows.values.single() }
 
+    @Test fun bulkPhoneLossDoesNotDeleteAnyOfTheMappedServerEventsEvenAcrossPasses() {
+        (1L..5).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val baseline = store.all()
+        baseline.take(3).forEach { phone.rows.remove(it.muditaId) }
+        repeat(2) { engine.pass(now) }
+        assertEquals(5, server.rows.size)
+        assertEquals(baseline, store.all())
+    }
+
+    @Test fun twoOrdinaryPhoneDeletesPropagateWhenTheStoreDoesNotReadEmpty() {
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        store.all().take(2).forEach { phone.rows.remove(it.muditaId) }
+        assertEquals(2, engine.pass(now).changes)
+        assertEquals(2, server.rows.size)
+    }
+
+    @Test fun emptyPhoneStoreWithTwoMappingsRetainsBothCopiesOnTheServer() {
+        (1L..2).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        phone.rows.clear()
+        assertEquals(0, engine.pass(now).changes)
+        assertEquals(2, server.rows.size)
+    }
+
+    @Test fun calendarDisappearanceWhileSelectedRetainsTheMappedPhoneCopy() {
+        val copy = seed()
+        server.calendarList = emptyList()
+        assertEquals(0, engine.pass(now).changes)
+        assertEquals(copy, phone.rows[copy.id])
+        assertEquals(1, store.all().size)
+    }
+
+    @Test fun identityChangeHoldsEvenOnePair() {
+        server.rows[event().key] = event().copy(syncId = "original")
+        engine.pass(now)
+        val copy = phone.rows.values.single()
+        server.rows[event().key] = event().copy(syncId = "replacement", title = "Replacement")
+        val held = engine.pass(now).held.single()
+        assertEquals(LossDirection.STANDARD, held.direction)
+        assertEquals(copy, phone.rows.values.single())
+    }
+
+    @Test fun partialPhoneCursorHoldsAndDoesNotReplayAPendingDeletion() {
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val row = store.all().first()
+        val original = phone.rows.remove(row.muditaId)!!
+        phone.onRead = { phone.rows[row.muditaId] = original }
+        val pending = WriteIntent(kind = WriteKind.STANDARD_DELETE, mapping = row, standardBefore = event())
+        store.prepare(pending)
+        assertEquals(LossDirection.PHONE, engine.pass(now).held.single().direction)
+        assertEquals(4, server.rows.size)
+        assertEquals(listOf(pending), store.pending())
+        assertEquals(4, store.all().size)
+    }
+
+    @Test fun deletingOneStandardSeriesRetiresAllItsOccurrencesWithoutHolding() {
+        repeat(4) { offset ->
+            val start = now + offset * 1000 + 1
+            val instance = event().copy(recurring = true, start = start, end = start + 500, instanceStart = start)
+            server.rows[instance.key] = instance
+        }
+        engine.pass(now)
+        server.rows.clear()
+        server.removedSeries = setOf(1)
+        assertTrue(engine.pass(now).held.isEmpty())
+        assertTrue(phone.rows.isEmpty())
+    }
+
+    @Test fun calendarKeepDoesNotAutomaticallyUploadTheRetiredPhoneCopies() {
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        (1L..3).forEach { server.rows.remove(EventKey(it)) }
+        val hold = engine.pass(now).held.single()
+        assertEquals(LossDirection.STANDARD, hold.direction)
+        assertEquals(3, hold.count)
+        engine.resolveLoss(now, hold.id, LossResolution.KEEP)
+        repeat(2) { engine.pass(now) }
+        assertEquals(1, server.rows.size)
+        assertEquals(4, phone.rows.size)
+        assertEquals(1, store.all().size)
+    }
+
+    @Test fun exactDeleteApprovalDoesNotIncludeLaterPhoneLoss() {
+        (1L..6).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val pairs = store.all().sortedBy { it.standardKey.eventId }
+        pairs.take(3).forEach { phone.rows.remove(it.muditaId) }
+        val hold = engine.pass(now).held.single()
+        phone.rows.remove(pairs[3].muditaId)
+        assertEquals(3, engine.resolveLoss(now, hold.id, LossResolution.DELETE_FROM_SERVER).changes)
+        assertEquals(setOf(EventKey(4), EventKey(5), EventKey(6)), server.rows.keys)
+    }
+
     @Test fun statusCountsProviderMutationsButNotStableMappings() {
         server.rows[EventKey(1)] = event()
         assertEquals(1, engine.pass(now).changes)
@@ -106,12 +202,13 @@ class BridgeEngineTest {
             start = now + week * BridgeEngine.WEEK + 1000); server.rows[item.key] = item }
         engine.pass(now); assertEquals(3, phone.rows.size)
     }
-    @Test fun unchosenOrNoLongerSyncingCalendarRemovesOnlyPhoneCopies() {
+    @Test fun unchoosingRetiresCopiesButDisabledSyncHolds() {
         seed(); settings = settings.copy(calendars = emptySet())
         engine.pass(now); assertTrue(phone.rows.isEmpty()); assertEquals(1, server.rows.size)
         settings = settings.copy(calendars = setOf(1)); engine.pass(now); assertEquals(1, phone.rows.size)
-        server.calendarList = listOf(SyncCalendar(1, "dav", false)); engine.pass(now)
-        assertTrue(phone.rows.isEmpty()); assertEquals(1, server.rows.size)
+        server.calendarList = listOf(SyncCalendar(1, "dav", false))
+        assertEquals(LossDirection.STANDARD, engine.pass(now).held.single().direction)
+        assertEquals(1, phone.rows.size); assertEquals(1, server.rows.size)
     }
     @Test fun localCalendarsNeverBridgedOrWritten() {
         server.calendarList = listOf(SyncCalendar(1, "LOCAL", true)); server.rows[event().key] = event()
@@ -480,7 +577,7 @@ class BridgeEngineTest {
         val p = seed(); val row = store.rows.values.single()
         store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = p))
         phone.rows.clear(); server.rows[event().key] = event().copy(title = "Server winner")
-        WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK)).recover()
+        WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK), { true }).recover()
         assertEquals(row, store.rows.values.single()); assertTrue(store.pending().isEmpty())
         engine.pass(now)
         assertEquals("Server winner", phone.rows.values.single().title)
@@ -678,7 +775,7 @@ class BridgeEngineTest {
             phoneBefore = p, phoneAfter = p, standardBefore = remote, attempted = true)
         store.prepare(pending)
         for (kind in WriteKind.entries) {
-            val journal = WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK))
+            val journal = WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK), { true })
             assertEquals(kind.name, WriteOutcome.UNRESOLVED, journal.write(WriteIntent(kind = kind, mapping = row,
                 phoneBefore = p, phoneAfter = p, standardBefore = remote, standardAfter = remote)))
             assertEquals(listOf(pending), store.pending())
@@ -716,6 +813,8 @@ class BridgeEngineTest {
         var allowUpdate = true
         var afterInsert: ((EventKey) -> Unit)? = null
         var calendarList = listOf(SyncCalendar(1, "dav", true))
+        var removedSeries = emptySet<Long>()
+        override fun seriesRemoved(eventId: Long) = eventId in removedSeries
         override fun calendars() = calendarList
         override fun events(calendarIds: Set<Long>) = rows.values.filter { it.calendarId in calendarIds && !it.recurring }
         override fun instances(calendarIds: Set<Long>, start: Long, end: Long) = rows.values.filter {
@@ -769,5 +868,10 @@ class BridgeEngineTest {
         }
         override var firstRunDone = false
         override var status = ""
+        override var continuity = CalendarContinuity()
+        override fun keepPhoneOnly(ids: Set<Long>) {
+            continuity = continuity.copy(phoneOnly = continuity.phoneOnly + ids)
+            ids.forEach(::remove)
+        }
     }
 }

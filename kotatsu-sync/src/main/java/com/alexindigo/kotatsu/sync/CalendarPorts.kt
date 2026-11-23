@@ -8,7 +8,8 @@ data class MuditaEvent(
     val insertReceipts: Set<String> = emptySet(),
 )
 
-data class SyncCalendar(val id: Long, val accountType: String, val syncing: Boolean) {
+data class SyncCalendar(val id: Long, val accountType: String, val syncing: Boolean,
+    val accountName: String = "", val label: String = id.toString(), val collectionId: String? = null) {
     val eligible: Boolean get() = accountType.isNotBlank() && accountType != "LOCAL" && syncing
 }
 
@@ -20,6 +21,7 @@ data class StandardEvent(
     val location: String = "", val start: Long, val end: Long, val allDay: Boolean = false,
     val recurring: Boolean = false, val timeZone: String = "UTC",
     val instanceStart: Long? = null,
+    val syncId: String? = null,
 ) {
     val key: EventKey get() = EventKey(id, instanceStart)
 }
@@ -37,6 +39,8 @@ interface StandardCalendarPort {
     fun events(calendarIds: Set<Long>): List<StandardEvent>
     fun instances(calendarIds: Set<Long>, start: Long, end: Long): List<StandardEvent>
     fun read(key: EventKey): StandardEvent?
+    /** Positive base-row evidence; never deduce it from the expanding Instances query. */
+    fun seriesRemoved(eventId: Long): Boolean = false
     fun insert(calendarId: Long, event: StandardEvent, intentId: String? = null): Long?
     /** Includes tombstoned rows, so recovery cannot resurrect an already deleted upload. */
     fun findInsert(intentId: String): Long?
@@ -62,6 +66,8 @@ interface MappingStore {
     fun acknowledge(intentId: String, mapping: Mapping?, removeMuditaId: Long?)
     var firstRunDone: Boolean
     var status: String
+    var continuity: CalendarContinuity
+    fun keepPhoneOnly(ids: Set<Long>)
 }
 
 data class SyncSettings(val calendars: Set<Long>, val newEventCalendar: Long?, val horizonWeeks: Int = 8)

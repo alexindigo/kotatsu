@@ -5,7 +5,8 @@ data class ContactAccount(val name: String, val type: String, val dataSet: Strin
 enum class ContactOrigin { PHONE, SIM, OTHER }
 data class PhoneContact(val id: Long, val version: Long, val account: ContactAccount?, val origin: ContactOrigin)
 data class ContactsSettings(val target: ContactAccount? = null)
-data class ContactsResult(val changes: Int = 0, val stopReasons: Set<SyncStopReason> = emptySet(), val retry: Boolean = false)
+data class ContactsResult(val changes: Int = 0, val stopReasons: Set<SyncStopReason> = emptySet(),
+    val retry: Boolean = false, val waiting: Int = 0)
 data class ContactsMove(val destination: ContactAccount, val sourceIds: Set<Long>)
 interface ContactsMoveStore { var pendingContactsMove: ContactsMove? }
 
@@ -21,12 +22,17 @@ class ContactsMover(private val contacts: ContactsPort, private val changed: () 
     var changes: Int = 0
         private set
     fun pass(destination: ContactAccount?, sourceIds: Set<Long>? = null, excluded: Set<Long> = emptySet()): ContactsResult {
+        return move(destination, sourceIds, excluded, automatic = sourceIds == null)
+    }
+    private fun move(destination: ContactAccount?, sourceIds: Set<Long>?, excluded: Set<Long>, automatic: Boolean): ContactsResult {
         changes = 0
         if (destination == null) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
         if (destination !in contacts.addressBooks()) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
         var failed = false
-        for (source in contacts.sources().filter { it.origin == ContactOrigin.PHONE &&
-            (sourceIds == null || it.id in sourceIds) && it.id !in excluded }) {
+        val sources = contacts.sources().filter { it.origin == ContactOrigin.PHONE &&
+            (sourceIds == null || it.id in sourceIds) && it.id !in excluded }
+        if (automatic && sources.size >= BULK) return ContactsResult(waiting = sources.size)
+        for (source in sources) {
             // Re-read selection availability for each transaction, not just the initial list.
             if (destination !in contacts.addressBooks()) return ContactsResult(changes, setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
             if (contacts.move(source, destination)) { changes++; changed() } else failed = true
@@ -35,7 +41,8 @@ class ContactsMover(private val contacts: ContactsPort, private val changed: () 
     }
     // SIM imports are ordinary phone raw contacts. SIM-backed mirrors are never
     // candidates: importing a SIM in Mudita does not transfer ownership of the SIM.
-    fun moveExisting(destination: ContactAccount?, sourceIds: Set<Long>? = null): ContactsResult = pass(destination, sourceIds)
+    fun moveExisting(destination: ContactAccount?, sourceIds: Set<Long>? = null): ContactsResult =
+        move(destination, sourceIds, emptySet(), automatic = false)
 }
 
 /** A durable move keeps its destination even when the setting changes later. */
@@ -65,5 +72,5 @@ class ContactsTransferEngine(private val contacts: ContactsPort, private val sto
         if (it.stopReasons.isEmpty()) store.pendingContactsMove = null
     }
     private fun combine(results: List<ContactsResult>) = ContactsResult(changes,
-        results.flatMap { it.stopReasons }.toSet(), results.any { it.retry })
+        results.flatMap { it.stopReasons }.toSet(), results.any { it.retry }, results.sumOf { it.waiting })
 }

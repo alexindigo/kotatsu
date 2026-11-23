@@ -7,6 +7,22 @@ class ContactsTransferEngineTest {
     private val personal = ContactAccount("Personal", "dav")
     private val family = ContactAccount("Family", "dav")
     private class Store : ContactsMoveStore { override var pendingContactsMove: ContactsMove? = null }
+    @Test fun bulkAutomaticTransferWaitsUntilTheExactMoveIsConfirmed() {
+        val rows = (1L..3).map { PhoneContact(it, 0, null, ContactOrigin.PHONE) }.toMutableList()
+        val port = object : ContactsPort {
+            override fun addressBooks() = setOf(personal)
+            override fun sources() = rows.toList()
+            override fun move(source: PhoneContact, destination: ContactAccount) = rows.remove(source)
+        }
+        val store = Store()
+        val engine = ContactsTransferEngine(port, store)
+        assertEquals(ContactsResult(waiting = 3), engine.pass(ContactsSettings(personal)))
+        assertEquals(3, rows.size)
+        store.pendingContactsMove = ContactsMove(personal, setOf(1, 2, 3))
+        rows.add(PhoneContact(4, 0, null, ContactOrigin.PHONE))
+        assertEquals(3, engine.moveExisting(ContactsSettings(personal)).changes)
+        assertEquals(listOf(4L), rows.map { it.id })
+    }
     @Test fun failedFamilyMoveKeepsItsDestinationAcrossReopenAndNewContactsGoToPersonal() {
         val store = Store()
         val rows = mutableListOf(PhoneContact(1, 0, null, ContactOrigin.PHONE), PhoneContact(2, 0, null, ContactOrigin.PHONE))

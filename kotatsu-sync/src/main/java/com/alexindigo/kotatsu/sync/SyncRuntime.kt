@@ -47,8 +47,10 @@ object SyncRuntime {
             reasons.addAll(contacts.stopReasons); store.status = "stopped: ${reasons.joinToString("; ") { it.code }}"
         }
         retry = retry || contacts.retry
-        val status = SyncStatus(System.currentTimeMillis(), changes, reasons)
-        store.syncStatus = store.syncStatus.afterAttempt(status.lastPassAt!!, changes, reasons)
+        val previous = store.syncStatus
+        val status = SyncStatus(System.currentTimeMillis(), changes, reasons, held = previous.held,
+            contactsWaiting = contacts.waiting)
+        store.syncStatus = previous.afterAttempt(status.lastPassAt!!, changes, reasons).copy(contactsWaiting = contacts.waiting)
         if (retry) throw RetryPass()
         status
     }
@@ -101,6 +103,18 @@ object SyncRuntime {
                 store, PreferenceSyncConfig(context)).resolvePending(System.currentTimeMillis(), id, resolution)
         }
         pass(context)
+    }
+
+    fun resolveCalendarLoss(context: Context, id: String, resolution: LossResolution) = enqueue {
+        check(permitted(context, Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
+        BridgeStore(context).use { store ->
+            val at = System.currentTimeMillis()
+            val result = BridgeEngine(MuditaCalendar(context.contentResolver), StandardCalendar(context.contentResolver),
+                store, PreferenceSyncConfig(context)).resolveLoss(at, id, resolution)
+            store.syncStatus = store.syncStatus.afterAttempt(at, result.changes, result.stopReasons)
+            // Reassess changes outside the exact approved snapshot in a separate pass.
+            ensureArmed(context)
+        }
     }
 
     /** A component can be started while the package has never received BOOT_COMPLETED. */

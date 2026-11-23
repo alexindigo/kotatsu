@@ -11,8 +11,9 @@ Authority `com.mudita.calendar`, no permission gate. `/events` query always
 returns the following fixed columns, ignoring projection. A numeric-row query
 throws `IllegalArgumentException`. Insert uses `/events`; update requires
 `/events/#`; delete accepts both routes. Unknown routes throw
-`IllegalArgumentException`. Use numeric-row deletion, not a selection assumed
-to implement Android's normal SQL semantics.
+`IllegalArgumentException`. A delete on `/events` ignores the selection; the
+collection route with null selectionArgs deletes all rows. Always use the
+numeric route for a single row. The emulator fixture models the collection wipe.
 
 | # | Column | Type |
 |---|---|---|
@@ -87,8 +88,8 @@ writes. That API requires duration, not dtend, for an exception request.
 
 Every provider mutation has an item-owned durable before/after intent. Identity
 reservations, mapping replacement/removal and intent acknowledgement are atomic.
-Recover each pending write before a fresh diff; reserve only its identities,
-never stop unrelated sync. Persist provider-confirmed success separately from
+Observe and assess the cohort before replaying a pending write or applying a new
+diff. Both paths need the same journal authorization. Persist provider-confirmed success separately from
 readback equality. A later edit must remain different from the intended baseline.
 Unconfirmed writes with drift stay unresolved instead of enabling an overwrite.
 Not-yet-applied retirement rechecks current selection, recurrence identity and
@@ -112,9 +113,10 @@ explicit external result: `Applied(providerId)` for an insertion, `Applied()`
 for a mutation, or an operator assertion `NotApplied`. This is not automatic
 inference from absence or content equality. Settings UI remains part 2. Removing
 or copying private metadata externally destroys evidence; this is not an
-exactly-once guarantee after such destruction. Schema 3 is fresh-install-only,
-as were the earlier unpublished bridge schemas; unsupported upgrades preserve
-the old database and stop rather than reset it.
+exactly-once guarantee after such destruction. Schema 4 preserves schema 3
+pairs, pending writes and reservations. No provider baseline is reconstructed
+from development history or raw IDs alone; the first trusted non-empty read
+establishes it. Unsupported upgrades preserve the database and stop.
 
 Pass results distinguish retryable provider failures from unresolved evidence.
 Runtime preserves status and propagates failures to job completion for retry;
@@ -129,6 +131,25 @@ cannot consume the ordinary body line it exposes. Location line separators are
 normalized to spaces for display only; the server location stays unchanged.
 The body marker is removed, not used as a slicing offset: ordinary text inserted
 before or after it participates in fingerprints and reaches the standard side.
+
+## Calendar continuity and review
+
+The bridge measures loss against its mapped copies, not every provider row.
+Three unexplained missing copies, a read-empty store with at least two mapped
+copies, or observed identity loss can hold propagation. A removed standard
+series counts once when its base row is gone and the calendar is still present
+and syncing. Explicit unselection and ordinary window retirement are not
+inferred deletions. A held snapshot retains its mapping and before-images and
+does not age into deletion permission. Approval is scoped to that snapshot.
+
+Mudita exposes no real provider generation or deletion tombstone. Row count,
+maximum ID and the first-pass marker are observations, not proof of a reset.
+An undetectable wipe of a one-item store still looks like one ordinary delete;
+a replacement that presents many of the same IDs and no other distinguishing
+evidence can also be undetectable. A fresh read reduces but does not eliminate
+the race with an independent writer: providers do not share a transaction.
+Standard continuity also records the calendar's account and available server
+`_sync_id` values. Kotatsu never writes those server IDs.
 
 ## Mudita Contacts 1.3.1
 
@@ -145,8 +166,9 @@ and `~/TemporaryFiles/kotatsu/kotatsu-sync-part2a/contacts-*.json`.
 | 4 | `SimContactDaoImpl.loadSimContacts` | Reads `SimPhonebookContract.SimRecords.getContentUri(subscriptionId, EF_ADN)` (not a ContactsContract raw-contact write). |
 | 5 | `SimContact.appendCreateContactOperations` | Import inserts a new raw contact into the user-chosen account and name/phone/email data rows. It writes no SIM record id or imported-SIM flag into ContactsContract. An import into the phone account is therefore an ordinary local candidate; an import directly into a sync account is already there. The bridge never reads or writes ICC/SimPhonebook data. |
 
-Ongoing moves use the chosen Personal address-book account. The explicit one-time
-action uses Family. Both operate on current non-deleted phone raw contacts,
+Ongoing and explicit one-time moves use Contacts go to. Automatic selection
+prefers Personal. Automatic batches of three or more wait for confirmation;
+no local source is deleted outside its per-contact atomic move. Both paths operate on current non-deleted phone raw contacts,
 including previously imported SIM contacts; neither moves a SIM-backed mirror or
 an already-synced raw contact. No phone/SIM permission is requested.
 
@@ -214,11 +236,11 @@ phone raw-contact id. Evidence: the sibling `dial-cp2` and
 `messages-contactutil` JSON/text files. This is a platform account-transfer detail,
 not a claim of a live Phone/Messages UI or server round-trip test.
 
-The one-time Family action persists its destination and the snapshot of local
+The one-time action persists its destination and the snapshot of local
 raw-contact ids before the first batch. Failed/interrupted items retain that
-intent across database reopen; an automatic pass resumes Family for those ids
-and reserves them from Personal. Contacts created after that snapshot still go
-to Personal. Completed batches remove their own local candidates, so a crash
+intent across database reopen; an automatic pass resumes that same destination
+and reserves those ids from the configured automatic move. Contacts created
+after that snapshot use the current target. Completed batches remove their own local candidates, so a crash
 before clearing the one-time intent cannot duplicate a contact. A missing target
 or permission retains the pending action rather than rerouting it.
 

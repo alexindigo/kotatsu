@@ -13,6 +13,7 @@ data class WriteIntent(
     val phoneIdsBefore: Set<Long> = emptySet(), val attempted: Boolean = false,
     val insertedId: Long? = null,
     val confirmed: Boolean = false,
+    val lossId: String? = null,
 )
 
 internal val WriteIntent.reservations: Set<String> get() = buildSet {
@@ -33,7 +34,7 @@ internal class SyncScope(val chosen: Set<Long>, private val now: Long, private v
 
 enum class WriteOutcome { DONE, RETRY, UNRESOLVED }
 data class PassResult(val retry: Boolean = false, val unresolved: Int = 0, val changes: Int = 0,
-    val stopReasons: Set<SyncStopReason> = emptySet())
+    val stopReasons: Set<SyncStopReason> = emptySet(), val held: List<HeldCalendarLoss> = emptyList())
 
 /** External evidence/decision, never an inference from a fingerprint or a missing row. */
 sealed class WriteResolution {
@@ -46,6 +47,8 @@ internal class WriteJournal(
     private val phone: MuditaCalendarPort, private val standard: StandardCalendarPort,
     private val store: MappingStore, private val mapper: EventMapper,
     private val scope: SyncScope,
+    private val authorizes: (WriteIntent) -> Boolean,
+    private val authorizesRetirement: (WriteIntent) -> Boolean = authorizes,
     private val changed: () -> Unit = {},
 ) {
     var retry = false
@@ -62,6 +65,7 @@ internal class WriteJournal(
     private fun reservedIdentities() = store.pending().flatMap { it.reservations }.toSet() + deferred
     fun recover() { for (intent in store.pending()) attempt(intent) }
     fun write(original: WriteIntent): WriteOutcome {
+        if (!authorizes(original)) return WriteOutcome.UNRESOLVED
         fun occupied(): WriteOutcome { unresolved++; return WriteOutcome.UNRESOLVED }
         if (original.reservations.any { it in reservedIdentities() }) return occupied()
         // Persist the receipt before the provider call. It is not ordinary event content.
@@ -72,6 +76,7 @@ internal class WriteJournal(
         return attempt(intent)
     }
     private fun attempt(intent: WriteIntent): WriteOutcome {
+        if (!authorizes(intent)) return WriteOutcome.UNRESOLVED
         if (!visited.add(intent.id)) return WriteOutcome.UNRESOLVED
         val result = try { reconcile(intent) } catch (_: Exception) { WriteOutcome.RETRY }
         if (result == WriteOutcome.RETRY) retry = true
@@ -170,9 +175,11 @@ internal class WriteJournal(
                 val current = phoneNow(row.muditaId)
                 if (intent.confirmed || (intent.attempted && current == null)) return finish(intent, remove = row.muditaId)
                 // An obsolete, unattempted retirement must not erase a user-deletion baseline.
-                if (scope.includes(standard.read(row.standardKey), row.standardKey)) return finish(intent)
+                if (intent.lossId == null && scope.includes(standard.read(row.standardKey), row.standardKey)) return finish(intent)
+                if (intent.lossId != null && standard.read(row.standardKey) != intent.standardBefore) return WriteOutcome.UNRESOLVED
+                if (!authorizesRetirement(intent)) return WriteOutcome.UNRESOLVED
                 if (current == null) return finish(intent, remove = row.muditaId)
-                if (current != intent.phoneBefore) return if (intent.attempted) WriteOutcome.UNRESOLVED else finish(intent)
+                if (current != intent.phoneBefore) return if (intent.attempted || intent.lossId != null) WriteOutcome.UNRESOLVED else finish(intent)
                 intent = intent.copy(attempted = true); store.prepare(intent)
                 if (!phone.delete(row.muditaId)) return WriteOutcome.RETRY
                 changed()
@@ -203,7 +210,8 @@ internal class WriteJournal(
                 if (intent.confirmed) return finish(intent, remove = row.muditaId)
                 if (current != null) {
                     if (intent.attempted && current != before) return WriteOutcome.UNRESOLVED
-                    if (!scope.identity(before, before.key) || current != before || phoneNow(row.muditaId) != null) return finish(intent)
+                    if (!scope.identity(before, before.key) || current != before || phoneNow(row.muditaId) != null)
+                        return if (intent.lossId != null) WriteOutcome.UNRESOLVED else finish(intent)
                     intent = intent.copy(attempted = true); store.prepare(intent)
                     if (!standard.delete(before.key)) return WriteOutcome.RETRY
                     changed()

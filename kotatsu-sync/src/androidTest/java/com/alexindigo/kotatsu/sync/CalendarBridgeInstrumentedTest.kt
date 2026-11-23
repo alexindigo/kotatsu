@@ -33,6 +33,65 @@ import java.util.concurrent.TimeUnit
 
 @RunWith(AndroidJUnit4::class)
 class CalendarBridgeInstrumentedTest {
+    @Test fun collectionWipeHoldsAll56OccurrencesUntilExactResolution() = scenario { f ->
+        val id = f.insert(rule = "FREQ=DAILY;COUNT=56")
+        fun occurrences() = f.standard.instances(setOf(f.calendarId), f.now, f.now + 8 * BridgeEngine.WEEK)
+        fun cancellations() = f.resolver.query(Events.CONTENT_URI, arrayOf(Events.ORIGINAL_INSTANCE_TIME),
+            "${Events.ORIGINAL_ID} = ? AND ${Events.STATUS} = ?", arrayOf(id.toString(), Events.STATUS_CANCELED.toString()), null)!!.use {
+            buildSet { while (it.moveToNext()) add(it.getLong(0)) }
+        }
+        fun wipe() {
+            val victim = f.phone.all().last().id
+            assertEquals(56, f.resolver.delete(MuditaCalendar.URI, "id=$victim", null))
+            assertTrue(f.phone.all().isEmpty())
+        }
+        f.pass()
+        val before = occurrences()
+        assertEquals(56, before.size)
+        assertEquals(56, f.phone.all().size)
+        wipe()
+        val first = f.pass().held.single()
+        assertEquals(56, first.count)
+        assertEquals(LossDirection.PHONE, first.direction)
+        BridgeStore(f.context).use { reopened ->
+            val engine = BridgeEngine(f.phone, f.standard, reopened, f.config)
+            assertEquals(listOf(first), engine.pass(f.now).held)
+            assertEquals(before, occurrences())
+            assertTrue(cancellations().isEmpty())
+            assertNotNull(f.standard.read(EventKey(id)))
+            assertEquals(56, reopened.all().size)
+            assertEquals(56, engine.resolveLoss(f.now, first.id, LossResolution.RESTORE).changes)
+        }
+        assertEquals(56, f.phone.all().size)
+        assertEquals(before, occurrences())
+        assertTrue(f.pass().held.isEmpty())
+        wipe()
+        val second = f.pass().held.single()
+        assertNotEquals(first.id, second.id)
+        val engine = BridgeEngine(f.phone, f.standard, f.store, f.config)
+        assertEquals(56, engine.resolveLoss(f.now, second.id, LossResolution.DELETE_FROM_SERVER).changes)
+        assertEquals(before.mapNotNull { it.instanceStart }.toSet(), cancellations())
+        assertTrue(occurrences().isEmpty())
+        assertNotNull(f.standard.read(EventKey(id)))
+        assertTrue(f.store.all().isEmpty())
+    }
+
+    @Test fun schemaThreeMigrationKeepsPairsAndPendingWrites() = scenario { f ->
+        f.insert(); f.pass()
+        val mapping = f.store.all().single()
+        val intent = WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = mapping, phoneBefore = f.phone.all().single())
+        f.store.prepare(intent)
+        f.store.writableDatabase.delete("state", "name = ?", arrayOf("continuity"))
+        f.store.writableDatabase.version = 3
+        f.store.close()
+        BridgeStore(f.context).use {
+            assertEquals(4, it.writableDatabase.version)
+            assertEquals(listOf(mapping), it.all())
+            assertEquals(listOf(intent), it.pending())
+            assertEquals(CalendarContinuity(), it.continuity)
+        }
+        assertEquals(4, f.store.writableDatabase.version)
+    }
     @Test fun standardEventAppearsInMuditaAndPhoneEditKeepsUnsupportedFields() = scenario { f ->
         val id = f.insert(location = "Original place")
         val reminders = listOf(10, 60).map { minutes ->
@@ -1006,18 +1065,18 @@ class CalendarBridgeInstrumentedTest {
             calendarId = ContentUris.parseId(uri)
             config.write(SyncSettings(setOf(calendarId), calendarId))
         }
-        fun insert(location: String = "", recurring: Boolean = false, zone: String = "UTC"): Long {
+        fun insert(location: String = "", recurring: Boolean = false, zone: String = "UTC", rule: String? = null): Long {
             val start = now + 3600000
             // Stand in for DAVx5's server download, including its server-owned sync identity.
             return ContentUris.parseId(resolver.insert(syncUri(Events.CONTENT_URI), ContentValues().apply {
                 put(Events._SYNC_ID, UUID.randomUUID().toString())
                 put(Events.CALENDAR_ID, calendarId); put(Events.TITLE, "Test event"); put(Events.DESCRIPTION, "Body")
                 put(Events.EVENT_LOCATION, location); put(Events.EVENT_TIMEZONE, zone); put(Events.DTSTART, start)
-                if (recurring) { put(Events.RRULE, "FREQ=WEEKLY;COUNT=20"); put(Events.DURATION, "PT1H") }
+                if (recurring || rule != null) { put(Events.RRULE, rule ?: "FREQ=WEEKLY;COUNT=20"); put(Events.DURATION, "PT1H") }
                 else put(Events.DTEND, start + 3600000)
             })!!)
         }
-        fun pass(at: Long = now) { BridgeEngine(phone, standard, store, config).pass(at) }
+        fun pass(at: Long = now) = BridgeEngine(phone, standard, store, config).pass(at)
         fun syncUri(uri: Uri): Uri = uri.buildUpon().appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
             .appendQueryParameter(Calendars.ACCOUNT_NAME, account.name).appendQueryParameter(Calendars.ACCOUNT_TYPE, account.type).build()
         fun schema(enabled: Boolean) {

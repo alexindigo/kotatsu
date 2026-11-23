@@ -11,26 +11,36 @@ class BridgeEngine(
     fun pass(now: Long): PassResult = synchronized(passLock) { passSerialized(now) }
     private fun passSerialized(now: Long): PassResult {
         changes = 0
+        fun existingHolds() = mappings.continuity.holds.filter { it.resolution == null }.map { it.reason }
         if (!mudita.schemaOk()) {
             mappings.status = "stopped: Mudita Calendar missing or incompatible schema"
-            return PassResult(stopReasons = setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED))
+            return PassResult(stopReasons = setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED), held = existingHolds())
         }
         val settings = config.read()
-        val eligible = standard.calendars().filter { it.eligible }.map { it.id }.toSet()
+        val calendars = standard.calendars().associateBy { it.id }
+        val eligible = calendars.values.filter { it.eligible }.map { it.id }.toSet()
         val chosen = settings.calendars.intersect(eligible)
         val destination = settings.newEventCalendar?.takeIf { it in chosen }
         if (settings.horizonWeeks <= 0) {
             mappings.status = "stopped: invalid calendar horizon"
-            return PassResult(stopReasons = setOf(SyncStopReason.CALENDAR_SETTINGS_REQUIRED))
+            return PassResult(stopReasons = setOf(SyncStopReason.CALENDAR_SETTINGS_REQUIRED), held = existingHolds())
         }
         val end = Math.addExact(now, Math.multiplyExact(settings.horizonWeeks.toLong(), WEEK))
         val scope = SyncScope(chosen, now, end)
-        val journal = WriteJournal(mudita, standard, mappings, mapper, scope) { changes++ }
+        val observation = observe(calendars, settings.calendars, scope, now, end)
+        val assessment = assessCalendarChanges(observation, mappings.continuity, scope)
+        val guard = CalendarWriteGuard(mappings, observation, assessment)
+        val journal = WriteJournal(mudita, standard, mappings, mapper, scope, guard::authorizes, guard::authorizesRetirement) { changes++ }
         fun apply(intent: WriteIntent) = journal.write(intent)
         journal.recover()
-        val phone = mudita.all().associateBy { it.id }
-        val remote = (standard.events(chosen).filterNot { it.recurring } + standard.instances(chosen, now, end))
-            .associateBy { it.key }
+        if (guard.resolveApproved(journal, scope, mapper, mudita, standard)) {
+            return PassResult(journal.retry, journal.unresolved, changes,
+                if (journal.retry) setOf(SyncStopReason.RETRY_REQUIRED) else emptySet(), guard.reasons())
+        }
+        // Recoveries can acknowledge/import/delete rows. Diff only the original
+        // observation, but never treat an acknowledged identity as newly seen.
+        val phone = observation.phone
+        val remote = observation.remote
         val rows = mappings.all().toMutableList()
         val handled = rows.map { it.muditaId }.toMutableSet()
         val claimed = rows.map { it.standardKey }.toMutableSet()
@@ -43,8 +53,9 @@ class BridgeEngine(
             return outcome == WriteOutcome.DONE
         }
         if (!mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) }) {
-                val match = remote.values.firstOrNull { it.key !in claimed && !journal.reserved(it.key) && sameIdentity(event, mapper.toMudita(it)) }
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination) }) {
+                val match = remote.values.firstOrNull { it.key !in claimed && !journal.reserved(it.key) &&
+                    guard.canImport(it.calendarId) && sameIdentity(event, mapper.toMudita(it)) }
                 if (match != null) {
                     // A first-run match adopts the server version, including its description.
                     val row = Mapping(event.id, match.key, match.calendarId,
@@ -70,7 +81,7 @@ class BridgeEngine(
             val oldPhone = phone[row.muditaId]
             val visible = remote[row.standardKey]
             val live = visible ?: standard.read(row.standardKey)
-            val validIdentity = scope.identity(live, row.standardKey)
+            val validIdentity = scope.identity(live, row.standardKey) && live?.calendarId == row.calendarId
             val oldStandard = live?.takeIf { validIdentity }
             if (oldStandard == null) {
                 // Retire the copy, never the standard row, when membership or recurrence identity changes.
@@ -119,19 +130,43 @@ class BridgeEngine(
             }
         }
         if (mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination) }) {
                 if (!uploadNew(event)) firstRunComplete = false
             }
         }
         val pending = mappings.pending().size
+        guard.recordTrusted(mudita.all(), mappings.firstRunDone)
         val retry = journal.retry || uploadRetry
-        mappings.status = if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
+        mappings.status = if (guard.reasons().isNotEmpty()) "calendar pass held"
+            else if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
             else "calendar pass incomplete: $pending pending writes; retry=$retry"
         return PassResult(retry, journal.unresolved, changes, buildSet {
             if (!firstRunComplete && destination == null) add(SyncStopReason.CALENDAR_SETTINGS_REQUIRED)
             if (journal.unresolved > 0 || pending > 0 && !retry) add(SyncStopReason.REVIEW_REQUIRED)
             if (retry) add(SyncStopReason.RETRY_REQUIRED)
-        })
+        }, guard.reasons())
+    }
+
+    private fun observe(calendars: Map<Long, SyncCalendar>, selected: Set<Long>, scope: SyncScope,
+        now: Long, end: Long): CalendarObservation {
+        val phoneRows = mudita.all()
+        val phone = phoneRows.associateBy { it.id }
+        val serverRows = standard.events(scope.chosen).filterNot { it.recurring } + standard.instances(scope.chosen, now, end)
+        val remote = serverRows.associateBy { it.key }
+        val discordant = serverRows.groupBy { it.key }.values.filter { it.size > 1 }
+            .flatten().mapTo(mutableSetOf()) { it.calendarId }
+        val pairs = mappings.all()
+        val mapped = pairs.map { row ->
+            val actual = remote[row.standardKey] ?: standard.read(row.standardKey)
+            if (row.calendarId in scope.chosen && row.standardKey !in remote && scope.includes(actual, row.standardKey))
+                discordant.add(row.calendarId)
+            LossMember(row, phone[row.muditaId], actual)
+        }
+        val goneSeries = mapped.filter { it.pair.standardKey.instanceStart != null && it.standard == null }
+            .map { it.pair.standardKey.eventId }.distinct().filter(standard::seriesRemoved).toSet()
+        val phoneMissing = mapped.any { it.phone == null && it.pair.calendarId in selected }
+        val phoneDiscordant = phone.size != phoneRows.size || phoneMissing && mudita.all().map { it.id }.toSet() != phone.keys
+        return CalendarObservation(calendars, selected, phone, remote, mapped, goneSeries, phoneDiscordant, discordant)
     }
 
     private fun upload(event: MuditaEvent, calendarId: Long, journal: WriteJournal): WriteOutcome {
@@ -146,7 +181,18 @@ class BridgeEngine(
         val settings = config.read()
         val chosen = settings.calendars.intersect(standard.calendars().filter { it.eligible }.map { it.id }.toSet())
         val end = Math.addExact(now, Math.multiplyExact(settings.horizonWeeks.toLong(), WEEK))
-        WriteJournal(mudita, standard, mappings, mapper, SyncScope(chosen, now, end)).resolve(id, resolution)
+        WriteJournal(mudita, standard, mappings, mapper, SyncScope(chosen, now, end), { false }).resolve(id, resolution)
+    }
+
+    fun resolveLoss(now: Long, id: String, resolution: LossResolution): PassResult = synchronized(passLock) {
+        val state = mappings.continuity
+        val hold = state.holds.singleOrNull { it.id == id } ?: return@synchronized PassResult(held = state.holds.map { it.reason })
+        check(hold.resolution == null || hold.resolution == resolution)
+        check(if (hold.direction == LossDirection.PHONE)
+            resolution == LossResolution.RESTORE || resolution == LossResolution.DELETE_FROM_SERVER
+        else resolution == LossResolution.KEEP || resolution == LossResolution.REMOVE)
+        mappings.continuity = state.copy(holds = state.holds.map { if (it.id == id) it.copy(resolution = resolution) else it })
+        passSerialized(now)
     }
 
     private fun phoneNow(id: Long): MuditaEvent? = mudita.all().firstOrNull { it.id == id }

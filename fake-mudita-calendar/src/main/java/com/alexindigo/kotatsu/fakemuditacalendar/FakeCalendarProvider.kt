@@ -49,7 +49,7 @@ class FakeCalendarProvider : ContentProvider() {
         return 1
     }
     @Synchronized override fun delete(uri: Uri, selection: String?, selectionArgs: Array<out String>?): Int = when (matcher.match(uri)) {
-        1 -> selectionArgs.orEmpty().mapNotNull { it.toLongOrNull() }.count { rows.remove(it) != null }
+        1 -> rows.size.also { rows.clear() }
         2 -> if (rows.remove(ContentUris.parseId(uri)) != null) 1 else 0
         else -> throw IllegalArgumentException("Unknown URI: $uri")
     }

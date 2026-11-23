@@ -16,8 +16,10 @@ import android.provider.CalendarContract.Reminders
 /** Application writes, never sync-adapter writes: CalendarProvider owns dirty/deleted flags. */
 class StandardCalendar(private val resolver: ContentResolver) : StandardCalendarPort {
     override fun calendars(): List<SyncCalendar> = query(Calendars.CONTENT_URI,
-        arrayOf(Calendars._ID, Calendars.ACCOUNT_TYPE, Calendars.SYNC_EVENTS), null, null) { c ->
-        SyncCalendar(c.getLong(0), c.getString(1).orEmpty(), c.getInt(2) != 0)
+        arrayOf(Calendars._ID, Calendars.ACCOUNT_TYPE, Calendars.SYNC_EVENTS,
+            Calendars.ACCOUNT_NAME, Calendars.CALENDAR_DISPLAY_NAME, Calendars._SYNC_ID), null, null) { c ->
+        SyncCalendar(c.getLong(0), c.getString(1).orEmpty(), c.getInt(2) != 0,
+            c.getString(3).orEmpty(), c.getString(4).orEmpty(), c.getString(5))
     }
 
     override fun events(calendarIds: Set<Long>): List<StandardEvent> {
@@ -36,7 +38,8 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
             val raw = raw(id) ?: return@mapNotNull null
             if (raw.deleted || raw.status == Events.STATUS_CANCELED || !raw.event.recurring && raw.originalId == null) null
             else raw.event.copy(id = raw.originalId ?: id, start = begin, end = finish,
-                recurring = true, instanceStart = raw.originalTime ?: begin)
+                recurring = true, instanceStart = raw.originalTime ?: begin,
+                syncId = if (raw.originalId != null) raw(raw.originalId)?.syncId else raw.syncId)
         }
     }
 
@@ -45,12 +48,14 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
         val start = key.instanceStart ?: return base.event
         val exception = exception(key)
         if (exception != null) return exception.takeUnless { it.deleted || it.status == Events.STATUS_CANCELED }
-            ?.event?.copy(id = key.eventId, recurring = true, instanceStart = start)
+            ?.event?.copy(id = key.eventId, recurring = true, instanceStart = start, syncId = base.syncId)
         return query(instanceUri(start, start + 1), arrayOf(Instances.BEGIN, Instances.END),
             "${Instances.EVENT_ID} = ? AND ${Instances.BEGIN} = ?", arrayOf(key.eventId.toString(), start.toString())) { c ->
             base.event.copy(start = c.getLong(0), end = c.getLong(1), instanceStart = start)
         }.singleOrNull()
     }
+
+    override fun seriesRemoved(eventId: Long): Boolean = read(EventKey(eventId)) == null
 
     override fun insert(calendarId: Long, event: StandardEvent, intentId: String?): Long? =
         resolver.insert(Events.CONTENT_URI, fields(event).apply {
@@ -141,7 +146,7 @@ class StandardCalendar(private val resolver: ContentResolver) : StandardCalendar
         val begin = c.getLong(5)
         val end = if (!c.isNull(6)) c.getLong(6) else begin + calendarDurationMillis(c.getString(11))
         Raw(StandardEvent(c.getLong(0), c.getLong(1), c.getString(2).orEmpty(), c.getString(3).orEmpty(),
-            c.getString(4).orEmpty(), begin, end, c.getInt(7) != 0, recurring, c.getString(8).orEmpty()),
+            c.getString(4).orEmpty(), begin, end, c.getInt(7) != 0, recurring, c.getString(8).orEmpty(), syncId = c.getString(16)),
             if (c.isNull(12)) null else c.getLong(12), if (c.isNull(13)) null else c.getLong(13), c.getInt(14), c.getInt(15) != 0,
             c.getString(16), !c.getString(9).isNullOrEmpty())
     }
