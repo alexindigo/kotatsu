@@ -50,7 +50,7 @@ class ContactsMoverInstrumentedTest {
         }, null, null)
         val aggregate = f.aggregate(source)
         val before = f.data(source)
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         val target = f.rawIn(f.personal).single()
         assertEquals(before, f.data(target)); assertEquals(aggregate, f.aggregate(target))
         // The account-dependent lookup key is regenerated, but the aggregate id
@@ -58,16 +58,17 @@ class ContactsMoverInstrumentedTest {
         val lookup = Contacts.getLookupUri(f.resolver, ContentUris.withAppendedId(Contacts.CONTENT_URI, aggregate))!!
         assertEquals(ContentUris.withAppendedId(Contacts.CONTENT_URI, aggregate), Contacts.lookupContact(f.resolver, lookup))
         f.resolver.query(ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath("+12025550101").build(),
-            arrayOf(ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)!!.use {
-            assertTrue(it.moveToFirst()); assertEquals(aggregate, it.getLong(0)); assertEquals("All fields", it.getString(1)); assertEquals(1, it.count)
+            arrayOf(ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)!!.use { c ->
+            val matches = buildList { while (c.moveToNext()) add(c.getLong(0) to c.getString(1)) }
+            assertEquals("All fields", matches.single { it.first == aggregate }.second)
         }
-        assertEquals(1, f.liveAggregateCount()); assertTrue(f.rawIn(null).isEmpty())
+        assertEquals(f.baselineAggregates + 1, f.liveAggregateCount()); assertEquals(f.baselinePhone, f.rawIn(null).toSet())
         f.resolver.query(ContentUris.withAppendedId(RawContacts.CONTENT_URI, target), arrayOf(RawContacts.DIRTY, RawContacts.SOURCE_ID,
             RawContacts.STARRED, RawContacts.CUSTOM_RINGTONE, RawContacts.SEND_TO_VOICEMAIL), null, null, null)!!.use {
             assertTrue(it.moveToFirst()); assertEquals(1, it.getInt(0)); assertTrue(it.isNull(1)); assertEquals(1, it.getInt(2))
             assertEquals("content://test/ringtone", it.getString(3)); assertEquals(1, it.getInt(4))
         }
-        assertEquals(ContactsResult(), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(), f.pass(f.personal))
     }
 
     @Test fun oneTimeMovesSeveralPhoneAndImportedSimContactsIntoFamilyOnly() = scenario { f ->
@@ -75,19 +76,19 @@ class ContactsMoverInstrumentedTest {
         // name/phone raw contact, without an ICC record id or provenance flag.
         f.insert("Imported SIM contact", "2025550102"); f.insert("Phone contact", "2025550103"); f.insert("Another", "2025550104")
         val existing = f.insert("Already personal", "2025550105", f.personal)
-        assertEquals(ContactsResult(3), ContactsMover(f.port).moveExisting(f.family))
+        assertEquals(ContactsResult(3), ContactsMover(f.port).moveExisting(f.family, f.ownedRawIds.toSet()))
         assertEquals(3, f.rawIn(f.family).size); assertEquals(listOf(existing), f.rawIn(f.personal))
-        assertTrue(f.rawIn(null).isEmpty()); assertEquals(4, f.liveAggregateCount())
-        assertEquals(ContactsResult(), ContactsMover(f.port).moveExisting(f.family))
+        assertEquals(f.baselinePhone, f.rawIn(null).toSet()); assertEquals(f.baselineAggregates + 4, f.liveAggregateCount())
+        assertEquals(ContactsResult(), ContactsMover(f.port).moveExisting(f.family, f.ownedRawIds.toSet()))
     }
 
     @Test fun importedSimMoveNeverReadsOrMutatesTheSimProviders() = scenario { f ->
         f.insert("Imported SIM", "2025550123")
         val authorities = mutableListOf<String?>()
         val context = f.trackedContext(onAuthority = { authorities.add(it) })
-        assertEquals(ContactsResult(1), ContactsMover(AndroidContacts(context)).moveExisting(f.family))
+        assertEquals(ContactsResult(1), ContactsMover(AndroidContacts(context)).moveExisting(f.family, f.ownedRawIds.toSet()))
         assertTrue(authorities.isNotEmpty()); assertEquals(setOf(ContactsContract.AUTHORITY), authorities.toSet())
-        assertEquals(1, f.rawIn(f.family).size); assertTrue(f.rawIn(null).isEmpty())
+        assertEquals(1, f.rawIn(f.family).size); assertEquals(f.baselinePhone, f.rawIn(null).toSet())
     }
 
     @Test fun failedVersionAssertLeavesSourceAndTargetUnchangedThenRetries() = scenario { f ->
@@ -97,7 +98,7 @@ class ContactsMoverInstrumentedTest {
         val before = f.data(id); val aggregate = f.aggregate(id)
         assertFalse(f.port.move(source, f.personal)); assertEquals(before, f.data(id))
         assertTrue(f.rawIn(f.personal).isEmpty()); assertEquals(aggregate, f.aggregate(id))
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         assertEquals(before, f.data(f.rawIn(f.personal).single()))
     }
 
@@ -117,6 +118,7 @@ class ContactsMoverInstrumentedTest {
         val group = ContentUris.parseId(f.resolver.insert(Groups.CONTENT_URI, ContentValues().apply {
             put(Groups.TITLE, "Test category"); put(Groups.NOTES, "Rollback group"); put(Groups.GROUP_VISIBLE, 1)
         })!!)
+        f.ownedGroupIds += group
         f.resolver.insert(Data.CONTENT_URI, ContentValues().apply {
             put(Data.RAW_CONTACT_ID, source); put(Data.MIMETYPE, GroupMembership.CONTENT_ITEM_TYPE); put(GroupMembership.GROUP_ROW_ID, group)
         })!!
@@ -150,14 +152,14 @@ class ContactsMoverInstrumentedTest {
     @Test fun namelessContactAndExistingJoinedContactKeepTheirAggregateIds() = scenario { f ->
         val nameless = f.insert(null, "2025550106")
         val aggregate = f.aggregate(nameless)
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         assertEquals(aggregate, f.aggregate(f.rawIn(f.personal).single()))
         val other = f.insert("Joined", "2025550107", f.family)
         val phone = f.insert("Joined", "2025550107")
         val joined = f.aggregate(phone); assertEquals(joined, f.aggregate(other))
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         assertEquals(joined, f.aggregate(other)); assertEquals(joined, f.aggregate(f.rawIn(f.personal).last()))
-        assertEquals(2, f.liveAggregateCount())
+        assertEquals(f.baselineAggregates + 2, f.liveAggregateCount())
     }
 
     @Test fun photoAndAccountOwnedGroupSurviveMove() = scenario { f ->
@@ -171,12 +173,13 @@ class ContactsMoverInstrumentedTest {
         val groupId = ContentUris.parseId(f.resolver.insert(Groups.CONTENT_URI, ContentValues().apply {
             put(Groups.TITLE, "Test category"); put(Groups.NOTES, "Details"); put(Groups.GROUP_VISIBLE, 1)
         })!!)
+        f.ownedGroupIds += groupId
         f.resolver.insert(Data.CONTENT_URI, ContentValues().apply {
             put(Data.RAW_CONTACT_ID, source); put(Data.MIMETYPE, GroupMembership.CONTENT_ITEM_TYPE); put(GroupMembership.GROUP_ROW_ID, groupId)
         })!!
         val beforePhoto = f.displayPhoto(source)
         assertEquals(1, f.visibility(source))
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         val target = f.rawIn(f.personal).single()
         assertEquals(1, f.visibility(target))
         assertArrayEquals(beforePhoto, f.displayPhoto(target))
@@ -208,10 +211,10 @@ class ContactsMoverInstrumentedTest {
         val before = f.photos(source)
         assertEquals(setOf("red", "blue"), before.map { it.image }.toSet())
         assertEquals(2, before.size); assertEquals(1, before.count { it.primary == 1 && it.superPrimary == 1 })
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         val target = f.rawIn(f.personal).single()
         assertEquals(before.sortedBy { it.image }, f.photos(target).sortedBy { it.image })
-        assertTrue(f.rawIn(null).isEmpty()); assertEquals(1, f.liveAggregateCount())
+        assertEquals(f.baselinePhone, f.rawIn(null).toSet()); assertEquals(f.baselineAggregates + 1, f.liveAggregateCount())
     }
 
     @Test fun phoneAndEmailDefaultsSurviveTheCopyAggregateDeleteTransaction() = scenario { f ->
@@ -225,7 +228,7 @@ class ContactsMoverInstrumentedTest {
         }
         val before = f.data(source)
         assertEquals(2, before.count { it[2] == "1" })
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         assertEquals(before, f.data(f.rawIn(f.personal).single()))
     }
 
@@ -237,12 +240,13 @@ class ContactsMoverInstrumentedTest {
             "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?", arrayOf(other.toString(), Phone.CONTENT_ITEM_TYPE))
         val beforeOther = f.data(other); val beforeSource = f.data(source)
         assertEquals(1, beforeOther.count { it[2] == "1" }); assertEquals(0, beforeSource.count { it[2] == "1" })
-        assertEquals(ContactsResult(1), ContactsMover(f.port).pass(f.personal))
+        assertEquals(ContactsResult(1), f.pass(f.personal))
         assertEquals(beforeOther, f.data(other)); assertEquals(beforeSource, f.data(f.rawIn(f.personal).single()))
         assertEquals(f.aggregate(other), f.aggregate(f.rawIn(f.personal).single()))
     }
 
     @Test fun rawContactChangeJobMovesToConfiguredPersonalAndRearms() = scenario { f ->
+        requireIsolatedPhoneBook(f.context)
         f.config.write(ContactsSettings(f.personal))
         SyncRuntime.ensureArmed(f.context, queuePass = false)
         f.insert("Triggered contact")
@@ -252,6 +256,7 @@ class ContactsMoverInstrumentedTest {
     }
 
     @Test fun oneTimeRuntimeActionUsesFamilyAndUnavailableTargetDoesNotDeletePhoneData() = scenario { f ->
+        requireIsolatedPhoneBook(f.context)
         val id = f.insert("One-time")
         f.config.write(ContactsSettings(f.family))
         assertEquals(ContactsResult(1), SyncRuntime.moveExistingContacts(f.context).get(15, TimeUnit.SECONDS))
@@ -262,11 +267,12 @@ class ContactsMoverInstrumentedTest {
         assertEquals(1, f.rawIn(f.family).size)
         val remaining = f.insert("Keep")
         f.resolver.update(Settings.CONTENT_URI, ContentValues().apply { put(Settings.SHOULD_SYNC, 0) }, "account_name = ?", arrayOf(f.family.name))
-        assertNotNull(ContactsMover(f.port).moveExisting(f.family).stopReason)
+        assertNotNull(ContactsMover(f.port).moveExisting(f.family, f.ownedRawIds.toSet()).stopReason)
         assertEquals(listOf(remaining), f.rawIn(null)); assertFalse(f.rawIn(null).contains(id))
     }
 
     @Test fun failedFamilyActionResumesAcrossReopenWithoutRoutingOldContactsToPersonalOrNewOnesToFamily() = scenario { f ->
+        requireIsolatedPhoneBook(f.context)
         val old = f.insert("Existing")
         f.config.write(ContactsSettings(f.family))
         val failed = f.trackedContext(beforeBatch = { throw android.content.OperationApplicationException("Injected batch failure") })
@@ -293,7 +299,7 @@ class ContactsMoverInstrumentedTest {
         }
         val status = SyncRuntime.pass(denied)
         assertEquals("contacts permission not granted", status.stopReason); assertEquals(0, status.changes)
-        assertEquals(listOf(id), f.rawIn(null))
+        assertEquals(f.baselinePhone + id, f.rawIn(null).toSet())
         BridgeStore(f.context).use { assertNotNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
         assertEquals(1, SyncRuntime.pass(f.context).changes)
         BridgeStore(f.context).use { assertNull(it.pendingContactsMove) }
@@ -308,12 +314,13 @@ class ContactsMoverInstrumentedTest {
             { f.context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS) },
             { f.config.write(f.previous) },
             { BridgeStore(f.context).use { it.pendingContactsMove = null } },
-            { for (id in f.ownedRawIds + f.rawIn(f.personal) + f.rawIn(f.family)) f.resolver.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id), null, null) },
-            { for (account in listOf(f.personal, f.family)) {
+            { f.ownedRawIds += f.added.flatMap { f.rawIn(ContactAccount(it.name, it.type)) }
+                for (id in f.ownedRawIds.distinct()) f.resolver.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id), null, null) },
+            { for (account in f.added) {
                 f.resolver.delete(Settings.CONTENT_URI, "account_name = ?", arrayOf(account.name))
                 f.resolver.delete(Groups.CONTENT_URI, "account_name = ?", arrayOf(account.name))
             } },
-            { f.resolver.delete(Groups.CONTENT_URI, "${Groups.TITLE} = ? AND ${Groups.ACCOUNT_NAME} IS NULL", arrayOf("Test category")) },
+            { for (id in f.ownedGroupIds) f.resolver.delete(ContentUris.withAppendedId(Groups.CONTENT_URI, id), null, null) },
             { for (account in f.added) check(AccountManager.get(f.context).removeAccountExplicitly(account)) },
         ) { f.setup(); body(f) }
     }
@@ -328,12 +335,18 @@ class ContactsMoverInstrumentedTest {
         val family = ContactAccount("Family-${UUID.randomUUID()}", "com.alexindigo.kotatsu.sync.test")
         val added = mutableListOf<Account>()
         val ownedRawIds = mutableListOf<Long>()
+        val ownedGroupIds = mutableListOf<Long>()
+        var baselinePhone = emptySet<Long>()
+        var baselineAggregates = 0
         val port = AndroidContacts(context)
+        fun pass(destination: ContactAccount) = ContactsMover(port).pass(destination, ownedRawIds.toSet())
         fun setup() {
             context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS)
             for (p in listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS, Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
                 instrumentation.uiAutomation.grantRuntimePermission(context.packageName, p)
             config.write(ContactsSettings())
+            baselinePhone = phoneSourceIds(context)
+            baselineAggregates = liveAggregateCount()
             for (account in listOf(personal, family)) {
                 val a = Account(account.name, account.type); check(AccountManager.get(context).addAccountExplicitly(a, null, null)); added.add(a)
                 resolver.insert(Settings.CONTENT_URI, ContentValues().apply {
@@ -383,9 +396,9 @@ class ContactsMoverInstrumentedTest {
             })!!
             return id
         }
-        fun rawIn(account: ContactAccount?): List<Long> = resolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts._ID),
-            "${RawContacts.DELETED} = 0 AND " + if (account == null) "account_name IS NULL AND account_type IS NULL" else "account_name = ? AND account_type = ?",
-            account?.let { arrayOf(it.name, it.type) }, RawContacts._ID)!!.use { c -> buildList { while (c.moveToNext()) add(c.getLong(0)) } }
+        fun rawIn(account: ContactAccount?): List<Long> = if (account == null) phoneSourceIds(context).sorted() else resolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts._ID),
+            "${RawContacts.DELETED} = 0 AND account_name = ? AND account_type = ?",
+            arrayOf(account.name, account.type), RawContacts._ID)!!.use { c -> buildList { while (c.moveToNext()) add(c.getLong(0)) } }
         fun aggregate(rawId: Long): Long = resolver.query(ContentUris.withAppendedId(RawContacts.CONTENT_URI, rawId),
             arrayOf(RawContacts.CONTACT_ID), null, null, null)!!.use { check(it.moveToFirst()); it.getLong(0) }
         fun liveAggregateCount() = resolver.query(Contacts.CONTENT_URI, arrayOf(Contacts._ID), null, null, null)!!.use { it.count }

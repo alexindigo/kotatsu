@@ -922,7 +922,11 @@ class CalendarBridgeInstrumentedTest {
         val f = Fixture()
         withFixtureCleanup(
             { f.context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS) },
-            { f.schema(false); f.phone.all().forEach { check(f.phone.delete(it.id)) } },
+            { f.schema(false)
+                if (f.ownsMuditaProvider) {
+                    val created = f.phone.all().map { it.id }
+                    created.forEach { check(f.phone.delete(it)) }
+                } },
             { if (f.calendarId >= 0) f.resolver.delete(f.syncUri(Calendars.CONTENT_URI), "${Calendars._ID} = ?", arrayOf(f.calendarId.toString())) },
             { if (f.accountAdded) check(AccountManager.get(f.context).removeAccountExplicitly(f.account)) },
             { f.store.writableDatabase.delete("pairs", null, null) },
@@ -930,6 +934,7 @@ class CalendarBridgeInstrumentedTest {
             { f.store.writableDatabase.delete("write_reservation", null, null) },
             { f.store.writableDatabase.delete("write_intent", null, null); f.store.close() },
             { f.config.write(f.previous) },
+            { PreferenceContactsConfig(f.context).write(f.previousContacts) },
         ) { f.setup(); body(f) }
     }
 
@@ -942,13 +947,19 @@ class CalendarBridgeInstrumentedTest {
         val store = BridgeStore(context)
         val config = PreferenceSyncConfig(context)
         val previous = config.read()
+        val previousContacts = PreferenceContactsConfig(context).read()
         val account = Account("kotatsu-sync-test-${UUID.randomUUID()}", "com.alexindigo.kotatsu.sync.test")
         var accountAdded = false
+        var ownsMuditaProvider = false
         var calendarId = -1L
         val now = System.currentTimeMillis()
         fun setup() {
             context.getSystemService(JobScheduler::class.java).cancelAll()
             SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS)
+            // Calendar scenarios must not inherit a contacts destination from device/app history.
+            PreferenceContactsConfig(context).write(ContactsSettings())
+            check(phone.all().isEmpty()) { "Test Mudita provider must be isolated; existing rows are not fixture-owned" }
+            ownsMuditaProvider = true
             for (permission in listOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR))
                 instrumentation.uiAutomation.grantRuntimePermission(context.packageName, permission)
             accountAdded = AccountManager.get(context).addAccountExplicitly(account, null, null)

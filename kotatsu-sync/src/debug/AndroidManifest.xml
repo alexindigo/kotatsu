@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
+        <activity android:name=".SyncSettingsHostActivity" android:exported="false" android:theme="@android:style/Theme.Material.Light.NoActionBar" />
         <provider android:name=".TestEntryProvider" android:authorities="${applicationId}.test-entry" android:exported="true" />
         <service android:name=".TestContactsSyncService" android:exported="true" android:permission="android.permission.BIND_SYNC_ADAPTER">
             <intent-filter><action android:name="android.content.SyncAdapter" /></intent-filter>
