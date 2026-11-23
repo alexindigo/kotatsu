@@ -262,8 +262,13 @@ fun Notice(content: NoticeContent) {
 
 @Composable
 fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
-    minimumHeight: androidx.compose.ui.unit.Dp = if (entry.help.isEmpty()) 48.dp else 67.5.dp,
+    minimumHeight: androidx.compose.ui.unit.Dp = (entry as? SettingsEntry.Open)?.minimumHeightDp?.dp
+        ?: if (entry.help.isEmpty()) 48.dp else 67.5.dp,
     leaderColor: androidx.compose.ui.graphics.Color = LocalInk.current) {
+    if (entry is SettingsEntry.Action) {
+        SheetAction(entry.title, help = entry.help, singleLine = true, onClick = entry.onClick)
+        return
+    }
     val on = stringResource(R.string.paper_on)
     val off = stringResource(R.string.paper_off)
     val open = stringResource(R.string.paper_open)
@@ -274,6 +279,7 @@ fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
         is SettingsEntry.Open -> entry.actionLabel ?: open
         is SettingsEntry.Link -> "↗"
         is SettingsEntry.Metadata -> entry.value
+        is SettingsEntry.Action -> error("Plain action rendered above")
     }
     val action = when (entry) {
         is SettingsEntry.Switch -> Modifier.toggleable(entry.checked, role = Role.Switch, onValueChange = entry.onCheckedChange)
@@ -282,6 +288,7 @@ fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
             onClickLabel = external.takeIf { entry.external }, onClick = entry.onOpen)
         is SettingsEntry.Link -> Modifier.clickable(role = Role.Button, onClickLabel = external, onClick = entry.onOpen)
         is SettingsEntry.Metadata -> Modifier
+        is SettingsEntry.Action -> error("Plain action rendered above")
     }
     Column(Modifier.fillMaxWidth().heightIn(min = minimumHeight).inkFocus().then(action)
         .semantics(mergeDescendants = true) {
@@ -290,8 +297,7 @@ fun Entry(entry: SettingsEntry, onChoice: (SettingsEntry.Value) -> Unit = {},
         }.padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
         if (value.isEmpty()) IndexName(entry.title)
         else IndexLine(entry.title, value, external = entry is SettingsEntry.Open && entry.external, leaderColor = leaderColor)
-        if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
-            lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
+        if (entry.help.isNotEmpty()) EntryHelp(entry.help)
         if (entry is SettingsEntry.Open && entry.summary.isNotEmpty()) Text(entry.summary,
             fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 16.5.sp, fontWeight = FontWeight.Bold,
             color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
@@ -698,8 +704,26 @@ fun HelpPage(title: String, paragraphs: List<String>, onDismiss: () -> Unit) {
 /** A full-row sheet action without a fabricated value or decorative leader. */
 @Composable
 fun SheetAction(label: String, onClick: () -> Unit) {
+    SheetAction(label, help = "", singleLine = false, onClick = onClick)
+}
+
+@Composable
+fun SheetAction(label: String, help: String = "", singleLine: Boolean, onClick: () -> Unit) {
+    if (help.isNotEmpty()) {
+        Column {
+            SheetAction(label, singleLine = singleLine, onClick = onClick)
+            EntryHelp(help)
+        }
+        return
+    }
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).inkFocus()
         .clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.CenterStart) {
-        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp, color = LocalInk.current)
+        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp, color = LocalInk.current,
+            maxLines = if (singleLine) 1 else Int.MAX_VALUE,
+            overflow = if (singleLine) TextOverflow.Ellipsis else TextOverflow.Clip)
     }
 }
+
+@Composable
+private fun EntryHelp(text: String) = Text(text, fontFamily = LatoFamily, fontSize = 14.sp,
+    lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))

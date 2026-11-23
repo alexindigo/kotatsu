@@ -109,6 +109,10 @@ class SyncSettingsOwner(context: Context) {
         }
     }
     fun syncNow() = update { SyncRuntime.ensureArmed(app) }
+    fun resolveLoss(id: String, resolution: LossResolution) {
+        val result = SyncRuntime.resolveCalendarLoss(app, id, resolution)
+        update { result.get() }
+    }
     fun prepareMove() {
         val request = ++moveGeneration
         SyncRuntime.enqueue {
@@ -140,7 +144,7 @@ class SyncSettingsOwner(context: Context) {
     private fun failed(error: Throwable) {
         BridgeStore(app).use {
             it.status = "${error.javaClass.simpleName}: ${error.message.orEmpty()}"
-            it.syncStatus = it.syncStatus.copy(availabilityStop = SyncStopReason.RETRY_REQUIRED)
+            it.syncStatus = it.syncStatus.copy(availabilityStop = SyncStopReason.SCHEDULING_FAILED)
         }
     }
     private fun update(request: Long = ++revision, complete: () -> Unit = {}, write: () -> Unit) {

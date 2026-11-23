@@ -36,15 +36,17 @@ class SyncSettingsInstrumentedTest {
     private val instrumentation = InstrumentationRegistry.getInstrumentation()
     private val context = instrumentation.targetContext
     private val resolver = context.contentResolver
-    private val ui = SyncSettingsUi(instrumentation)
+    private val captureScreenshots = InstrumentationRegistry.getArguments().getString("captureSyncScreenshots") == "true"
+    private val ui = SyncSettingsUi(instrumentation, captureScreenshots)
     private val scheduler = context.getSystemService(JobScheduler::class.java)
     private val type = "com.alexindigo.kotatsu.sync.test"
     private val suffix = UUID.randomUUID().toString().take(8)
-    private val personal = ContactAccount("Personal-$suffix", type)
-    private val family = ContactAccount("Family-$suffix", type)
-    private val personalCalendarName = "PersonalR-$suffix"
-    private val familyCalendarName = "FamilyR-$suffix"
-    private val localCalendarName = "PC Sync-$suffix"
+    private fun fixtureName(name: String) = if (captureScreenshots) name else "$name-$suffix"
+    private val personal = ContactAccount(fixtureName("Personal"), type)
+    private val family = ContactAccount(fixtureName("Family"), type)
+    private val personalCalendarName = fixtureName("PersonalR")
+    private val familyCalendarName = fixtureName("FamilyR")
+    private val localCalendarName = fixtureName("PC Sync")
     private fun main(work: () -> Unit) = instrumentation.runOnMainSync(work)
     private fun drain() = SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS)
     /** Cancellation is not native completion; own every producer before constructing fixtures. */
@@ -77,7 +79,8 @@ class SyncSettingsInstrumentedTest {
         main {
             val owner = SyncSettingsOwner(ownerTestContext(context, bookNames))
             hostOwners[activity] = owner
-            activity.setContent { CompositionLocalProvider(LocalPalette provides PaperPalette.Light(activity)) {
+            val palette = activity.applySyncWindow()
+            activity.setContent { activity.SyncWindowContent(palette) {
                 SyncSettingsBook(owner, activity::finish, {}, setUp)
             } }
             owner.resume()
@@ -88,11 +91,97 @@ class SyncSettingsInstrumentedTest {
     private fun seek(label: String) {
         val previous = context.getString(com.gezimos.katapult.paper.R.string.paper_previous_page)
         val next = context.getString(com.gezimos.katapult.paper.R.string.paper_next_page)
-        instrumentation.waitForIdleSync()
-        if (ui.has(label)) return
-        while (ui.has(previous)) { ui.click(previous); if (ui.has(label)) return }
-        while (ui.has(next)) { ui.click(next); if (ui.has(label)) return }
-        ui.await(label)
+        var forward = false
+        awaitSyncSettings("Find $label across the committed book pages") {
+            if (ui.has(label)) true else {
+                // Catalog/status publication can allocate the first pager
+                // after this traversal has already started.
+                if (!forward && !ui.has(previous)) forward = true
+                if (forward && !ui.has(next) && ui.has(previous)) forward = false
+                val arrow = if (forward) next else previous
+                if (ui.has(arrow)) ui.click(arrow)
+                false
+            }
+        }
+    }
+    private fun openCalendars() {
+        seek("Choose which calendars appear in Mudita Calendar")
+        ui.click("Choose which calendars appear in Mudita Calendar")
+        ui.awaitPage("Calendars")
+    }
+
+    @Test fun collectionLossReviewRequiresBothDeleteActionsAndConsumesOnlyTheHeldOccurrences() = fixture(ownerOnly = true) { f ->
+        val at = System.currentTimeMillis()
+        val phone = MuditaCalendar(resolver)
+        val standard = StandardCalendar(resolver)
+        val series = ContentUris.parseId(resolver.insert(f.syncUri(Events.CONTENT_URI), ContentValues().apply {
+            put(Events.CALENDAR_ID, f.familyCalendar); put(Events._SYNC_ID, "disposable-daily-series")
+            put(Events.TITLE, "Fixture daily series"); put(Events.EVENT_TIMEZONE, "UTC")
+            put(Events.DTSTART, at + 3600000); put(Events.RRULE, "FREQ=DAILY;COUNT=56"); put(Events.DURATION, "PT1H")
+        })!!)
+        PreferenceSyncConfig(context).write(SyncSettings(setOf(f.familyCalendar, f.personalCalendar)))
+        fun pass() = BridgeStore(context).use { store ->
+            BridgeEngine(phone, standard, store, PreferenceSyncConfig(context)).pass(at).also {
+                store.syncStatus = SyncStatus(1763856000000L, it.changes)
+            }
+        }
+        fun occurrences() = standard.instances(setOf(f.familyCalendar), at, at + 8 * BridgeEngine.WEEK)
+        pass(); val before = occurrences(); assertEquals(56, before.size)
+        fun wipe() {
+            assertEquals(56, resolver.delete(MuditaCalendar.URI, "id=${phone.all().last().id}", null))
+            assertEquals(56, pass().held.single().count)
+            assertEquals(before, occurrences())
+        }
+        wipe()
+        val activity = openHost()
+        withFixtureCleanup({ close(activity) }) {
+            val owner = hostOwners.getValue(activity)
+            seek("Calendar changes"); ui.capture(activity, "hold-phone-landing")
+            ui.click("Calendar changes"); ui.awaitPage("Calendar changes")
+            ui.capture(activity, "hold-phone-review")
+            ui.click("Restore them to Mudita Calendar")
+            awaitSyncSettings("Restore reaches Mudita") { phone.all().size == 56 && status().held.isEmpty() }
+            assertEquals(before, occurrences())
+            wipe(); main { owner.refresh() }; seek("Calendar changes")
+            ui.click("Calendar changes"); ui.click("Delete them from the server too"); ui.awaitPage("Delete from server")
+            ui.capture(activity, "delete-from-server")
+            assertEquals(before, occurrences())
+            ui.click("Cancel"); ui.awaitPage("Calendar changes")
+            assertEquals(before, occurrences())
+            ui.click("Delete them from the server too"); ui.awaitPage("Delete from server"); ui.click("Delete")
+            awaitSyncSettings("The second confirmation cancels the 56 dates") { occurrences().isEmpty() && status().held.isEmpty() }
+            assertNotNull(standard.read(EventKey(series)))
+            val dates = resolver.query(Events.CONTENT_URI, arrayOf(Events.ORIGINAL_INSTANCE_TIME),
+                "${Events.ORIGINAL_ID} = ? AND ${Events.STATUS} = ?", arrayOf(series.toString(), Events.STATUS_CANCELED.toString()), null)!!.use { c ->
+                buildList { while (c.moveToNext()) add(c.getLong(0)) }
+            }
+            assertEquals(before.mapNotNull { it.instanceStart }.sorted(), dates.sorted())
+        }
+    }
+
+    @Test fun selectedCalendarLossOffersAnExactKeepDecisionAndUnavailableDestination() = fixture(ownerOnly = true) { f ->
+        val at = System.currentTimeMillis()
+        val phone = MuditaCalendar(resolver)
+        PreferenceSyncConfig(context).write(SyncSettings(setOf(f.personalCalendar, f.familyCalendar), f.personalCalendar))
+        repeat(3) { f.event() }
+        fun pass() = BridgeStore(context).use { store ->
+            BridgeEngine(phone, StandardCalendar(resolver), store, PreferenceSyncConfig(context)).pass(at).also {
+                store.syncStatus = SyncStatus(1763856000000L, it.changes)
+            }
+        }
+        pass(); assertEquals(3, phone.all().size)
+        assertEquals(1, resolver.delete(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.personalCalendar)), null, null))
+        assertEquals(3, pass().held.single().count)
+        val activity = openHost()
+        withFixtureCleanup({ close(activity) }) {
+            seek("New events"); ui.await("Unavailable"); ui.capture(activity, "calendar-unavailable")
+            seek("Calendar changes"); ui.capture(activity, "hold-standard-landing")
+            ui.click("Calendar changes"); ui.awaitPage("Calendar changes"); ui.capture(activity, "hold-standard-review")
+            ui.click("Keep them in Mudita Calendar")
+            awaitSyncSettings("Keep retires mappings, not events") { status().held.isEmpty() }
+            pass(); assertEquals(3, phone.all().size)
+            assertTrue(StandardCalendar(resolver).events(setOf(f.familyCalendar)).isEmpty())
+        }
     }
 
     @Test fun launcherArmsJobsAndEveryCalendarAndPickerPersists() = fixture { f ->
@@ -100,43 +189,43 @@ class SyncSettingsInstrumentedTest {
         assertEquals(SyncSettingsActivity::class.java.name, launch!!.component!!.className)
         val activity = open()
         withFixtureCleanup({ close(activity) }) {
-            ui.await(familyCalendarName); ui.await(personalCalendarName); ui.await("Shown")
+            seek("Calendar access")
+            ui.capture(activity, "access-granted")
             assertTrue(config().calendars.isEmpty()); assertNull(config().newEventCalendar)
             assertFalse("New events is absent until a calendar is shown", ui.has("New events"))
             awaitSyncSettings("Opening arms all recurring jobs") {
                 listOf(SyncRuntime.WATCH_JOB, SyncRuntime.CONTACTS_JOB, SyncRuntime.PERIODIC_JOB, SyncRuntime.HORIZON_JOB)
                     .all { scheduler.getPendingJob(it) != null }
             }
-            assertFalse(ui.selected("Shown $personalCalendarName"))
+            openCalendars()
+            ui.await(familyCalendarName); ui.await(personalCalendarName)
+            assertFalse(ui.selected(personalCalendarName))
             ui.capture(activity, "calendars-unchecked")
-            ui.click("Shown $personalCalendarName")
+            ui.click(personalCalendarName)
             awaitSyncSettings("Checkbox writes selection and Personal default") {
                 config().calendars == setOf(f.personalCalendar) && effectiveCalendar() == f.personalCalendar
             }
-            ui.click("Shown $familyCalendarName")
+            ui.click(familyCalendarName)
             awaitSyncSettings("Both shown calendars persist and render checked") {
                 config().calendars == setOf(f.personalCalendar, f.familyCalendar) &&
-                    ui.selected("Shown $personalCalendarName") && ui.selected("Shown $familyCalendarName")
+                    ui.selected(personalCalendarName) && ui.selected(familyCalendarName)
             }
-            val column = Rect().also { ui.find("Shown")!!.getBoundsInScreen(it) }
-            if (context.resources.configuration.fontScale == 1f)
-                assertEquals(64f * context.resources.displayMetrics.density, column.width().toFloat(), 1f)
-            assertTrue(column.width() >= 64f * context.resources.displayMetrics.density - 1f)
-            val control = Rect().also { ui.find("Shown $personalCalendarName")!!.getBoundsInScreen(it) }
+            val control = Rect().also { ui.find(personalCalendarName, actionable = true)!!.getBoundsInScreen(it) }
             val box = ui.drawings("paper_index_checkbox").single { it.center.y in control.top.toFloat()..control.bottom.toFloat() }
-            val leader = ui.drawings("paper_index_leader").single { it.center.y in control.top.toFloat()..control.bottom.toFloat() }
-            assertEquals("Shown header centres on its checkbox", column.exactCenterX(), box.center.x, 1f)
-            assertEquals("Shared drawing gap", 7.5f * context.resources.displayMetrics.density, box.left - leader.right, 1f)
+            assertEquals("Check is centered in the trailing 48dp slot", control.right - 24f * context.resources.displayMetrics.density, box.center.x, 1f)
+            assertEquals("Check shares the row center", control.exactCenterY(), box.center.y, 1f)
+            assertTrue(ui.drawings("paper_index_leader").isEmpty())
             assertFalse("Local calendars are never offered", ui.has(localCalendarName))
             ui.capture(activity, "calendars-shown")
+            ui.back(); ui.awaitPage("Kotatsu Sync")
             seek("New events"); ui.click("New events"); ui.awaitPage("New events")
             ui.await(personalCalendarName); ui.await(familyCalendarName); ui.capture(activity, "new-events")
             ui.back(); ui.awaitPage("Kotatsu Sync"); assertEquals(f.personalCalendar, effectiveCalendar())
             ui.click("New events"); ui.awaitPage("New events"); ui.click(familyCalendarName)
             awaitSyncSettings("New events picker persists") { config().newEventCalendar == f.familyCalendar }
             seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
-            ui.await("1"); ui.capture(activity, "look-ahead")
-            seek("26"); ui.click("26")
+            ui.await("1 week"); ui.capture(activity, "look-ahead")
+            seek("26 weeks"); ui.click("26 weeks")
             awaitSyncSettings("Horizon persists") { config().horizonWeeks == 26 }
             seek("Contacts go to"); ui.await(personal.name)
             assertEquals(personal, PreferenceContactsConfig(context).read().target)
@@ -144,11 +233,11 @@ class SyncSettingsInstrumentedTest {
             ui.await(family.name); ui.await(personal.name); ui.capture(activity, "contacts-go-to")
             ui.click(family.name)
             awaitSyncSettings("Contacts picker persists") { PreferenceContactsConfig(context).read().target == family }
-            seek("Phone contacts"); ui.await("Move to ${family.name}")
+            seek("Phone contacts"); ui.await("Move phone contacts to ${family.name}")
         }
         val reopened = open()
         withFixtureCleanup({ close(reopened) }) {
-            ui.await("Shown $personalCalendarName"); assertTrue(ui.selected("Shown $personalCalendarName"))
+            openCalendars(); assertTrue(ui.selected(personalCalendarName)); ui.back()
             seek("Look ahead"); ui.await("26 weeks")
             seek("Contacts go to"); ui.await(family.name)
             assertEquals(f.familyCalendar, config().newEventCalendar)
@@ -158,7 +247,7 @@ class SyncSettingsInstrumentedTest {
     @Test fun confirmedMoveUsesTheDisplayedBookAndOnlyTheDisplayedContacts() = fixture { f ->
         val activity = open()
         withFixtureCleanup({ close(activity) }) {
-            ui.await(personalCalendarName); seek("Phone contacts")
+            seek("Phone contacts")
             quiesceJobs()
             val baseline = phoneSourceIds(context)
             val source = f.phoneContact("Phone fixture")
@@ -173,22 +262,44 @@ class SyncSettingsInstrumentedTest {
             awaitSyncSettings("Confirmed contact reaches the chosen book") { f.raw(personal).size == 1 }
             assertEquals(setOf(later), f.raw(null).toSet())
             assertEquals(1, status().changes)
-            seek("Last sync"); ui.await(context.resources.getQuantityString(R.plurals.sync_status, 1,
-                android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(status().lastPassAt!!)), 1))
+            seek("Last sync"); ui.await("1 change")
             ui.capture(activity, "move-complete")
             SyncRuntime.enqueue { SyncRuntime.pass(context) }.get(15, TimeUnit.SECONDS)
             assertTrue(f.raw(null).isEmpty()); assertEquals(2, f.raw(personal).size)
         }
     }
 
+    @Test fun threePhoneContactsWaitForConfirmationAndAreNotMovedOnCancel() = fixture(ownerOnly = true) { f ->
+        val baseline = phoneSourceIds(context)
+        val created = (1..3).map { f.phoneContact("Waiting fixture $it") }.toSet()
+        val scoped = object : ContactsPort by AndroidContacts(context) {
+            override fun sources() = AndroidContacts(context).sources().filter { it.id in created }
+        }
+        BridgeStore(context).use { store ->
+            val result = ContactsTransferEngine(scoped, store).pass(ContactsSettings(personal))
+            assertEquals(3, result.waiting)
+            store.syncStatus = SyncStatus(1763856000000L, contactsWaiting = result.waiting)
+        }
+        val activity = openHost()
+        withFixtureCleanup({ close(activity) }) {
+            seek("Phone contacts"); ui.await("3 contacts are waiting to move")
+            ui.capture(activity, "contacts-bulk-wait")
+            ui.click("Phone contacts"); ui.awaitPage("Move phone contacts")
+            ui.await(context.resources.getQuantityString(R.plurals.move_confirmation, baseline.size + 3, baseline.size + 3, personal.name))
+            ui.click("Cancel")
+            assertEquals(baseline + created, phoneSourceIds(context))
+            assertTrue(f.raw(personal).isEmpty())
+        }
+    }
+
     @Test fun countedLabelsRenderSingularAndPluralFromTheirRealSettingsAndProviders() = fixture(ownerOnly = true) { f ->
         val activity = openHost()
         withFixtureCleanup({ close(activity) }) {
-            ui.await(personalCalendarName)
+            seek("Look ahead")
             quiesceJobs()
             for ((count, label) in listOf(1 to "1 week", 2 to "2 weeks")) {
                 seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
-                seek(count.toString()); ui.click(count.toString())
+                seek(label); ui.click(label)
                 awaitSyncSettings("Look ahead persists $count and renders $label") {
                     config().horizonWeeks == count && ui.has(label)
                 }
@@ -198,13 +309,19 @@ class SyncSettingsInstrumentedTest {
             val time = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(completedAt))
             for ((count, label) in listOf(0 to "0 changes", 1 to "1 change", 2 to "2 changes")) {
                 BridgeStore(context).use { it.syncStatus = SyncStatus(completedAt, count) }
-                seek("Last sync"); ui.await("$time, $label")
+                seek("Last sync"); ui.await(time); ui.await(label)
             }
             val baseline = phoneSourceIds(context)
+            fun moveCopy(count: Int) = when (count) {
+                1 -> "1 contact moves to ${personal.name}. It stays on this phone and syncs to your server."
+                else -> "$count contacts move to ${personal.name}. They stay on this phone and sync to your server."
+            }
+            for (count in 1..2) assertEquals(moveCopy(count),
+                context.resources.getQuantityString(R.plurals.move_confirmation, count, count, personal.name))
             for (count in 1..2) {
                 f.phoneContact("Count fixture $count")
                 seek("Phone contacts"); ui.click("Phone contacts"); ui.awaitPage("Move phone contacts")
-                ui.await(context.resources.getQuantityString(R.plurals.move_confirmation, baseline.size + count, baseline.size + count, personal.name))
+                ui.await(moveCopy(baseline.size + count))
                 ui.click("Cancel")
                 assertEquals("Confirmation does not move contacts", baseline.size + count, f.raw(null).size)
             }
@@ -214,7 +331,7 @@ class SyncSettingsInstrumentedTest {
     @Test fun syncNowUpdatesLastSyncAfterTheConsumerChangesAndShowsStops() = fixture { f ->
         val activity = open()
         withFixtureCleanup({ close(activity) }) {
-            ui.await(personalCalendarName); ui.click("Shown $personalCalendarName")
+            openCalendars(); ui.click(personalCalendarName); ui.back()
             awaitSyncSettings("Selection persisted") { config().calendars == setOf(f.personalCalendar) }
             quiesceJobs()
             f.event()
@@ -226,8 +343,7 @@ class SyncSettingsInstrumentedTest {
             seek("Last sync")
             awaitSyncSettings("Status is rendered from the completed pass") {
                 val status = status()
-                ui.has(context.resources.getQuantityString(R.plurals.sync_status, status.changes,
-                    android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(status.lastPassAt!!)), status.changes))
+                ui.has(context.resources.getQuantityString(R.plurals.sync_status, status.changes, status.changes))
             }
             ui.capture(activity, "sync-complete")
             quiesceJobs()
@@ -237,7 +353,7 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
-    @Test fun missingAccessRowsForwardTheExactRequestsAndDisappearWhenGranted() = fixture(ownerOnly = true) {
+    @Test fun missingAccessRowsForwardTheExactRequestsAndKeepLiveGrantedState() = fixture(ownerOnly = true) {
         val activity = openHost()
         var calendarRequests = 0
         var contactsRequests = 0
@@ -255,7 +371,7 @@ class SyncSettingsInstrumentedTest {
                 } }
                 owner.refresh()
             }
-            ui.await("Calendar access"); ui.await("Contacts access"); ui.await("Allow")
+            ui.await("Calendar access"); ui.await("Contacts access"); ui.await("Not granted")
             awaitSyncSettings("Permission snapshot loaded") { owner.snapshot.loaded }
             ui.click("Calendar access"); ui.click("Contacts access")
             assertEquals(1, calendarRequests); assertEquals(1, contactsRequests)
@@ -267,8 +383,9 @@ class SyncSettingsInstrumentedTest {
                     SyncSettingsBook(granted, activity::finish, {}, {})
                 } }
             }
-            ui.await(personalCalendarName)
-            assertFalse(ui.has("Calendar access")); assertFalse(ui.has("Contacts access"))
+            ui.await("Granted")
+            ui.await("Calendar access"); ui.await("Contacts access")
+            assertFalse(ui.has("Not granted"))
         }
     }
 
@@ -292,7 +409,9 @@ class SyncSettingsInstrumentedTest {
                 }
                 awaitSyncSettings("Denied owner loaded") { owner.snapshot.loaded }
                 seek("Sync now")
-                assertFalse("No completed pass means no Last sync row: $missing", ui.has("Last sync"))
+                awaitSyncSettings("No completed pass means no Last sync row: $missing") {
+                    owner.snapshot.status.lastPassAt == null && !ui.has("Last sync")
+                }
                 if (missing == PERMISSIONS) ui.capture(activity, "status-access-missing-no-result")
                 for (real in listOf(SyncStatus(System.currentTimeMillis(), 2),
                     SyncStatus(System.currentTimeMillis(), 0, setOf(SyncStopReason.REVIEW_REQUIRED)))) {
@@ -303,12 +422,10 @@ class SyncSettingsInstrumentedTest {
                     main { owner.refresh() }
                     seek("Last sync")
                     if (real.stopReasons.isEmpty()) {
-                        ui.await(context.resources.getQuantityString(R.plurals.sync_status, 2,
-                            android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(real.lastPassAt!!)), 2))
+                        ui.await("2 changes")
                         if (missing == PERMISSIONS) ui.capture(activity, "status-access-missing-with-result")
                     } else ui.await(context.getString(R.string.stopped_review))
-                    assertFalse("Availability is not a Last sync state while access is missing",
-                        ui.has(context.getString(R.string.stopped_scheduling)))
+                    ui.await(context.getString(R.string.stopped_scheduling))
                 }
             }
         }
@@ -337,15 +454,17 @@ class SyncSettingsInstrumentedTest {
                     BridgeStore(context).use { it.syncStatus = status }
                     main { owner.refresh() }
                     val reasons = status.availabilityStop?.let { setOf(it) } ?: status.stopReasons
-                    val text = if (reasons.isEmpty()) context.resources.getQuantityString(R.plurals.sync_status, status.changes,
-                        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(status.lastPassAt!!)), status.changes)
+                    val text = if (reasons.isEmpty()) context.resources.getQuantityString(R.plurals.sync_status, status.changes, status.changes)
                         else reasons.sortedBy { it.ordinal }.mapNotNull { it.textResource() }.map { context.getString(it) }.joinToString("\n")
-                    seek("Last sync"); ui.await(text)
+                    awaitSyncSettings("Fixture publishes the exact status $name before paging") { owner.snapshot.status == status }
+                    seek(text)
                     val layout = ui.textLayout(text)
                     assertReadable(layout, "$name at $scale")
-                    val label = ui.textLayout("Last sync")
-                    assertEquals("Label never wraps", 1, label.lineCount)
-                    assertReadable(label, "Last sync at $scale")
+                    if (status.lastPassAt != null) {
+                        val label = ui.textLayout("Last sync")
+                        assertEquals("Label never wraps", 1, label.lineCount)
+                        assertReadable(label, "Last sync at $scale")
+                    } else assertFalse(ui.has("Last sync"))
                     if (scale == 1f || name == "mudita_calendar_changed") ui.capture(activity,
                         "status-$name-${if (scale == 1f) "100" else "150"}")
                 }
@@ -371,9 +490,9 @@ class SyncSettingsInstrumentedTest {
             .firstOrNull { it.resolveActivity(packages) != null }
         val activity = openHost(bookNames = emptySet(), setUp = expected?.let { intent -> { context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } })
         withFixtureCleanup({ close(activity) }) {
-            ui.await("DAVx5"); ui.await(if (expected == null) "Unavailable" else "Set up")
+            ui.await("DAVx5"); ui.await(if (expected == null) "Unavailable" else "No calendars or address books available")
             for (label in listOf("Shown", "New events", "Look ahead", "Contacts go to", "Phone contacts")) assertFalse(ui.has(label))
-            ui.await("Last sync"); ui.await("Sync now")
+            assertFalse(ui.has("Last sync")); ui.await("Sync now")
             ui.capture(activity, "no-davx5")
             val handoff = java.util.concurrent.atomic.AtomicReference<Intent>()
             val monitor = object : android.app.Instrumentation.ActivityMonitor() {
@@ -443,19 +562,18 @@ class SyncSettingsInstrumentedTest {
                     }
                 }
             }
+            openCalendars()
             ui.await(personalCalendarName)
-            val heading = Rect().also { ui.find("Shown")!!.getBoundsInScreen(it) }
-            val target = Rect().also { ui.find("Shown $personalCalendarName")!!.getBoundsInScreen(it) }
+            val target = Rect().also { ui.find(personalCalendarName, actionable = true)!!.getBoundsInScreen(it) }
             val box = ui.drawings("paper_index_checkbox").single { it.center.y in target.top.toFloat()..target.bottom.toFloat() }
             val density = context.resources.displayMetrics.density
-            val layout = ui.textLayout("Shown")
-            assertEquals("Full Shown label stays on one line at 150%", 1, layout.lineCount)
-            assertFalse("Shown must not clip", layout.didOverflowWidth)
-            assertFalse("Shown must not ellipsize", layout.isLineEllipsized(0))
-            assertEquals("Shown and its checkbox share the measured column", heading.exactCenterX(), box.center.x, 1f)
-            assertTrue(heading.width() >= 64f * density - 1)
+            val layout = ui.textLayout(personalCalendarName)
+            assertEquals("Calendar label stays on one line at 150%", 1, layout.lineCount)
+            assertEquals("Trailing checkbox slot", target.right - 24f * density, box.center.x, 1f)
+            ui.capture(activity, "calendars-150")
+            ui.back(); ui.awaitPage("Kotatsu Sync")
             seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
-            ui.await("1"); ui.back()
+            ui.await("1 week"); ui.capture(activity, "look-ahead-150"); ui.back()
             ui.awaitPage("Kotatsu Sync"); ui.await("Look ahead")
             assertEquals(8, config().horizonWeeks)
             ui.capture(activity, "enlarged-text")
@@ -467,25 +585,26 @@ class SyncSettingsInstrumentedTest {
         PreferenceContactsConfig(context).write(ContactsSettings())
         val activity = openHost()
         withFixtureCleanup({ close(activity) }) {
-            ui.await(personalCalendarName)
+            seek("Contacts go to")
             val available = AndroidContacts(context).addressBooks().sortedWith(compareBy<ContactAccount> { it.name.lowercase() }
                 .thenBy { it.type }.thenBy { it.dataSet.orEmpty() })
             val expected = available.firstOrNull { it.name.contains("Personal", ignoreCase = true) } ?: available.first()
             awaitSyncSettings("First available address book is the fallback default") { hostOwners[activity]?.snapshot?.contactTarget?.account == expected }
-            seek("Shown $familyCalendarName"); ui.click("Shown $familyCalendarName")
+            openCalendars(); ui.click(familyCalendarName)
             awaitSyncSettings("First shown calendar is the fallback default") { effectiveCalendar() == f.familyCalendar }
-            seek("Shown $personalCalendarName"); ui.click("Shown $personalCalendarName")
-            awaitSyncSettings("Personal checkbox renders") { ui.selected("Shown $personalCalendarName") }
+            ui.click(personalCalendarName)
+            awaitSyncSettings("Personal checkbox renders") { ui.selected(personalCalendarName) }
             awaitSyncSettings("Personal becomes the automatic choice while Family is still shown") {
                 config().calendars == setOf(f.personalCalendar, f.familyCalendar) && effectiveCalendar() == f.personalCalendar
             }
-            seek("Shown $familyCalendarName"); ui.click("Shown $familyCalendarName")
+            ui.click(familyCalendarName)
             awaitSyncSettings("Unshown calendar cannot remain the new-event destination") {
                 config().calendars == setOf(f.personalCalendar) && effectiveCalendar() == f.personalCalendar
             }
-            seek("Shown $personalCalendarName"); ui.click("Shown $personalCalendarName")
+            ui.click(personalCalendarName)
             awaitSyncSettings("No shown calendars means no destination") { config().calendars.isEmpty() && config().newEventCalendar == null }
-            awaitSyncSettings("New events disappears with the last shown calendar") { !ui.has("New events") }
+            ui.back(); seek("Look ahead")
+            assertFalse("New events disappears with the last shown calendar", ui.has("New events"))
         }
     }
 
@@ -600,7 +719,9 @@ class SyncSettingsInstrumentedTest {
         val owner = settingsOwner()
         assertEquals(f.baselineBooks + personal + family, owner.snapshot.books.map { it.account }.toSet())
         assertEquals(f.baselineCalendars + f.personalCalendar + f.familyCalendar, owner.snapshot.calendars.map { it.id }.toSet())
-        assertEquals(setOf(personal, family), owner.snapshot.books.map { it.account }.filter { it.name.endsWith(suffix) }.toSet())
+        if (!captureScreenshots) {
+            assertEquals(setOf(personal, family), owner.snapshot.books.map { it.account }.filter { it.name.endsWith(suffix) }.toSet())
+        }
         val expected = owner.snapshot.books.firstOrNull { it.label.contains("Personal", ignoreCase = true) } ?: owner.snapshot.books.first()
         assertEquals(expected, owner.snapshot.contactTarget)
         assertEquals(ContactsSettings(), PreferenceContactsConfig(context).read())
@@ -628,6 +749,7 @@ class SyncSettingsInstrumentedTest {
     }
 
     private fun fixture(withAccounts: Boolean = true, ownerOnly: Boolean = false, body: (Fixture) -> Unit) {
+        if (captureScreenshots) requireScreenshotDevice()
         val f = Fixture()
         withFixtureCleanup({ f.cleanup() }) {
             f.setup(withAccounts, ownerOnly)
@@ -642,6 +764,18 @@ class SyncSettingsInstrumentedTest {
                 throw error
             }
         }
+    }
+
+    /** The capture fixture uses fixed identities, so require an empty, disposable AVD. */
+    private fun requireScreenshotDevice() {
+        check(android.os.Build.HARDWARE == "ranchu") { "Sync screenshot fixture is emulator-only" }
+        quiesceJobs()
+        PERMISSIONS.forEach { instrumentation.uiAutomation.grantRuntimePermission(context.packageName, it) }
+        requireIsolatedPhoneBook(context)
+        check(AndroidContacts(context).addressBooks().isEmpty()) { "Screenshot fixture requires an empty address-book catalog" }
+        check(StandardCalendar(resolver).calendars().none { it.eligible }) { "Screenshot fixture requires an empty sync calendar catalog" }
+        check(AccountManager.get(context).getAccountsByType(type).isEmpty()) { "Screenshot fixture requires no test accounts" }
+        check(MuditaCalendar(resolver).all().isEmpty()) { "Screenshot fixture requires an empty Mudita store" }
     }
     private inner class Fixture {
         val accounts = mutableListOf<Account>()

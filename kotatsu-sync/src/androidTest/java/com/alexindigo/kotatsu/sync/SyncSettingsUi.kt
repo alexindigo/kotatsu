@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit
 import org.junit.Assert.*
 
 /** Drives the public Compose accessibility tree and captures only frame-committed windows. */
-internal class SyncSettingsUi(private val instrumentation: Instrumentation) {
+internal class SyncSettingsUi(private val instrumentation: Instrumentation, private val captureScreenshots: Boolean) {
     private val automation = instrumentation.uiAutomation
 
     fun find(label: String, actionable: Boolean = false): AccessibilityNodeInfo? {
@@ -93,7 +93,8 @@ internal class SyncSettingsUi(private val instrumentation: Instrumentation) {
     fun textLayout(label: String): androidx.compose.ui.text.TextLayoutResult {
         val result = mutableListOf<androidx.compose.ui.text.TextLayoutResult>()
         fun semantics(node: androidx.compose.ui.semantics.SemanticsNode) {
-            if (node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.any { it.text == label } == true)
+            // The chapter subcomposes a sizing pass as well as its placed rows.
+            if (node.layoutInfo.isPlaced && node.config.getOrNull(androidx.compose.ui.semantics.SemanticsProperties.Text)?.any { it.text == label } == true)
                 node.config.getOrNull(androidx.compose.ui.semantics.SemanticsActions.GetTextLayoutResult)?.action?.invoke(result)
             node.children.forEach(::semantics)
         }
@@ -106,6 +107,7 @@ internal class SyncSettingsUi(private val instrumentation: Instrumentation) {
     }
 
     fun capture(activity: Activity, name: String) {
+        if (!captureScreenshots) return
         instrumentation.waitForIdleSync()
         val committed = CountDownLatch(1)
         instrumentation.runOnMainSync {

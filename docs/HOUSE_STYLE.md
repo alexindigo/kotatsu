@@ -75,6 +75,7 @@ observe their owner.
 | 2 | Lock-screen widgets, music, weather, notifications, side screen and edge pages | Always Light, matching Mudita's white lock screen |
 | 3 | Screensaver | Kotatsu Theme mode |
 | 4 | Notes and Weather screens and widgets | Light, owned by each companion app |
+| 5 | Kotatsu Sync | Light, owned by the companion app |
 
 Layouts and values XML reference palette resources. `AppearanceSourcePolicyTest`
 checks all modules' main Kotlin/Java and layout/values XML during unit tests.

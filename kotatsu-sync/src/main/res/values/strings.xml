@@ -2,9 +2,20 @@
     <string name="app_name">Kotatsu Sync</string>
     <string name="calendar_access">Calendar access</string>
     <string name="contacts_access">Contacts access</string>
-    <string name="allow">Allow</string>
-    <string name="shown">Shown</string>
-    <string name="shown_calendar">Shown %1$s</string>
+    <string name="access">Access</string>
+    <string name="calendars">Calendars</string>
+    <string name="contacts_group">Contacts</string>
+    <string name="sync_group">Sync</string>
+    <string name="granted">Granted</string>
+    <string name="not_granted">Not granted</string>
+    <string name="calendar_access_help">Read and change calendars</string>
+    <string name="contacts_access_help">Read and change contacts</string>
+    <string name="calendars_help">Choose which calendars appear in Mudita Calendar</string>
+    <string name="new_events_help">Calendar for new events in Mudita Calendar</string>
+    <string name="look_ahead_help">How far ahead events appear in Mudita Calendar</string>
+    <string name="contacts_go_to_help">Move new phone contacts to this address book</string>
+    <string name="chosen_calendar_unavailable">The chosen calendar is not available</string>
+    <string name="no_address_books">No address books available</string>
     <string name="new_events">New events</string>
     <string name="look_ahead">Look ahead</string>
     <plurals name="weeks">
@@ -13,27 +24,59 @@
     </plurals>
     <string name="contacts_go_to">Contacts go to</string>
     <string name="phone_contacts">Phone contacts</string>
-    <string name="move_to">Move to %1$s</string>
+    <string name="move_to">Move phone contacts to %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d contact is waiting to move</item>
+        <item quantity="other">%1$d contacts are waiting to move</item>
+    </plurals>
     <string name="last_sync">Last sync</string>
     <plurals name="sync_status">
-        <item quantity="one">%1$s, %2$d change</item>
-        <item quantity="other">%1$s, %2$d changes</item>
+        <item quantity="one">%1$d change</item>
+        <item quantity="other">%1$d changes</item>
     </plurals>
     <string name="stopped_calendar_changed">Stopped: Mudita Calendar changed</string>
     <string name="stopped_calendar_settings">Stopped: check calendar settings</string>
     <string name="stopped_address_book">Stopped: choose an address book</string>
-    <string name="stopped_retry">Stopped: try again</string>
-    <string name="stopped_review">Stopped: check calendar changes</string>
-    <string name="stopped_scheduling">Stopped: sync could not start</string>
+    <string name="stopped_retry">Stopped: will try again</string>
+    <string name="stopped_review">Stopped: will try again</string>
+    <string name="stopped_scheduling">Sync could not start</string>
     <string name="sync_now">Sync now</string>
     <string name="davx5">DAVx5</string>
-    <string name="set_up">Set up</string>
+    <string name="no_davx5_catalogs">No calendars or address books available</string>
+    <string name="davx5_unavailable">DAVx5 cannot be opened on this phone</string>
     <string name="unavailable">Unavailable</string>
     <string name="move_phone_contacts">Move phone contacts</string>
     <plurals name="move_confirmation">
-        <item quantity="one">%1$d contact moves to %2$s. They stay on this phone and sync to your server.</item>
+        <item quantity="one">%1$d contact moves to %2$s. It stays on this phone and syncs to your server.</item>
         <item quantity="other">%1$d contacts move to %2$s. They stay on this phone and sync to your server.</item>
     </plurals>
     <string name="move">Move</string>
     <string name="cancel">Cancel</string>
+    <string name="calendar_changes">Calendar changes</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Stopped: Mudita Calendar lost %1$d event</item>
+        <item quantity="other">Stopped: Mudita Calendar lost %1$d events</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Stopped: %2$s lost %1$d event</item>
+        <item quantity="other">Stopped: %2$s lost %1$d events</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">%1$d event disappeared from Mudita Calendar at once. Nothing was changed on your server.</item>
+        <item quantity="other">%1$d events disappeared from Mudita Calendar at once. Nothing was changed on your server.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">%1$d event disappeared from %2$s at once. Nothing was changed in Mudita Calendar.</item>
+        <item quantity="other">%1$d events disappeared from %2$s at once. Nothing was changed in Mudita Calendar.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">%1$d event will be deleted from %2$s on your server.</item>
+        <item quantity="other">%1$d events will be deleted from %2$s on your server.</item>
+    </plurals>
+    <string name="restore_phone">Restore them to Mudita Calendar</string>
+    <string name="delete_from_server">Delete them from the server too</string>
+    <string name="keep_phone">Keep them in Mudita Calendar</string>
+    <string name="remove_phone">Remove them from Mudita Calendar</string>
+    <string name="delete_server_title">Delete from server</string>
+    <string name="delete">Delete</string>
 </resources>

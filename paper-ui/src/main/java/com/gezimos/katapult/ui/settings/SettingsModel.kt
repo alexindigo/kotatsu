@@ -42,6 +42,13 @@ sealed class SettingsEntry {
         val summary: String = "",
         val actionLabel: String? = null,
         val external: Boolean = false,
+        val minimumHeightDp: Float? = null,
+    ) : SettingsEntry()
+
+    /** A plain action, not a fabricated index value. */
+    data class Action(
+        override val id: String, override val title: String, val onClick: () -> Unit,
+        override val help: String = "", override val visible: Boolean = true,
     ) : SettingsEntry()
 
     data class Link(

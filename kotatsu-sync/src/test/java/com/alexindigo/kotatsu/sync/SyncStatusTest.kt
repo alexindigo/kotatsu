@@ -52,9 +52,9 @@ class SyncStatusTest {
             "stopped_calendar_changed" to "Stopped: Mudita Calendar changed",
             "stopped_calendar_settings" to "Stopped: check calendar settings",
             "stopped_address_book" to "Stopped: choose an address book",
-            "stopped_retry" to "Stopped: try again",
-            "stopped_review" to "Stopped: check calendar changes",
-            "stopped_scheduling" to "Stopped: sync could not start",
+            "stopped_retry" to "Stopped: will try again",
+            "stopped_review" to "Stopped: will try again",
+            "stopped_scheduling" to "Sync could not start",
         ), phrases.filterKeys { it.startsWith("stopped_") })
     }
 
