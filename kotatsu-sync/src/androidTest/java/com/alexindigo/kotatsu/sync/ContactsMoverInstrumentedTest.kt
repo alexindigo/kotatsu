@@ -38,7 +38,7 @@ class ContactsMoverInstrumentedTest {
     @Test fun phoneContactMovesAllPortableDataAndKeepsAggregateLookupAndDirtyState() = scenario { f ->
         val source = f.insert("All fields")
         val rows = listOf(
-            row(Phone.CONTENT_ITEM_TYPE, "+1 202 555 0101", 2), row(Email.CONTENT_ITEM_TYPE, "example@example.invalid", 1),
+            row(Phone.CONTENT_ITEM_TYPE, f.number("all-fields"), 2), row(Email.CONTENT_ITEM_TYPE, f.email("all-fields"), 1),
             row(StructuredPostal.CONTENT_ITEM_TYPE, "123 Test Street", 1), row(Note.CONTENT_ITEM_TYPE, "Private note"),
             row(Organization.CONTENT_ITEM_TYPE, "Test organisation", 1).apply { put(Organization.TITLE, "Engineer") },
             row(Event.CONTENT_ITEM_TYPE, "2000-01-02", Event.TYPE_BIRTHDAY), row(Website.CONTENT_ITEM_TYPE, "https://example.invalid", 1),
@@ -57,10 +57,10 @@ class ContactsMoverInstrumentedTest {
         // and number lookup used by the dialer/messages consumer stay stable.
         val lookup = Contacts.getLookupUri(f.resolver, ContentUris.withAppendedId(Contacts.CONTENT_URI, aggregate))!!
         assertEquals(ContentUris.withAppendedId(Contacts.CONTENT_URI, aggregate), Contacts.lookupContact(f.resolver, lookup))
-        f.resolver.query(ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath("+12025550101").build(),
+        f.resolver.query(ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(f.number("all-fields")).build(),
             arrayOf(ContactsContract.PhoneLookup._ID, ContactsContract.PhoneLookup.DISPLAY_NAME), null, null, null)!!.use { c ->
             val matches = buildList { while (c.moveToNext()) add(c.getLong(0) to c.getString(1)) }
-            assertEquals("All fields", matches.single { it.first == aggregate }.second)
+            assertEquals(f.name("All fields"), matches.single { it.first == aggregate }.second)
         }
         assertEquals(f.baselineAggregates + 1, f.liveAggregateCount()); assertEquals(f.baselinePhone, f.rawIn(null).toSet())
         f.resolver.query(ContentUris.withAppendedId(RawContacts.CONTENT_URI, target), arrayOf(RawContacts.DIRTY, RawContacts.SOURCE_ID,
@@ -221,7 +221,8 @@ class ContactsMoverInstrumentedTest {
         val source = f.insert("Selected fields")
         for ((mime, values) in listOf(Phone.CONTENT_ITEM_TYPE to listOf("2025550181", "2025550182"),
             Email.CONTENT_ITEM_TYPE to listOf("chosen@example.invalid", "other@example.invalid"))) {
-            for ((index, value) in values.withIndex()) f.resolver.insert(Data.CONTENT_URI, row(mime, value, 1).apply {
+            for ((index, value) in values.withIndex()) f.resolver.insert(Data.CONTENT_URI,
+                row(mime, if (mime == Phone.CONTENT_ITEM_TYPE) f.number(value) else f.email(value), 1).apply {
                 put(Data.RAW_CONTACT_ID, source); put(Data.IS_PRIMARY, if (index == 0) 1 else 0)
                 put(Data.IS_SUPER_PRIMARY, if (index == 0) 1 else 0)
             })!!
@@ -331,6 +332,9 @@ class ContactsMoverInstrumentedTest {
         val resolver = context.contentResolver
         val config = PreferenceContactsConfig(context)
         val previous = config.read()
+        private val identitySuffix = UUID.randomUUID().toString()
+        private val numbers = mutableMapOf<String, String>()
+        private val emails = mutableMapOf<String, String>()
         val personal = ContactAccount("Personal-${UUID.randomUUID()}", "com.alexindigo.kotatsu.sync.test")
         val family = ContactAccount("Family-${UUID.randomUUID()}", "com.alexindigo.kotatsu.sync.test")
         val added = mutableListOf<Account>()
@@ -339,6 +343,18 @@ class ContactsMoverInstrumentedTest {
         var baselinePhone = emptySet<Long>()
         var baselineAggregates = 0
         val port = AndroidContacts(context)
+        fun name(label: String) = "$label $identitySuffix"
+        fun email(label: String) = emails.getOrPut(label) { "${UUID.randomUUID()}@example.invalid" }
+        /** Cache by logical identity so only deliberate joined pairs reuse a number. */
+        fun number(label: String): String = numbers.getOrPut(label) {
+            var candidate: String
+            do {
+                val digits = ((UUID.randomUUID().leastSignificantBits and Long.MAX_VALUE) % 10_000_000).toString().padStart(7, '0')
+                candidate = "+1202$digits"
+            } while (candidate in numbers.values || resolver.query(ContactsContract.PhoneLookup.CONTENT_FILTER_URI.buildUpon().appendPath(candidate).build(),
+                    arrayOf(ContactsContract.PhoneLookup._ID), null, null, null)!!.use { it.count != 0 })
+            candidate
+        }
         fun pass(destination: ContactAccount) = ContactsMover(port).pass(destination, ownedRawIds.toSet())
         fun setup() {
             context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS)
@@ -389,10 +405,10 @@ class ContactsMoverInstrumentedTest {
                 put(RawContacts.ACCOUNT_NAME, account?.name); put(RawContacts.ACCOUNT_TYPE, account?.type)
             })!!); ownedRawIds.add(id)
             if (name != null) resolver.insert(Data.CONTENT_URI, ContentValues().apply {
-                put(Data.RAW_CONTACT_ID, id); put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE); put(StructuredName.DISPLAY_NAME, name)
+                put(Data.RAW_CONTACT_ID, id); put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE); put(StructuredName.DISPLAY_NAME, this@Fixture.name(name))
             })!!
             if (number != null) resolver.insert(Data.CONTENT_URI, ContentValues().apply {
-                put(Data.RAW_CONTACT_ID, id); put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE); put(Phone.NUMBER, number); put(Phone.TYPE, Phone.TYPE_MOBILE)
+                put(Data.RAW_CONTACT_ID, id); put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE); put(Phone.NUMBER, this@Fixture.number(number)); put(Phone.TYPE, Phone.TYPE_MOBILE)
             })!!
             return id
         }

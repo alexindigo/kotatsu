@@ -15,10 +15,17 @@ import json
 import os
 from pathlib import Path
 import re
+import shlex
 import subprocess
 import sys
 import uuid
 import xml.etree.ElementTree as ET
+
+
+def run_whole_suite(root, results):
+    environment = {key: value for key, value in os.environ.items() if key not in ("CLASS", "SHARD")}
+    return subprocess.run(["bash", str(root / "tools/ci/run-connected.sh"), "sync", str(results / "suite")],
+                          cwd=root, timeout=1200, env=environment)
 
 
 def main():
@@ -32,7 +39,7 @@ def main():
     calendars = "content://com.android.calendar/"
 
     def shell(*args):
-        result = subprocess.run([adb, "shell", *args], check=True, text=True,
+        result = subprocess.run([adb, "shell", shlex.join(args)], check=True, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
         if "Exception" in result.stderr or "Error" in result.stderr:
             raise RuntimeError(result.stderr)
@@ -63,9 +70,8 @@ def main():
         return created.pop()
 
     def query(uri, where):
-        # adb shell rejoins arguments: quote SQL so it reaches content as one argument.
         order = [] if uri.endswith("/settings") else ["--sort", "_id"]
-        output = shell("content", "query", "--uri", uri, "--where", '"' + where + '"', *order)
+        output = shell("content", "query", "--uri", uri, "--where", where, *order)
         if not output.startswith("Row: "):
             raise AssertionError(f"Seeded rows unavailable at {uri}: {output}")
         return output
@@ -87,14 +93,30 @@ def main():
         insert("data", raw_contact_id=raw, mimetype="vnd.android.cursor.item/phone_v2",
                data1="2025550999" if raw == phone else "2025550998", data2=2)
 
+    # Existing book contacts deliberately match the historical fixed fixture identities.
+    preserved = [phone, book]
+    for label, number in (("Joined", "2025550107"), (None, "2025550106"),
+                          ("All fields", "+12025550101"), ("Two distinct photos", None),
+                          ("Imported SIM contact", "2025550102"), ("Phone contact", "2025550103"),
+                          ("Another", "2025550104"), ("Already personal", "2025550105")):
+        raw = insert("raw_contacts", account_name=name, account_type=account_type)
+        preserved.append(raw)
+        if label is not None:
+            insert("data", raw_contact_id=raw, mimetype="vnd.android.cursor.item/name", data1=label)
+        if number is not None:
+            insert("data", raw_contact_id=raw, mimetype="vnd.android.cursor.item/phone_v2", data1=number, data2=2)
+        if label == "All fields":
+            insert("data", raw_contact_id=raw, mimetype="vnd.android.cursor.item/email_v2", data1="example@example.invalid", data2=1)
+
     def snapshot():
         account = f"Account {{name={name}, type={account_type}}}"
         if account not in shell("dumpsys", "account"):
             raise AssertionError("Seeded address-book account disappeared")
         selection = f"account_name = '{name}' AND account_type = '{account_type}'"
+        ids = ",".join(map(str, preserved))
         return {"account": account,
-                "raw": query(contacts + "raw_contacts", f"_id IN ({phone},{book})"),
-                "data": query(contacts + "data", f"raw_contact_id IN ({phone},{book})"),
+                "raw": query(contacts + "raw_contacts", f"_id IN ({ids})"),
+                "data": query(contacts + "data", f"raw_contact_id IN ({ids})"),
                 "book": query(contacts + "settings", selection),
                 "calendars": query(calendars + "calendars", selection),
                 "events": query(calendars + "events", selection)}
@@ -105,8 +127,7 @@ def main():
         return hashlib.sha256(content.encode()).hexdigest()
 
     before = record("before")
-    run = subprocess.run(["bash", str(root / "tools/ci/run-connected.sh"), "sync", str(results / "suite")],
-                         cwd=root, timeout=1200)
+    run = run_whole_suite(root, results)
     after = record("after")
     receipt = {"before": before, "after": after, "suite_returncode": run.returncode}
     (results / "hashes.json").write_text(json.dumps(receipt, indent=2) + "\n")
