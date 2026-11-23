@@ -4,7 +4,12 @@ package com.alexindigo.kotatsu.sync
 data class ContactAccount(val name: String, val type: String, val dataSet: String? = null)
 enum class ContactOrigin { PHONE, SIM, OTHER }
 data class PhoneContact(val id: Long, val version: Long, val account: ContactAccount?, val origin: ContactOrigin)
-data class ContactsSettings(val target: ContactAccount? = null)
+data class ContactsSettings(val target: ContactAccount? = null,
+    val mode: TargetMode = if (target == null) TargetMode.AUTOMATIC else TargetMode.EXPLICIT,
+) {
+    fun destination(choices: List<AddressBookChoice>): AddressBookChoice? = if (mode == TargetMode.AUTOMATIC)
+        preferPersonal(choices, AddressBookChoice::label) else choices.singleOrNull { it.account == target }
+}
 data class ContactsResult(val changes: Int = 0, val stopReasons: Set<SyncStopReason> = emptySet(),
     val retry: Boolean = false, val waiting: Int = 0)
 data class ContactsMove(val destination: ContactAccount, val sourceIds: Set<Long>)
@@ -12,6 +17,7 @@ interface ContactsMoveStore { var pendingContactsMove: ContactsMove? }
 
 interface ContactsPort {
     fun addressBooks(): Set<ContactAccount>
+    fun addressBookChoices(): List<AddressBookChoice> = addressBookChoices(addressBooks())
     fun sources(): List<PhoneContact>
     /** Version-checked, atomic insert-data-aggregate-delete. Never writes to a SIM. */
     fun move(source: PhoneContact, destination: ContactAccount): Boolean
@@ -55,14 +61,16 @@ class ContactsTransferEngine(private val contacts: ContactsPort, private val sto
         val pending = store.pendingContactsMove
         val results = mutableListOf<ContactsResult>()
         if (pending != null) results.add(resume(pending))
-        if (settings.target != null) results.add(mover.pass(settings.target, excluded = pending?.sourceIds.orEmpty()))
+        val target = settings.destination(contacts.addressBookChoices())?.account
+        if (target != null || settings.mode == TargetMode.EXPLICIT)
+            results.add(mover.pass(target, excluded = pending?.sourceIds.orEmpty()))
         return combine(results)
     }
     fun moveExisting(settings: ContactsSettings): ContactsResult {
         changes = 0
         val pending = store.pendingContactsMove ?: run {
-            val target = settings.target ?: return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
-            if (target !in contacts.addressBooks()) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
+            val target = settings.destination(contacts.addressBookChoices())?.account
+                ?: return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
             ContactsMove(target, contacts.sources().filter { it.origin == ContactOrigin.PHONE }.map { it.id }.toSet())
                 .also { store.pendingContactsMove = it }
         }

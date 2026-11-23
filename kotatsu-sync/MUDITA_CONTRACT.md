@@ -98,8 +98,12 @@ horizon membership through the same scope predicate used by the diff.
 Standard uploads carry a private CUSTOM_APP_URI marker (no CUSTOM_APP_PACKAGE
 or server sync id); recover it even on tombstoned rows. New Mudita imports carry
 a UUID receipt encoded in invisible format characters in the description
-transport. The adapter extracts this as metadata, preserves it on updates and
-never sends it to CalendarContract or includes it in content fingerprints.
+transport while the insert is unacknowledged. The adapter extracts it as
+metadata and never sends it to CalendarContract or includes it in fingerprints.
+Once the inserted ID is durable, the journal removes its receipt from a fresh
+row before acknowledging the insert. This full-model update preserves current
+fields, including the reminder flag. The provider and journal cannot commit
+atomically together; retry resumes cleanup by confirmed ID and never re-inserts.
 Only a provider-returned ID or a unique exact provider-stored receipt establishes
 ownership. A matching independent event without that receipt is never adopted.
 Ambiguous or missing evidence reserves the affected item without blindly
@@ -150,6 +154,10 @@ evidence can also be undetectable. A fresh read reduces but does not eliminate
 the race with an independent writer: providers do not share a transaction.
 Standard continuity also records the calendar's account and available server
 `_sync_id` values. Kotatsu never writes those server IDs.
+
+New events and Contacts go to retain their own selection mode. Automatic
+resolves from current choices; an explicit choice never falls back silently.
+A saved destination without a mode is explicit; a missing destination is automatic.
 
 ## Mudita Contacts 1.3.1
 

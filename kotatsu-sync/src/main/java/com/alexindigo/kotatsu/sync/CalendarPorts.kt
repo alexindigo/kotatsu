@@ -11,7 +11,11 @@ data class MuditaEvent(
 data class SyncCalendar(val id: Long, val accountType: String, val syncing: Boolean,
     val accountName: String = "", val label: String = id.toString(), val collectionId: String? = null) {
     val eligible: Boolean get() = accountType.isNotBlank() && accountType != "LOCAL" && syncing
+    val identity: CalendarIdentity get() = CalendarIdentity(id, accountName, accountType, collectionId)
 }
+
+data class CalendarIdentity(val id: Long, val accountName: String, val accountType: String, val collectionId: String?)
+enum class TargetMode { AUTOMATIC, EXPLICIT }
 
 /** An occurrence retains the series id and its original start even after an exception moves it. */
 data class EventKey(val eventId: Long, val instanceStart: Long? = null)
@@ -70,5 +74,39 @@ interface MappingStore {
     fun keepPhoneOnly(ids: Set<Long>)
 }
 
-data class SyncSettings(val calendars: Set<Long>, val newEventCalendar: Long?, val horizonWeeks: Int = 8)
+data class SyncSettings(val calendars: Set<Long>, val newEventCalendar: Long? = null, val horizonWeeks: Int = 8,
+    val targetMode: TargetMode = if (newEventCalendar == null) TargetMode.AUTOMATIC else TargetMode.EXPLICIT,
+    val targetIdentity: CalendarIdentity? = null,
+) {
+    fun destination(available: Collection<SyncCalendar>): SyncCalendar? {
+        val shown = available.filter { it.eligible && it.id in calendars }.sortedWith(calendarOrder)
+        return if (targetMode == TargetMode.AUTOMATIC) preferPersonal(shown, SyncCalendar::label)
+        else shown.singleOrNull { it.id == newEventCalendar && (targetIdentity == null || it.identity == targetIdentity) }
+    }
+}
+
+internal val calendarOrder = compareBy<SyncCalendar, String>(String.CASE_INSENSITIVE_ORDER) { it.label }.thenBy { it.id }
+internal fun <T> preferPersonal(choices: List<T>, label: (T) -> String): T? =
+    choices.firstOrNull { label(it).contains("Personal", ignoreCase = true) } ?: choices.firstOrNull()
+
+internal sealed interface CalendarSettingsIntent {
+    fun reduce(old: SyncSettings, available: List<SyncCalendar>): SyncSettings
+
+    data class Toggle(val id: Long) : CalendarSettingsIntent {
+        override fun reduce(old: SyncSettings, available: List<SyncCalendar>) = when {
+            id in old.calendars -> old.copy(calendars = old.calendars - id)
+            available.any { it.id == id && it.eligible } -> old.copy(calendars = old.calendars + id)
+            else -> old
+        }
+    }
+    data class Choose(val id: Long) : CalendarSettingsIntent {
+        override fun reduce(old: SyncSettings, available: List<SyncCalendar>) =
+            available.singleOrNull { it.id == id && it.eligible && id in old.calendars }?.let {
+                old.copy(newEventCalendar = id, targetMode = TargetMode.EXPLICIT, targetIdentity = it.identity)
+            } ?: old
+    }
+    data class Weeks(val value: Int) : CalendarSettingsIntent {
+        override fun reduce(old: SyncSettings, available: List<SyncCalendar>) = old.copy(horizonWeeks = value)
+    }
+}
 interface SyncConfig { fun read(): SyncSettings }

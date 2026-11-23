@@ -12,31 +12,35 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
-data class CalendarChoice(val id: Long, val name: String)
 data class SyncSettingsSnapshot(
     val calendarAccess: Boolean = false,
     val contactsAccess: Boolean = false,
-    val calendars: List<CalendarChoice> = emptyList(),
-    val books: List<ContactAccount> = emptyList(),
+    val calendars: List<SyncCalendar> = emptyList(),
+    val books: List<AddressBookChoice> = emptyList(),
     val settings: SyncSettings = SyncSettings(emptySet(), null),
     val contacts: ContactsSettings = ContactsSettings(),
     val status: SyncStatus = SyncStatus(),
     val loaded: Boolean = false,
-)
+) {
+    val calendarTarget get() = settings.destination(calendars)
+    val contactTarget get() = contacts.destination(books)
+}
 
 /** The settings owner shares the bridge lane; providers never run from composition. */
 class SyncSettingsOwner(context: Context) {
     private val app = context.applicationContext
     private val main = Handler(Looper.getMainLooper())
     private var resumed = false
-    private var generation = 0
+    private var revision = 0L
+    private val pending = linkedMapOf<Long, CalendarSettingsIntent>()
     private var moveGeneration = 0
     private var refreshQueued = false
-    var snapshot by mutableStateOf(SyncSettingsSnapshot(
+    private var committed = SyncSettingsSnapshot(
         calendarAccess = access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR),
         contactsAccess = access(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS),
         settings = PreferenceSyncConfig(app).read(), contacts = PreferenceContactsConfig(app).read(),
-    ))
+    )
+    var snapshot by mutableStateOf(committed)
         private set
     var confirmation by mutableStateOf<ContactsMove?>(null)
         private set
@@ -60,44 +64,19 @@ class SyncSettingsOwner(context: Context) {
         resumed = false
         main.removeCallbacks(tick)
         app.contentResolver.unregisterContentObserver(observer)
-        generation++
         moveGeneration++
     }
     private fun access(vararg permissions: String) = permissions.all { app.checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
-    private fun calendars(): List<CalendarChoice> = if (!access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) emptyList()
-        else checkNotNull(app.contentResolver.query(Calendars.CONTENT_URI,
-            arrayOf(Calendars._ID, Calendars.CALENDAR_DISPLAY_NAME, Calendars.ACCOUNT_TYPE, Calendars.SYNC_EVENTS),
-            null, null, "${Calendars.CALENDAR_DISPLAY_NAME} COLLATE NOCASE, ${Calendars._ID}")) { "calendar provider unavailable" }.use { c ->
-            buildList { while (c.moveToNext()) {
-                if (SyncCalendar(c.getLong(0), c.getString(2).orEmpty(), c.getInt(3) != 0).eligible)
-                    add(CalendarChoice(c.getLong(0), c.getString(1).orEmpty()))
-            } }
-        }
-
-    /** Shown membership is configuration; provider availability must not erase saved identities. */
-    private fun calendarSettings(settings: SyncSettings, available: List<CalendarChoice>): SyncSettings = settings.copy(
-        newEventCalendar = settings.newEventCalendar?.takeIf { it in settings.calendars }
-            ?: defaultCalendar(available.filter { it.id in settings.calendars }))
+    private fun calendars(): List<SyncCalendar> = if (!access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) emptyList()
+        else StandardCalendar(app.contentResolver).calendars().filter { it.eligible }.sortedWith(calendarOrder)
 
     private fun read(): SyncSettingsSnapshot {
         val calendarAccess = access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
         val contactsAccess = access(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
         val calendars = calendars()
-        val books = if (!contactsAccess) emptyList() else AndroidContacts(app).addressBooks()
-            .sortedWith(compareBy<ContactAccount> { it.name.lowercase() }.thenBy { it.type }.thenBy { it.dataSet.orEmpty() })
-        val calendarConfig = PreferenceSyncConfig(app)
-        val settings = calendarConfig.read()
-        val current = calendarSettings(settings, calendars)
-        var changed = false
-        if (current != settings) { calendarConfig.write(current); changed = true }
-        val contactsConfig = PreferenceContactsConfig(app)
-        var contacts = contactsConfig.read()
-        if (contacts.target == null && books.isNotEmpty()) {
-            contacts = ContactsSettings(books.firstOrNull { it.name.contains("Personal", ignoreCase = true) } ?: books.first())
-            contactsConfig.write(contacts); changed = true
-        }
-        if (changed) SyncRuntime.ensureArmed(app)
-        return BridgeStore(app).use { SyncSettingsSnapshot(calendarAccess, contactsAccess, calendars, books, current, contacts, it.syncStatus, true) }
+        val books = if (!contactsAccess) emptyList() else AndroidContacts(app).addressBookChoices()
+        return BridgeStore(app).use { SyncSettingsSnapshot(calendarAccess, contactsAccess, calendars, books,
+            PreferenceSyncConfig(app).read(), PreferenceContactsConfig(app).read(), it.syncStatus, true) }
     }
 
     fun refresh() {
@@ -105,20 +84,23 @@ class SyncSettingsOwner(context: Context) {
         refreshQueued = true
         update(complete = { refreshQueued = false }) {}
     }
-    fun shown(id: Long, value: Boolean) = calendar { old, available ->
-        if (value && available.none { it.id == id }) old
-        else old.copy(calendars = if (value) old.calendars + id else old.calendars - id)
-    }
-    fun newEvents(id: Long) = calendar { old, _ ->
-        if (id in old.calendars) old.copy(newEventCalendar = id) else old
-    }
-    fun weeks(weeks: Int) = calendar { old, _ -> old.copy(horizonWeeks = weeks) }
-    /** Validate dependencies against fresh inputs on the lane, never the published UI snapshot. */
-    private fun calendar(change: (SyncSettings, List<CalendarChoice>) -> SyncSettings) = update {
-        val config = PreferenceSyncConfig(app)
-        val available = calendars()
-        config.write(calendarSettings(change(config.read(), available), available))
-        SyncRuntime.ensureArmed(app)
+    fun toggleCalendar(id: Long) = calendar(CalendarSettingsIntent.Toggle(id))
+    fun newEvents(id: Long) = calendar(CalendarSettingsIntent.Choose(id))
+    fun weeks(weeks: Int) = calendar(CalendarSettingsIntent.Weeks(weeks))
+
+    private fun calendar(intent: CalendarSettingsIntent) {
+        val request = ++revision
+        pending[request] = intent
+        publish()
+        update(request = request) {
+            val config = PreferenceSyncConfig(app)
+            val old = config.read()
+            val next = intent.reduce(old, calendars()) // Revalidate current provider and selection on the lane.
+            if (next != old) {
+                config.write(next)
+                SyncRuntime.ensureArmed(app)
+            }
+        }
     }
     fun contacts(book: ContactAccount) = update {
         if (book in AndroidContacts(app).addressBooks()) {
@@ -135,7 +117,8 @@ class SyncSettingsOwner(context: Context) {
                 val move = BridgeStore(app).use { store -> store.pendingContactsMove?.let {
                     it.copy(sourceIds = it.sourceIds.intersect(sources))
                 } ?: run {
-                    val target = checkNotNull(PreferenceContactsConfig(app).read().target) { "contacts address book not selected" }
+                    val target = checkNotNull(PreferenceContactsConfig(app).read()
+                        .destination(AndroidContacts(app).addressBookChoices())) { "contacts address book not available" }.account
                     ContactsMove(target, sources)
                 } }
                 main.post { if (moveGeneration == request) confirmation = move }
@@ -160,16 +143,29 @@ class SyncSettingsOwner(context: Context) {
             it.syncStatus = it.syncStatus.copy(availabilityStop = SyncStopReason.RETRY_REQUIRED)
         }
     }
-    private fun update(complete: () -> Unit = {}, write: () -> Unit) {
-        val request = ++generation
+    private fun update(request: Long = ++revision, complete: () -> Unit = {}, write: () -> Unit) {
+        val fallback = committed
         SyncRuntime.enqueue {
             val next = try { write(); read() } catch (error: Exception) {
                 failed(error)
-                BridgeStore(app).use { snapshot.copy(status = it.syncStatus, loaded = true) }
+                runCatching { read() }.getOrElse {
+                    BridgeStore(app).use { fallback.copy(settings = PreferenceSyncConfig(app).read(),
+                        contacts = PreferenceContactsConfig(app).read(), status = it.syncStatus, loaded = true) }
+                }
             }
-            main.post { complete(); if (generation == request) snapshot = next }
+            // The lane posts acknowledgements in order. Older reads never
+            // erase taps that were sent while those reads were in flight.
+            main.post {
+                complete()
+                committed = next
+                pending.keys.removeAll { it <= request }
+                publish()
+            }
         }
     }
-    private fun defaultCalendar(shown: List<CalendarChoice>) =
-        (shown.firstOrNull { it.name.contains("Personal", ignoreCase = true) } ?: shown.firstOrNull())?.id
+    private fun publish() {
+        snapshot = committed.copy(settings = pending.values.fold(committed.settings) { settings, intent ->
+            intent.reduce(settings, committed.calendars)
+        })
+    }
 }

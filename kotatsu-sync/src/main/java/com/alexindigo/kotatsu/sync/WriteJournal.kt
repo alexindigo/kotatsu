@@ -225,6 +225,14 @@ internal class WriteJournal(
         val expected = desired.copy(id = checkNotNull(intent.insertedId))
         if (store.all().any { it.muditaId == expected.id && it.standardKey != source.key }) return WriteOutcome.UNRESOLVED
         val actual = phoneNow(expected.id)
+        if (actual != null && intent.id in actual.insertReceipts) {
+            // The provider ID is already durable. Retry this exact cleanup, not
+            // the insert, if either the write result or the readback is lost.
+            if (actual.insertReceipts != setOf(intent.id)) return WriteOutcome.UNRESOLVED
+            if (!phone.update(actual.id, actual.copy(insertReceipts = emptySet()))) return WriteOutcome.RETRY
+            val cleaned = phoneNow(expected.id) ?: return WriteOutcome.RETRY
+            if (intent.id in cleaned.insertReceipts) return WriteOutcome.RETRY
+        }
         val matches = actual != null && mapper.muditaFingerprint(actual, source.location.isNotEmpty()) ==
             mapper.muditaFingerprint(expected, source.location.isNotEmpty())
         finish(intent, pair(expected, source), intent.mapping?.muditaId)

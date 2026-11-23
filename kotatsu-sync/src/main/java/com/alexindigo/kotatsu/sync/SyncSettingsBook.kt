@@ -35,16 +35,18 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
         else onBack()
     }
     val newEvents = SettingsEntry.Value("new-events", stringResource(R.string.new_events), "",
-        state.calendars.firstOrNull { it.id == state.settings.newEventCalendar }?.name.orEmpty(),
-        state.calendars.filter { it.id in state.settings.calendars }.map { SettingsChoice(it.id.toString(), it.name) },
-        { owner.newEvents(it.toLong()) }, state.settings.newEventCalendar?.toString().orEmpty(), appBuiltChoices = true)
+        state.calendarTarget?.label ?: stringResource(R.string.unavailable),
+        state.calendars.filter { it.id in state.settings.calendars }.map { SettingsChoice(it.id.toString(), it.label) },
+        { owner.newEvents(it.toLong()) }, state.calendarTarget?.id?.toString().orEmpty(), appBuiltChoices = true)
     val horizon = SettingsEntry.Value("look-ahead", stringResource(R.string.look_ahead), "",
         pluralStringResource(R.plurals.weeks, state.settings.horizonWeeks, state.settings.horizonWeeks),
         (1..26).map { SettingsChoice(it.toString(), it.toString()) },
         { owner.weeks(it.toInt()) }, state.settings.horizonWeeks.toString())
-    val contacts = SettingsEntry.Value("contacts", stringResource(R.string.contacts_go_to), "", state.contacts.target?.name.orEmpty(),
-        state.books.map { book -> SettingsChoice(book.choiceId(), book.name) },
-        { id -> owner.contacts(state.books.first { it.choiceId() == id }) }, state.contacts.target?.choiceId().orEmpty(), appBuiltChoices = true)
+    val contacts = SettingsEntry.Value("contacts", stringResource(R.string.contacts_go_to), "",
+        state.contactTarget?.label ?: stringResource(R.string.unavailable),
+        state.books.map { book -> SettingsChoice(book.account.choiceId(), book.label) },
+        { id -> state.books.firstOrNull { it.account.choiceId() == id }?.let { owner.contacts(it.account) } },
+        state.contactTarget?.account?.choiceId().orEmpty(), appBuiltChoices = true)
     val context = LocalContext.current
     val displayed = state.status.forDisplay(state.calendarAccess, state.contactsAccess)
     val reasons = if (displayed?.availabilityStop != null) setOf(displayed.availabilityStop)
@@ -79,8 +81,8 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
                                 }
                                 state.calendars.forEach { calendar ->
                                     val checked = calendar.id in state.settings.calendars
-                                    PaperCheckboxEntry(calendar.name, stringResource(R.string.shown_calendar, calendar.name), checked,
-                                        { owner.shown(calendar.id, !checked) }, { owner.shown(calendar.id, !checked) },
+                                    PaperCheckboxEntry(calendar.label, stringResource(R.string.shown_calendar, calendar.label), checked,
+                                        { owner.toggleCalendar(calendar.id) }, { owner.toggleCalendar(calendar.id) },
                                         nameChecked = checked, controlColumnWidth = shownColumn.width)
                                 }
                             }
@@ -90,8 +92,8 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
                             }
                             if (state.contactsAccess) {
                                 Entry(contacts, onChoice = { navigation.push(it.id) })
-                                if (state.contacts.target != null) Entry(SettingsEntry.Open("move", stringResource(R.string.phone_contacts), "",
-                                    owner::prepareMove, actionLabel = stringResource(R.string.move_to, state.contacts.target.name)))
+                                state.contactTarget?.let { target -> Entry(SettingsEntry.Open("move", stringResource(R.string.phone_contacts), "",
+                                    owner::prepareMove, actionLabel = stringResource(R.string.move_to, target.label))) }
                             }
                         }
                         Column {
@@ -105,7 +107,8 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
             owner.confirmation?.let { move ->
                 PaperSheet(owner::cancelMove) {
                     PaperSheetHeading(stringResource(R.string.move_phone_contacts), owner::cancelMove)
-                    SheetText(pluralStringResource(R.plurals.move_confirmation, move.sourceIds.size, move.sourceIds.size, move.destination.name))
+                    SheetText(pluralStringResource(R.plurals.move_confirmation, move.sourceIds.size, move.sourceIds.size,
+                        state.books.singleOrNull { it.account == move.destination }?.label ?: addressBookLabel(move.destination)))
                     SheetAction(stringResource(R.string.move), owner::confirmMove)
                     SheetAction(stringResource(R.string.cancel), owner::cancelMove)
                 }

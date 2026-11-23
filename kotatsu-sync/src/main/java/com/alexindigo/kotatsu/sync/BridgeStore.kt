@@ -210,19 +210,3 @@ internal object IntentJson {
             j.getBoolean("confirmed"), if (j.isNull("loss")) null else j.getString("loss"))
     }
 }
-
-class PreferenceSyncConfig(context: Context) : SyncConfig {
-    private val prefs = context.getSharedPreferences("calendar-sync", Context.MODE_PRIVATE)
-    override fun read(): SyncSettings = SyncSettings(
-        prefs.getStringSet("calendars", emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet(),
-        if (prefs.contains("new_event_calendar")) prefs.getLong("new_event_calendar", -1) else null,
-        prefs.getInt("horizon_weeks", 8),
-    )
-    fun write(settings: SyncSettings) {
-        prefs.edit().putStringSet("calendars", settings.calendars.map { it.toString() }.toSet())
-            .putInt("horizon_weeks", settings.horizonWeeks).apply {
-                if (settings.newEventCalendar == null) remove("new_event_calendar")
-                else putLong("new_event_calendar", settings.newEventCalendar)
-            }.commit().also { check(it) { "Could not save calendar configuration" } }
-    }
-}

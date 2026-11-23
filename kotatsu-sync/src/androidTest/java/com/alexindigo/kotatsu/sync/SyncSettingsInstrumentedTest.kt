@@ -66,6 +66,7 @@ class SyncSettingsInstrumentedTest {
         }
     }
     private fun config() = PreferenceSyncConfig(context).read()
+    private fun effectiveCalendar() = config().destination(StandardCalendar(resolver).calendars())?.id
     private fun status() = BridgeStore(context).use { it.syncStatus }
     private fun open() = instrumentation.startActivitySync(Intent(context, SyncSettingsActivity::class.java)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) as SyncSettingsActivity
@@ -110,7 +111,7 @@ class SyncSettingsInstrumentedTest {
             ui.capture(activity, "calendars-unchecked")
             ui.click("Shown $personalCalendarName")
             awaitSyncSettings("Checkbox writes selection and Personal default") {
-                config().calendars == setOf(f.personalCalendar) && config().newEventCalendar == f.personalCalendar
+                config().calendars == setOf(f.personalCalendar) && effectiveCalendar() == f.personalCalendar
             }
             ui.click("Shown $familyCalendarName")
             awaitSyncSettings("Both shown calendars persist and render checked") {
@@ -130,7 +131,7 @@ class SyncSettingsInstrumentedTest {
             ui.capture(activity, "calendars-shown")
             seek("New events"); ui.click("New events"); ui.awaitPage("New events")
             ui.await(personalCalendarName); ui.await(familyCalendarName); ui.capture(activity, "new-events")
-            ui.back(); ui.awaitPage("Kotatsu Sync"); assertEquals(f.personalCalendar, config().newEventCalendar)
+            ui.back(); ui.awaitPage("Kotatsu Sync"); assertEquals(f.personalCalendar, effectiveCalendar())
             ui.click("New events"); ui.awaitPage("New events"); ui.click(familyCalendarName)
             awaitSyncSettings("New events picker persists") { config().newEventCalendar == f.familyCalendar }
             seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
@@ -470,14 +471,17 @@ class SyncSettingsInstrumentedTest {
             val available = AndroidContacts(context).addressBooks().sortedWith(compareBy<ContactAccount> { it.name.lowercase() }
                 .thenBy { it.type }.thenBy { it.dataSet.orEmpty() })
             val expected = available.firstOrNull { it.name.contains("Personal", ignoreCase = true) } ?: available.first()
-            awaitSyncSettings("First available address book is the fallback default") { PreferenceContactsConfig(context).read().target == expected }
+            awaitSyncSettings("First available address book is the fallback default") { hostOwners[activity]?.snapshot?.contactTarget?.account == expected }
             seek("Shown $familyCalendarName"); ui.click("Shown $familyCalendarName")
-            awaitSyncSettings("First shown calendar is the fallback default") { config().newEventCalendar == f.familyCalendar }
+            awaitSyncSettings("First shown calendar is the fallback default") { effectiveCalendar() == f.familyCalendar }
             seek("Shown $personalCalendarName"); ui.click("Shown $personalCalendarName")
             awaitSyncSettings("Personal checkbox renders") { ui.selected("Shown $personalCalendarName") }
+            awaitSyncSettings("Personal becomes the automatic choice while Family is still shown") {
+                config().calendars == setOf(f.personalCalendar, f.familyCalendar) && effectiveCalendar() == f.personalCalendar
+            }
             seek("Shown $familyCalendarName"); ui.click("Shown $familyCalendarName")
             awaitSyncSettings("Unshown calendar cannot remain the new-event destination") {
-                config().calendars == setOf(f.personalCalendar) && config().newEventCalendar == f.personalCalendar
+                config().calendars == setOf(f.personalCalendar) && effectiveCalendar() == f.personalCalendar
             }
             seek("Shown $personalCalendarName"); ui.click("Shown $personalCalendarName")
             awaitSyncSettings("No shown calendars means no destination") { config().calendars.isEmpty() && config().newEventCalendar == null }
@@ -489,54 +493,63 @@ class SyncSettingsInstrumentedTest {
         PreferenceSyncConfig(context).write(SyncSettings(setOf(f.familyCalendar, f.personalCalendar), f.personalCalendar))
         val owner = settingsOwner()
         queuedWrites {
-            owner.shown(f.personalCalendar, false)
+            owner.toggleCalendar(f.personalCalendar)
             owner.newEvents(f.personalCalendar)
             owner.weeks(12)
-            assertTrue("The pending hide is not yet in the UI snapshot", f.personalCalendar in owner.snapshot.settings.calendars)
+            assertFalse("Pending toggle is visible immediately", f.personalCalendar in owner.snapshot.settings.calendars)
+            assertTrue("Persistence has not advanced ahead of the blocked lane", f.personalCalendar in config().calendars)
         }
-        assertEquals(SyncSettings(setOf(f.familyCalendar), f.familyCalendar, 12), config())
+        assertEquals(SyncSettings(setOf(f.familyCalendar), f.personalCalendar, 12), config())
+        assertNull("The explicit hidden destination must not fall back", effectiveCalendar())
         assertEquals(config(), owner.snapshot.settings)
         quiesceJobs()
         queuedWrites {
-            owner.shown(f.personalCalendar, true)
+            owner.toggleCalendar(f.personalCalendar)
             owner.newEvents(f.personalCalendar)
             owner.weeks(20)
-            assertFalse("Validation must not reject from the old snapshot", f.personalCalendar in owner.snapshot.settings.calendars)
+            assertTrue("The second tap is computed against the latest intent state", f.personalCalendar in owner.snapshot.settings.calendars)
         }
-        assertEquals(SyncSettings(setOf(f.familyCalendar, f.personalCalendar), f.personalCalendar, 20), config())
+        assertEquals(setOf(f.familyCalendar, f.personalCalendar), config().calendars)
+        assertEquals(f.personalCalendar, config().targetIdentity?.id)
+        assertEquals(20, config().horizonWeeks)
         quiesceJobs()
         queuedWrites {
-            owner.shown(f.familyCalendar, false)
-            owner.shown(f.personalCalendar, false)
-            owner.newEvents(f.familyCalendar)
+            repeat(3) { owner.toggleCalendar(f.familyCalendar) }
+            owner.toggleCalendar(f.personalCalendar)
+            owner.newEvents(f.familyCalendar) // Already unselected in the pending projection.
+            assertTrue(owner.snapshot.settings.calendars.isEmpty())
+            assertEquals(setOf(f.familyCalendar, f.personalCalendar), config().calendars)
         }
-        assertEquals(SyncSettings(emptySet(), null, 20), config())
+        assertTrue(config().calendars.isEmpty())
+        assertEquals(f.personalCalendar, config().newEventCalendar)
         assertEquals(config(), owner.snapshot.settings)
     }
 
     @Test fun queuedCalendarFallbackUsesFreshNamesWithoutDiscardingUnavailableSavedChoices() = fixture(ownerOnly = true) { f ->
         val other = f.calendar("AardvarkR-$suffix", type)
-        PreferenceSyncConfig(context).write(SyncSettings(setOf(other, f.familyCalendar, f.personalCalendar), f.personalCalendar))
+        PreferenceSyncConfig(context).write(SyncSettings(setOf(other, f.familyCalendar, f.personalCalendar)))
         val owner = settingsOwner()
         queuedWrites {
             SyncRuntime.enqueue {
                 resolver.update(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.familyCalendar)),
                     ContentValues().apply { put(Calendars.CALENDAR_DISPLAY_NAME, "Personal family-$suffix") }, null, null)
             }
-            owner.shown(f.personalCalendar, false)
+            owner.toggleCalendar(f.personalCalendar)
             owner.weeks(12)
-            assertEquals(familyCalendarName, owner.snapshot.calendars.single { it.id == f.familyCalendar }.name)
+            assertEquals(familyCalendarName, owner.snapshot.calendars.single { it.id == f.familyCalendar }.label)
         }
-        assertEquals(SyncSettings(setOf(other, f.familyCalendar), f.familyCalendar, 12), config())
+        assertEquals(SyncSettings(setOf(other, f.familyCalendar), horizonWeeks = 12), config())
+        assertEquals(f.familyCalendar, effectiveCalendar())
         quiesceJobs()
         queuedWrites {
+            owner.newEvents(f.familyCalendar)
             SyncRuntime.enqueue {
                 resolver.update(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.familyCalendar)),
                     ContentValues().apply { put(Calendars.SYNC_EVENTS, 0) }, null, null)
                 resolver.update(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.personalCalendar)),
                     ContentValues().apply { put(Calendars.SYNC_EVENTS, 0) }, null, null)
             }
-            owner.shown(f.personalCalendar, true)
+            owner.toggleCalendar(f.personalCalendar)
             owner.weeks(7)
         }
         assertEquals("Availability does not undo a saved choice", f.familyCalendar, config().newEventCalendar)
@@ -551,7 +564,7 @@ class SyncSettingsInstrumentedTest {
                 resolver.delete(Settings.CONTENT_URI, "account_name = ? AND account_type = ?", arrayOf(family.name, family.type))
             }
             owner.contacts(family)
-            assertTrue("The stale UI still offers the removed book", family in owner.snapshot.books)
+            assertTrue("The stale UI still offers the removed book", owner.snapshot.books.any { it.account == family })
         }
         assertEquals("Removed book selection must not replace the saved target", personal, PreferenceContactsConfig(context).read().target)
         quiesceJobs()
@@ -563,7 +576,7 @@ class SyncSettingsInstrumentedTest {
                 })!!
             }
             owner.contacts(family)
-            assertFalse("Validation must see the book added ahead of this write", family in owner.snapshot.books)
+            assertFalse("Validation must see the book added ahead of this write", owner.snapshot.books.any { it.account == family })
         }
         assertEquals(family, PreferenceContactsConfig(context).read().target)
         quiesceJobs()
@@ -585,12 +598,12 @@ class SyncSettingsInstrumentedTest {
     @Test fun ownerCatalogRetainsBaselineBooksAndCalendarsAlongsideUniqueFixtures() = fixture(ownerOnly = true) { f ->
         PreferenceContactsConfig(context).write(ContactsSettings())
         val owner = settingsOwner()
-        assertEquals(f.baselineBooks + personal + family, owner.snapshot.books.toSet())
+        assertEquals(f.baselineBooks + personal + family, owner.snapshot.books.map { it.account }.toSet())
         assertEquals(f.baselineCalendars + f.personalCalendar + f.familyCalendar, owner.snapshot.calendars.map { it.id }.toSet())
-        assertEquals(setOf(personal, family), owner.snapshot.books.filter { it.name.endsWith(suffix) }.toSet())
-        val expected = owner.snapshot.books.firstOrNull { it.name.contains("Personal", ignoreCase = true) } ?: owner.snapshot.books.first()
-        assertEquals(expected, owner.snapshot.contacts.target)
-        assertEquals(expected, PreferenceContactsConfig(context).read().target)
+        assertEquals(setOf(personal, family), owner.snapshot.books.map { it.account }.filter { it.name.endsWith(suffix) }.toSet())
+        val expected = owner.snapshot.books.firstOrNull { it.label.contains("Personal", ignoreCase = true) } ?: owner.snapshot.books.first()
+        assertEquals(expected, owner.snapshot.contactTarget)
+        assertEquals(ContactsSettings(), PreferenceContactsConfig(context).read())
     }
 
     private fun settingsOwner(): SyncSettingsOwner {

@@ -63,9 +63,9 @@ object SyncRuntime {
         val engine = ContactsTransferEngine(AndroidContacts(context), store)
         return try {
             val settings = PreferenceContactsConfig(context).read()
-            if (!existing && settings.target == null && store.pendingContactsMove == null) return ContactsResult()
             if (!permitted(context, Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS))
-                return ContactsResult(stopReasons = setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED))
+                return if (!existing && settings.mode == TargetMode.AUTOMATIC && store.pendingContactsMove == null) ContactsResult()
+                else ContactsResult(stopReasons = setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED))
             if (existing) engine.moveExisting(settings) else engine.pass(settings)
         } catch (error: Exception) {
             store.status = "contacts pass incomplete: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"

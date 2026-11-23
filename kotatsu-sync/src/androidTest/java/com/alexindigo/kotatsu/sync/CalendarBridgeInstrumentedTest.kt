@@ -852,7 +852,9 @@ class CalendarBridgeInstrumentedTest {
 
     @Test fun firstRunWithHistoricalProviderReceiptsKeepsTheExistingPhoneRow() = scenario { f ->
         val id = f.insert(location = "Home"); f.pass()
-        val original = f.phone.all().single()
+        val imported = f.phone.all().single()
+        val original = imported.copy(insertReceipts = setOf(UUID.randomUUID().toString()))
+        assertTrue(f.phone.update(imported.id, original))
         assertTrue(original.insertReceipts.isNotEmpty())
         // Simulate the bridge's first-run state after reinstall, not loss of the phone provider.
         f.store.remove(original.id); f.store.firstRunDone = false
@@ -860,6 +862,39 @@ class CalendarBridgeInstrumentedTest {
         assertEquals(original, f.phone.all().single())
         assertEquals(EventKey(id), f.store.all().single().standardKey)
         assertEquals(1, f.standard.events(setOf(f.calendarId)).size)
+    }
+
+    @Test fun acknowledgedImportHasExactlyTheRawNotesAndReceiptCleanupSurvivesInterruption() = scenario { f ->
+        f.insert()
+        val afterCleanup = object : MuditaCalendarPort by f.phone {
+            override fun update(id: Long, event: MuditaEvent): Boolean {
+                assertTrue(f.phone.update(id, event))
+                throw SimulatedDeath()
+            }
+        }
+        try { BridgeEngine(afterCleanup, f.standard, f.store, f.config).pass(f.now); fail("Expected death") }
+        catch (_: SimulatedDeath) { }
+        assertNotNull(f.store.pending().single().insertedId)
+        val inserted = f.phone.all().single()
+        BridgeStore(f.context).use { BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now) }
+        assertTrue(f.store.pending().isEmpty())
+        assertEquals(inserted.id, f.store.all().single().muditaId)
+        f.resolver.query(MuditaCalendar.URI, null, null, null, null)!!.use { c ->
+            assertTrue(c.moveToFirst()); assertEquals("Body", c.getString(c.getColumnIndexOrThrow("desc"))); assertFalse(c.moveToNext())
+        }
+    }
+
+    @Test fun noLocationAndNoUserNotesLeavesAnEmptyNativeDescription() = scenario { f ->
+        val id = f.insert(description = "")
+        f.pass()
+        val phone = f.phone.all().single()
+        assertTrue(f.store.pending().isEmpty())
+        f.resolver.query(MuditaCalendar.URI, null, null, null, null)!!.use { c ->
+            assertTrue(c.moveToFirst()); assertEquals("", c.getString(c.getColumnIndexOrThrow("desc")))
+        }
+        assertTrue(f.phone.update(phone.id, phone.copy(description = "Native notes")))
+        f.pass()
+        assertEquals("Native notes", f.standard.read(EventKey(id))?.description)
     }
 
     @Test fun independentCopyWithHistoricalReceiptUploadsWithoutLeakingTheReceipt() = scenario { f ->
@@ -1065,12 +1100,13 @@ class CalendarBridgeInstrumentedTest {
             calendarId = ContentUris.parseId(uri)
             config.write(SyncSettings(setOf(calendarId), calendarId))
         }
-        fun insert(location: String = "", recurring: Boolean = false, zone: String = "UTC", rule: String? = null): Long {
+        fun insert(location: String = "", recurring: Boolean = false, zone: String = "UTC", rule: String? = null,
+            description: String = "Body"): Long {
             val start = now + 3600000
             // Stand in for DAVx5's server download, including its server-owned sync identity.
             return ContentUris.parseId(resolver.insert(syncUri(Events.CONTENT_URI), ContentValues().apply {
                 put(Events._SYNC_ID, UUID.randomUUID().toString())
-                put(Events.CALENDAR_ID, calendarId); put(Events.TITLE, "Test event"); put(Events.DESCRIPTION, "Body")
+                put(Events.CALENDAR_ID, calendarId); put(Events.TITLE, "Test event"); put(Events.DESCRIPTION, description)
                 put(Events.EVENT_LOCATION, location); put(Events.EVENT_TIMEZONE, zone); put(Events.DTSTART, start)
                 if (recurring || rule != null) { put(Events.RRULE, rule ?: "FREQ=WEEKLY;COUNT=20"); put(Events.DURATION, "PT1H") }
                 else put(Events.DTEND, start + 3600000)
