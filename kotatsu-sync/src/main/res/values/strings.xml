@@ -19,7 +19,12 @@
         <item quantity="one">%1$s, %2$d change</item>
         <item quantity="other">%1$s, %2$d changes</item>
     </plurals>
-    <string name="stopped">Stopped: %1$s</string>
+    <string name="stopped_calendar_changed">Stopped: Mudita Calendar changed</string>
+    <string name="stopped_calendar_settings">Stopped: check calendar settings</string>
+    <string name="stopped_address_book">Stopped: choose an address book</string>
+    <string name="stopped_retry">Stopped: try again</string>
+    <string name="stopped_review">Stopped: check calendar changes</string>
+    <string name="stopped_scheduling">Stopped: sync could not start</string>
     <string name="sync_now">Sync now</string>
     <string name="davx5">DAVx5</string>
     <string name="set_up">Set up</string>

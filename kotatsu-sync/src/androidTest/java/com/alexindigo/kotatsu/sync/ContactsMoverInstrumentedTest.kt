@@ -263,12 +263,12 @@ class ContactsMoverInstrumentedTest {
         assertEquals(ContactsResult(1), SyncRuntime.moveExistingContacts(f.context).get(15, TimeUnit.SECONDS))
         BridgeStore(f.context).use {
             assertEquals(1, it.syncStatus.changes); assertNotNull(it.syncStatus.lastPassAt)
-            assertNull(it.syncStatus.stopReason); assertNull(it.pendingContactsMove)
+            assertTrue(it.syncStatus.stopReasons.isEmpty()); assertNull(it.pendingContactsMove)
         }
         assertEquals(1, f.rawIn(f.family).size)
         val remaining = f.insert("Keep")
         f.resolver.update(Settings.CONTENT_URI, ContentValues().apply { put(Settings.SHOULD_SYNC, 0) }, "account_name = ?", arrayOf(f.family.name))
-        assertNotNull(ContactsMover(f.port).moveExisting(f.family, f.ownedRawIds.toSet()).stopReason)
+        assertTrue(ContactsMover(f.port).moveExisting(f.family, f.ownedRawIds.toSet()).stopReasons.isNotEmpty())
         assertEquals(listOf(remaining), f.rawIn(null)); assertFalse(f.rawIn(null).contains(id))
     }
 
@@ -278,30 +278,31 @@ class ContactsMoverInstrumentedTest {
         f.config.write(ContactsSettings(f.family))
         val failed = f.trackedContext(beforeBatch = { throw android.content.OperationApplicationException("Injected batch failure") })
         val result = SyncRuntime.moveExistingContacts(failed).get(15, TimeUnit.SECONDS)
-        assertTrue(result.retry); assertEquals(0, result.changes); assertNotNull(result.stopReason)
+        assertTrue(result.retry); assertEquals(0, result.changes); assertTrue(result.stopReasons.isNotEmpty())
         BridgeStore(f.context).use {
             assertEquals(ContactsMove(f.family, setOf(old)), it.pendingContactsMove)
-            assertEquals(result.stopReason, it.syncStatus.stopReason); assertEquals(0, it.syncStatus.changes)
+            assertEquals(result.stopReasons, it.syncStatus.stopReasons); assertEquals(0, it.syncStatus.changes)
         }
         f.insert("New phone contact")
         f.config.write(ContactsSettings(f.personal))
         val status = SyncRuntime.pass(f.context)
-        assertNull(status.stopReason); assertEquals(2, status.changes)
+        assertTrue(status.stopReasons.isEmpty()); assertEquals(2, status.changes)
         assertEquals(1, f.rawIn(f.family).size); assertEquals(1, f.rawIn(f.personal).size)
         BridgeStore(f.context).use { assertNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
     }
 
-    @Test fun contactsPermissionStopIsPersistedAndDoesNotDisableCalendarOrLoseThePendingAction() = scenario { f ->
+    @Test fun contactsPermissionKeepsTheLastPassAndDoesNotDisableCalendarOrLoseThePendingAction() = scenario { f ->
         val id = f.insert("Pending")
         BridgeStore(f.context).use { it.pendingContactsMove = ContactsMove(f.family, setOf(id)) }
         val denied = object : ContextWrapper(f.context) {
             override fun checkSelfPermission(permission: String): Int = if (permission == Manifest.permission.WRITE_CONTACTS)
                 android.content.pm.PackageManager.PERMISSION_DENIED else super.checkSelfPermission(permission)
         }
+        val previous = BridgeStore(f.context).use { it.syncStatus }
         val status = SyncRuntime.pass(denied)
-        assertEquals("contacts permission not granted", status.stopReason); assertEquals(0, status.changes)
+        assertEquals(setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED), status.stopReasons); assertEquals(0, status.changes)
         assertEquals(f.baselinePhone + id, f.rawIn(null).toSet())
-        BridgeStore(f.context).use { assertNotNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
+        BridgeStore(f.context).use { assertNotNull(it.pendingContactsMove); assertEquals(previous, it.syncStatus) }
         assertEquals(1, SyncRuntime.pass(f.context).changes)
         BridgeStore(f.context).use { assertNull(it.pendingContactsMove) }
     }

@@ -110,11 +110,23 @@ class BridgeStore(context: Context) : SQLiteOpenHelper(context, "calendar-bridge
     /** One state row keeps time/count/reason atomic without changing schema 3. */
     var syncStatus: SyncStatus
         get() = get("sync_status")?.let { value -> JSONObject(value).let { j ->
-            SyncStatus(if (j.isNull("at")) null else j.getLong("at"), j.getInt("changes"),
-                if (j.isNull("reason")) null else j.getString("reason"))
+            // Earlier unpublished builds stored diagnostics as text. Never render
+            // those bytes, or invent a completed pass from a permission-only stop.
+            if (j.has("reason") && !j.isNull("reason")) {
+                val reasons = SyncStopReason.fromLegacy(j.getString("reason"))
+                if (reasons.any { it.accessRequired }) SyncStatus()
+                else SyncStatus(if (j.isNull("at")) null else j.getLong("at"), j.getInt("changes"),
+                    reasons - SyncStopReason.SCHEDULING_FAILED, SyncStopReason.SCHEDULING_FAILED.takeIf { it in reasons })
+            } else SyncStatus(if (j.isNull("at")) null else j.getLong("at"), j.getInt("changes"),
+                j.optJSONArray("reasons")?.let { reasons -> (0 until reasons.length()).map {
+                    SyncStopReason.fromCode(reasons.getString(it)) }.toSet() }.orEmpty(),
+                if (j.isNull("availabilityStop")) null else SyncStopReason.fromCode(j.getString("availabilityStop")))
         } } ?: SyncStatus()
         set(value) = set("sync_status", JSONObject().apply {
-            put("at", value.lastPassAt); put("changes", value.changes); put("reason", value.stopReason)
+            require(value.stopReasons.none { it.accessRequired } && value.availabilityStop?.accessRequired != true) { "Access is not a pass result" }
+            put("at", value.lastPassAt); put("changes", value.changes)
+            put("reasons", JSONArray(value.stopReasons.sortedBy { it.ordinal }.map { it.code }))
+            put("availabilityStop", value.availabilityStop?.code)
         }.toString())
     override var pendingContactsMove: ContactsMove?
         get() = get("contacts_move")?.let { value -> JSONObject(value).let { j ->

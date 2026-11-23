@@ -16,7 +16,7 @@ class TestEntryProvider : ContentProvider() {
             putString("status", store.status)
             putLong("lastPassAt", store.syncStatus.lastPassAt ?: 0)
             putInt("changes", store.syncStatus.changes)
-            putString("stopReason", store.syncStatus.stopReason)
+            putString("stopReason", store.syncStatus.stopReasons.joinToString(",") { it.code })
             putString("jobs", context.getSystemService(JobScheduler::class.java).allPendingJobs.map { it.id }.sorted().joinToString(","))
         } }
     }

@@ -463,18 +463,18 @@ class CalendarBridgeInstrumentedTest {
         assertEquals(listOf(true), completions)
         assertTrue(f.store.status.contains("incomplete"))
         assertNotNull(f.store.syncStatus.lastPassAt)
-        assertTrue(f.store.syncStatus.stopReason!!.contains("incomplete"))
+        assertTrue(SyncStopReason.RETRY_REQUIRED in f.store.syncStatus.stopReasons)
     }
 
     @Test fun runtimeStatusPersistsPassTimeAndLogicalChangesIncludingANoOp() = scenario { f ->
         f.insert()
         val started = System.currentTimeMillis()
         val first = SyncRuntime.pass(f.context)
-        assertEquals(1, first.changes); assertNull(first.stopReason)
+        assertEquals(1, first.changes); assertTrue(first.stopReasons.isEmpty())
         assertTrue(first.lastPassAt!! >= started)
         BridgeStore(f.context).use { assertEquals(first, it.syncStatus) }
         val second = SyncRuntime.pass(f.context)
-        assertEquals(0, second.changes); assertNull(second.stopReason)
+        assertEquals(0, second.changes); assertTrue(second.stopReasons.isEmpty())
         assertTrue(second.lastPassAt!! >= first.lastPassAt!!)
         BridgeStore(f.context).use { assertEquals(second, it.syncStatus) }
     }
@@ -485,11 +485,11 @@ class CalendarBridgeInstrumentedTest {
                 android.content.pm.PackageManager.PERMISSION_DENIED else super.checkSelfPermission(permission)
         }
         val missing = SyncRuntime.pass(denied)
-        assertEquals("calendar permission not granted", missing.stopReason); assertEquals(0, missing.changes)
-        BridgeStore(f.context).use { assertEquals(missing, it.syncStatus) }
+        assertEquals(setOf(SyncStopReason.CALENDAR_ACCESS_REQUIRED), missing.stopReasons); assertEquals(0, missing.changes)
+        BridgeStore(f.context).use { assertEquals(SyncStatus(), it.syncStatus) }
         f.schema(true)
         val schema = SyncRuntime.pass(f.context)
-        assertEquals("Mudita Calendar missing or incompatible schema", schema.stopReason); assertEquals(0, schema.changes)
+        assertEquals(setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED), schema.stopReasons); assertEquals(0, schema.changes)
         BridgeStore(f.context).use { assertEquals(schema, it.syncStatus) }
     }
 
@@ -499,7 +499,7 @@ class CalendarBridgeInstrumentedTest {
         f.store.prepare(WriteIntent(kind = WriteKind.IMPORT, standardBefore = remote,
             phoneAfter = EventMapper().toMudita(remote), attempted = true))
         val status = SyncRuntime.pass(f.context)
-        assertEquals(0, status.changes); assertTrue(status.stopReason!!.contains("1 pending writes"))
+        assertEquals(0, status.changes); assertEquals(setOf(SyncStopReason.REVIEW_REQUIRED), status.stopReasons)
         assertTrue(f.phone.all().isEmpty())
         BridgeStore(f.context).use { assertEquals(status, it.syncStatus); assertEquals(1, it.pending().size) }
     }
@@ -507,11 +507,44 @@ class CalendarBridgeInstrumentedTest {
     @Test fun typedStatusRoundTripsNullsAndReplacesAllFieldsTogether() = scenario { f ->
         f.store.writableDatabase.delete("state", "name = ?", arrayOf("sync_status"))
         assertEquals(SyncStatus(), f.store.syncStatus)
-        val stopped = SyncStatus(System.currentTimeMillis(), 12, "A plain stop reason\nwith details")
+        val stopped = SyncStatus(System.currentTimeMillis(), 12,
+            setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED, SyncStopReason.ADDRESS_BOOK_REQUIRED), availabilityStop = SyncStopReason.SCHEDULING_FAILED)
         f.store.syncStatus = stopped
         BridgeStore(f.context).use { assertEquals(stopped, it.syncStatus) }
+        val stored = f.store.readableDatabase.rawQuery("SELECT value FROM state WHERE name = 'sync_status'", null).use {
+            assertTrue(it.moveToFirst()); it.getString(0)
+        }
+        val json = org.json.JSONObject(stored)
+        assertFalse("Display text is not persisted", json.has("reason"))
+        assertEquals(listOf("mudita_calendar_changed", "address_book"), json.getJSONArray("reasons").let {
+            (0 until it.length()).map(it::getString)
+        })
         f.store.syncStatus = SyncStatus()
         BridgeStore(f.context).use { assertEquals(SyncStatus(), it.syncStatus) }
+    }
+
+    @Test fun oldDiagnosticStatusIsDecodedWithoutExposingTextOrTreatingPermissionAsAPass() = scenario { f ->
+        fun legacy(reason: String?) {
+            f.store.writableDatabase.insertWithOnConflict("state", null, ContentValues().apply {
+                put("name", "sync_status")
+                put("value", org.json.JSONObject().apply { put("at", 123L); put("changes", 2)
+                    put("reason", reason ?: org.json.JSONObject.NULL) }.toString())
+            }, android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE)
+        }
+        legacy("calendar permission not granted")
+        assertEquals(SyncStatus(), f.store.syncStatus)
+        legacy("contacts permission not granted")
+        assertEquals(SyncStatus(), f.store.syncStatus)
+        legacy("Mudita Calendar missing or incompatible schema")
+        assertEquals(SyncStatus(123, 2, setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED)), f.store.syncStatus)
+        legacy("AnException: private diagnostic text")
+        assertEquals(SyncStatus(123, 2, setOf(SyncStopReason.RETRY_REQUIRED)), f.store.syncStatus)
+        legacy(null)
+        assertEquals(SyncStatus(123, 2), f.store.syncStatus)
+        f.store.syncStatus = SyncStatus(123, 2, setOf(SyncStopReason.REVIEW_REQUIRED))
+        SyncRuntime.schedulingFailed(f.context, IllegalStateException("private scheduling diagnostic"))
+        assertEquals(SyncStatus(123, 2, setOf(SyncStopReason.REVIEW_REQUIRED), availabilityStop = SyncStopReason.SCHEDULING_FAILED), f.store.syncStatus)
+        assertEquals(SyncStatus(123, 2, setOf(SyncStopReason.REVIEW_REQUIRED)), f.store.syncStatus.forDisplay(false, true))
     }
 
     @Test fun runtimeQueryFailureRetriesButAnIncompatibleSchemaStopsWithoutRetry() = scenario { f ->
@@ -805,7 +838,7 @@ class CalendarBridgeInstrumentedTest {
         val before = f.phone.all()
         f.schema(true)
         BridgeStore(f.context).use {
-            assertNotNull(BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now).stopReason)
+            assertTrue(BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now).stopReasons.isNotEmpty())
             assertEquals(listOf(pending), it.pending())
         }
         f.schema(false); assertEquals(before, f.phone.all())

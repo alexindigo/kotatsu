@@ -32,7 +32,8 @@ internal class SyncScope(val chosen: Set<Long>, private val now: Long, private v
 }
 
 enum class WriteOutcome { DONE, RETRY, UNRESOLVED }
-data class PassResult(val retry: Boolean = false, val unresolved: Int = 0, val changes: Int = 0, val stopReason: String? = null)
+data class PassResult(val retry: Boolean = false, val unresolved: Int = 0, val changes: Int = 0,
+    val stopReasons: Set<SyncStopReason> = emptySet())
 
 /** External evidence/decision, never an inference from a fingerprint or a missing row. */
 sealed class WriteResolution {

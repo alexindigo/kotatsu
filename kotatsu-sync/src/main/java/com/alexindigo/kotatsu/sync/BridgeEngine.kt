@@ -13,14 +13,15 @@ class BridgeEngine(
         changes = 0
         if (!mudita.schemaOk()) {
             mappings.status = "stopped: Mudita Calendar missing or incompatible schema"
-            return PassResult(stopReason = "Mudita Calendar missing or incompatible schema")
+            return PassResult(stopReasons = setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED))
         }
         val settings = config.read()
         val eligible = standard.calendars().filter { it.eligible }.map { it.id }.toSet()
         val chosen = settings.calendars.intersect(eligible)
         val destination = settings.newEventCalendar?.takeIf { it in chosen }
         if (settings.horizonWeeks <= 0) {
-            mappings.status = "stopped: invalid calendar horizon"; return PassResult(stopReason = "invalid calendar horizon")
+            mappings.status = "stopped: invalid calendar horizon"
+            return PassResult(stopReasons = setOf(SyncStopReason.CALENDAR_SETTINGS_REQUIRED))
         }
         val end = Math.addExact(now, Math.multiplyExact(settings.horizonWeeks.toLong(), WEEK))
         val scope = SyncScope(chosen, now, end)
@@ -126,8 +127,11 @@ class BridgeEngine(
         val retry = journal.retry || uploadRetry
         mappings.status = if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
             else "calendar pass incomplete: $pending pending writes; retry=$retry"
-        return PassResult(retry, journal.unresolved, changes,
-            if (firstRunComplete && !retry && pending == 0) null else mappings.status)
+        return PassResult(retry, journal.unresolved, changes, buildSet {
+            if (!firstRunComplete && destination == null) add(SyncStopReason.CALENDAR_SETTINGS_REQUIRED)
+            if (journal.unresolved > 0 || pending > 0 && !retry) add(SyncStopReason.REVIEW_REQUIRED)
+            if (retry) add(SyncStopReason.RETRY_REQUIRED)
+        })
     }
 
     private fun upload(event: MuditaEvent, calendarId: Long, journal: WriteJournal): WriteOutcome {

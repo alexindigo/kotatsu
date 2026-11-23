@@ -23,9 +23,9 @@ object SyncRuntime {
     fun pass(context: Context): SyncStatus = BridgeStore(context).use { store ->
         var changes = 0
         var retry = false
-        val reasons = mutableListOf<String>()
+        val reasons = mutableSetOf<SyncStopReason>()
         if (!permitted(context, Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) {
-            reasons.add("calendar permission not granted")
+            reasons.add(SyncStopReason.CALENDAR_ACCESS_REQUIRED)
             store.status = "stopped: calendar permission not granted"
         } else {
             val calendar = BridgeEngine(MuditaCalendar(context.contentResolver), StandardCalendar(context.contentResolver),
@@ -33,23 +33,22 @@ object SyncRuntime {
             try {
                 val result = calendar.pass(System.currentTimeMillis())
                 retry = result.retry
-                result.stopReason?.let(reasons::add)
+                reasons.addAll(result.stopReasons)
             } catch (error: Exception) {
                 val reason = "calendar pass incomplete: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"
-                store.status = reason; reasons.add(reason); retry = true
+                store.status = reason; reasons.add(SyncStopReason.RETRY_REQUIRED); retry = true
             } finally { changes += calendar.changes }
         }
         // Each provider owns its own permission/availability stop. A stopped
         // calendar does not discard an already-requested contacts transfer.
         val contacts = contactsPass(context, store, existing = false)
         changes += contacts.changes
-        contacts.stopReason?.let {
-            reasons.add(it); store.status = "stopped: ${reasons.joinToString("; ")}"
+        if (contacts.stopReasons.isNotEmpty()) {
+            reasons.addAll(contacts.stopReasons); store.status = "stopped: ${reasons.joinToString("; ") { it.code }}"
         }
         retry = retry || contacts.retry
-        val status = SyncStatus(System.currentTimeMillis(), changes,
-            reasons.distinct().takeIf { it.isNotEmpty() }?.joinToString("; "))
-        store.syncStatus = status
+        val status = SyncStatus(System.currentTimeMillis(), changes, reasons)
+        store.syncStatus = store.syncStatus.afterAttempt(status.lastPassAt!!, changes, reasons)
         if (retry) throw RetryPass()
         status
     }
@@ -64,17 +63,18 @@ object SyncRuntime {
             val settings = PreferenceContactsConfig(context).read()
             if (!existing && settings.target == null && store.pendingContactsMove == null) return ContactsResult()
             if (!permitted(context, Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS))
-                return ContactsResult(stopReason = "contacts permission not granted")
+                return ContactsResult(stopReasons = setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED))
             if (existing) engine.moveExisting(settings) else engine.pass(settings)
         } catch (error: Exception) {
-            ContactsResult(engine.changes, "contacts pass incomplete: ${error.javaClass.simpleName}: ${error.message.orEmpty()}", retry = true)
+            store.status = "contacts pass incomplete: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"
+            ContactsResult(engine.changes, setOf(SyncStopReason.RETRY_REQUIRED), retry = true)
         }
     }
     fun moveExistingContacts(context: Context) = enqueue {
         BridgeStore(context).use { store ->
             contactsPass(context, store, existing = true).also { result ->
-                store.syncStatus = SyncStatus(System.currentTimeMillis(), result.changes, result.stopReason)
-                store.status = result.stopReason?.let { "stopped: $it" } ?: "contacts pass complete"
+                store.syncStatus = store.syncStatus.afterAttempt(System.currentTimeMillis(), result.changes, result.stopReasons)
+                store.status = if (result.stopReasons.isEmpty()) "contacts pass complete" else "stopped: ${result.stopReasons}"
             }
         }
     }
@@ -88,8 +88,8 @@ object SyncRuntime {
             }
             if (pending == null) store.pendingContactsMove = confirmed
             contactsPass(context, store, existing = true).also { result ->
-                store.syncStatus = SyncStatus(System.currentTimeMillis(), result.changes, result.stopReason)
-                store.status = result.stopReason?.let { "stopped: $it" } ?: "contacts pass complete"
+                store.syncStatus = store.syncStatus.afterAttempt(System.currentTimeMillis(), result.changes, result.stopReasons)
+                store.status = if (result.stopReasons.isEmpty()) "contacts pass complete" else "stopped: ${result.stopReasons}"
             }
         }
     }
@@ -115,7 +115,7 @@ object SyncRuntime {
         BridgeStore(context).use { store ->
             val reason = "bridge scheduling: ${error.message.orEmpty()}"
             store.status = "stopped: $reason"
-            store.syncStatus = store.syncStatus.copy(stopReason = reason)
+            store.syncStatus = store.syncStatus.copy(availabilityStop = SyncStopReason.SCHEDULING_FAILED)
         }
     }
 

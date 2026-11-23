@@ -155,8 +155,10 @@ class SyncSettingsOwner(context: Context) {
     }
     private fun refreshOnMain() { main.post { refresh() } }
     private fun failed(error: Throwable) {
-        BridgeStore(app).use { it.syncStatus = SyncStatus(System.currentTimeMillis(), 0,
-            "${error.javaClass.simpleName}: ${error.message.orEmpty()}") }
+        BridgeStore(app).use {
+            it.status = "${error.javaClass.simpleName}: ${error.message.orEmpty()}"
+            it.syncStatus = it.syncStatus.copy(availabilityStop = SyncStopReason.RETRY_REQUIRED)
+        }
     }
     private fun update(complete: () -> Unit = {}, write: () -> Unit) {
         val request = ++generation

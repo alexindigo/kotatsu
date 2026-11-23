@@ -230,8 +230,8 @@ class SyncSettingsInstrumentedTest {
             }
             ui.capture(activity, "sync-complete")
             quiesceJobs()
-            BridgeStore(context).use { it.syncStatus = SyncStatus(System.currentTimeMillis(), 0, "contacts address book unavailable") }
-            ui.await("Stopped: contacts address book unavailable")
+            BridgeStore(context).use { it.syncStatus = SyncStatus(System.currentTimeMillis(), 0, setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED)) }
+            ui.await("Stopped: choose an address book")
             ui.capture(activity, "stopped")
         }
     }
@@ -268,6 +268,98 @@ class SyncSettingsInstrumentedTest {
             }
             ui.await(personalCalendarName)
             assertFalse(ui.has("Calendar access")); assertFalse(ui.has("Contacts access"))
+        }
+    }
+
+    @Test fun missingAccessPreservesTheLastRealPassOrHidesTheRow() = fixture(ownerOnly = true) {
+        val activity = openHost()
+        lateinit var owner: SyncSettingsOwner
+        withFixtureCleanup({ close(activity) }) {
+            for (missing in listOf(PERMISSIONS.take(2), PERMISSIONS.drop(2), PERMISSIONS)) {
+                val denied = object : ContextWrapper(ownerTestContext(context)) {
+                    override fun getApplicationContext(): Context = this
+                    override fun checkSelfPermission(permission: String) = if (permission in missing) PackageManager.PERMISSION_DENIED
+                        else super.checkSelfPermission(permission)
+                }
+                BridgeStore(context).use { it.syncStatus = SyncStatus() }
+                main {
+                    owner = SyncSettingsOwner(denied)
+                    activity.setContent { CompositionLocalProvider(LocalPalette provides PaperPalette.Light(activity)) {
+                        SyncSettingsBook(owner, activity::finish, {}, {})
+                    } }
+                    owner.refresh()
+                }
+                awaitSyncSettings("Denied owner loaded") { owner.snapshot.loaded }
+                seek("Sync now")
+                assertFalse("No completed pass means no Last sync row: $missing", ui.has("Last sync"))
+                if (missing == PERMISSIONS) ui.capture(activity, "status-access-missing-no-result")
+                for (real in listOf(SyncStatus(System.currentTimeMillis(), 2),
+                    SyncStatus(System.currentTimeMillis(), 0, setOf(SyncStopReason.REVIEW_REQUIRED)))) {
+                    BridgeStore(context).use { it.syncStatus = real }
+                    SyncRuntime.enqueue { SyncRuntime.pass(denied) }.get(15, TimeUnit.SECONDS)
+                    assertEquals("Permission-only attempts cannot replace the last real pass", real, status())
+                    SyncRuntime.schedulingFailed(context, IllegalStateException("fixture scheduling failure"))
+                    main { owner.refresh() }
+                    seek("Last sync")
+                    if (real.stopReasons.isEmpty()) {
+                        ui.await(context.resources.getQuantityString(R.plurals.sync_status, 2,
+                            android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(real.lastPassAt!!)), 2))
+                        if (missing == PERMISSIONS) ui.capture(activity, "status-access-missing-with-result")
+                    } else ui.await(context.getString(R.string.stopped_review))
+                    assertFalse("Availability is not a Last sync state while access is missing",
+                        ui.has(context.getString(R.string.stopped_scheduling)))
+                }
+            }
+        }
+    }
+
+    @Test fun everyStatusIsFullyReadableAtNormalAndEnlargedText() = fixture(withAccounts = false, ownerOnly = true) {
+        val activity = openHost(bookNames = emptySet())
+        withFixtureCleanup({ close(activity) }) {
+            for (scale in listOf(1f, 1.5f)) {
+                val owner = SyncSettingsOwner(ownerTestContext(context, emptySet()))
+                main {
+                    activity.setContent {
+                        val density = androidx.compose.ui.platform.LocalDensity.current
+                        CompositionLocalProvider(LocalPalette provides PaperPalette.Light(activity),
+                            androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(density.density, scale)) {
+                            SyncSettingsBook(owner, activity::finish, {}, {})
+                        }
+                    }
+                }
+                val states = SyncStopReason.entries.filter { !it.accessRequired }.map { reason ->
+                    reason.code to if (reason == SyncStopReason.SCHEDULING_FAILED) SyncStatus(availabilityStop = SyncStopReason.SCHEDULING_FAILED)
+                        else SyncStatus(1763856000000, 0, setOf(reason))
+                } + listOf("complete" to SyncStatus(1763856000000, 2), "combined" to SyncStatus(1763856000000, 0,
+                    setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED, SyncStopReason.ADDRESS_BOOK_REQUIRED)))
+                for ((name, status) in states) {
+                    BridgeStore(context).use { it.syncStatus = status }
+                    main { owner.refresh() }
+                    val reasons = status.availabilityStop?.let { setOf(it) } ?: status.stopReasons
+                    val text = if (reasons.isEmpty()) context.resources.getQuantityString(R.plurals.sync_status, status.changes,
+                        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(status.lastPassAt!!)), status.changes)
+                        else reasons.sortedBy { it.ordinal }.mapNotNull { it.textResource() }.map { context.getString(it) }.joinToString("\n")
+                    seek("Last sync"); ui.await(text)
+                    val layout = ui.textLayout(text)
+                    assertReadable(layout, "$name at $scale")
+                    val label = ui.textLayout("Last sync")
+                    assertEquals("Label never wraps", 1, label.lineCount)
+                    assertReadable(label, "Last sync at $scale")
+                    if (scale == 1f || name == "mudita_calendar_changed") ui.capture(activity,
+                        "status-$name-${if (scale == 1f) "100" else "150"}")
+                }
+            }
+        }
+    }
+
+    private fun assertReadable(layout: androidx.compose.ui.text.TextLayoutResult, description: String) {
+        assertFalse("Full height: $description", layout.didOverflowHeight)
+        for (line in 0 until layout.lineCount) {
+            assertFalse("No ellipsis: $description", layout.isLineEllipsized(line))
+            // Compare line bounds within one raster pixel: Compose rounds an
+            // intrinsic layout to integers and can flag subpixel width overflow.
+            assertTrue("Full line fits its measured track: $description",
+                layout.getLineRight(line) - layout.getLineLeft(line) <= layout.size.width + 1f)
         }
     }
 

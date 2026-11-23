@@ -2,6 +2,7 @@ package com.alexindigo.kotatsu.sync
 
 import android.text.format.DateFormat
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
@@ -9,6 +10,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.gezimos.katapult.ui.LatoFamily
+import com.gezimos.katapult.ui.LocalInk
 import com.gezimos.katapult.ui.settings.*
 import java.util.Date
 
@@ -35,9 +46,13 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
         state.books.map { book -> SettingsChoice(book.choiceId(), book.name) },
         { id -> owner.contacts(state.books.first { it.choiceId() == id }) }, state.contacts.target?.choiceId().orEmpty(), appBuiltChoices = true)
     val context = LocalContext.current
-    val status = state.status.stopReason?.let { stringResource(R.string.stopped, it) }
-        ?: state.status.lastPassAt?.let { pluralStringResource(R.plurals.sync_status, state.status.changes,
-            DateFormat.getTimeFormat(context).format(Date(it)), state.status.changes) }.orEmpty()
+    val displayed = state.status.forDisplay(state.calendarAccess, state.contactsAccess)
+    val reasons = if (displayed?.availabilityStop != null) setOf(displayed.availabilityStop)
+        else displayed?.stopReasons.orEmpty()
+    val stopped = reasons.sortedBy { it.ordinal }.mapNotNull { it.textResource() }.distinct().map { stringResource(it) }
+    val status = if (stopped.isNotEmpty()) stopped.joinToString("\n")
+        else displayed?.lastPassAt?.let { pluralStringResource(R.plurals.sync_status, displayed.changes,
+            DateFormat.getTimeFormat(context).format(Date(it)), displayed.changes) }.orEmpty()
     val noDav = state.loaded && state.calendarAccess && state.contactsAccess && state.calendars.isEmpty() && state.books.isEmpty()
     val shownColumn = rememberControlColumn(stringResource(R.string.shown))
     SettingsBackOwner(back) {
@@ -80,7 +95,7 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
                             }
                         }
                         Column {
-                            Entry(SettingsEntry.Metadata("status", stringResource(R.string.last_sync), status))
+                            if (displayed != null) SyncStatusEntry(status)
                             SheetAction(stringResource(R.string.sync_now), owner::syncNow)
                         }
                     }
@@ -96,6 +111,28 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
                 }
             }
         })
+    }
+}
+
+/** Only Last sync can reflow its value. Ordinary paper-ui entries stay unchanged. */
+@Composable
+private fun SyncStatusEntry(value: String) {
+    val label = stringResource(R.string.last_sync)
+    val style = TextStyle(fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
+        fontWeight = FontWeight.Bold, color = LocalInk.current)
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 9.dp)) {
+        val halfWidth = with(density) { maxWidth.roundToPx() } / 2
+        val measured = measurer.measure(value, style, maxLines = 1,
+            constraints = Constraints(maxWidth = halfWidth))
+        val labelWidth = measurer.measure(label, style, maxLines = 1).size.width
+        val tracksFit = labelWidth + measured.size.width + with(density) { 24.dp.roundToPx() } <= halfWidth * 2
+        if (tracksFit && !measured.hasVisualOverflow && !value.contains('\n')) IndexLine(label, value)
+        else Column(Modifier.fillMaxWidth()) {
+            BasicText(label, style = style, maxLines = 1, overflow = TextOverflow.Clip, modifier = Modifier.fillMaxWidth())
+            BasicText(value, style = style, modifier = Modifier.fillMaxWidth())
+        }
     }
 }
 

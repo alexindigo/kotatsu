@@ -36,13 +36,13 @@ class ContactsMoverTest {
     }
     @Test fun missingOrUnselectedAccountWritesNothing() {
         val f = Fake(); f.rows.add(PhoneContact(1, 0, null, ContactOrigin.PHONE))
-        assertNotNull(ContactsMover(f).pass(null).stopReason)
+        assertEquals(setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED), ContactsMover(f).pass(null).stopReasons)
         f.books = emptySet()
-        assertNotNull(ContactsMover(f).pass(personal).stopReason); assertTrue(f.moves.isEmpty())
+        assertEquals(setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED), ContactsMover(f).pass(personal).stopReasons); assertTrue(f.moves.isEmpty())
     }
     @Test fun failedItemRetriesWithoutDuplicatingCompletedMovesOrBlockingOtherItems() {
         val f = Fake(); f.rows.addAll((1L..3).map { PhoneContact(it, 0, null, ContactOrigin.PHONE) }); f.fail = 2
-        assertEquals(ContactsResult(2, "contacts move incomplete; retry required", retry = true), ContactsMover(f).pass(personal))
+        assertEquals(ContactsResult(2, setOf(SyncStopReason.RETRY_REQUIRED), retry = true), ContactsMover(f).pass(personal))
         f.fail = null
         assertEquals(ContactsResult(1), ContactsMover(f).pass(personal))
         assertEquals(setOf(1L, 2L, 3L), f.moves.map { it.first }.toSet()); assertEquals(3, f.moves.size)

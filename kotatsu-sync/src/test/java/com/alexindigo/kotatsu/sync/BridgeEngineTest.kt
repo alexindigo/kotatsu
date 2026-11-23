@@ -28,7 +28,7 @@ class BridgeEngineTest {
     @Test fun stoppedPassHasPlainReasonAndNoChanges() {
         phone.schema = false
         val result = engine.pass(now)
-        assertEquals(0, result.changes); assertEquals("Mudita Calendar missing or incompatible schema", result.stopReason)
+        assertEquals(0, result.changes); assertEquals(setOf(SyncStopReason.MUDITA_CALENDAR_CHANGED), result.stopReasons)
         assertFalse(result.retry)
     }
 
@@ -643,7 +643,7 @@ class BridgeEngineTest {
         assertEquals(listOf(event(2).key), store.rows.values.map { it.standardKey })
         phone.schema = false
         val writes = phone.writes + server.writes
-        assertNotNull(engine.pass(now).stopReason)
+        assertTrue(engine.pass(now).stopReasons.isNotEmpty())
         assertEquals(writes, phone.writes + server.writes); assertEquals(listOf(pending), store.pending())
         phone.schema = true
         engine.resolvePending(now, pending.id, WriteResolution.NotApplied)

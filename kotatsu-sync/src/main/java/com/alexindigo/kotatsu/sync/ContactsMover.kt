@@ -5,7 +5,7 @@ data class ContactAccount(val name: String, val type: String, val dataSet: Strin
 enum class ContactOrigin { PHONE, SIM, OTHER }
 data class PhoneContact(val id: Long, val version: Long, val account: ContactAccount?, val origin: ContactOrigin)
 data class ContactsSettings(val target: ContactAccount? = null)
-data class ContactsResult(val changes: Int = 0, val stopReason: String? = null, val retry: Boolean = false)
+data class ContactsResult(val changes: Int = 0, val stopReasons: Set<SyncStopReason> = emptySet(), val retry: Boolean = false)
 data class ContactsMove(val destination: ContactAccount, val sourceIds: Set<Long>)
 interface ContactsMoveStore { var pendingContactsMove: ContactsMove? }
 
@@ -22,16 +22,16 @@ class ContactsMover(private val contacts: ContactsPort, private val changed: () 
         private set
     fun pass(destination: ContactAccount?, sourceIds: Set<Long>? = null, excluded: Set<Long> = emptySet()): ContactsResult {
         changes = 0
-        if (destination == null) return ContactsResult(stopReason = "contacts address book not selected")
-        if (destination !in contacts.addressBooks()) return ContactsResult(stopReason = "contacts address book unavailable")
+        if (destination == null) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
+        if (destination !in contacts.addressBooks()) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
         var failed = false
         for (source in contacts.sources().filter { it.origin == ContactOrigin.PHONE &&
             (sourceIds == null || it.id in sourceIds) && it.id !in excluded }) {
             // Re-read selection availability for each transaction, not just the initial list.
-            if (destination !in contacts.addressBooks()) return ContactsResult(changes, "contacts address book unavailable")
+            if (destination !in contacts.addressBooks()) return ContactsResult(changes, setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
             if (contacts.move(source, destination)) { changes++; changed() } else failed = true
         }
-        return ContactsResult(changes, if (failed) "contacts move incomplete; retry required" else null, retry = failed)
+        return ContactsResult(changes, if (failed) setOf(SyncStopReason.RETRY_REQUIRED) else emptySet(), retry = failed)
     }
     // SIM imports are ordinary phone raw contacts. SIM-backed mirrors are never
     // candidates: importing a SIM in Mudita does not transfer ownership of the SIM.
@@ -54,16 +54,16 @@ class ContactsTransferEngine(private val contacts: ContactsPort, private val sto
     fun moveExisting(settings: ContactsSettings): ContactsResult {
         changes = 0
         val pending = store.pendingContactsMove ?: run {
-            val target = settings.target ?: return ContactsResult(stopReason = "contacts address book not selected")
-            if (target !in contacts.addressBooks()) return ContactsResult(stopReason = "contacts address book unavailable")
+            val target = settings.target ?: return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
+            if (target !in contacts.addressBooks()) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
             ContactsMove(target, contacts.sources().filter { it.origin == ContactOrigin.PHONE }.map { it.id }.toSet())
                 .also { store.pendingContactsMove = it }
         }
         return resume(pending)
     }
     private fun resume(move: ContactsMove): ContactsResult = mover.moveExisting(move.destination, move.sourceIds).also {
-        if (it.stopReason == null) store.pendingContactsMove = null
+        if (it.stopReasons.isEmpty()) store.pendingContactsMove = null
     }
     private fun combine(results: List<ContactsResult>) = ContactsResult(changes,
-        results.mapNotNull { it.stopReason }.distinct().takeIf { it.isNotEmpty() }?.joinToString("; "), results.any { it.retry })
+        results.flatMap { it.stopReasons }.toSet(), results.any { it.retry })
 }

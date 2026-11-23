@@ -222,17 +222,27 @@ to Personal. Completed batches remove their own local candidates, so a crash
 before clearing the one-time intent cannot duplicate a contact. A missing target
 or permission retains the pending action rather than rerouting it.
 
-## Plain pass status
+## Typed pass status
 
-`BridgeStore.syncStatus` stores `SyncStatus(lastPassAt, changes, stopReason)` as a
+`BridgeStore.syncStatus` stores `SyncStatus(lastPassAt, changes, stopReasons, availabilityStop)` as a
 single state row; no calendar-bridge schema/version bump is needed. The timestamp
 is the completion time of the latest bridge attempt or one-time action, not a
 claim that DAVx5 reached the server. `changes` counts provider-confirmed logical
 event mutations plus moved raw contacts in that attempt, not mapping saves,
 copied Data rows, or recovery acknowledgements. A no-op writes a fresh timestamp
-and zero changes. Stops, unresolved evidence and exceptions store a plain reason;
+and zero changes. Stops, unresolved evidence and exceptions store stable enum codes;
 transient provider failures additionally request job retry after saving status.
-Scheduling failures retain the latest pass time/count and replace the reason.
+Scheduling and settings-operation failures retain the entire latest real pass
+result and store a separate typed availability stop. Only the UI maps reasons
+to complete localized phrases. Diagnostic text
+stays in the engine's diagnostic status, never in the display contract.
 Unconfigured automatic contacts movement is inactive; a configured but unavailable
-destination or missing permission is a stop. The calendar and contacts have
-independent permission/availability results, combined into one status.
+destination is a stop. Calendar and contacts permission-only attempts preserve
+the last real pass instead of overwriting it. While either access is missing,
+settings shows that real result, or hides Last sync if none exists; the access
+rows alone explain the missing grants. Independent provider stops are combined
+as a deduplicated typed set, not joined diagnostic text. Legacy free-text status
+is decoded once at the read boundary into known codes (unknown diagnostics mean
+retry); permission-only legacy timestamps are not treated as real passes.
+Last sync alone reflows a value that does not fit its normal index track below
+its single-line label, with wrapping and no ellipsis at normal or enlarged text.
