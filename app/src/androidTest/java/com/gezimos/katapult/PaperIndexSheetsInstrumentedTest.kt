@@ -7,7 +7,7 @@ import androidx.compose.runtime.*
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.lockscreen.WidgetProviderChoice
-import com.gezimos.katapult.ui.MultiChoiceSheet
+import com.gezimos.katapult.ui.MultiChoicePage
 import com.gezimos.katapult.ui.WidgetProviderSheet
 import com.gezimos.katapult.ui.SettingsScreen
 import com.gezimos.katapult.ui.settings.AppChecklistPage
@@ -69,9 +69,12 @@ class PaperIndexSheetsInstrumentedTest {
             before = raw.all
             activity.setContent { SettingsScreen(model, activity.configExporter, activity.configImporter, activity.screensaverWallpaperPicker) }
         }
-        ui.await("Import confirmation missing") { ui.has(context.getString(R.string.policy_import_confirmation)) }
-        assertTrue(ui.has(context.getString(R.string.config_import_replaces_settings)))
-        assertTrue(ui.has(context.getString(R.string.policy_media_info)))
+        // The header and the measured body are published separately to accessibility.
+        ui.await("Import confirmation or incoming value missing") {
+            ui.has(context.getString(R.string.policy_import_confirmation)) &&
+                ui.has(context.getString(R.string.config_import_replaces_settings)) &&
+                ui.has(context.getString(R.string.policy_media_info))
+        }
         capture("import-preview")
         ui.click(context.getString(R.string.cancel))
         ui.await("Cancel did not clear preview") { model.pendingImportPreview == null && model.pendingImportText == null }
@@ -168,12 +171,14 @@ class PaperIndexSheetsInstrumentedTest {
         var dismissed = false
         instrumentation.runOnMainSync {
             activity.setContent {
-                MultiChoiceSheet("Fixture customization", listOf(
+                MultiChoicePage("Fixture customization", listOf(
                     Triple("First option", first, { value: Boolean -> first = value }),
-                    Triple("Second option", second, { value: Boolean -> second = value })), { dismissed = true })
+                    Triple("Second option", second, { value: Boolean -> second = value }),
+                ), { dismissed = true }, help = "Customization help")
             }
         }
         ui.await("Multi-choice not rendered") { ui.checked("First option") == true && ui.checked("Second option") == false }
+        assertTrue(ui.has("Customization help"))
         ui.toggleSwitch("Second option", false, true) { second }
         ui.await("Second checkbox did not change") { ui.checked("Second option") == true }
         assertTrue(first); assertTrue(second); assertFalse(dismissed)

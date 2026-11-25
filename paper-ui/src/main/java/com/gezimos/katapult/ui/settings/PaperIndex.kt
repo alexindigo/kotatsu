@@ -576,12 +576,10 @@ private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = 
 
 @Composable
 fun ChoicePage(title: String, choices: List<SettingsChoice>, selected: String,
-    onSelect: (String) -> Unit, onDismiss: () -> Unit) {
-    SettingsPage(title, onDismiss) {
-        choices.forEach { choice ->
-            // Pop first: applying a choice may itself open another page (for example the timed editor).
-            ChoiceOption(choice.label, choice.id == selected) { onDismiss(); onSelect(choice.id) }
-        }
+    onSelect: (String) -> Unit, onDismiss: () -> Unit, help: String = "") {
+    PagedSettingsPage(title, choices, onDismiss, header = { PaperHelp(help) }) { choice ->
+        // Pop first: applying a choice may itself open another page (for example the timed editor).
+        ChoiceOption(choice, choice.id == selected, pageOptionHeight) { onDismiss(); onSelect(choice.id) }
     }
 }
 
@@ -590,60 +588,64 @@ fun ChoicePage(title: String, choices: List<SettingsChoice>, selected: String,
 fun ChoiceSurface(entry: SettingsEntry.Value, onDismiss: () -> Unit) {
     if (LocalOnBackPressedDispatcherOwner.current != null) BackHandler(onBack = onDismiss)
     if (!entry.usesSheet) {
-        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, onDismiss)
+        ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, onDismiss, entry.help)
         return
     }
     PaperSheet(onDismiss) {
         PaperSheetHeading(entry.title, onDismiss)
-        if (entry.help.isNotEmpty()) Text(entry.help, fontFamily = LatoFamily, fontSize = 14.sp,
-            lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp, bottom = 4.5.dp))
+        PaperHelp(entry.help)
         entry.choices.forEach { choice ->
-            ChoiceSheetOption(choice, choice.id == entry.selected) { onDismiss(); entry.onSelect(choice.id) }
+            ChoiceOption(choice, choice.id == entry.selected) { onDismiss(); entry.onSelect(choice.id) }
         }
     }
 }
 
+/** Help below a page or sheet title. Empty help has no layout footprint. */
 @Composable
-private fun ChoiceSheetOption(choice: SettingsChoice, selected: Boolean, onSelect: () -> Unit) {
-    val external = stringResource(R.string.paper_external)
-    Column(Modifier.fillMaxWidth().heightIn(min = if (choice.help.isEmpty()) 48.dp else 67.5.dp)
-        .inkFocus().selectable(selected, role = Role.RadioButton, onClick = onSelect)
-        .semantics(mergeDescendants = true) { if (choice.external) onClick(label = external, action = null) }
-        .padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
+fun PaperHelp(text: String, modifier: Modifier = Modifier) {
+    if (text.isNotEmpty()) Text(text, fontFamily = LatoFamily, fontSize = 14.sp,
+        lineHeight = 16.5.sp, color = LocalInk.current,
+        modifier = modifier.padding(top = 1.5.dp, bottom = 4.5.dp))
+}
+
+private val pageOptionHeight = 53.25.dp
+
+@Composable
+private fun SelectionRow(label: String, checked: Boolean, bold: Boolean, action: Modifier,
+    minimumHeight: Dp, help: String = "", external: Boolean = false) {
+    val ink = LocalInk.current
+    val muted = LocalPalette.current.muted
+    Column(Modifier.fillMaxWidth().heightIn(min = if (help.isEmpty()) minimumHeight else 67.5.dp)
+        .inkFocus().then(action).padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
         IndexTracks(title = {
-            Text(choice.label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, color = LocalInk.current,
+            Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
+                fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, color = ink,
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }, value = {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.5.dp)) {
-                if (choice.external) Text("\u2197", fontFamily = LatoFamily, fontSize = 18.75.sp,
-                    fontWeight = FontWeight.Bold, color = LocalInk.current)
-                IndexCheckbox(selected, true, outlineColor = if (selected) LocalInk.current else LocalPalette.current.muted)
+                if (external) Text("\u2197", fontFamily = LatoFamily, fontSize = 18.75.sp,
+                    fontWeight = FontWeight.Bold, color = ink)
+                IndexCheckbox(checked, true, outlineColor = if (checked) ink else muted)
             }
-        }, leaderColor = LocalPalette.current.muted, valueHasBaseline = false)
-        if (choice.help.isNotEmpty()) Text(choice.help, fontFamily = LatoFamily, fontSize = 14.sp,
-            lineHeight = 16.5.sp, color = LocalInk.current, modifier = Modifier.padding(top = 1.5.dp))
+        }, leaderColor = muted, valueHasBaseline = false)
+        if (help.isNotEmpty()) Text(help, fontFamily = LatoFamily, fontSize = 14.sp,
+            lineHeight = 16.5.sp, color = ink, modifier = Modifier.padding(top = 1.5.dp))
     }
 }
 
-/** One label and a symmetric control slot, shared by choices and checkboxes. */
 @Composable
-private fun OptionRow(label: String, bold: Boolean, action: Modifier, control: @Composable () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 53.25.dp).inkFocus().then(action),
-        verticalAlignment = Alignment.CenterVertically) {
-        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
-            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, color = LocalInk.current,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-        Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) { control() }
-    }
+private fun ChoiceOption(choice: SettingsChoice, selected: Boolean, minimumHeight: Dp = 48.dp, onSelect: () -> Unit) {
+    val external = stringResource(R.string.paper_external)
+    SelectionRow(choice.label, selected, selected,
+        Modifier.selectable(selected, role = Role.RadioButton, onClick = onSelect)
+            .semantics(mergeDescendants = true) { if (choice.external) onClick(label = external, action = null) },
+        minimumHeight, choice.help, choice.external)
 }
 
 /** Shared by pure choices and mixed menus which also contain ordinary actions. */
 @Composable
 fun ChoiceOption(label: String, selected: Boolean, onSelect: () -> Unit) {
-    OptionRow(label, selected, Modifier.selectable(selected, role = Role.RadioButton, onClick = onSelect)) {
-        if (selected) CheckMark()
-    }
+    ChoiceOption(SettingsChoice(label, label), selected, pageOptionHeight, onSelect)
 }
 
 @Composable
@@ -654,9 +656,8 @@ fun SheetText(text: String) {
 
 @Composable
 fun CheckboxOption(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
-    OptionRow(label, true, Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = onToggle)) {
-        IndexCheckbox(checked, true)
-    }
+    SelectionRow(label, checked, bold = true,
+        Modifier.toggleable(checked, role = Role.Checkbox, onValueChange = onToggle), pageOptionHeight)
 }
 
 @Composable

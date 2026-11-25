@@ -62,11 +62,11 @@ fun NotesSettingsBook(owner: NotesSettingsOwner, kind: WidgetKind?, onBack: () -
                     })
                 }, selected?.toString().orEmpty(), { value ->
                     if (task) owner.taskNote(value.toLong()) else owner.quoteNote(value.toLong())
-                }, back)
+                }, back, help = if (task) taskNote.help else quoteNote.help)
             }
             "changes", "order" -> {
                 val entry = if (navigation.current == "changes") frequency else order
-                ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, back)
+                ChoicePage(entry.title, entry.choices, entry.selected, entry.onSelect, back, entry.help)
             }
             else -> if (state.saveFailed) SettingsPage(title, back) {
                 SheetText(stringResource(R.string.save_failed))

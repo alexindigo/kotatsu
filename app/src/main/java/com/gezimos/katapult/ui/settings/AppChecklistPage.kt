@@ -26,10 +26,12 @@ fun AppChecklistPage(
     onToggleNotify: (AppModel) -> Unit = {},
     selectAllLabel: String? = null,
     onSelectAll: () -> Unit = {},
+    help: String = "",
 ) {
     val hiddenColumn = rememberControlColumn(stringResource(R.string.hidden_apps_hidden_column))
     val notifyColumn = rememberControlColumn(stringResource(R.string.hidden_apps_notify_column))
     PagedSettingsPage(title, apps, onDismiss, header = {
+        PaperHelp(help)
         if (notifyCell != null) {
             SheetText(stringResource(R.string.hidden_apps_notify_desc))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

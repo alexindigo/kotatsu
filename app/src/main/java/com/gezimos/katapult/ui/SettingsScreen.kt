@@ -103,6 +103,8 @@ import com.gezimos.katapult.ui.settings.Entry
 import com.gezimos.katapult.ui.settings.GroupHeading
 import com.gezimos.katapult.ui.settings.ChoiceOption
 import com.gezimos.katapult.ui.settings.CheckboxOption
+import com.gezimos.katapult.ui.settings.PagedSettingsPage
+import com.gezimos.katapult.ui.settings.PaperHelp
 import com.gezimos.katapult.ui.settings.AppChecklistPage
 import com.gezimos.katapult.ui.settings.NotifyCell
 
@@ -731,6 +733,7 @@ fun SettingsScreen(
             )
         }
         SettingsPage(stringResource(R.string.screensaver_update_mode), popPage, imePadding = true) {
+            PaperHelp(stringResource(R.string.paper_screensaver_mode_help))
             listOf(
                 PrefsManager.SCREENSAVER_MODE_AUTO to stringResource(R.string.screensaver_mode_auto),
                 PrefsManager.SCREENSAVER_MODE_INTERVAL to stringResource(R.string.screensaver_mode_interval),
@@ -781,7 +784,7 @@ fun SettingsScreen(
     }
 
     if (destination == "customization") {
-        MultiChoiceSheet(
+        MultiChoicePage(
             title = stringResource(R.string.screensaver_customization),
             options = listOf(
                 Triple(
@@ -807,6 +810,7 @@ fun SettingsScreen(
                 ),
             ),
             onDismiss = popPage,
+            help = stringResource(R.string.paper_screensaver_custom_help),
         )
     }
 
@@ -906,7 +910,7 @@ private fun LockscreenAppsDialog(
             val updated = if (excludedSet.isEmpty()) allApps.map { it.packageName }.toSet() else emptySet()
             viewModel.prefs.setLockscreenExcludedApps(updated)
             excludedSet = updated
-        })
+        }, help = stringResource(R.string.lockscreen_widget_apps_desc))
 }
 
 /** Hidden Apps: apps the user installed (and pinned shortcuts); a checked box hides the app. */
@@ -1085,15 +1089,14 @@ private fun PermissionRow(
 }
 
 @Composable
-internal fun MultiChoiceSheet(
+internal fun MultiChoicePage(
     title: String,
     options: List<Triple<String, Boolean, (Boolean) -> Unit>>,
     onDismiss: () -> Unit,
+    help: String = "",
 ) {
-    SettingsPage(title, onDismiss) {
-        options.forEach { (label, checked, onToggle) ->
-            CheckboxOption(label, checked, onToggle)
-        }
+    PagedSettingsPage(title, options, onDismiss, header = { PaperHelp(help) }) { (label, checked, onToggle) ->
+        CheckboxOption(label, checked, onToggle)
     }
 }
 
