@@ -5,6 +5,7 @@ import android.graphics.Canvas
 import android.graphics.PixelFormat
 import android.graphics.RenderNode
 import android.hardware.HardwareBuffer
+import android.os.Build
 import android.os.Handler
 import android.util.Log
 import android.view.SurfaceHolder
@@ -14,6 +15,7 @@ import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import androidx.graphics.CanvasBufferedRenderer
 import androidx.graphics.surface.SurfaceControlCompat
+import androidx.hardware.SyncFenceCompat
 import java.util.concurrent.Executor
 
 /** The overlay hierarchy owns layout and accessibility. Only the child layer owns visible pixels. */
@@ -22,6 +24,8 @@ internal class ScreenshotPreviewPixels(
     private val main: Handler,
     val content: FrameLayout,
     private val onReleased: () -> Unit,
+    private val transaction: (show: Boolean) -> SurfaceControlCompat.Transaction,
+    private val commitFrame: (SurfaceControlCompat.Transaction) -> Unit,
 ) : FrameLayout(context), SurfaceHolder.Callback, ViewTreeObserver.OnPreDrawListener {
     private val host = SurfaceView(context).apply {
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -31,13 +35,22 @@ internal class ScreenshotPreviewPixels(
     }
     private val executor = Executor { main.post(it) }
     private class Layer(val surface: SurfaceControlCompat) {
-        var submitted = 0
-        var suppressed = false
+        val frames = mutableSetOf<RenderedFrame>()
+        var hideQueued = false
+        var uncertain: Any? = null
         var retired = false
     }
+    private class RenderedFrame(
+        val renderer: CanvasBufferedRenderer,
+        val result: CanvasBufferedRenderer.RenderResult,
+    ) : AutoCloseable {
+        override fun close() {
+            renderer.use { result.fence.use { renderer.releaseBuffer(result.hardwareBuffer) } }
+        }
+    }
     private var layer: Layer? = null
-    private var pending = 0
-    val excluded get() = pending == 0
+    private val layers = mutableSetOf<Layer>()
+    val excluded get() = layers.none { it.frames.isNotEmpty() || it.uncertain != null }
     private var blocked = false
     private var dirty = false
     private var rendering = false
@@ -74,6 +87,7 @@ internal class ScreenshotPreviewPixels(
     override fun surfaceCreated(holder: SurfaceHolder) {
         layer = try {
             Layer(SurfaceControlCompat.Builder().setName("Kotatsu screenshot preview pixels").setParent(host).build())
+                .also { layers.add(it) }
         } catch (error: RuntimeException) {
             Log.w(TAG, "Could not create preview layer", error)
             null
@@ -87,7 +101,7 @@ internal class ScreenshotPreviewPixels(
         val previous = layer ?: return
         layer = null
         previous.retired = true
-        if (previous.submitted == 0) dispose(previous) else suppress(previous)
+        if (previous.frames.isEmpty() && previous.uncertain == null) dispose(previous) else suppress(previous)
     }
 
     fun update() {
@@ -99,30 +113,83 @@ internal class ScreenshotPreviewPixels(
         blocked = value
         importantForAccessibility = if (value) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             else View.IMPORTANT_FOR_ACCESSIBILITY_YES
-        if (value) layer?.let(::suppress) else update()
+        if (value) layers.forEach(::suppress) else update()
     }
 
     private fun suppress(target: Layer) {
-        if (target.suppressed || target.submitted == 0) return
-        target.suppressed = true
+        val uncertain = target.uncertain
+        if (target.hideQueued || (target.frames.isEmpty() && uncertain == null)) return
         try {
-            // An explicit replacement is necessary: on 30/31 AndroidX registers the
-            // transaction-completion listener only for a non-null buffer. The replacement
-            // is never displayed: the same atomic transaction hides this layer.
-            HardwareBuffer.create(1, 1, HardwareBuffer.RGBA_8888, 1, HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE).use { blank ->
-                SurfaceControlCompat.Transaction().use {
-                    it.setVisibility(target.surface, false).setBuffer(target.surface, blank).commit()
+            if (uncertain == null) {
+                replaceWithHiddenBuffer(target)
+            } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // A superseded buffer can be released before it latches on the Java backend.
+                // Use the hide transaction's own acknowledgement there.
+                transaction(false).use {
+                    it.setVisibility(target.surface, false).setBuffer(target.surface, null)
+                        .addTransactionCommittedListener(executor, object : SurfaceControlCompat.TransactionCommittedListener {
+                            override fun onTransactionCommitted() = acknowledgeHide(target, uncertain)
+                        })
+                    it.commit()
+                    target.hideQueued = true
                 }
+            } else {
+                // If commit threw, the frame may never get a release callback. Release a
+                // hidden marker instead, which acknowledges this layer is no longer visible
+                // regardless of whether the preceding publication reached the compositor.
+                replaceWithHiddenBuffer(target, onRelease = { fence ->
+                    finishOnMain(fence) { acknowledgeHide(target, uncertain) }
+                })
+                replaceWithHiddenBuffer(target)
             }
         } catch (error: RuntimeException) {
-            // Keep the submitted buffer outstanding. The capture owner fails closed.
+            // No acknowledged hide: a later capture or expiry can make a fresh attempt.
             Log.w(TAG, "Could not exclude preview layer", error)
         }
     }
 
+    private fun replaceWithHiddenBuffer(
+        target: Layer,
+        onRelease: ((SyncFenceCompat) -> Unit)? = null,
+    ) {
+        // AndroidX on 30/31 registers completion for a non-null buffer only.
+        HardwareBuffer.create(1, 1, HardwareBuffer.RGBA_8888, 1, HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE).use { blank ->
+            transaction(false).use {
+                it.setVisibility(target.surface, false).setBuffer(target.surface, blank, releaseCallback = onRelease)
+                it.commit()
+                if (onRelease == null) target.hideQueued = true
+            }
+        }
+    }
+
+    private fun finishOnMain(fence: SyncFenceCompat, finish: () -> Unit) {
+        try { fence.close() } finally { main.post(finish) }
+    }
+
+    private fun acknowledgeHide(target: Layer, uncertain: Any) {
+        if (target.uncertain !== uncertain) return
+        target.uncertain = null
+        target.frames.toList().forEach { release(target, it) }
+        settled(target)
+    }
+
+    private fun release(target: Layer, frame: RenderedFrame) {
+        if (target.frames.remove(frame)) closeFrame(frame)
+    }
+
+    private fun closeFrame(frame: RenderedFrame) {
+        try { frame.close() }
+        catch (error: RuntimeException) { Log.w(TAG, "Could not close preview renderer", error) }
+    }
+
+    private fun settled(target: Layer) {
+        if (target.retired && target.frames.isEmpty() && target.uncertain == null && layers.contains(target)) dispose(target)
+        if (dirty) invalidate()
+        if (excluded) onReleased()
+    }
     override fun onPreDraw(): Boolean {
         val target = layer ?: return true
-        if (blocked || !dirty || rendering || target.submitted >= 2 || width == 0 || height == 0) return true
+        if (blocked || !dirty || rendering || target.uncertain != null || target.frames.size >= 2 || width == 0 || height == 0) return true
         val w = content.width
         val h = content.height
         if (w == 0 || h == 0) return true
@@ -139,11 +206,12 @@ internal class ScreenshotPreviewPixels(
                 renderer.setContentRoot(node)
                 renderer.obtainRenderRequest().drawAsync(executor) { result ->
                     rendering = false
+                    val frame = RenderedFrame(renderer, result)
                     if (result.status == CanvasBufferedRenderer.RenderResult.SUCCESS && !blocked && layer === target &&
-                        content.width == w && content.height == h && !dirty) {
-                        publish(target, renderer, result)
+                        target.uncertain == null && content.width == w && content.height == h && !dirty) {
+                        publish(target, frame)
                     } else {
-                        renderFinished(renderer, result)
+                        closeFrame(frame)
                     }
                     if (dirty) invalidate()
                 }
@@ -158,40 +226,38 @@ internal class ScreenshotPreviewPixels(
         return true
     }
 
-    private fun publish(target: Layer, renderer: CanvasBufferedRenderer, result: CanvasBufferedRenderer.RenderResult) {
-        target.submitted++
-        pending++
+    private fun publish(target: Layer, frame: RenderedFrame) {
+        var handedOff = false
         try {
-            SurfaceControlCompat.Transaction().use { transaction ->
-                transaction.setVisibility(target.surface, true).setBuffer(target.surface, result.hardwareBuffer, result.fence) { fence ->
-                    // Release on the UI thread, after the producer's commit has returned. We
-                    // never reuse this renderer's buffer; the compositor holds its own handle.
-                    fence.close()
-                    main.post {
-                        renderFinished(renderer, result)
-                        target.submitted--
-                        pending--
-                        if (target.retired && target.submitted == 0) dispose(target)
-                        if (dirty) invalidate()
-                        if (excluded) onReleased()
+            transaction(true).use { update ->
+                update.setVisibility(target.surface, true)
+                    .setBuffer(target.surface, frame.result.hardwareBuffer, frame.result.fence) { fence ->
+                        finishOnMain(fence) {
+                            release(target, frame)
+                            settled(target)
+                        }
                     }
-                }.commit()
+                // The scope owns the frame until commit can transfer it to the compositor.
+                // Register before commit: the release callback may arrive immediately.
+                target.frames.add(frame)
+                handedOff = true
+                target.hideQueued = false
+                try { commitFrame(update) }
+                catch (error: RuntimeException) {
+                    target.uncertain = Any()
+                    throw error
+                }
             }
-            target.suppressed = false
         } catch (error: RuntimeException) {
-            // Commit may have crossed Binder. Do not claim the buffer is excluded on error.
             Log.w(TAG, "Could not publish preview layer", error)
-            suppress(target)
+            if (target.uncertain != null) suppress(target)
+        } finally {
+            if (!handedOff) closeFrame(frame)
         }
     }
 
-    private fun renderFinished(renderer: CanvasBufferedRenderer, result: CanvasBufferedRenderer.RenderResult) {
-        renderer.releaseBuffer(result.hardwareBuffer)
-        result.fence?.close()
-        renderer.close()
-    }
-
     private fun dispose(target: Layer) {
+        layers.remove(target)
         try {
             SurfaceControlCompat.Transaction().use { it.reparent(target.surface, null as SurfaceControlCompat?).commit() }
         } catch (error: RuntimeException) {

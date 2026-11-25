@@ -23,6 +23,7 @@ import android.view.WindowManager
 import android.view.KeyEvent
 import android.widget.TextView
 import android.widget.ImageView
+import androidx.graphics.surface.SurfaceControlCompat
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.lockscreen.LockscreenWidgetService
 import com.gezimos.katapult.recent.HomeKeyFilterState
@@ -141,6 +142,72 @@ class ScreenshotInstrumentedTest {
     private fun capturePreview(service: LockscreenWidgetService, wm: WindowManager) =
         ScreenshotPreviewWindow(service, ControlledPreviewExpiry(), wm)
 
+    @Test fun nextCaptureWorksAfterExclusionTransactionFails() = captureAfterTransactionFailure(failShow = false)
+
+    @Test fun nextCaptureWorksAfterPreviewBufferIsNeverSubmitted() = captureAfterTransactionFailure(failShow = true)
+
+    @Test fun nextCaptureWorksWhenCommitFailsBeforeSendingThePreview() =
+        captureAfterTransactionFailure(failShow = true, failAtCommit = true)
+
+    @Test fun nextCaptureWorksWhenCommitFailsAfterSendingThePreview() =
+        captureAfterTransactionFailure(failShow = true, failAtCommit = true, sendBeforeThrow = true)
+
+    private fun captureAfterTransactionFailure(failShow: Boolean, failAtCommit: Boolean = false, sendBeforeThrow: Boolean = false) = withService { service, _ ->
+        main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
+        ui.await("Origin app missing") { ui.has("Brightness level") }
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expiry = ControlledPreviewExpiry()
+        val injected = CountDownLatch(1)
+        val saved = CountDownLatch(1)
+        val before = pictures()
+        val clean = automation.takeScreenshot()
+        val window = ScreenshotPreviewWindow(service, expiry, wm, commitFrame = { transaction ->
+            if (failAtCommit && injected.count > 0) {
+                if (sendBeforeThrow) transaction.commit()
+                injected.countDown()
+                throw IllegalStateException("Injected preview commit failure")
+            }
+            transaction.commit()
+        }) { showing ->
+            if (!failAtCommit && showing == failShow && injected.count > 0) {
+                injected.countDown()
+                throw IllegalStateException("Injected preview transaction preparation failure")
+            }
+            SurfaceControlCompat.Transaction()
+        }
+        val pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true }, window) { bitmap ->
+            ScreenshotStore(context.contentResolver).save(bitmap)
+            saved.countDown()
+        }
+        withFixtureCleanup(
+            { main { fixtureCleanup({ pipeline.close() }, { expiry.close() }) } },
+            { clean.recycle() },
+            { (pictures() - before).forEach { context.contentResolver.delete(imageUri(it), null, null) } },
+        ) {
+            main { window.saved(clean) }
+            if (!failShow) {
+                ui.await("Preview was not attached") { wm.view?.isAttachedToWindow == true }
+                committedFrame(wm.view!!)
+                val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+                capturePreviewPixels(wm.view!!, "before-failed-preview-exclusion.png", palette.paperArgb, palette.inkArgb)
+                main { pipeline.capture() }
+                ui.await("A failed exclusion must report that the screenshot was not saved") { hasText(wm.view, "Screenshot not saved") }
+                assertEquals("Do not save a capture without exclusion", before, pictures())
+            }
+            assertTrue("The intended transaction did not fail", injected.await(5, TimeUnit.SECONDS))
+            main { pipeline.capture() }
+            assertTrue("The next explicit capture did not save after the transaction failure", saved.await(8, TimeUnit.SECONDS))
+            val second = context.contentResolver.openInputStream(imageUri((pictures() - before).single())).use { BitmapFactory.decodeStream(it) }!!
+            withFixtureCleanup({ second.recycle() }) {
+                val width = clean.width / 3 + 32; val height = clean.height / 3 + 80
+                val a = IntArray(width * height); val b = IntArray(a.size)
+                clean.getPixels(a, 0, width, 0, clean.height - height, width, height)
+                second.getPixels(b, 0, width, 0, second.height - height, width, height)
+                assertArrayEquals("A failed transaction left preview pixels in the next capture", a, b)
+            }
+        }
+    }
+
     @Test fun captureExcludesPreviewEvenWhenWindowManagerKeepsTheWindow() = withService { service, _ ->
         main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
         ui.await("Origin app missing") { ui.has("Brightness level") }
@@ -247,6 +314,16 @@ class ScreenshotInstrumentedTest {
                 val prefix = InstrumentationRegistry.getArguments().getString("appearanceCapturePrefix", "appearance")
                 capturePreviewPixels(wm.view!!, "$prefix-${if (dark) "dark" else "light"}-screenshot-preview.png", palette.paperArgb, palette.inkArgb)
             }
+            // Keep visual evidence independent of the real expiry deadline tested below.
+            main {
+                prefs.themeMode = com.gezimos.katapult.util.PrefsManager.THEME_LIGHT
+                window.failed(ScreenshotFailure.STORAGE_FULL)
+            }
+            committedFrame(wm.view!!)
+            val title = textView(wm.view, "Screenshot not saved")!!
+            assertEquals("The whole failure title must fit on its first line", title.text.length, title.layout.getLineEnd(0))
+            val light = com.gezimos.katapult.ui.PaperPalette.Light(context)
+            capturePreviewPixels(wm.view!!, "screenshot-preview-failure.png", light.paperArgb, light.inkArgb)
             main { expiry.expireNow() }
             ui.await("Controlled expiry did not remove the preview") { !wm.view!!.isAttachedToWindow }
         }, actions = arrayOf<() -> Unit>(
@@ -258,11 +335,20 @@ class ScreenshotInstrumentedTest {
         main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
         ui.await("Origin app missing") { ui.has("Brightness level") }
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expired = CountDownLatch(1)
+        var firstExpiryDeadline = 0L
+        val expiry = object : Handler(Looper.getMainLooper()) {
+            override fun dispatchMessage(msg: android.os.Message) {
+                if (firstExpiryDeadline == 0L) firstExpiryDeadline = msg.`when`
+                super.dispatchMessage(msg)
+                expired.countDown()
+            }
+        }
         lateinit var window: ScreenshotPreviewWindow
         var cleanup: (() -> Unit)? = null
         val bitmap = Bitmap.createBitmap(480, 800, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.WHITE) }
         withFixtureCleanup(body = {
-            main { window = ScreenshotPreviewWindow(service, Handler(Looper.getMainLooper()), wm); cleanup = window::close; window.saved(bitmap) }
+            main { window = ScreenshotPreviewWindow(service, expiry, wm); cleanup = window::close; window.saved(bitmap) }
             ui.await("Saved preview was not attached") { wm.view?.isAttachedToWindow == true && hasText(wm.view, "Saved") }
             val original = wm.view
             assertEquals(1, wm.adds)
@@ -283,19 +369,13 @@ class ScreenshotInstrumentedTest {
             repeat(10) { main { window.saved(bitmap) }; SystemClock.sleep(20) }
             assertSame(original, wm.view); assertEquals(1, wm.adds)
             SystemClock.sleep(1500)
-            val replaced = SystemClock.uptimeMillis()
-            main { window.failed(ScreenshotFailure.STORAGE_FULL) }
+            var replaced = 0L
+            main { replaced = SystemClock.uptimeMillis(); window.failed(ScreenshotFailure.STORAGE_FULL) }
             ui.await("Storage-full failure card missing") { hasText(wm.view, "Phone storage is full") }
             assertSame(original, wm.view); assertEquals(1, wm.adds); assertEquals(0, wm.removes)
-            committedFrame(wm.view!!)
-            val title = textView(wm.view, "Screenshot not saved")!!
-            assertEquals("The whole failure title must fit on its first line", title.text.length, title.layout.getLineEnd(0))
-            val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
-            capturePreviewPixels(wm.view!!, "screenshot-preview-failure.png", palette.paperArgb, palette.inkArgb)
-            SystemClock.sleep(1700)
-            assertTrue("The old expiry must be cancelled", wm.view!!.isAttachedToWindow)
+            assertTrue("Latest expiry did not run", expired.await(5, TimeUnit.SECONDS))
+            assertTrue("The old expiry must be cancelled", firstExpiryDeadline - replaced >= ScreenshotPreviewWindow.DURATION_MS)
             ui.await("Latest result did not expire", 2500) { !wm.view!!.isAttachedToWindow }
-            assertTrue(SystemClock.uptimeMillis() - replaced >= 2900)
             assertEquals(1, wm.removes)
             main { window.failed(ScreenshotFailure.UNAVAILABLE) }
             ui.await("Capture-unavailable failure card missing") { hasText(wm.view, "The screen can't be captured right now") }

@@ -15,16 +15,22 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.core.content.res.ResourcesCompat
+import androidx.graphics.surface.SurfaceControlCompat
 import com.gezimos.katapult.R
 import com.gezimos.katapult.ui.Appearance
 import kotlin.math.roundToInt
 
 /** Owns one noninteractive window, its image content and its one expiry callback. Main thread only. */
-class ScreenshotPreviewWindow(
+class ScreenshotPreviewWindow internal constructor(
     private val context: Context,
     private val handler: Handler,
-    private val wm: WindowManager = context.getSystemService(WindowManager::class.java),
+    private val wm: WindowManager,
+    private val commitFrame: (SurfaceControlCompat.Transaction) -> Unit = SurfaceControlCompat.Transaction::commit,
+    private val transaction: (show: Boolean) -> SurfaceControlCompat.Transaction,
 ) : AutoCloseable {
+    constructor(context: Context, handler: Handler, wm: WindowManager = context.getSystemService(WindowManager::class.java)) :
+        this(context, handler, wm, transaction = { SurfaceControlCompat.Transaction() })
+
     companion object {
         const val DURATION_MS = 3000L
         private const val EXCLUSION_TIMEOUT_MS = 3000L
@@ -94,7 +100,7 @@ class ScreenshotPreviewWindow(
             setBackgroundColor(palette.paperArgb)
             setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, ::excluded).apply {
+        }, ::excluded, transaction, commitFrame).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }.also { root = it }
