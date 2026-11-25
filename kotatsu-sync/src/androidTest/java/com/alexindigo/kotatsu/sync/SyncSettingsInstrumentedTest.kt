@@ -255,15 +255,22 @@ class SyncSettingsInstrumentedTest {
             quiesceJobs()
             val baseline = phoneSourceIds(context)
             val source = f.phoneContact("Phone fixture")
-            ui.click("Phone contacts"); ui.awaitPage("Move phone contacts")
-            ui.await(context.resources.getQuantityString(R.plurals.move_confirmation, baseline.size + 1, baseline.size + 1, personal.name))
+            val question = context.resources.getQuantityString(R.plurals.move_confirmation, baseline.size + 1, baseline.size + 1, personal.name)
+            fun openConfirmation() {
+                ui.click("Phone contacts"); ui.awaitPage("Move phone contacts")
+                ui.await(question) // The heading can render before the lane supplies the snapshot.
+            }
+            openConfirmation()
             ui.capture(activity, "move-confirmation")
             ui.click("Cancel")
             assertEquals(baseline + source, f.raw(null).toSet()); assertTrue(f.raw(personal).isEmpty())
-            ui.click("Phone contacts"); ui.awaitPage("Move phone contacts")
+            openConfirmation()
             val later = f.phoneContact("Later phone fixture")
             ui.click("Move")
-            awaitSyncSettings("Confirmed contact reaches the chosen book") { f.raw(personal).size == 1 }
+            // The click queues the move on the lane. The provider commits before Last sync is written.
+            drain()
+            assertEquals(1, f.raw(personal).size)
+            assertTrue(f.raw(family).isEmpty())
             assertEquals(setOf(later), f.raw(null).toSet())
             assertEquals(1, status().changes)
             seek("Last sync"); ui.await("1 change")
