@@ -144,6 +144,7 @@ class SyncSettingsInstrumentedTest {
             assertEquals(before, occurrences())
             wipe(); main { owner.refresh() }; seek("Calendar changes")
             ui.click("Calendar changes"); ui.click("Delete them from the server too"); ui.awaitPage("Delete from server")
+            ui.await(context.resources.getQuantityString(R.plurals.delete_server_intro, 56, 56, familyCalendarName))
             ui.capture(activity, "delete-from-server")
             assertEquals(before, occurrences())
             ui.click("Cancel"); ui.awaitPage("Calendar changes")
@@ -212,9 +213,10 @@ class SyncSettingsInstrumentedTest {
             }
             val control = Rect().also { ui.find(personalCalendarName, actionable = true)!!.getBoundsInScreen(it) }
             val box = ui.drawings("paper_index_checkbox").single { it.center.y in control.top.toFloat()..control.bottom.toFloat() }
-            assertEquals("Check is centered in the trailing 48dp slot", control.right - 24f * context.resources.displayMetrics.density, box.center.x, 1f)
+            assertEquals("Shared selection-row checkbox reaches the trailing edge", control.right.toFloat(), box.right, 1f)
             assertEquals("Check shares the row center", control.exactCenterY(), box.center.y, 1f)
-            assertTrue(ui.drawings("paper_index_leader").isEmpty())
+            val leader = ui.drawings("paper_index_leader").single { it.center.y in control.top.toFloat()..control.bottom.toFloat() }
+            assertTrue("The leader ends before the checkbox", leader.right < box.left)
             assertFalse("Local calendars are never offered", ui.has(localCalendarName))
             ui.capture(activity, "calendars-shown")
             ui.back(); ui.awaitPage("Kotatsu Sync")
@@ -614,10 +616,9 @@ class SyncSettingsInstrumentedTest {
             ui.await(personalCalendarName)
             val target = Rect().also { ui.find(personalCalendarName, actionable = true)!!.getBoundsInScreen(it) }
             val box = ui.drawings("paper_index_checkbox").single { it.center.y in target.top.toFloat()..target.bottom.toFloat() }
-            val density = context.resources.displayMetrics.density
             val layout = ui.textLayout(personalCalendarName)
             assertEquals("Calendar label stays on one line at 150%", 1, layout.lineCount)
-            assertEquals("Trailing checkbox slot", target.right - 24f * density, box.center.x, 1f)
+            assertEquals("Shared selection-row checkbox reaches the trailing edge", target.right.toFloat(), box.right, 1f)
             ui.capture(activity, "calendars-150")
             ui.back(); ui.awaitPage("Kotatsu Sync")
             seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")

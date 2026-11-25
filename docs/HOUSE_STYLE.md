@@ -33,6 +33,7 @@ Paths below are relative to the repository root. `kit/` in the tables means
 | 10 | `app/src/main/java/com/gezimos/katapult/ui/settings/LockscreenWidgetsPage.kt` | Widget controls, Widgets section, Add widget and management destinations |
 | 11 | `kit/PaperSheet.kt` | Shared bottom sheet drawing and heading; Activity and Action Service hosts own window lifetime and Back |
 | 12 | `kit/PaperTileAction.kt`, `kit/PaperShortcutEntry.kt` | Home-proportioned action tiles and independent shortcut launch/app-icon targets |
+| 13 | `kit/ConfirmationPage.kt` | Shared full-page decision layout; consumers own preview data and callbacks |
 
 ## Principles
 
@@ -110,8 +111,8 @@ the implementation, not from measuring an image.
 | 14 | Entry help/extra summary | 14 sp, 16.5 sp line height; 1.5 dp above each line/block; help Regular, Open summary Bold | `Entry` |
 | 15 | Chapter content | 16 dp horizontal inset; 9 dp between groups | `IndexGroup`, `PaperIndexRenderer` |
 | 16 | Permission entry | Explicit 63 dp minimum; otherwise normal Entry type and help | App `PermissionRow` -> `Entry` |
-| 17 | Page choice/checkbox option | Minimum 53.25 dp row; 18 sp, 21.75 sp line height; one-line label; checkbox labels always Bold; trailing 48 x 48 dp centred control slot | Private `OptionRow`, `CheckboxOption` |
-| 18 | Page choice weight | Selected label Bold; other labels Regular; no dotted leader | `ChoicePage`, `ChoiceOption` -> `OptionRow` |
+| 17 | Page choice/checkbox option | Minimum 53.25 dp row; 9 dp vertical padding; shared selection tracks and 20 dp box (see below) | `ChoicePage`, `ChoiceOption`, `CheckboxOption` -> private `SelectionRow` |
+| 18 | Option label weight | 18/21.75 sp, one line, ellipsis; chosen choices Bold, others Regular; checkbox labels always Bold | Private `SelectionRow` |
 | 19 | Check mark | 21 x 21 dp vector, 1.5 dp stroke; path through (4,13), (9,18), (20,4) on a 24-unit grid | `CheckMark` |
 | 20 | Checkbox drawing | 20 dp square, 3.75 dp corner radius; 2.5 dp enabled or 1 dp disabled border; checked ink fill, paper check | `IndexCheckbox` |
 | 21 | Checkbox check wrapper | 14 dp wrapper around the shared check drawing; wrapper is not a touch target | `IndexCheckbox` |
@@ -133,7 +134,7 @@ the implementation, not from measuring an image.
 | 8 | Notice | 16 dp side inset, 2 dp top rule; row minimum 48 dp; 6 dp between tracks; message 14/18 sp Regular with 6 dp vertical padding | `Notice` |
 | 9 | Notice action/dismiss | Action minimum 64.5 x 48 dp, 14 sp Bold underlined; dismiss 48 x 48 dp, `×` 22.5 sp | `Notice` |
 | 10 | Close vector | 18 dp square, 2.25 dp strokes from 20% to 80% of bounds; separate from Notice's text `×` | `CloseMark` |
-| 11 | Plain full-row action | Minimum 48 dp high, 18/21.75 sp Regular, left aligned; no invented value/leader | `SheetAction` |
+| 11 | Plain full-row action | Minimum 48 dp high, 18/21.75 sp, left aligned, one line; Regular except the Bold confirming action; no invented value/leader | `SheetAction`, `ConfirmationPage` |
 | 12 | Two-target action entry | Name/help and trailing action each minimum 48 dp; help 14/18 sp; action 18/21.75 sp Bold; shared index tracks | `PaperActionEntry` |
 | 13 | Bracket card | Full measured content height; 2 dp bracket strokes, 7.5 dp caps; horizontal 14 dp and vertical 6 dp padding | `PaperCard` |
 | 14 | Card text | Name 18/21.75 sp Bold; help 14/18 sp Regular; size 14/18 sp Bold; tracks stacked without extra gaps; minimum content height 48 dp | `PaperCardEntry` |
@@ -143,10 +144,11 @@ the implementation, not from measuring an image.
 | 18 | Message editor field | Single line, 18 sp Lato Regular; 2.5 dp ink border, 12 dp padding; ink cursor; IME padding on page | App `LockscreenMessageSheet` -> `SettingsPage(imePadding = true)` |
 | 19 | Bottom sheet | Bottom anchored, paper fill; 2 dp ink outline on top and sides, no bottom edge; 18 dp top corners; 16 dp side and 10 dp bottom content padding, navigation-bar padding | `PaperSheet` |
 | 20 | Sheet heading | 21/25.5 sp Lato Bold, one line with ellipsis; 3 dp vertical padding; trailing 18 dp close drawing in a 48 dp target; optional leading page-back chevron in a 48 dp target; no title rule | `PaperSheetHeading` |
-| 21 | Choice-sheet help | Entry help 14/16.5 sp Regular; 1.5 dp top and 4.5 dp bottom padding | `ChoiceSurface` |
-| 22 | Choice-sheet option | 18/21.75 sp, selected Bold otherwise Regular; minimum 48 dp without help or 67.5 dp with help; 9 dp vertical padding; optional full-width 14/16.5 sp help with 1.5 dp top gap | Private `ChoiceSheetOption` |
-| 23 | Choice-sheet tracks | Shared baseline leader geometry in muted; value cell centred on the name track; 20 dp checkbox, chosen ink fill/paper check, unchosen 2.5 dp muted outline; external mark before box with 7.5 dp gap | `IndexTracks`, `IndexCheckbox` |
+| 21 | Page/sheet help | Entry help 14/16.5 sp Regular; 1.5 dp top and 4.5 dp bottom padding; no space when empty | `PaperHelp` |
+| 22 | Choice-sheet option | Minimum 48 dp without help; sheet and page options with help have a 67.5 dp minimum and full-width 14/16.5 sp help with 1.5 dp top gap | Private `SelectionRow` |
+| 23 | Selection tracks | Shared baseline leader geometry in muted; value cell centred on the name track; 20 dp checkbox, chosen/checked ink fill and paper check, otherwise 2.5 dp muted outline; external mark before box with 7.5 dp gap | `IndexTracks`, `IndexCheckbox` |
 | 24 | Tile action | 54 dp square, 2 dp ink border, 14 dp corners; 38 dp vector drawing box with approximately 1.5/24-unit strokes; 14/17.25 sp Lato Regular label 4 dp below, one line; whole tile and label form one button | `PaperTileAction` |
+| 25 | Confirmation question/detail | `GroupHeading` (14/17.25 sp Bold and 2 dp rule); optional `PaperHelp` detail with 6 dp between rule and detail block | `ConfirmationPage` |
 
 Targets must be at least 48 dp in both dimensions. A value word or a check
 drawing is not its own tiny target: the surrounding row or independent control
@@ -450,6 +452,39 @@ stays visible without a scrim or dimming, but is excluded from accessibility
 while the sheet owns interaction. One Settings back stack owns this
 transient destination and preserves the chapter's page number.
 
+### Full-page choices and checkboxes
+
+Long static and app-built choices use the same rows as the short sheet, with
+the 53.25 dp page minimum. The full page keeps its header, Back and measured
+pager. The opening entry's help sits directly below the title and stays above
+the list on each page. No help on the entry means no help block on the page.
+Choice rows are radio buttons: tapping pops before applying the callback, so
+the callback may open another destination. Back applies nothing.
+
+Single-column checkbox pages use the same name, muted leader and trailing
+box, with all names Bold. The full row exposes one checkbox and toggles in
+place; its drawing is not a separate target. Lock screen notification apps
+keeps the bulk action between its help and the list. The Hidden/Notify matrix
+continues to use its own two-target layout and checkbox outlines.
+
+### Full-page confirmation: a grouped decision
+
+```text
+< Clear all data
+  Erase all settings and restart Kotatsu?
+  -------------------------------------------------
+  Clear all data
+```
+
+Use `ConfirmationPage` with the normal page header and Back control. Render
+the existing decision prompt as a group heading above a 2 dp ink rule; keep
+any consequence detail below the rule in Regular sheet-help type. If the
+user must inspect incoming values, as in Config import, keep those rows
+between the rule and the actions. Only the confirming action is Bold; any
+existing Cancel action stays Regular. Back never confirms. No warning colour,
+card, checkbox, fake value or action bar. Existing confirmation sheets are
+not full-page confirmations.
+
 ## Values and interaction vocabulary
 
 | # | Content | Use |
@@ -465,13 +500,6 @@ transient destination and preserves the chapter's page number.
 | 9 | Regular help | Full-width explanation below the entry's first line; explain effect/options, not a second copy of its current value |
 | 10 | Small Bold summary | Extra configuration detail, such as **Configured: On, 2 widgets**, after the help of an Open entry |
 | 11 | Metadata | A name and accurate value with no interaction. Do not invent **Open** or a chevron for static version/runtime information |
-
-Choice pages show one label per full-row option. The selected label is Bold
-with one shared vector check in the trailing slot; unselected labels are
-Regular. They have no radio rings and no leaders pointing to empty cells.
-Selection pops the choice page before applying the callback, because applying
-may itself open another destination. Back applies nothing. Multi-select uses
-`CheckboxOption` and stays on the page instead.
 
 Render shared marks once. Use `CheckMark` where the bundled font lacks a
 check glyph, not an arbitrary fallback font. Do not combine a hidden zero-font
@@ -680,7 +708,7 @@ semantics. A reusable component knows its children, never its consumers.
 | 4 | Check group boundaries | Each nonempty chapter group has one to six visible entries. Hide unavailable entries using `visible`; empty groups disappear. Do not split a meaningful group to match a screenshot |
 | 5 | Render a chapter | Pass it to `PaperIndexRenderer`. Reuse its help, choices, measured groups, footer and pager instead of hand-building them |
 | 6 | Route a destination | Add the category to the Settings owner's chapter map or push a stable secondary destination. Render only the current top page and use the same pop callback for header/device Back |
-| 7 | Build a secondary destination | `ChoiceSurface` for a pure choice, preserving its static/app-built classification and retained background; `HelpPage` for prose; `PagedSettingsPage` for item lists; `SettingsPage` for mixed blocks/editors. Group inseparable children in a `Column` |
+| 7 | Build a secondary destination | `ChoiceSurface` for a pure choice, preserving its static/app-built classification and retained background; `HelpPage` for prose; `PagedSettingsPage` for item lists; `SettingsPage` for mixed blocks/editors; `ConfirmationPage` for a full-page decision. Group inseparable children in a `Column` |
 | 8 | Add a reminder only when needed | Supply the shared `NoticeContent` from its state owner and, for chapters, the relevant `noticeGroup`. Do not copy Notice state into the page |
 | 9 | Check the result | Compare actual rendered anatomy, baselines, live values, targets, page boundaries and Back behaviour with this guide. Record any remaining mismatch rather than silently changing the style |
 
@@ -725,7 +753,7 @@ and Add widget, all inside `SettingsPage`.
 | 2 | Use real baseline tracks, leaders for name/value and rules for groups | Align with spaces, period strings, magic offsets or decorative rules |
 | 3 | Keep targets at least 48 dp and let help grow | Make a word/check drawing the entire touch target or shrink text to fit |
 | 4 | Reuse `PaperSheet` for short static choices and the full-page kit for long/app-built choices, help, editors and management | Add another sheet implementation or generic pill/switch chrome |
-| 5 | Use one selected check and Bold label on a choice page | Add radio rings, leaders to empty cells or colour-only selection |
+| 5 | Use the shared leader and checkbox tracks on pages and sheets | Add a lone tick, radio rings or colour-only selection |
 | 6 | Keep groups and measured blocks whole | Force a screenshot's row count or split a heading from its entries |
 | 7 | Use bracket cards for configured widget blocks | Put every ordinary setting in a card or add Size/Remove rows inside widget cards |
 | 8 | Pass data and callbacks into shared components | Import a consumer, inspect its internals or duplicate its state |
@@ -741,7 +769,6 @@ differences rather than quietly turning them into a second house style.
 | # | Screen | Observation and relationship to the style |
 |---|---|---|
 | 1 | Edge swipes | A full-width rule has no group label, with blank space where the label would be. `EdgeSwipesCategory.kt` passes an empty group title to `GroupHeading`, which still reserves heading space and draws the rule. Unlike the named chapter groups, the rule has no visible section name |
-| 2 | Long or app-built choice pages | These keep plain left labels and a light check inset from the chapter value edge, not the short sheet's name/leader/box line. `ChoiceOption` intentionally makes only the selected label Bold and centres its 21 dp / 1.5 dp-stroke check in a 48 dp trailing slot. This remains the implemented page-specific exception, not a reason to add leaders or heavier marks locally |
 | 3 | Lock screen message editor | Save and Cancel are separate plain Regular rows below the field, rather than the Bold action/value emphasis used by entries. They currently use `SheetAction`; no action-bar redesign is implied |
 | 4 | Lock screen notification apps | Deselect all is a plain Regular header action above Bold app labels and trailing checkboxes. It uses `SheetAction`, so its typography differs from the main entry/action vocabulary |
 | 5 | Order apps | Values include `Most Recent` and `Most Used`, mixing title case with sentence-style labels. These are legacy copy differences, not the writing model for new labels |

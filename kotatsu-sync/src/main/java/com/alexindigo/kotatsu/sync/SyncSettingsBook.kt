@@ -40,14 +40,17 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
                     back, header = { SheetText(stringResource(R.string.calendars_help)) }) { calendar ->
                     CheckboxOption(calendar.label, calendar.id in state.settings.calendars) { owner.toggleCalendar(calendar.id) }
                 }
-                destination == MOVE -> SettingsPage(stringResource(R.string.move_phone_contacts), back) {
+                destination == MOVE -> {
+                    val title = stringResource(R.string.move_phone_contacts)
+                    val cancel = stringResource(R.string.cancel)
                     val move = owner.confirmation
                     if (move != null) {
                         val label = state.books.singleOrNull { it.account == move.destination }?.label ?: addressBookLabel(move.destination)
-                        SheetText(pluralStringResource(R.plurals.move_confirmation, move.sourceIds.size, move.sourceIds.size, label))
-                        SheetAction(stringResource(R.string.move)) { owner.confirmMove(); back() }
-                    }
-                    SheetAction(stringResource(R.string.cancel), back)
+                        ConfirmationPage(title,
+                            pluralStringResource(R.plurals.move_confirmation, move.sourceIds.size, move.sourceIds.size, label),
+                            stringResource(R.string.move), onConfirm = { owner.confirmMove(); back() },
+                            onBack = back, cancelLabel = cancel)
+                    } else SettingsPage(title, back) { SheetAction(cancel, back) }
                 }
                 destination == CHANGES -> PagedSettingsPage(changes, held, back, header = {}) { item ->
                     Entry(SettingsEntry.Open(item.id, lossLabel(item), "", { navigation.push("$LOSS:${item.id}") }))
@@ -171,23 +174,24 @@ else pluralStringResource(R.plurals.held_standard_status, hold.count, hold.count
 private fun LossPage(hold: HeldCalendarLoss?, delete: Boolean, back: () -> Unit, confirmDelete: (HeldCalendarLoss) -> Unit,
     resolve: (HeldCalendarLoss, LossResolution) -> Unit) {
     val title = stringResource(if (delete) R.string.delete_server_title else R.string.calendar_changes)
+    if (delete && hold != null) {
+        ConfirmationPage(title, pluralStringResource(R.plurals.delete_server_intro, hold.count, hold.count, hold.calendarNames()),
+            stringResource(R.string.delete), onConfirm = { resolve(hold, LossResolution.DELETE_FROM_SERVER) },
+            onBack = back, cancelLabel = stringResource(R.string.cancel))
+        return
+    }
     SettingsPage(title, back) {
         if (hold == null) SheetText(stringResource(R.string.unavailable))
-        else when {
-            delete -> {
-                SheetText(pluralStringResource(R.plurals.delete_server_intro, hold.count, hold.count, hold.calendarNames()))
-                SheetAction(stringResource(R.string.delete)) { resolve(hold, LossResolution.DELETE_FROM_SERVER) }
-                SheetAction(stringResource(R.string.cancel), back)
-            }
-            hold.direction == LossDirection.PHONE -> {
+        else when (hold.direction) {
+            LossDirection.PHONE -> {
                 SheetText(pluralStringResource(R.plurals.held_phone_intro, hold.count, hold.count))
-                SheetAction(stringResource(R.string.restore_phone), singleLine = true) { resolve(hold, LossResolution.RESTORE) }
-                SheetAction(stringResource(R.string.delete_from_server), singleLine = true) { confirmDelete(hold) }
+                SheetAction(stringResource(R.string.restore_phone)) { resolve(hold, LossResolution.RESTORE) }
+                SheetAction(stringResource(R.string.delete_from_server)) { confirmDelete(hold) }
             }
-            else -> {
+            LossDirection.STANDARD -> {
                 SheetText(pluralStringResource(R.plurals.held_standard_intro, hold.count, hold.count, hold.calendarNames()))
-                SheetAction(stringResource(R.string.keep_phone), singleLine = true) { resolve(hold, LossResolution.KEEP) }
-                SheetAction(stringResource(R.string.remove_phone), singleLine = true) { resolve(hold, LossResolution.REMOVE) }
+                SheetAction(stringResource(R.string.keep_phone)) { resolve(hold, LossResolution.KEEP) }
+                SheetAction(stringResource(R.string.remove_phone)) { resolve(hold, LossResolution.REMOVE) }
             }
         }
     }

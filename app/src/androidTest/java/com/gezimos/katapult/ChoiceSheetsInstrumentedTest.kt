@@ -170,6 +170,7 @@ class ChoiceSheetsInstrumentedTest {
             assertEquals(0, chosen.get())
             val sheet = ui.findAncestor("Option 0") { it.viewIdResourceName == "paper_sheet_surface" }
             assertEquals("Only short static lists use the sheet surface", count == 4 && !dynamic, sheet != null)
+            assertTrue("The opening entry's help travels with either choice surface", ui.has("Choice help"))
             ui.back(); closed(ui)
             assertTrue(ui.has("Fixture chapter"))
             assertEquals(0, chosen.get())
