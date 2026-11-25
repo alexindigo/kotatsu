@@ -78,6 +78,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    implementation("androidx.graphics:graphics-core:1.0.4")
 }
 
 // The source-policy test reads sibling modules too, beyond :app's runtime classpath.

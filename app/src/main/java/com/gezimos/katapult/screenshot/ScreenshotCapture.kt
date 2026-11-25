@@ -22,8 +22,9 @@ class ScreenshotCapture(private val service: AccessibilityService, private val h
     fun capture() {
         if (closed || !eligible()) return
         val token = order.begin()
-        preview.beforeCapture {
+        preview.beforeCapture { excluded ->
             if (closed || !order.isActive(token) || !eligible()) { preview.captured(); return@beforeCapture }
+            if (!excluded) { preview.captured(); report(token, ScreenshotFailure.UNAVAILABLE); return@beforeCapture }
             try {
                 request(object : AccessibilityService.TakeScreenshotCallback {
                     override fun onSuccess(result: AccessibilityService.ScreenshotResult) {

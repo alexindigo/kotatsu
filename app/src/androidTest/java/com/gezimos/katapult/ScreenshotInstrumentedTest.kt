@@ -35,6 +35,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.roundToInt
 
 class ScreenshotInstrumentedTest {
     @get:org.junit.Rule val nativeState = ConnectedUiStateRule()
@@ -61,6 +62,21 @@ class ScreenshotInstrumentedTest {
             view.invalidate()
         }
         assertTrue("Preview frame was not committed", committed.await(5, TimeUnit.SECONDS))
+    }
+
+    private fun capturePreviewPixels(view: View, name: String, paper: Int, ink: Int) {
+        val pos = IntArray(2)
+        main { view.getLocationOnScreen(pos) }
+        val halo = (3 * view.resources.displayMetrics.density).roundToInt()
+        ui.await("Preview did not reach the display with the expected halo and frame") {
+            val image = automation.takeScreenshot()
+            withFixtureCleanup({ image.recycle() }) {
+                val x = pos[0] + view.width / 2
+                val y = pos[1]
+                if (image.getPixel(x, y) != paper || image.getPixel(x, y + halo) != ink) false
+                else { png(image, name); true }
+            }
+        }
     }
 
     private fun withService(test: (LockscreenWidgetService, MainActivity) -> Unit) = ConnectedUiStateFixture().use {
@@ -99,6 +115,7 @@ class ScreenshotInstrumentedTest {
     private class RecordingWindowManager(private val actual: WindowManager) : WindowManager by actual {
         var adds = 0; var removes = 0
         var view: View? = null
+        val content get() = (view as? ScreenshotPreviewPixels)?.content ?: view
         var params: WindowManager.LayoutParams? = null
         override fun getMaximumWindowMetrics() = actual.maximumWindowMetrics
         override fun addView(view: View, params: ViewGroup.LayoutParams) {
@@ -123,6 +140,63 @@ class ScreenshotInstrumentedTest {
 
     private fun capturePreview(service: LockscreenWidgetService, wm: WindowManager) =
         ScreenshotPreviewWindow(service, ControlledPreviewExpiry(), wm)
+
+    @Test fun captureExcludesPreviewEvenWhenWindowManagerKeepsTheWindow() = withService { service, _ ->
+        main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
+        ui.await("Origin app missing") { ui.has("Brightness level") }
+        shell("settings put global window_animation_scale 1")
+        val real = service.getSystemService(WindowManager::class.java)
+        val runner = instrumentation.context
+        // On the old implementation INVISIBLE starts this real WindowManager exit animation,
+        // so its last opaque buffer can still be captured. The fixed implementation must not
+        // rely on WindowManager retiring either the window or its last buffer.
+        lateinit var overlay: View
+        val wm = object : WindowManager by real {
+            override fun getMaximumWindowMetrics() = real.maximumWindowMetrics
+            override fun addView(view: View, params: ViewGroup.LayoutParams) {
+                val lp = params as WindowManager.LayoutParams
+                lp.packageName = runner.packageName
+                lp.windowAnimations = runner.resources.getIdentifier("ScreenshotPreviewProbe", "style", runner.packageName)
+                assertNotEquals(0, lp.windowAnimations)
+                overlay = view
+                real.addView(view, lp)
+            }
+        }
+        val expiry = ControlledPreviewExpiry()
+        val window = ScreenshotPreviewWindow(service, expiry, wm)
+        val clean = automation.takeScreenshot()
+        val saved = CountDownLatch(1)
+        val resolver = context.contentResolver
+        var uri: Uri? = null
+        lateinit var pipeline: ScreenshotCapture
+        withFixtureCleanup(body = {
+            main {
+                pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true }, window) { bitmap ->
+                    uri = ScreenshotStore(resolver).save(bitmap)
+                    saved.countDown()
+                }
+                window.saved(clean)
+            }
+            ui.await("Previous preview never became visible") { previewWindow()?.contains("Surface: shown=true") == true }
+            val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+            capturePreviewPixels(overlay, "retained-preview-visible.png", palette.paperArgb, palette.inkArgb)
+            png(clean, "retained-preview-first.png")
+            main { pipeline.capture() }
+            assertTrue("Capture did not publish", saved.await(10, TimeUnit.SECONDS))
+            val second = resolver.openInputStream(checkNotNull(uri)).use { BitmapFactory.decodeStream(it) }!!
+            withFixtureCleanup({ second.recycle() }) {
+                png(second, "retained-preview-second.png")
+                val width = clean.width / 3 + 32; val height = clean.height / 3 + 80
+                val a = IntArray(width * height); val b = IntArray(a.size)
+                clean.getPixels(a, 0, width, 0, clean.height - height, width, height)
+                second.getPixels(b, 0, width, 0, second.height - height, width, height)
+                assertArrayEquals("The previous preview was included in the next screenshot", a, b)
+            }
+        }, actions = arrayOf<() -> Unit>(
+            { main { pipeline.close(); expiry.close() } },
+            { uri?.let { resolver.delete(it, null, null) }; clean.recycle() },
+        ))
+    }
 
     @Test fun lockScreenNotificationWidgetStaysLightInBothThemes() = withService { service, activity ->
         val prefs = com.gezimos.katapult.util.PrefsManager(context)
@@ -168,10 +242,10 @@ class ScreenshotInstrumentedTest {
                 val palette = if (dark) com.gezimos.katapult.ui.PaperPalette.Dark(context) else com.gezimos.katapult.ui.PaperPalette.Light(context)
                 ui.await("Preview text did not observe theme") { textView(wm.view, context.getString(R.string.screenshot_saved))?.currentTextColor == palette.inkArgb }
                 committedFrame(checkNotNull(wm.view))
-                assertEquals(palette.paperArgb, (wm.view!!.background as android.graphics.drawable.ColorDrawable).color)
+                assertEquals(palette.paperArgb, (wm.content!!.background as android.graphics.drawable.ColorDrawable).color)
                 assertEquals("Do not recreate the open preview", 1, wm.adds)
                 val prefix = InstrumentationRegistry.getArguments().getString("appearanceCapturePrefix", "appearance")
-                capture("$prefix-${if (dark) "dark" else "light"}-screenshot-preview.png")
+                capturePreviewPixels(wm.view!!, "$prefix-${if (dark) "dark" else "light"}-screenshot-preview.png", palette.paperArgb, palette.inkArgb)
             }
             main { expiry.expireNow() }
             ui.await("Controlled expiry did not remove the preview") { !wm.view!!.isAttachedToWindow }
@@ -200,7 +274,7 @@ class ScreenshotInstrumentedTest {
             assertEquals(wm.maximumWindowMetrics.bounds.width() / 4, image(wm.view)!!.width)
             assertEquals(image(wm.view)!!.width * 800 / 480, image(wm.view)!!.height)
             main {
-                val card = (wm.view as ViewGroup).getChildAt(0)
+                val card = (wm.content as ViewGroup).getChildAt(0)
                 val position = IntArray(2); card.getLocationOnScreen(position)
                 val inset = (16 * context.resources.displayMetrics.density).toInt()
                 assertTrue(kotlin.math.abs(position[0] - inset) <= 1)
@@ -216,7 +290,8 @@ class ScreenshotInstrumentedTest {
             committedFrame(wm.view!!)
             val title = textView(wm.view, "Screenshot not saved")!!
             assertEquals("The whole failure title must fit on its first line", title.text.length, title.layout.getLineEnd(0))
-            capture("screenshot-preview-failure.png")
+            val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+            capturePreviewPixels(wm.view!!, "screenshot-preview-failure.png", palette.paperArgb, palette.inkArgb)
             SystemClock.sleep(1700)
             assertTrue("The old expiry must be cancelled", wm.view!!.isAttachedToWindow)
             ui.await("Latest result did not expire", 2500) { !wm.view!!.isAttachedToWindow }
@@ -225,6 +300,7 @@ class ScreenshotInstrumentedTest {
             main { window.failed(ScreenshotFailure.UNAVAILABLE) }
             ui.await("Capture-unavailable failure card missing") { hasText(wm.view, "The screen can't be captured right now") }
             main { window.close() }
+            ui.await("Closing did not remove the preview") { !wm.view!!.isAttachedToWindow }
             assertEquals(2, wm.removes)
             // WM registration exists before the first attach/draw callback. Reuse and
             // cleanup in that same turn must not double-add or leave a pending window.
@@ -261,7 +337,7 @@ class ScreenshotInstrumentedTest {
             ui.await("Saved results did not reach the preview") { hasText(wm.view, "Saved") }
             assertEquals(1, wm.adds)
             main { pipeline.clear() }
-            assertFalse(wm.view!!.isAttachedToWindow)
+            ui.await("Clearing did not remove the preview") { !wm.view!!.isAttachedToWindow }
             assertEquals(1, wm.removes)
         }, actions = arrayOf<() -> Unit>({ release.countDown() }, { main { cleanup?.invoke() } }))
 

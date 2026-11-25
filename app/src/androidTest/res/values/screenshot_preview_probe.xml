@@ -1,0 +1,5 @@
+<resources>
+    <style name="ScreenshotPreviewProbe">
+        <item name="android:windowExitAnimation">@anim/screenshot_preview_hold_exit</item>
+    </style>
+</resources>

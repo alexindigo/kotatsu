@@ -6,8 +6,8 @@ import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.drawable.GradientDrawable
 import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
-import android.view.Choreographer
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -25,9 +25,17 @@ class ScreenshotPreviewWindow(
     private val handler: Handler,
     private val wm: WindowManager = context.getSystemService(WindowManager::class.java),
 ) : AutoCloseable {
-    companion object { const val DURATION_MS = 3000L; private const val HALO_DP = 3; private const val INSET_DP = 16 }
-    private var root: FrameLayout? = null
+    companion object {
+        const val DURATION_MS = 3000L
+        private const val EXCLUSION_TIMEOUT_MS = 3000L
+        private const val HALO_DP = 3
+        private const val INSET_DP = 16
+    }
+    private val main = Handler(Looper.getMainLooper())
+    private var root: ScreenshotPreviewPixels? = null
+    private var removing = false
     private var captures = 0
+    private val waiting = mutableMapOf<Runnable, (Boolean) -> Unit>()
     private var announcementPending = false
     private val palette get() = Appearance.palette(context, Appearance.Surface.APP)
     private val colours = mutableListOf<() -> Unit>()
@@ -81,11 +89,16 @@ class ScreenshotPreviewWindow(
     }
 
     private fun show(announcement: String, failure: Boolean, content: (LinearLayout) -> Unit) {
-        val container = root ?: FrameLayout(context).apply {
-            setBackgroundColor(palette.paperArgb); setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
+        removing = false
+        val window = root ?: ScreenshotPreviewPixels(context, main, FrameLayout(context).apply {
+            setBackgroundColor(palette.paperArgb)
+            setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, ::excluded).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }.also { root = it }
+        val container = window.content
         container.removeAllViews()
         val card = LinearLayout(context).apply {
             orientation = LinearLayout.VERTICAL; background = box(2)
@@ -96,15 +109,16 @@ class ScreenshotPreviewWindow(
         content(card)
         container.addView(card, FrameLayout.LayoutParams(-2, -2))
         if (appearance == null) appearance = Appearance.observe(context, Appearance.Surface.APP) { value ->
-            root?.setBackgroundColor(value.paperArgb)
+            root?.content?.setBackgroundColor(value.paperArgb)
             colours.forEach { it() }
+            root?.update()
         }
-        container.contentDescription = announcement
-        container.visibility = if (captures == 0) View.VISIBLE else View.INVISIBLE
+        window.contentDescription = announcement
+        window.suppress(captures > 0)
         try {
             // Registration precedes dispatchAttachedToWindow. A second result in the
             // same main-loop turn must reuse the already-registered window.
-            if (container.parent == null) {
+            if (window.parent == null) {
                 val params = WindowManager.LayoutParams().apply {
                     type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY; format = PixelFormat.TRANSLUCENT
                     width = -2; height = -2; gravity = Gravity.BOTTOM or Gravity.LEFT
@@ -112,7 +126,7 @@ class ScreenshotPreviewWindow(
                     x = dp(INSET_DP - HALO_DP); y = dp(INSET_DP - HALO_DP)
                     setFitInsetsTypes(0); setTitle(context.getString(R.string.screenshot_preview))
                 }
-                wm.addView(container, params)
+                wm.addView(window, params)
             }
             announcementPending = true
             announce()
@@ -122,16 +136,30 @@ class ScreenshotPreviewWindow(
         }
     }
 
-    /** Keep the same window attached, but let its hidden frame reach the compositor before capture. */
-    fun beforeCapture(action: () -> Unit) {
+    /** Keep the preview suppressed until each issued capture has acquired its pixels. */
+    fun beforeCapture(action: (Boolean) -> Unit) {
         captures++
-        val view = root
-        if (view?.parent != null) {
-            view.visibility = View.INVISIBLE
-            Choreographer.getInstance().postFrameCallback {
-                Choreographer.getInstance().postFrameCallback { action() }
+        root?.suppress(true)
+        if (root?.excluded != false) {
+            action(true)
+        } else {
+            val timeout = object : Runnable {
+                override fun run() { waiting.remove(this)?.invoke(false) }
             }
-        } else action()
+            waiting[timeout] = action
+            // Exceptional acknowledged failure, never a fallback to a possibly contaminated capture.
+            main.postDelayed(timeout, EXCLUSION_TIMEOUT_MS)
+        }
+    }
+
+    private fun excluded() {
+        if (removing) removeExcludedWindow()
+        val acknowledgements = waiting.toMap()
+        waiting.clear()
+        for ((timeout, action) in acknowledgements) {
+            main.removeCallbacks(timeout)
+            action(true)
+        }
     }
 
     private fun announce() {
@@ -144,7 +172,7 @@ class ScreenshotPreviewWindow(
 
     fun captured() {
         captures = (captures - 1).coerceAtLeast(0)
-        if (captures == 0) { root?.visibility = View.VISIBLE; announce() }
+        if (captures == 0 && !removing) { root?.suppress(false); announce() }
     }
 
     fun hide() {
@@ -152,6 +180,12 @@ class ScreenshotPreviewWindow(
         colours.clear()
         handler.removeCallbacks(expire)
         announcementPending = false
+        removing = true
+        root?.suppress(true)
+        if (root?.excluded != false) removeExcludedWindow()
+    }
+
+    private fun removeExcludedWindow() {
         val view = root
         if (view?.parent != null) try { wm.removeViewImmediate(view) }
         catch (error: RuntimeException) { android.util.Log.w("ScreenshotPreview", "Could not remove preview", error) }
