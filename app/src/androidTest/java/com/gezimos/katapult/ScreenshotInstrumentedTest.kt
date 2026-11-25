@@ -115,6 +115,7 @@ class ScreenshotInstrumentedTest {
 
     private class RecordingWindowManager(private val actual: WindowManager) : WindowManager by actual {
         var adds = 0; var removes = 0
+        var failNextRemoval = false
         var view: View? = null
         val content get() = (view as? ScreenshotPreviewPixels)?.content ?: view
         var params: WindowManager.LayoutParams? = null
@@ -123,7 +124,14 @@ class ScreenshotInstrumentedTest {
             adds++; this.view = view; this.params = params as WindowManager.LayoutParams
             actual.addView(view, params)
         }
-        override fun removeViewImmediate(view: View) { removes++; actual.removeViewImmediate(view) }
+        override fun removeViewImmediate(view: View) {
+            removes++
+            if (failNextRemoval) {
+                failNextRemoval = false
+                throw IllegalStateException("Injected WindowManager removal failure")
+            }
+            actual.removeViewImmediate(view)
+        }
     }
 
     private fun textView(view: View?, text: String): TextView? = when {
@@ -141,6 +149,32 @@ class ScreenshotInstrumentedTest {
 
     private fun capturePreview(service: LockscreenWidgetService, wm: WindowManager) =
         ScreenshotPreviewWindow(service, ControlledPreviewExpiry(), wm)
+
+    @Test fun retainedPreviewRendersNextResultAfterRemovalFails() = withService { service, _ ->
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expiry = ControlledPreviewExpiry()
+        val window = ScreenshotPreviewWindow(service, expiry, wm)
+        val sample = Bitmap.createBitmap(480, 800, Bitmap.Config.ARGB_8888)
+        val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+        withFixtureCleanup({ main { window.close(); expiry.close() } }, { sample.recycle() }) {
+            main { window.saved(sample) }
+            ui.await("Preview not attached") { wm.view?.isAttachedToWindow == true }
+            val retained = checkNotNull(wm.view)
+            capturePreviewPixels(retained, "before-preview-removal-fault.png", palette.paperArgb, palette.inkArgb)
+            main { wm.failNextRemoval = true; expiry.expireNow() }
+            ui.await("Failed removal did not leave a parented GONE window") {
+                fixtureMain { wm.removes == 1 && retained.parent != null && retained.visibility == View.GONE }
+            }
+
+            main { window.failed(ScreenshotFailure.STORAGE_FULL) }
+            assertSame(retained, wm.view)
+            assertEquals("Result should reuse the registered window", 1, wm.adds)
+            assertEquals("Reused preview is still hidden", View.VISIBLE, fixtureMain { retained.visibility })
+            assertTrue(hasText(wm.content, service.getString(R.string.screenshot_storage_full)))
+            committedFrame(retained)
+            capturePreviewPixels(retained, "restored-preview-after-removal-fault.png", palette.paperArgb, palette.inkArgb)
+        }
+    }
 
     @Test fun removedPreviewReleaseCannotStartCaptureWaitingForAnotherPreview() = withService { service, _ ->
         val shown = Bitmap.createBitmap(480, 800, Bitmap.Config.ARGB_8888)

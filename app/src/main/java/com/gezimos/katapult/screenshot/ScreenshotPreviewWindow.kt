@@ -122,6 +122,8 @@ class ScreenshotPreviewWindow internal constructor(
         window.contentDescription = announcement
         window.suppress(captures > 0)
         try {
+            // A failed removal can leave the registered root GONE.
+            window.visibility = View.VISIBLE
             // Registration precedes dispatchAttachedToWindow. A second result in the
             // same main-loop turn must reuse the already-registered window.
             if (window.parent == null) {

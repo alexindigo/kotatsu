@@ -186,7 +186,7 @@ internal class ScreenshotPreviewPixels(
         onRelease: ((SyncFenceCompat) -> Unit)? = null,
     ) {
         // AndroidX on 30/31 registers completion for a non-null buffer only.
-        HardwareBuffer.create(1, 1, HardwareBuffer.RGBA_8888, 1, HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE).use { blank ->
+        allocateHiddenPreviewBuffer().use { blank ->
             transaction(false).use {
                 it.setVisibility(target.surface, false).setBuffer(target.surface, blank, releaseCallback = onRelease)
                 it.commit()
@@ -327,3 +327,9 @@ internal class ScreenshotPreviewPixels(
         const val RETRY_MS = 100L
     }
 }
+
+// SurfaceControlCompat.setBuffer requires both usages, including for hidden replacements.
+internal fun allocateHiddenPreviewBuffer(): HardwareBuffer = HardwareBuffer.create(
+    1, 1, HardwareBuffer.RGBA_8888, 1,
+    HardwareBuffer.USAGE_GPU_SAMPLED_IMAGE or HardwareBuffer.USAGE_COMPOSER_OVERLAY,
+)
