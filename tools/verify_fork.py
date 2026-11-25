@@ -262,8 +262,9 @@ def verify_module_inventory(root):
         require(not unexpected,f'Unpinned {role} application in {manifest}: '+', '.join(sorted(unexpected)))
 
     # The manifest drives settings inclusion, but cannot hide unlisted source builds.
-    build_names={'build.gradle.kts','build.gradle'}
-    builds=set()
+    kotlin_build='build.gradle.kts'
+    build_names={kotlin_build,'build.gradle'}
+    builds={}
     def scan_failed(error):
         raise VerificationError(f'Cannot scan Gradle module directories: {error}') from error
     for directory,subdirs,files in os.walk(root,onerror=scan_failed):
@@ -272,18 +273,21 @@ def verify_module_inventory(root):
         scripts=build_names.intersection(files)
         if module=='.' or not scripts:continue
         require(len(scripts)==1,'Duplicate Gradle build scripts: '+module)
-        confined(root,module+'/'+next(iter(scripts)))
-        builds.add(module)
-    unknown=builds-modules.keys();missing=modules.keys()-builds
+        script=next(iter(scripts))
+        require(module not in release or script==kotlin_build,
+                f'{module}: release modules require {kotlin_build}')
+        builds[module]=confined(root,module+'/'+script)
+    unknown=builds.keys()-modules.keys();missing=modules.keys()-builds.keys()
     require(not unknown,f'Unclassified Gradle module in {manifest}: '+', '.join(sorted(unknown)))
     require(not missing,'Missing Gradle module build script: '+', '.join(sorted(missing)))
+    return builds
 
 
 def source_release_identities(root):
-    verify_module_inventory(root)
+    builds=verify_module_inventory(root)
     result={}
     for module,spec in RELEASE_APPS.items():
-        build=confined(root,module+'/build.gradle.kts').read_text()
+        build=builds[module].read_text()
         for field,expected in (('applicationId',spec['applicationId']),('namespace',spec['namespace']),
                                ('versionCode',str(spec['versionCode'])),('versionName',RELEASE_VERSION),
                                ('minSdk','30'),('targetSdk','36')):

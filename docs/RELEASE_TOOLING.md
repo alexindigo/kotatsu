@@ -8,8 +8,10 @@ alongside the Gradle versions when preparing a release.
 `gradle/modules.txt` is the module manifest and drives inclusion in Gradle
 settings. List every module once as `path=release`, `path=non-release` or
 `path=non-app`; blank lines and `#` comment lines do not count. Use the source
-directory's root-relative path, with `build.gradle.kts` or `build.gradle` in
-that directory. For a nested project, list its Gradle parent projects too.
+directory's root-relative path. Each module must have exactly one build script:
+`release` modules require `build.gradle.kts` for source identity checks;
+`non-release` and `non-app` modules may use `build.gradle.kts` or `build.gradle`.
+For a nested project, list its Gradle parent projects too.
 Gradle checks the configured projects and whether each actually applies
 `com.android.application`. Both release tools check the manifest against the
 source directories, excluding generated Gradle and build trees, and reject

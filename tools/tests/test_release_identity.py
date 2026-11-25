@@ -132,6 +132,21 @@ class ReleaseIdentityTest(unittest.TestCase):
                 self.inventory_rejected('Missing Gradle module build script.*'+module)
                 script.write_bytes(original)
 
+    def test_release_modules_reject_groovy_only_build_scripts(self):
+        for module in APPS:
+            with self.subTest(module=module):
+                kotlin=self.root/module/'build.gradle.kts'
+                groovy=kotlin.rename(kotlin.with_name('build.gradle'))
+                try:
+                    self.inventory_rejected(rf'{module}: release modules require build\.gradle\.kts')
+                finally:
+                    groovy.rename(kotlin)
+
+    def test_non_release_app_inventory_accepts_groovy_build_script(self):
+        kotlin=self.root/'kotatsu-sync/build.gradle.kts'
+        kotlin.rename(kotlin.with_name('build.gradle')).write_text("plugins { id 'com.android.application' }\n")
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
     def test_missing_or_commented_manifest_entry_cannot_be_replaced_by_settings_text(self):
         settings=self.root/'settings.gradle.kts'
         settings.write_text(settings.read_text()+'\n/*\n/* Nested comment */\ninclude(":kotatsu-notes")\n*/\n')

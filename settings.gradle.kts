@@ -62,6 +62,10 @@ gradle.projectsEvaluated {
             project.buildFile.name in setOf("build.gradle.kts", "build.gradle") && project.buildFile.isFile) {
             "$path must use a standard build script in $directory"
         }
+        // Release identity pins are checked against Kotlin build scripts.
+        check(role != "release" || project.buildFile.name == "build.gradle.kts") {
+            "$path: release modules require build.gradle.kts"
+        }
         check(project.pluginManager.hasPlugin("com.android.application") == (role != "non-app")) {
             "$path: applied Android application plugin does not match $role in $moduleManifest"
         }
