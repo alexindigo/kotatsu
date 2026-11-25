@@ -217,6 +217,84 @@ class ScreenshotInstrumentedTest {
 
     @Test fun expiryOwnerRecoversFailedHideWithoutAnotherCapture() = previewOwnerRecoversTransaction(failShow = false)
 
+    @Test fun previewOwnerRecoversLayerCreationAndNextCapture() = captureAfterLayerCreationFailure(persistent = false)
+
+    @Test fun persistentLayerCreationFailureDoesNotBlockCapture() = captureAfterLayerCreationFailure(persistent = true)
+
+    private fun captureAfterLayerCreationFailure(persistent: Boolean) = withService { service, _ ->
+        main { context.startActivity(Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)) }
+        ui.await("Origin app missing") { ui.has("Brightness level") }
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expiry = ControlledPreviewExpiry()
+        val handler = Handler(Looper.getMainLooper())
+        val attempted = CountDownLatch(if (persistent) 3 else 1)
+        var attempts = 0
+        val window = ScreenshotPreviewWindow(service, expiry, wm, buildLayer = { builder ->
+            attempted.countDown()
+            if (++attempts == 1 || persistent) throw IllegalStateException("Injected preview layer creation failure")
+            builder.build()
+        }) { SurfaceControlCompat.Transaction() }
+        val resolver = context.contentResolver
+        val before = pictures()
+        val clean = automation.takeScreenshot()
+        val saved = CountDownLatch(1)
+        var requests = 0
+        val pipeline = ScreenshotCapture(service, handler, { true }, window, request = {
+            requests++
+            service.takeScreenshot(android.view.Display.DEFAULT_DISPLAY, service.mainExecutor, it)
+        }) { bitmap ->
+            ScreenshotStore(resolver).save(bitmap)
+            saved.countDown()
+        }
+        fun assertBackdrop(actual: Bitmap) {
+            val w = clean.width / 3 + 32; val h = clean.height / 3 + 80
+            val expected = IntArray(w * h); val observed = IntArray(expected.size)
+            clean.getPixels(expected, 0, w, 0, clean.height - h, w, h)
+            actual.getPixels(observed, 0, w, 0, actual.height - h, w, h)
+            assertArrayEquals("Preview pixels must not cover the capture area", expected, observed)
+        }
+        withFixtureCleanup(
+            { main { fixtureCleanup({ pipeline.close() }, { expiry.close() }) } },
+            { clean.recycle() },
+            { (pictures() - before).forEach { resolver.delete(imageUri(it), null, null) } },
+        ) {
+            main { window.failed(ScreenshotFailure.STORAGE_FULL) }
+            assertTrue("Missing layer creation attempt(s)", attempted.await(5, TimeUnit.SECONDS))
+            val root = checkNotNull(fixtureMain { wm.view })
+            val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+            if (persistent) {
+                val display = automation.takeScreenshot()
+                withFixtureCleanup({ display.recycle() }) { assertBackdrop(display) }
+            } else {
+                capturePreviewPixels(root, "recovered-preview-layer.png", palette.paperArgb, palette.inkArgb)
+                assertEquals(2, fixtureMain { attempts })
+            }
+
+            main {
+                pipeline.capture()
+                if (persistent) assertEquals("An uncreated layer must not delay exclusion", 1, requests)
+            }
+            assertTrue("Capture did not save after layer creation failure", saved.await(8, TimeUnit.SECONDS))
+            val image = resolver.openInputStream(imageUri((pictures() - before).single())).use { BitmapFactory.decodeStream(it) }!!
+            withFixtureCleanup({ image.recycle() }) { assertBackdrop(image) }
+            ui.await("Saved result did not reach the preview") {
+                fixtureMain { hasText(wm.content, service.getString(R.string.screenshot_saved)) }
+            }
+            assertSame(root, fixtureMain { wm.view })
+            assertEquals(1, fixtureMain { wm.adds })
+            if (persistent) {
+                // Give any incorrectly queued retry a chance to run after the new result.
+                val settled = CountDownLatch(1)
+                handler.postDelayed({ settled.countDown() }, 400)
+                assertTrue(settled.await(5, TimeUnit.SECONDS))
+                assertEquals("Creation retries must stop for this surface", 3, fixtureMain { attempts })
+            } else {
+                committedFrame(root)
+                capturePreviewPixels(root, "saved-preview-after-layer-fault.png", palette.paperArgb, palette.inkArgb)
+            }
+        }
+    }
+
     private fun previewOwnerRecoversTransaction(failShow: Boolean) = withService { service, _ ->
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
         val expiry = ControlledPreviewExpiry()

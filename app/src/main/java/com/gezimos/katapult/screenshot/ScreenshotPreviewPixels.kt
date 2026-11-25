@@ -27,6 +27,7 @@ internal class ScreenshotPreviewPixels(
     private val transaction: (show: Boolean) -> SurfaceControlCompat.Transaction,
     private val commitFrame: (SurfaceControlCompat.Transaction) -> Unit,
     private val deliverFrameRelease: (() -> Unit) -> Unit,
+    private val buildLayer: (SurfaceControlCompat.Builder) -> SurfaceControlCompat = SurfaceControlCompat.Builder::build,
 ) : FrameLayout(context), SurfaceHolder.Callback, ViewTreeObserver.OnPreDrawListener {
     private val host = SurfaceView(context).apply {
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -59,8 +60,10 @@ internal class ScreenshotPreviewPixels(
     private var blocked = false
     private var dirty = false
     private var rendering = false
+    private var creationAttemptsLeft = 0
     private var retryPublication = false
     private val retry = Runnable { drive() }
+    private val needsLayer get() = !blocked && dirty && layer == null && creationAttemptsLeft > 0
 
     init {
         addView(content, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -92,23 +95,22 @@ internal class ScreenshotPreviewPixels(
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        layer = try {
-            Layer(SurfaceControlCompat.Builder().setName("Kotatsu screenshot preview pixels").setParent(host).build())
-                .also { layers.add(it) }
-        } catch (error: RuntimeException) {
-            Log.w(TAG, "Could not create preview layer", error)
-            null
-        }
+        creationAttemptsLeft = MAX_CREATION_ATTEMPTS
         update()
+        drive()
     }
 
     override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = update()
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
-        val previous = layer ?: return
+        creationAttemptsLeft = 0
+        val previous = layer
         layer = null
-        previous.retired = true
-        if (previous.frames.isEmpty() && previous.uncertain == null) dispose(previous)
+        retryPublication = false
+        if (previous != null) {
+            previous.retired = true
+            if (previous.frames.isEmpty() && previous.uncertain == null) dispose(previous)
+        }
         drive()
     }
 
@@ -142,10 +144,24 @@ internal class ScreenshotPreviewPixels(
             !it.hideQueued && (it.uncertain != null || it.frames.isNotEmpty() && (blocked || it.retired))
         }
         for (target in needsHide) suppress(target)
-        if (needsHide.any { !it.hideQueued }) main.postDelayed(retry, RETRY_MS)
+        if (needsLayer) tryCreateLayer()
         if (retryPublication && !blocked && layer?.uncertain == null) {
             retryPublication = false
             invalidate()
+        }
+        if (needsLayer || needsHide.any { !it.hideQueued }) scheduleRetry()
+    }
+
+    private fun tryCreateLayer() {
+        // Creation is optional: an uncreated layer has no pixels or exclusion leases.
+        // Only a new host surface replenishes the budget, not draws or later results.
+        creationAttemptsLeft--
+        try {
+            layer = Layer(buildLayer(SurfaceControlCompat.Builder().setName("Kotatsu screenshot preview pixels").setParent(host)))
+                .also { layers.add(it) }
+            invalidate()
+        } catch (error: RuntimeException) {
+            Log.w(TAG, "Could not create preview layer", error)
         }
     }
 
@@ -308,6 +324,10 @@ internal class ScreenshotPreviewPixels(
         if (blocked || layer !== target) return
         dirty = true
         retryPublication = true
+        scheduleRetry()
+    }
+
+    private fun scheduleRetry() {
         if (!main.hasCallbacks(retry)) main.postDelayed(retry, RETRY_MS)
     }
 
@@ -325,6 +345,7 @@ internal class ScreenshotPreviewPixels(
     private companion object {
         const val TAG = "ScreenshotPreview"
         const val RETRY_MS = 100L
+        const val MAX_CREATION_ATTEMPTS = 3
     }
 }
 

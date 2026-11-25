@@ -27,6 +27,7 @@ class ScreenshotPreviewWindow internal constructor(
     private val wm: WindowManager,
     private val commitFrame: (SurfaceControlCompat.Transaction) -> Unit = SurfaceControlCompat.Transaction::commit,
     private val deliverFrameRelease: (() -> Unit) -> Unit = { it() },
+    private val buildLayer: (SurfaceControlCompat.Builder) -> SurfaceControlCompat = SurfaceControlCompat.Builder::build,
     private val transaction: (show: Boolean) -> SurfaceControlCompat.Transaction,
 ) : AutoCloseable {
     constructor(context: Context, handler: Handler, wm: WindowManager = context.getSystemService(WindowManager::class.java)) :
@@ -100,7 +101,7 @@ class ScreenshotPreviewWindow internal constructor(
             setBackgroundColor(palette.paperArgb)
             setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, ::excluded, transaction, commitFrame, deliverFrameRelease).apply {
+        }, ::excluded, transaction, commitFrame, deliverFrameRelease, buildLayer).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }.also { root = it }
