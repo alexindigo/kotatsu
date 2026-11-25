@@ -1,23 +1,23 @@
 """Three-APK source, compiled identity and publication boundary regressions."""
 import argparse
 import copy
-import importlib.util
 import json
 from pathlib import Path
 import shutil
+import sys
 import tempfile
 import unittest
 from unittest import mock
 
-spec=importlib.util.spec_from_file_location('verify_fork',Path(__file__).parents[1]/'verify_fork.py')
-verify=importlib.util.module_from_spec(spec);spec.loader.exec_module(verify)
-spec=importlib.util.spec_from_file_location('prepare_release',Path(__file__).parents[1]/'prepare_release.py')
-prepare=importlib.util.module_from_spec(spec);spec.loader.exec_module(prepare)
+sys.path.insert(0,str(Path(__file__).parents[1]))
+import prepare_release as prepare
+import verify_fork as verify
 
 APPS={'app':('com.alexindigo.kotatsu',17,'Kotatsu'),
        'kotatsu-weather':('com.alexindigo.kotatsu.weather',12,'Kotatsu Weather'),
        'kotatsu-notes':('com.alexindigo.kotatsu.notes',11,'Kotatsu Notes')}
 NON_RELEASE_MODULES=('kotatsu-sync','fake-mudita-calendar')
+NON_APP_MODULES=('paper-ui','weather-api','weather-mudita')
 REPO=Path(__file__).resolve().parents[2]
 
 
@@ -25,7 +25,9 @@ class ReleaseIdentityTest(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
         shutil.copyfile(REPO/'settings.gradle.kts',self.root/'settings.gradle.kts')
-        for module in NON_RELEASE_MODULES:
+        self.manifest=self.root/'gradle/modules.txt';self.manifest.parent.mkdir()
+        shutil.copyfile(REPO/'gradle/modules.txt',self.manifest)
+        for module in (*NON_RELEASE_MODULES,*NON_APP_MODULES):
             (self.root/module).mkdir()
             shutil.copyfile(REPO/module/'build.gradle.kts',self.root/module/'build.gradle.kts')
         self.metadata={};self.badging={};self.packages={};self.certs={};self.calls=[]
@@ -84,36 +86,22 @@ class ReleaseIdentityTest(unittest.TestCase):
     def test_real_source_tree_has_exactly_three_release_identities(self):
         self.assertEqual(set(verify.source_release_identities(REPO)),set(APPS))
 
-    def test_unknown_application_module_fails_even_when_not_in_settings(self):
-        (self.root/'extra').mkdir()
-        (self.root/'extra/build.gradle.kts').write_text('plugins { alias(libs.plugins.android.application) }')
-        self.inventory_rejected('Unclassified Android application module.*extra')
+    def test_unknown_module_fails_even_without_any_plugin_declaration(self):
+        for module in ('extra','extra/nested'):
+            directory=self.root/module;directory.mkdir()
+            for name in ('build.gradle.kts','build.gradle'):
+                with self.subTest(module=module,script=name):
+                    path=directory/name;path.write_text('')
+                    self.inventory_rejected('Unclassified Gradle module.*'+module)
+                    path.unlink()
 
-    def test_unknown_nested_application_module_fails_regardless_of_settings(self):
-        settings=self.root/'settings.gradle.kts'
-        original=settings.read_text()
-        (self.root/'extras/other').mkdir(parents=True)
-        (self.root/'extras/other/build.gradle.kts').write_text('plugins { id("com.android.application") }')
-        for included in (True,False):
-            with self.subTest(included=included):
-                settings.write_text(original+('\ninclude(":extras:other")\n' if included else ''))
-                self.inventory_rejected('Unclassified Android application module.*extras:other')
-
-    def test_unknown_included_groovy_application_module_fails(self):
-        settings=self.root/'settings.gradle.kts'
-        settings.write_text(settings.read_text()+'\ninclude(":extra")\n')
-        (self.root/'extra').mkdir()
-        (self.root/'extra/build.gradle').write_text("plugins { id 'com.android.application' }")
-        self.inventory_rejected('Unclassified Android application module.*extra')
-
-    def test_unknown_undeclared_nested_groovy_application_module_fails(self):
-        (self.root/'extras/other').mkdir(parents=True)
-        (self.root/'extras/other/build.gradle').write_text("apply plugin: 'com.android.application'")
-        self.inventory_rejected('Unclassified Android application module.*extras:other')
+    def add_non_app_build(self,name,script):
+        path=self.root/'extra'/name;path.parent.mkdir()
+        path.write_text(script)
+        with self.manifest.open('a') as manifest:manifest.write('extra=non-app\n')
 
     def test_groovy_builds_without_an_active_application_plugin_are_accepted(self):
-        (self.root/'extra').mkdir()
-        (self.root/'extra/build.gradle').write_text(
+        self.add_non_app_build('build.gradle',
             "// apply plugin: 'com.android.application'\n"
             "plugins { id 'com.android.application' version '8.13.2' apply false }\n")
         self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
@@ -126,42 +114,76 @@ class ReleaseIdentityTest(unittest.TestCase):
             path.with_name('build.gradle').write_text("apply plugin: 'com.android.application'")
         self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
 
-    def test_missing_release_application_build_fails(self):
-        (self.root/'kotatsu-notes/build.gradle.kts').unlink()
-        self.inventory_rejected('Missing release application module.*kotatsu-notes')
-
-    def test_missing_release_application_settings_entry_fails(self):
-        settings=self.root/'settings.gradle.kts'
-        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',''))
-        self.inventory_rejected('Missing Android application module.*settings.gradle.kts.*kotatsu-notes')
-
-    def test_commented_release_application_settings_entry_does_not_count(self):
-        settings=self.root/'settings.gradle.kts'
-        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',
-            '/*\n/* Nested comment */\ninclude(":kotatsu-notes")\n*/'))
-        self.inventory_rejected('Missing Android application module.*settings.gradle.kts.*kotatsu-notes')
-
-    def test_multiline_settings_include_counts_only_live_arguments(self):
-        settings=self.root/'settings.gradle.kts'
-        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',
-            'val example = """\ninclude(":kotatsu-notes")\n"""\n'
-            'include(\n  // ":kotatsu-notes",\n  /* ":kotatsu-notes", */\n  ":kotatsu-notes",\n)'))
+    def test_method_call_apply_false_does_not_make_a_module_an_application(self):
+        self.add_non_app_build('build.gradle.kts','plugins { alias(libs.plugins.android.application).apply(false) }\n')
         self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
 
-    def test_duplicate_application_settings_entry_fails(self):
-        settings=self.root/'settings.gradle.kts'
-        original=settings.read_text()
-        for module in ('kotatsu-notes',*NON_RELEASE_MODULES):
+    def test_plugin_declarations_in_strings_do_not_make_a_module_an_application(self):
+        self.add_non_app_build('build.gradle.kts',
+            'val example = "apply plugin: \'com.android.application\'"\n'
+            'val multiline = """\nplugins { id("com.android.application") }\n"""\n')
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
+    def test_missing_classified_module_build_fails(self):
+        for module in ('kotatsu-notes',*NON_RELEASE_MODULES,*NON_APP_MODULES):
             with self.subTest(module=module):
-                settings.write_text(original+f'\ninclude(":paper-ui", ":{module}")\n')
-                self.inventory_rejected('Duplicate Android application module.*'+module)
+                script=self.root/module/'build.gradle.kts';original=script.read_bytes()
+                script.unlink()
+                self.inventory_rejected('Missing Gradle module build script.*'+module)
+                script.write_bytes(original)
+
+    def test_release_modules_reject_groovy_only_build_scripts(self):
+        for module in APPS:
+            with self.subTest(module=module):
+                kotlin=self.root/module/'build.gradle.kts'
+                groovy=kotlin.rename(kotlin.with_name('build.gradle'))
+                try:
+                    self.inventory_rejected(rf'{module}: release modules require build\.gradle\.kts')
+                finally:
+                    groovy.rename(kotlin)
+
+    def test_non_release_app_inventory_accepts_groovy_build_script(self):
+        kotlin=self.root/'kotatsu-sync/build.gradle.kts'
+        kotlin.rename(kotlin.with_name('build.gradle')).write_text("plugins { id 'com.android.application' }\n")
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
+    def test_missing_or_commented_manifest_entry_cannot_be_replaced_by_settings_text(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text()+'\n/*\n/* Nested comment */\ninclude(":kotatsu-notes")\n*/\n')
+        original=self.manifest.read_text()
+        for module,role in (('kotatsu-notes','release'),('kotatsu-sync','non-release')):
+            row=f'{module}={role}'
+            for replacement in ('','# '+row):
+                with self.subTest(module=module,replacement=replacement):
+                    self.manifest.write_text(original.replace(row,replacement))
+                    self.inventory_rejected('Missing .* application in gradle/modules.txt.*'+module)
+
+    def test_duplicate_manifest_entry_fails_even_when_the_classes_agree(self):
+        original=self.manifest.read_text()
+        for module,role in (('kotatsu-notes','release'),('kotatsu-sync','non-release'),('paper-ui','non-app')):
+            with self.subTest(module=module):
+                self.manifest.write_text(original+f'{module}={role}\n')
+                self.inventory_rejected('duplicate Gradle module '+module)
+
+    def test_both_gradle_script_names_in_one_module_fail(self):
+        (self.root/'paper-ui/build.gradle').write_text('')
+        self.inventory_rejected('Duplicate Gradle build scripts.*paper-ui')
+
+    def test_invalid_manifest_row_fails(self):
+        with self.manifest.open('a') as manifest:manifest.write('../extra=non-app\n')
+        self.inventory_rejected('invalid module declaration')
 
     def test_non_release_module_cannot_also_be_classified_as_release(self):
         for module in NON_RELEASE_MODULES:
             with self.subTest(module=module),mock.patch.dict(verify.RELEASE_APPS,{module:verify.RELEASE_APPS['app']}):
-                with self.assertRaisesRegex(verify.VerificationError,'Non-release module.*release inventory.*'+module):
-                    self.check()
-        self.assertFalse(Path(self.args.report).exists())
+                self.inventory_rejected('Non-release module.*release inventory.*'+module)
+
+    def test_manifest_cannot_on_its_own_promote_an_application(self):
+        original=self.manifest.read_text()
+        for module in NON_RELEASE_MODULES:
+            with self.subTest(module=module):
+                self.manifest.write_text(original.replace(module+'=non-release',module+'=release'))
+                self.inventory_rejected('Unpinned release application.*'+module)
 
     def test_unsigned_inspection_reads_all_three_without_claiming_signing_or_build(self):
         report=self.check()

@@ -1,0 +1,10 @@
+# Source directories included in the main build, as path=class.
+app=release
+weather-api=non-app
+weather-mudita=non-app
+kotatsu-weather=release
+kotatsu-notes=release
+paper-ui=non-app
+# Sync is not released yet; the fake calendar is a test-only fixture.
+kotatsu-sync=non-release
+fake-mudita-calendar=non-release

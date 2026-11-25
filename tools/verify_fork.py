@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Pinned source, packaged branding and optional bounded offline-capability checks."""
 import argparse
-from collections import Counter
 from decimal import Decimal, localcontext
 import hashlib
 import json
@@ -23,7 +22,7 @@ BASELINE='c6601b8128089db8ad28cdcc1f57361575066d5f'
 RELEASE_ID='com.alexindigo.kotatsu'
 NAMESPACE='com.gezimos.katapult'
 RELEASE_VERSION='0.7.0'
-# Classify every Android application module in exactly one of these inventories.
+# Pin the release/non-release application sets declared in gradle/modules.txt.
 # Only RELEASE_APPS supplies metadata, compiled identities and release receipts.
 RELEASE_APPS={
     'app':{'applicationId':RELEASE_ID,'namespace':NAMESPACE,'versionCode':17,'label':'Kotatsu','debugVersionSuffix':'-debug'},
@@ -238,81 +237,57 @@ def execution_identity(root,base,args):
                                  args.source_receipt,args.expected_source_receipt_sha256)
 
 
-def gradle_declarations(text, *, kotlin):
-    """Mask comments and multiline strings before matching literal Gradle declarations."""
-    parts=re.compile(r'//[^\n]*|/\*|"""[\s\S]*?"""|'
-                     r"'''[\s\S]*?'''|'(?:\\.|[^'\\\n])*'|"
-                     r'"(?:\\.|[^"\\\n])*"')
-    delimiters=re.compile(r'/\*|\*/')
-    chunks=[];pos=0
-    while match:=parts.search(text,pos):
-        chunks.append(text[pos:match.start()]);pos=match.end()
-        token=match.group()
-        if token=='/*':
-            depth=1
-            for end in delimiters.finditer(text,pos):
-                if end.group()=='*/':depth-=1
-                elif kotlin:depth+=1
-                if not depth:
-                    pos=end.end();break
-            require(depth==0,'Unterminated Gradle block comment')
-            chunks.append(' '+'\n'*text.count('\n',match.start(),pos))
-        elif token.startswith('//'):
-            chunks.append(' ')
-        elif token.startswith(('"""',"'''")):
-            chunks.append('""'+'\n'*token.count('\n'))
-        else:
-            chunks.append(token)
-    chunks.append(text[pos:])
-    return ''.join(chunks)
+def verify_module_inventory(root):
+    confined(root,'settings.gradle.kts')
+    manifest='gradle/modules.txt'
+    modules={}
+    # Keep the plain manifest format in sync with its consumer in settings.gradle.kts.
+    with confined(root,manifest).open(encoding='utf-8') as source:
+        for number,line in enumerate(source,1):
+            row=line.strip(' \t\r\n')
+            if not row or row.startswith('#'):continue
+            match=re.fullmatch(r'([a-z0-9_-]+(?:/[a-z0-9_-]+)*)=(release|non-release|non-app)',row)
+            require(match,f'{manifest}:{number}: invalid module declaration')
+            module,role=match.groups()
+            require(module not in modules,f'{manifest}:{number}: duplicate Gradle module {module}')
+            modules[module]=role
 
+    release=set(RELEASE_APPS);non_release=set(NON_RELEASE_APPS)
+    overlap=release&non_release
+    require(not overlap,'Non-release module also in release inventory: '+', '.join(sorted(overlap)))
+    for role,pinned in (('release',release),('non-release',non_release)):
+        declared={module for module,value in modules.items() if value==role}
+        missing=pinned-declared;unexpected=declared-pinned
+        require(not missing,f'Missing {role} application in {manifest}: '+', '.join(sorted(missing)))
+        require(not unexpected,f'Unpinned {role} application in {manifest}: '+', '.join(sorted(unexpected)))
 
-def verify_application_inventory(root):
-    settings=gradle_declarations(confined(root,'settings.gradle.kts').read_text(),kotlin=True)
-    require(re.findall(r'rootProject\.name\s*=\s*"([^"]+)"',settings)==['Kotatsu'],'Wrong release root project')
-    included=Counter(module for args in re.findall(r'^\s*include\s*\(([^)]*)\)',settings,re.M)
-                     for module in re.findall(r'":?([\w-]+(?::[\w-]+)*)"',args))
-    # Check declared projects, but do not let settings hide undeclared source builds.
-    build_names=('build.gradle.kts','build.gradle')
-    builds={root.joinpath(*module.split(':'),name) for module in included for name in build_names}
+    # The manifest drives settings inclusion, but cannot hide unlisted source builds.
+    kotlin_build='build.gradle.kts'
+    build_names={kotlin_build,'build.gradle'}
+    builds={}
     def scan_failed(error):
-        raise VerificationError(f'Cannot scan Android application modules: {error}') from error
+        raise VerificationError(f'Cannot scan Gradle module directories: {error}') from error
     for directory,subdirs,files in os.walk(root,onerror=scan_failed):
         subdirs[:]=[name for name in subdirs if name not in ('build','.gradle','.git','.cxx','.externalNativeBuild')]
-        path=Path(directory)
-        if path!=root:
-            builds.update(path/name for name in build_names if name in files)
-    app_id=r'''(?:"com\.android\.application"|'com\.android\.application')'''
-    version=r'''(?:"[^"\n]*"|'[^'\n]*')'''
-    plugin=re.compile(r'\b(?:alias\s*\(\s*libs\.plugins\.android\.application\s*\)|'
-                      rf'id(?:\s*\(\s*{app_id}\s*\)|\s+{app_id}))'
-                      rf'(?:\s+version\s+{version})?(?P<disabled>\s+apply\s+false\b)?'
-                      rf'|\bapply\s*(?:\(\s*)?plugin\s*[:=]\s*{app_id}')
-    applications=set()
-    for path in builds:
-        if path.is_file():
-            declarations=gradle_declarations(path.read_text(),kotlin=path.suffix=='.kts')
-            if any(not match.group('disabled') for match in plugin.finditer(declarations)):
-                applications.add(':'.join(path.parent.relative_to(root).parts))
-    release=set(RELEASE_APPS);non_release=set(NON_RELEASE_APPS)
-    classified=release|non_release
-    checks=(
-        (release&non_release,'Non-release module also in release inventory'),
-        (applications-classified,'Unclassified Android application module'),
-        (release-applications,'Missing release application module'),
-        (non_release-applications,'Missing non-release application module'),
-        (classified-included.keys(),'Missing Android application module in settings.gradle.kts'),
-        ({m for m in classified if included[m]>1},'Duplicate Android application module in settings.gradle.kts'),
-    )
-    for modules,message in checks:
-        require(not modules,message+': '+', '.join(sorted(modules)))
+        module=Path(directory).relative_to(root).as_posix()
+        scripts=build_names.intersection(files)
+        if module=='.' or not scripts:continue
+        require(len(scripts)==1,'Duplicate Gradle build scripts: '+module)
+        script=next(iter(scripts))
+        require(module not in release or script==kotlin_build,
+                f'{module}: release modules require {kotlin_build}')
+        builds[module]=confined(root,module+'/'+script)
+    unknown=builds.keys()-modules.keys();missing=modules.keys()-builds.keys()
+    require(not unknown,f'Unclassified Gradle module in {manifest}: '+', '.join(sorted(unknown)))
+    require(not missing,'Missing Gradle module build script: '+', '.join(sorted(missing)))
+    return builds
 
 
 def source_release_identities(root):
-    verify_application_inventory(root)
+    builds=verify_module_inventory(root)
     result={}
     for module,spec in RELEASE_APPS.items():
-        build=confined(root,module+'/build.gradle.kts').read_text()
+        build=builds[module].read_text()
         for field,expected in (('applicationId',spec['applicationId']),('namespace',spec['namespace']),
                                ('versionCode',str(spec['versionCode'])),('versionName',RELEASE_VERSION),
                                ('minSdk','30'),('targetSdk','36')):

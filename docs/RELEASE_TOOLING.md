@@ -4,11 +4,25 @@ The release set is Kotatsu (`app`), Kotatsu Weather (`kotatsu-weather`) and
 Kotatsu Notes (`kotatsu-notes`). `tools/verify_fork.py` owns their identity
 inventory, shared version name and per-app version codes. Update those pins
 alongside the Gradle versions when preparing a release.
-Classify every Android application module beside `RELEASE_APPS` in that file:
-`kotatsu-sync` is not released yet, and `fake-mudita-calendar` is a test fixture
-that is never released. Both tools reject unclassified, missing or duplicate
-application modules; only `RELEASE_APPS` may supply release assets.
 
+`gradle/modules.txt` is the module manifest and drives inclusion in Gradle
+settings. List every module once as `path=release`, `path=non-release` or
+`path=non-app`; blank lines and `#` comment lines do not count. Use the source
+directory's root-relative path. Each module must have exactly one build script:
+`release` modules require `build.gradle.kts` for source identity checks;
+`non-release` and `non-app` modules may use `build.gradle.kts` or `build.gradle`.
+For a nested project, list its Gradle parent projects too.
+Gradle checks the configured projects and whether each actually applies
+`com.android.application`. Both release tools check the manifest against the
+source directories, excluding generated Gradle and build trees, and reject
+unclassified, missing or duplicate modules.
+
+The two application classes must agree with the identity pins in
+`tools/verify_fork.py`: `kotatsu-sync` is not released yet, and
+`fake-mudita-calendar` is a test fixture that is never released. Only
+`RELEASE_APPS` may supply release assets.
+
+After building from the same checkout,
 `tools/prepare_release.py --root . --tag v<version> --output release-apks`
 checks the complete source/metadata set and copies the unique release output
 of each module to its documented name. It rejects mismatched tags, versions,
@@ -42,7 +56,7 @@ python3 tools/verify_fork.py release-identity \
   --report <evidence>/release-identity.json
 ```
 
-Source checks cover the application-module inventory, settings inclusion,
+Source checks cover the module manifest and source directory inventory,
 namespace, package, version code/name, debug suffixes, SDK levels, optimization
 flags and app labels. APK checks cover each metadata output and its actual
 compiled package, version, labels, SDK levels, debuggability and signer. Every
