@@ -243,8 +243,15 @@ def verify_application_inventory(root):
     require(re.findall(r'rootProject\.name\s*=\s*"([^"]+)"',settings)==['Kotatsu'],'Wrong release root project')
     included=Counter(module for args in re.findall(r'^\s*include\s*\(([^)]*)\)',settings,re.M)
                      for module in re.findall(r'":?([\w-]+(?::[\w-]+)*)"',args))
-    builds=set(root.glob('*/build.gradle.kts'))
-    builds.update(root.joinpath(*module.split(':'),'build.gradle.kts') for module in included if ':' in module)
+    # Check declared projects, but do not let settings hide undeclared source builds.
+    builds={root.joinpath(*module.split(':'),'build.gradle.kts') for module in included}
+    def scan_failed(error):
+        raise VerificationError(f'Cannot scan Android application modules: {error}') from error
+    for directory,subdirs,files in os.walk(root,onerror=scan_failed):
+        subdirs[:]=[name for name in subdirs if name not in ('build','.gradle','.git','.cxx','.externalNativeBuild')]
+        path=Path(directory)
+        if path!=root and 'build.gradle.kts' in files:
+            builds.add(path/'build.gradle.kts')
     plugin=re.compile(r'\b(?:alias\s*\(\s*libs\.plugins\.android\.application\s*\)|'
                       r'id\s*\(\s*"com\.android\.application"\s*\))(?!\s*apply\s+false\b)')
     applications={':'.join(p.parent.relative_to(root).parts) for p in builds if p.is_file() and plugin.search(p.read_text())}

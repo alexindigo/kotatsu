@@ -89,12 +89,22 @@ class ReleaseIdentityTest(unittest.TestCase):
         (self.root/'extra/build.gradle.kts').write_text('plugins { alias(libs.plugins.android.application) }')
         self.inventory_rejected('Unclassified Android application module.*extra')
 
-    def test_unknown_included_nested_application_module_fails(self):
+    def test_unknown_nested_application_module_fails_regardless_of_settings(self):
         settings=self.root/'settings.gradle.kts'
-        settings.write_text(settings.read_text()+'\ninclude(":extras:other")\n')
+        original=settings.read_text()
         (self.root/'extras/other').mkdir(parents=True)
         (self.root/'extras/other/build.gradle.kts').write_text('plugins { id("com.android.application") }')
-        self.inventory_rejected('Unclassified Android application module.*extras:other')
+        for included in (True,False):
+            with self.subTest(included=included):
+                settings.write_text(original+('\ninclude(":extras:other")\n' if included else ''))
+                self.inventory_rejected('Unclassified Android application module.*extras:other')
+
+    def test_generated_gradle_builds_are_not_application_modules(self):
+        for directory in ('build','app/build/generated','extras/.gradle/cache','app/.cxx/generated'):
+            path=self.root/directory/'build.gradle.kts'
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_text('plugins { id("com.android.application") }')
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
 
     def test_missing_release_application_build_fails(self):
         (self.root/'kotatsu-notes/build.gradle.kts').unlink()
