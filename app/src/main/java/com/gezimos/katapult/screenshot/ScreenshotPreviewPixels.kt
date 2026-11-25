@@ -23,9 +23,10 @@ internal class ScreenshotPreviewPixels(
     context: Context,
     private val main: Handler,
     val content: FrameLayout,
-    private val onReleased: () -> Unit,
+    private val onExcluded: (ScreenshotPreviewPixels) -> Unit,
     private val transaction: (show: Boolean) -> SurfaceControlCompat.Transaction,
     private val commitFrame: (SurfaceControlCompat.Transaction) -> Unit,
+    private val deliverFrameRelease: (() -> Unit) -> Unit,
 ) : FrameLayout(context), SurfaceHolder.Callback, ViewTreeObserver.OnPreDrawListener {
     private val host = SurfaceView(context).apply {
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -34,12 +35,15 @@ internal class ScreenshotPreviewPixels(
         holder.addCallback(this@ScreenshotPreviewPixels)
     }
     private val executor = Executor { main.post(it) }
+    // A Layer instance is a generation. An acknowledgement resolves a specific lease within it.
     private class Layer(val surface: SurfaceControlCompat) {
-        val frames = mutableSetOf<RenderedFrame>()
+        val frames = mutableSetOf<FrameLease>()
         var hideQueued = false
-        var uncertain: Any? = null
+        var uncertain: Lease? = null
         var retired = false
     }
+    private open class Lease(val generation: Layer)
+    private class FrameLease(generation: Layer, val frame: RenderedFrame) : Lease(generation)
     private class RenderedFrame(
         val renderer: CanvasBufferedRenderer,
         val result: CanvasBufferedRenderer.RenderResult,
@@ -50,10 +54,13 @@ internal class ScreenshotPreviewPixels(
     }
     private var layer: Layer? = null
     private val layers = mutableSetOf<Layer>()
+    private val waiters = mutableMapOf<() -> Unit, MutableSet<Lease>>()
     val excluded get() = layers.none { it.frames.isNotEmpty() || it.uncertain != null }
     private var blocked = false
     private var dirty = false
     private var rendering = false
+    private var retryPublication = false
+    private val retry = Runnable { drive() }
 
     init {
         addView(content, LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT))
@@ -101,19 +108,45 @@ internal class ScreenshotPreviewPixels(
         val previous = layer ?: return
         layer = null
         previous.retired = true
-        if (previous.frames.isEmpty() && previous.uncertain == null) dispose(previous) else suppress(previous)
+        if (previous.frames.isEmpty() && previous.uncertain == null) dispose(previous)
+        drive()
     }
 
     fun update() {
         dirty = true
+        retryPublication = false
         invalidate()
+    }
+
+    fun awaitExclusion(action: () -> Unit): AutoCloseable {
+        val dependencies = mutableSetOf<Lease>()
+        for (generation in layers) {
+            dependencies.addAll(generation.frames)
+            generation.uncertain?.let(dependencies::add)
+        }
+        if (dependencies.isEmpty()) action() else waiters[action] = dependencies
+        return AutoCloseable { waiters.remove(action) }
     }
 
     fun suppress(value: Boolean) {
         blocked = value
         importantForAccessibility = if (value) View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
             else View.IMPORTANT_FOR_ACCESSIBILITY_YES
-        if (value) layers.forEach(::suppress) else update()
+        if (!value) update() else retryPublication = false
+        drive()
+    }
+
+    private fun drive() {
+        main.removeCallbacks(retry)
+        val needsHide = layers.filter {
+            !it.hideQueued && (it.uncertain != null || it.frames.isNotEmpty() && (blocked || it.retired))
+        }
+        for (target in needsHide) suppress(target)
+        if (needsHide.any { !it.hideQueued }) main.postDelayed(retry, RETRY_MS)
+        if (retryPublication && !blocked && layer?.uncertain == null) {
+            retryPublication = false
+            invalidate()
+        }
     }
 
     private fun suppress(target: Layer) {
@@ -143,7 +176,7 @@ internal class ScreenshotPreviewPixels(
                 replaceWithHiddenBuffer(target)
             }
         } catch (error: RuntimeException) {
-            // No acknowledged hide: a later capture or expiry can make a fresh attempt.
+            // The owner still wants this hide. drive() will revisit it without user input.
             Log.w(TAG, "Could not exclude preview layer", error)
         }
     }
@@ -166,15 +199,19 @@ internal class ScreenshotPreviewPixels(
         try { fence.close() } finally { main.post(finish) }
     }
 
-    private fun acknowledgeHide(target: Layer, uncertain: Any) {
+    private fun acknowledgeHide(target: Layer, uncertain: Lease) {
         if (target.uncertain !== uncertain) return
         target.uncertain = null
-        target.frames.toList().forEach { release(target, it) }
-        settled(target)
+        val completed = target.frames.toSet() + uncertain
+        target.frames.toList().forEach(::release)
+        settled(target, completed)
+        if (retryPublication) drive()
     }
 
-    private fun release(target: Layer, frame: RenderedFrame) {
-        if (target.frames.remove(frame)) closeFrame(frame)
+    private fun release(lease: FrameLease): Boolean {
+        if (!lease.generation.frames.remove(lease)) return false
+        closeFrame(lease.frame)
+        return true
     }
 
     private fun closeFrame(frame: RenderedFrame) {
@@ -182,14 +219,20 @@ internal class ScreenshotPreviewPixels(
         catch (error: RuntimeException) { Log.w(TAG, "Could not close preview renderer", error) }
     }
 
-    private fun settled(target: Layer) {
+    private fun settled(target: Layer, completed: Set<Lease>) {
         if (target.retired && target.frames.isEmpty() && target.uncertain == null && layers.contains(target)) dispose(target)
-        if (dirty) invalidate()
-        if (excluded) onReleased()
+        val ready = waiters.filterValues { dependencies ->
+            dependencies.removeAll(completed)
+            dependencies.isEmpty()
+        }.keys.toList()
+        ready.forEach { waiters.remove(it) }
+        if (dirty && !retryPublication) invalidate()
+        if (excluded) onExcluded(this)
+        ready.forEach { it() }
     }
     override fun onPreDraw(): Boolean {
         val target = layer ?: return true
-        if (blocked || !dirty || rendering || target.uncertain != null || target.frames.size >= 2 || width == 0 || height == 0) return true
+        if (blocked || !dirty || retryPublication || rendering || target.uncertain != null || target.frames.size >= 2 || width == 0 || height == 0) return true
         val w = content.width
         val h = content.height
         if (w == 0 || h == 0) return true
@@ -212,8 +255,9 @@ internal class ScreenshotPreviewPixels(
                         publish(target, frame)
                     } else {
                         closeFrame(frame)
+                        if (result.status != CanvasBufferedRenderer.RenderResult.SUCCESS && !dirty) retryRender(target)
                     }
-                    if (dirty) invalidate()
+                    if (dirty && !retryPublication) invalidate()
                 }
             } catch (error: RuntimeException) {
                 rendering = false
@@ -222,38 +266,49 @@ internal class ScreenshotPreviewPixels(
             }
         } catch (error: RuntimeException) {
             Log.w(TAG, "Could not render preview layer", error)
+            retryRender(target)
         }
         return true
     }
 
     private fun publish(target: Layer, frame: RenderedFrame) {
         var handedOff = false
+        val lease = FrameLease(target, frame)
         try {
             transaction(true).use { update ->
                 update.setVisibility(target.surface, true)
                     .setBuffer(target.surface, frame.result.hardwareBuffer, frame.result.fence) { fence ->
                         finishOnMain(fence) {
-                            release(target, frame)
-                            settled(target)
+                            deliverFrameRelease {
+                                if (release(lease)) settled(lease.generation, setOf(lease))
+                            }
                         }
                     }
                 // The scope owns the frame until commit can transfer it to the compositor.
                 // Register before commit: the release callback may arrive immediately.
-                target.frames.add(frame)
+                target.frames.add(lease)
                 handedOff = true
                 target.hideQueued = false
                 try { commitFrame(update) }
                 catch (error: RuntimeException) {
-                    target.uncertain = Any()
+                    target.uncertain = Lease(target)
                     throw error
                 }
             }
         } catch (error: RuntimeException) {
             Log.w(TAG, "Could not publish preview layer", error)
-            if (target.uncertain != null) suppress(target)
+            retryRender(target)
+            if (target.uncertain != null) drive()
         } finally {
             if (!handedOff) closeFrame(frame)
         }
+    }
+
+    private fun retryRender(target: Layer) {
+        if (blocked || layer !== target) return
+        dirty = true
+        retryPublication = true
+        if (!main.hasCallbacks(retry)) main.postDelayed(retry, RETRY_MS)
     }
 
     private fun dispose(target: Layer) {
@@ -267,5 +322,8 @@ internal class ScreenshotPreviewPixels(
         }
     }
 
-    private companion object { const val TAG = "ScreenshotPreview" }
+    private companion object {
+        const val TAG = "ScreenshotPreview"
+        const val RETRY_MS = 100L
+    }
 }

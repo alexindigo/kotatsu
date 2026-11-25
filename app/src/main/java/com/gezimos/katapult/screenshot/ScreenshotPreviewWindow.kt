@@ -26,6 +26,7 @@ class ScreenshotPreviewWindow internal constructor(
     private val handler: Handler,
     private val wm: WindowManager,
     private val commitFrame: (SurfaceControlCompat.Transaction) -> Unit = SurfaceControlCompat.Transaction::commit,
+    private val deliverFrameRelease: (() -> Unit) -> Unit = { it() },
     private val transaction: (show: Boolean) -> SurfaceControlCompat.Transaction,
 ) : AutoCloseable {
     constructor(context: Context, handler: Handler, wm: WindowManager = context.getSystemService(WindowManager::class.java)) :
@@ -41,7 +42,6 @@ class ScreenshotPreviewWindow internal constructor(
     private var root: ScreenshotPreviewPixels? = null
     private var removing = false
     private var captures = 0
-    private val waiting = mutableMapOf<Runnable, (Boolean) -> Unit>()
     private var announcementPending = false
     private val palette get() = Appearance.palette(context, Appearance.Surface.APP)
     private val colours = mutableListOf<() -> Unit>()
@@ -100,7 +100,7 @@ class ScreenshotPreviewWindow internal constructor(
             setBackgroundColor(palette.paperArgb)
             setPadding(dp(HALO_DP), dp(HALO_DP), dp(HALO_DP), dp(HALO_DP))
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
-        }, ::excluded, transaction, commitFrame).apply {
+        }, ::excluded, transaction, commitFrame, deliverFrameRelease).apply {
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
             accessibilityLiveRegion = View.ACCESSIBILITY_LIVE_REGION_POLITE
         }.also { root = it }
@@ -145,27 +145,27 @@ class ScreenshotPreviewWindow internal constructor(
     /** Keep the preview suppressed until each issued capture has acquired its pixels. */
     fun beforeCapture(action: (Boolean) -> Unit) {
         captures++
-        root?.suppress(true)
-        if (root?.excluded != false) {
+        val view = root
+        view?.suppress(true)
+        if (view == null || view.excluded) {
             action(true)
         } else {
-            val timeout = object : Runnable {
-                override fun run() { waiting.remove(this)?.invoke(false) }
+            lateinit var waiting: AutoCloseable
+            val timeout = Runnable {
+                waiting.close()
+                action(false)
             }
-            waiting[timeout] = action
+            waiting = view.awaitExclusion {
+                main.removeCallbacks(timeout)
+                action(true)
+            }
             // Exceptional acknowledged failure, never a fallback to a possibly contaminated capture.
             main.postDelayed(timeout, EXCLUSION_TIMEOUT_MS)
         }
     }
 
-    private fun excluded() {
-        if (removing) removeExcludedWindow()
-        val acknowledgements = waiting.toMap()
-        waiting.clear()
-        for ((timeout, action) in acknowledgements) {
-            main.removeCallbacks(timeout)
-            action(true)
-        }
+    private fun excluded(view: ScreenshotPreviewPixels) {
+        if (removing && root === view) removeExcludedWindow()
     }
 
     private fun announce() {

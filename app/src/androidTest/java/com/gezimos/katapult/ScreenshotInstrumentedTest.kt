@@ -142,6 +142,71 @@ class ScreenshotInstrumentedTest {
     private fun capturePreview(service: LockscreenWidgetService, wm: WindowManager) =
         ScreenshotPreviewWindow(service, ControlledPreviewExpiry(), wm)
 
+    @Test fun removedPreviewReleaseCannotStartCaptureWaitingForAnotherPreview() = withService { service, _ ->
+        val shown = Bitmap.createBitmap(480, 800, Bitmap.Config.ARGB_8888)
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expiry = ControlledPreviewExpiry()
+        val releases = java.util.concurrent.LinkedBlockingQueue<() -> Unit>()
+        var first = true
+        val handler = Handler(Looper.getMainLooper())
+        lateinit var window: ScreenshotPreviewWindow
+        window = ScreenshotPreviewWindow(service, expiry, wm, commitFrame = {
+            if (first) handler.post { window.hide() }
+            it.commit()
+            if (first) { first = false; throw IllegalStateException("Uncertain old preview commit") }
+        }, deliverFrameRelease = { releases.add(it) }) { SurfaceControlCompat.Transaction() }
+        val requests = AtomicInteger()
+        val saved = CountDownLatch(1)
+        val pipeline = ScreenshotCapture(service, Handler(Looper.getMainLooper()), { true }, window, request = {
+            requests.incrementAndGet()
+            service.takeScreenshot(android.view.Display.DEFAULT_DISPLAY, service.mainExecutor, it)
+        }) { saved.countDown() }
+        withFixtureCleanup({ main { pipeline.close(); expiry.close() } }, { shown.recycle() }) {
+            main { window.saved(shown) }
+            val late = checkNotNull(releases.poll(5, TimeUnit.SECONDS)) { "No release from the old frame" }
+            val old = wm.view!!
+            main { window.hide() }
+            ui.await("Old preview did not detach") { !old.isAttachedToWindow }
+            main { window.saved(shown) }
+            ui.await("New preview not attached") { wm.view !== old && wm.view?.isAttachedToWindow == true }
+            val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+            capturePreviewPixels(wm.view!!, "current-preview-before-late-release.png", palette.paperArgb, palette.inkArgb)
+            main { pipeline.capture(); late(); assertEquals("Old lease started the new capture", 0, requests.get()) }
+            val current = checkNotNull(releases.poll(5, TimeUnit.SECONDS)) { "No release from the current frame" }
+            main { current() }
+            assertTrue("Current lease did not release the capture", saved.await(5, TimeUnit.SECONDS))
+            assertEquals(1, requests.get())
+        }
+    }
+
+    @Test fun previewOwnerRecoversPublicationWithoutAnotherInput() = previewOwnerRecoversTransaction(failShow = true)
+
+    @Test fun expiryOwnerRecoversFailedHideWithoutAnotherCapture() = previewOwnerRecoversTransaction(failShow = false)
+
+    private fun previewOwnerRecoversTransaction(failShow: Boolean) = withService { service, _ ->
+        val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
+        val expiry = ControlledPreviewExpiry()
+        val sample = Bitmap.createBitmap(480, 800, Bitmap.Config.ARGB_8888)
+        val attempts = AtomicInteger()
+        val window = ScreenshotPreviewWindow(service, expiry, wm) { showing ->
+            if (showing == failShow && attempts.incrementAndGet() == 1) throw IllegalStateException("Injected preview fault")
+            SurfaceControlCompat.Transaction()
+        }
+        withFixtureCleanup({ main { window.close(); expiry.close() } }, { sample.recycle() }) {
+            main { window.saved(sample) }
+            ui.await("Preview not attached") { wm.view?.isAttachedToWindow == true }
+            committedFrame(wm.view!!)
+            val palette = com.gezimos.katapult.ui.Appearance.palette(service, com.gezimos.katapult.ui.Appearance.Surface.APP)
+            capturePreviewPixels(wm.view!!, "owner-recovered-preview.png", palette.paperArgb, palette.inkArgb)
+            if (!failShow) {
+                main { expiry.expireNow() }
+                ui.await("Expiry stranded the preview after a failed hide") { wm.view?.isAttachedToWindow == false }
+                assertEquals(1, wm.removes)
+            }
+            assertEquals(2, attempts.get())
+        }
+    }
+
     @Test fun nextCaptureWorksAfterExclusionTransactionFails() = captureAfterTransactionFailure(failShow = false)
 
     @Test fun nextCaptureWorksAfterPreviewBufferIsNeverSubmitted() = captureAfterTransactionFailure(failShow = true)
@@ -158,6 +223,7 @@ class ScreenshotInstrumentedTest {
         val wm = RecordingWindowManager(service.getSystemService(WindowManager::class.java))
         val expiry = ControlledPreviewExpiry()
         val injected = CountDownLatch(1)
+        var keepFailingHide = !failShow
         val saved = CountDownLatch(1)
         val before = pictures()
         val clean = automation.takeScreenshot()
@@ -169,7 +235,7 @@ class ScreenshotInstrumentedTest {
             }
             transaction.commit()
         }) { showing ->
-            if (!failAtCommit && showing == failShow && injected.count > 0) {
+            if (!failAtCommit && showing == failShow && (keepFailingHide || injected.count > 0)) {
                 injected.countDown()
                 throw IllegalStateException("Injected preview transaction preparation failure")
             }
@@ -195,7 +261,7 @@ class ScreenshotInstrumentedTest {
                 assertEquals("Do not save a capture without exclusion", before, pictures())
             }
             assertTrue("The intended transaction did not fail", injected.await(5, TimeUnit.SECONDS))
-            main { pipeline.capture() }
+            main { keepFailingHide = false; pipeline.capture() }
             assertTrue("The next explicit capture did not save after the transaction failure", saved.await(8, TimeUnit.SECONDS))
             val second = context.contentResolver.openInputStream(imageUri((pictures() - before).single())).use { BitmapFactory.decodeStream(it) }!!
             withFixtureCleanup({ second.recycle() }) {
@@ -370,11 +436,18 @@ class ScreenshotInstrumentedTest {
             assertSame(original, wm.view); assertEquals(1, wm.adds)
             SystemClock.sleep(1500)
             var replaced = 0L
-            main { replaced = SystemClock.uptimeMillis(); window.failed(ScreenshotFailure.STORAGE_FULL) }
+            var replacementFinished = 0L
+            main {
+                replaced = SystemClock.uptimeMillis()
+                window.failed(ScreenshotFailure.STORAGE_FULL)
+                replacementFinished = SystemClock.uptimeMillis()
+            }
             ui.await("Storage-full failure card missing") { hasText(wm.view, "Phone storage is full") }
             assertSame(original, wm.view); assertEquals(1, wm.adds); assertEquals(0, wm.removes)
             assertTrue("Latest expiry did not run", expired.await(5, TimeUnit.SECONDS))
-            assertTrue("The old expiry must be cancelled", firstExpiryDeadline - replaced >= ScreenshotPreviewWindow.DURATION_MS)
+            val duration = ScreenshotPreviewWindow.DURATION_MS
+            assertTrue("Expiry must be scheduled three seconds from the replacement",
+                firstExpiryDeadline in (replaced + duration)..(replacementFinished + duration))
             ui.await("Latest result did not expire", 2500) { !wm.view!!.isAttachedToWindow }
             assertEquals(1, wm.removes)
             main { window.failed(ScreenshotFailure.UNAVAILABLE) }
