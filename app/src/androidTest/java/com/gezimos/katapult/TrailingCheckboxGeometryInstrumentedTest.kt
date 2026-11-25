@@ -7,9 +7,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ViewRootForTest
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.test.platform.app.InstrumentationRegistry
 import com.gezimos.katapult.model.AppModel
@@ -20,10 +24,10 @@ import org.junit.Test
 
 /** Observe the actual measured drawing nodes, not the larger accessibility hit regions. */
 @OptIn(androidx.compose.ui.InternalComposeUiApi::class)
-internal fun indexDrawingBounds(tag: String): List<androidx.compose.ui.geometry.Rect> {
-    val result = mutableListOf<androidx.compose.ui.geometry.Rect>()
+private fun <T> indexNodes(inspect: (SemanticsNode) -> T?): List<T> {
+    val result = mutableListOf<T>()
     fun semantics(node: SemanticsNode) {
-        if (node.config.getOrNull(SemanticsProperties.TestTag) == tag) result += node.boundsInWindow
+        inspect(node)?.let(result::add)
         node.children.forEach(::semantics)
     }
     fun views(view: View) {
@@ -34,6 +38,10 @@ internal fun indexDrawingBounds(tag: String): List<androidx.compose.ui.geometry.
         android.view.inspector.WindowInspector.getGlobalWindowViews().forEach(::views)
     }
     return result
+}
+
+internal fun indexDrawingBounds(tag: String) = indexNodes { node ->
+    node.boundsInWindow.takeIf { node.config.getOrNull(SemanticsProperties.TestTag) == tag }
 }
 
 class TrailingCheckboxGeometryInstrumentedTest {
@@ -95,6 +103,44 @@ class TrailingCheckboxGeometryInstrumentedTest {
             listOf(SettingsChoice("system", "System"), SettingsChoice("light", "Light"), SettingsChoice("dark", "Dark")), {}, "light")
         fixture(content = { ChoiceSurface(entry, {}) }) {
             listOf("System", "Light", "Dark").forEach(::geometry)
+        }
+    }
+
+    @Test fun sheetAndSecondaryPageTracksAlignAt100And150Percent() {
+        val option = "Option name"
+        val help = "Opening entry help"
+        val choice = SettingsChoice("id", option)
+        val entry = SettingsEntry.Value("choice", "Choice", help, option, listOf(choice), {}, "id")
+        for (scale in listOf(1f, 1.5f)) for (surface in listOf("sheet", "choice page", "checkbox page")) {
+            fixture(content = {
+                CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, scale)) {
+                    when (surface) {
+                        "sheet" -> ChoiceSurface(entry, {})
+                        "choice page" -> ChoicePage(entry.title, entry.choices, entry.selected, {}, {}, help)
+                        else -> PagedSettingsPage("Checkboxes", listOf(option), {}, header = { PaperHelp(help) }) {
+                            CheckboxOption(it, false) {}
+                        }
+                    }
+                }
+            }) {
+                geometry(option)
+                assertTrue(ui.has(help))
+                val (name, baseline) = indexNodes { node ->
+                    if (node.config.getOrNull(SemanticsProperties.Text)?.singleOrNull()?.text != option) null
+                    else {
+                        val layouts = mutableListOf<TextLayoutResult>()
+                        node.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(layouts)
+                        layouts.singleOrNull()?.let { node.boundsInWindow to it.firstBaseline }
+                    }
+                }.single()
+                val leader = indexDrawingBounds("paper_index_leader").single()
+                val box = indexDrawingBounds("paper_index_checkbox").single()
+                val baselineError = leader.center.y - (name.top + baseline)
+                val centreError = box.center.y - name.center.y
+                android.util.Log.i("CheckboxGeometry", "$surface scale=$scale baselineDelta=$baselineError centreDelta=$centreError")
+                assertEquals("$surface leader follows the name baseline at $scale", 0f, baselineError, .5f)
+                assertEquals("$surface box is centred on the name track at $scale", 0f, centreError, .5f)
+            }
         }
     }
 

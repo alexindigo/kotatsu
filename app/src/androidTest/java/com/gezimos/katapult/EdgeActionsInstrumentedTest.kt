@@ -114,7 +114,7 @@ class EdgeActionsInstrumentedTest {
                         onChoice = { choice = it.id }, onHelp = {})
                     else {
                         val row = category.groups.flatMap { it.entries }.filterIsInstance<SettingsEntry.Value>().single { it.id == current }
-                        ChoicePage(row.title, row.choices, row.selected, row.onSelect, { choice = null })
+                        ChoicePage(row.title, row.choices, row.selected, row.onSelect, { choice = null }, row.help)
                     }
                 }
             }

@@ -59,7 +59,15 @@ class SettingsPagesInstrumentedTest {
         assertFalse("Parent chapter leaked behind page", ui.has(text(R.string.lic_app_title)))
         reveal(text(R.string.paper_clear_help))
         ui.click(text(R.string.config_clear))
-        ui.await("Confirmation missing") { ui.has(text(R.string.config_clear_confirm)) }
+        val confirm = text(R.string.config_clear)
+        ui.await("Independent question heading and confirm button must both be laid out") {
+            ui.find(text(R.string.config_clear_confirm))?.isHeading == true && ui.find { node ->
+                val row = sequenceOf(node) + (0 until node.childCount).asSequence().mapNotNull(node::getChild)
+                // Android Compose can export the text and role as siblings inside the click target.
+                node.isClickable && row.any { it.className == "android.widget.Button" } &&
+                    row.any { it.text?.toString() == confirm }
+            } != null
+        }
         assertFalse(ui.has(text(R.string.paper_export_help)))
         ui.back()
         ui.await("Back skipped Config parent") { ui.has(text(R.string.paper_export_help)) }
