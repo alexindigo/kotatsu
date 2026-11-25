@@ -26,6 +26,16 @@ class NotesSettingsInstrumentedTest {
     private fun open(type: Class<*>) = instrumentation.startActivitySync(Intent(context, type)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     private fun close(activity: Activity) = main { activity.finish() }
+    private fun assertChoiceSurface(label: String, sheet: Boolean) {
+        awaitWidgetHost("Radio option in expected surface: $label, sheet=$sheet") {
+            // Android may exclude the selected radio from click targets; start at the label.
+            val ancestors = generateSequence(ui.find(label)) { it.parent }
+            val row = ancestors.firstOrNull { it.isCheckable } ?: return@awaitWidgetHost false
+            val radio = row.className.toString() == "android.widget.RadioButton" ||
+                (0 until row.childCount).any { row.getChild(it)?.className?.toString() == "android.widget.RadioButton" }
+            radio && ancestors.any { it.viewIdResourceName == "paper_sheet_surface" } == sheet
+        }
+    }
     private fun reset() {
         NotesRuntime.enqueue {
             WidgetKind.entries.forEach { it.setEnabled(context, true) }
@@ -56,6 +66,7 @@ class NotesSettingsInstrumentedTest {
         withFixtureCleanup({ close(task) }) {
             ui.click(text(R.string.settings_note))
             ui.awaitPage(text(R.string.settings_note)); ui.await("Kotatsu long list")
+            assertChoiceSurface("Kotatsu long list", sheet = false)
             ui.capture(task, "task-note-unselected")
             ui.back()
             ui.await(text(R.string.settings_note))
@@ -72,12 +83,16 @@ class NotesSettingsInstrumentedTest {
         val quote = open(QuoteConfigureActivity::class.java)
         withFixtureCleanup({ close(quote) }) {
             ui.click(text(R.string.settings_changes)); ui.await(text(R.string.quote_daily))
-            ui.capture(quote, "changes")
+            assertChoiceSurface(text(R.string.quote_daily), sheet = true)
+            assertFalse("The retained chapter must not expose its title", ui.has(text(R.string.quote_label)))
+            ui.capture(quote, "changes-sheet")
             ui.click(text(R.string.quote_hourly))
             ui.click(text(R.string.quote_order)); ui.await(text(R.string.quote_rotation))
-            ui.capture(quote, "order")
+            assertChoiceSurface(text(R.string.quote_rotation), sheet = true)
+            ui.capture(quote, "order-sheet")
             ui.click(text(R.string.quote_shuffle))
             ui.click(text(R.string.settings_note)); ui.awaitPage(text(R.string.settings_note)); ui.await("Kotatsu quotes")
+            assertChoiceSurface("Kotatsu quotes", sheet = false)
             assertFalse("Quote choices must not include checklists", ui.has("Kotatsu long list"))
             ui.capture(quote, "quote-note-unselected")
             ui.click("Kotatsu quotes")
