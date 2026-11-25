@@ -25,9 +25,10 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
     val choice = choices(owner, state)
     val changes = stringResource(R.string.calendar_changes)
     val held = state.status.held
-    val destination = navigation.current
+    val sheet = choice[navigation.current]?.takeIf { it.usesSheet }
+    val destination = if (sheet != null) navigation.previous else navigation.current
     val hold = held.singleOrNull { it.id == destination.substringAfter(':', "") }
-    SettingsBackOwner(back) {
+    val pageContent: @Composable () -> Unit = {
         pages.SaveableStateProvider(destination) {
             when {
                 destination in choice -> {
@@ -69,6 +70,11 @@ fun SyncSettingsBook(owner: SyncSettingsOwner, onBack: () -> Unit, onAccess: (Bo
             }
         }
     }
+    SettingsBackOwner(back) {
+        PaperSheetHost(sheetVisible = sheet != null, background = pageContent) {
+            if (sheet != null) ChoiceSurface(sheet, back)
+        }
+    }
 }
 
 @Composable
@@ -80,7 +86,7 @@ private fun choices(owner: SyncSettingsOwner, state: SyncSettingsSnapshot): Map<
         state.calendars.filter { it.id in state.settings.calendars }.map { SettingsChoice(it.id.toString(), it.label) },
         { owner.newEvents(it.toLong()) }, state.calendarTarget?.id?.toString().orEmpty(), appBuiltChoices = true)
     val horizon = SettingsEntry.Value(HORIZON, stringResource(R.string.look_ahead), stringResource(R.string.look_ahead_help),
-        weeks(state.settings.horizonWeeks), (1..26).map { SettingsChoice(it.toString(), weeks(it)) },
+        weeks(state.settings.horizonWeeks), calendarHorizonWeeks.map { SettingsChoice(it.toString(), weeks(it)) },
         { owner.weeks(it.toInt()) }, state.settings.horizonWeeks.toString())
     val contacts = SettingsEntry.Value(BOOK, stringResource(R.string.contacts_go_to),
         stringResource(when {

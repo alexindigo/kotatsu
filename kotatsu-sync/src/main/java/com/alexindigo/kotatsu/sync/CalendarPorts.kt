@@ -74,7 +74,10 @@ interface MappingStore {
     fun keepPhoneOnly(ids: Set<Long>)
 }
 
-data class SyncSettings(val calendars: Set<Long>, val newEventCalendar: Long? = null, val horizonWeeks: Int = 8,
+internal const val DEFAULT_HORIZON_WEEKS = 8
+internal val calendarHorizonWeeks = listOf(2, 4, DEFAULT_HORIZON_WEEKS, 12)
+
+data class SyncSettings(val calendars: Set<Long>, val newEventCalendar: Long? = null, val horizonWeeks: Int = DEFAULT_HORIZON_WEEKS,
     val targetMode: TargetMode = if (newEventCalendar == null) TargetMode.AUTOMATIC else TargetMode.EXPLICIT,
     val targetIdentity: CalendarIdentity? = null,
 ) {

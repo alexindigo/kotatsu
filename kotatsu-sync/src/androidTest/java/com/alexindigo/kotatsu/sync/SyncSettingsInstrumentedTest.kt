@@ -223,10 +223,12 @@ class SyncSettingsInstrumentedTest {
             ui.back(); ui.awaitPage("Kotatsu Sync"); assertEquals(f.personalCalendar, effectiveCalendar())
             ui.click("New events"); ui.awaitPage("New events"); ui.click(familyCalendarName)
             awaitSyncSettings("New events picker persists") { config().newEventCalendar == f.familyCalendar }
-            seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
-            ui.await("1 week"); ui.capture(activity, "look-ahead")
-            seek("26 weeks"); ui.click("26 weeks")
-            awaitSyncSettings("Horizon persists") { config().horizonWeeks == 26 }
+            seek("Look ahead"); ui.await("8 weeks")
+            ui.capture(activity, "look-ahead-landing")
+            ui.click("Look ahead"); ui.awaitPage("Look ahead"); ui.await("12 weeks")
+            ui.capture(activity, "look-ahead-sheet")
+            ui.click("12 weeks")
+            awaitSyncSettings("Horizon persists") { config().horizonWeeks == 12 }
             seek("Contacts go to"); ui.await(personal.name)
             assertEquals(personal, PreferenceContactsConfig(context).read().target)
             ui.click("Contacts go to"); ui.awaitPage("Contacts go to")
@@ -238,7 +240,7 @@ class SyncSettingsInstrumentedTest {
         val reopened = open()
         withFixtureCleanup({ close(reopened) }) {
             openCalendars(); assertTrue(ui.selected(personalCalendarName)); ui.back()
-            seek("Look ahead"); ui.await("26 weeks")
+            seek("Look ahead"); ui.await("12 weeks")
             seek("Contacts go to"); ui.await(family.name)
             assertEquals(f.familyCalendar, config().newEventCalendar)
         }
@@ -292,19 +294,65 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
-    @Test fun countedLabelsRenderSingularAndPluralFromTheirRealSettingsAndProviders() = fixture(ownerOnly = true) { f ->
+    @Test fun lookAheadShowsAllFourChoicesAndSavesSelectionsOnTheOwningPage() = fixture(ownerOnly = true) {
         val activity = openHost()
         withFixtureCleanup({ close(activity) }) {
             seek("Look ahead")
-            quiesceJobs()
-            for ((count, label) in listOf(1 to "1 week", 2 to "2 weeks")) {
-                seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
-                seek(label); ui.click(label)
-                awaitSyncSettings("Look ahead persists $count and renders $label") {
-                    config().horizonWeeks == count && ui.has(label)
+            ui.await("8 weeks")
+            val choices = listOf(2, 4, 8, 12)
+            var selected = 8
+            for (count in choices) {
+                ui.click("Look ahead"); ui.awaitPage("Look ahead")
+                assertEquals(1, ui.drawings("paper_sheet_surface").size)
+                assertFalse("The page under the sheet is excluded from accessibility", ui.has("Kotatsu Sync"))
+                ui.await("How far ahead events appear in Mudita Calendar")
+                val tops = choices.map { weeks ->
+                    val label = "$weeks weeks"
+                    ui.await(label)
+                    assertEquals(weeks == selected, ui.selected(label))
+                    val node = checkNotNull(ui.checkable(label))
+                    Rect().also(node::getBoundsInScreen).top
                 }
-                quiesceJobs()
+                assertTrue("Choices appear in ascending order", tops.zipWithNext().all { (a, b) -> a < b })
+                assertEquals(4, ui.drawings("paper_index_checkbox").size)
+                ui.click("$count weeks")
+                ui.awaitPage("Kotatsu Sync")
+                assertTrue("Selection keeps the Calendars group visible without paging", ui.has("Look ahead"))
+                awaitSyncSettings("Look ahead persists and renders $count weeks") {
+                    config().horizonWeeks == count && ui.has("$count weeks")
+                }
+                selected = count
             }
+            ui.click("Look ahead"); ui.awaitPage("Look ahead")
+            ui.click(context.getString(com.gezimos.katapult.paper.R.string.paper_dismiss))
+            ui.awaitPage("Kotatsu Sync"); ui.await("12 weeks")
+            assertEquals(12, config().horizonWeeks)
+        }
+    }
+
+    @Test fun legacyHorizonsRoundUpOnReadWithoutRewritingThePreference() = fixture(ownerOnly = true) {
+        val prefs = context.getSharedPreferences("calendar-sync", Context.MODE_PRIVATE)
+        for ((saved, expected) in listOf(1 to 2, 3 to 4, 5 to 8, 9 to 12, 26 to 12)) {
+            assertTrue(prefs.edit().putInt("horizon_weeks", saved).commit())
+            assertEquals(expected, config().horizonWeeks)
+            assertEquals(saved, prefs.getInt("horizon_weeks", -1))
+        }
+        assertTrue(prefs.edit().putInt("horizon_weeks", 5).commit())
+        val activity = openHost()
+        withFixtureCleanup({ close(activity) }) {
+            awaitSyncSettings("The settings catalog loads before opening the sheet") { hostOwners[activity]?.snapshot?.loaded == true }
+            seek("Look ahead"); ui.await("8 weeks")
+            ui.click("Look ahead"); ui.awaitPage("Look ahead")
+            assertTrue(ui.selected("8 weeks"))
+            ui.back(); ui.awaitPage("Kotatsu Sync"); ui.await("8 weeks")
+            assertEquals(5, prefs.getInt("horizon_weeks", -1))
+        }
+    }
+
+    @Test fun countedLabelsRenderSingularAndPluralFromTheirRealProviders() = fixture(ownerOnly = true) { f ->
+        val activity = openHost()
+        withFixtureCleanup({ close(activity) }) {
+            quiesceJobs()
             val completedAt = System.currentTimeMillis()
             val time = android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(completedAt))
             for ((count, label) in listOf(0 to "0 changes", 1 to "1 change", 2 to "2 changes")) {
@@ -573,7 +621,10 @@ class SyncSettingsInstrumentedTest {
             ui.capture(activity, "calendars-150")
             ui.back(); ui.awaitPage("Kotatsu Sync")
             seek("Look ahead"); ui.click("Look ahead"); ui.awaitPage("Look ahead")
-            ui.await("1 week"); ui.capture(activity, "look-ahead-150"); ui.back()
+            ui.await("12 weeks")
+            assertEquals(1, ui.drawings("paper_sheet_surface").size)
+            assertEquals(1, ui.textLayout("12 weeks").lineCount)
+            ui.capture(activity, "look-ahead-150"); ui.back()
             ui.awaitPage("Kotatsu Sync"); ui.await("Look ahead")
             assertEquals(8, config().horizonWeeks)
             ui.capture(activity, "enlarged-text")
@@ -625,12 +676,12 @@ class SyncSettingsInstrumentedTest {
         queuedWrites {
             owner.toggleCalendar(f.personalCalendar)
             owner.newEvents(f.personalCalendar)
-            owner.weeks(20)
+            owner.weeks(4)
             assertTrue("The second tap is computed against the latest intent state", f.personalCalendar in owner.snapshot.settings.calendars)
         }
         assertEquals(setOf(f.familyCalendar, f.personalCalendar), config().calendars)
         assertEquals(f.personalCalendar, config().targetIdentity?.id)
-        assertEquals(20, config().horizonWeeks)
+        assertEquals(4, config().horizonWeeks)
         quiesceJobs()
         queuedWrites {
             repeat(3) { owner.toggleCalendar(f.familyCalendar) }
@@ -669,7 +720,7 @@ class SyncSettingsInstrumentedTest {
                     ContentValues().apply { put(Calendars.SYNC_EVENTS, 0) }, null, null)
             }
             owner.toggleCalendar(f.personalCalendar)
-            owner.weeks(7)
+            owner.weeks(2)
         }
         assertEquals("Availability does not undo a saved choice", f.familyCalendar, config().newEventCalendar)
         assertEquals("A stale checkbox cannot add an unavailable calendar", setOf(other, f.familyCalendar), config().calendars)

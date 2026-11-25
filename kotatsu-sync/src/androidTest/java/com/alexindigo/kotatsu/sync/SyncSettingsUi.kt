@@ -33,19 +33,23 @@ internal class SyncSettingsUi(private val instrumentation: Instrumentation, priv
     fun has(label: String) = find(label) != null
     fun await(label: String) = awaitSyncSettings("Settings must show $label") { has(label) }
     fun awaitPage(title: String) = awaitSyncSettings("Settings heading: $title") { find(title)?.isHeading == true }
-    fun selected(label: String): Boolean {
+    fun checkable(label: String): AccessibilityNodeInfo? {
         var node = find(label)
         while (node != null && !node.isCheckable) node = node.parent
-        return node?.isChecked == true
+        return node
     }
+    fun selected(label: String) = checkable(label)?.isChecked == true
     fun click(label: String) {
-        awaitSyncSettings("Actionable settings row: $label") { find(label, actionable = true) != null }
-        val node = find(label, actionable = true)
-        assertNotNull("Clickable row for $label", node)
-        val bounds = Rect().also { node!!.getBoundsInScreen(it) }
+        var found: AccessibilityNodeInfo? = null
+        awaitSyncSettings("Actionable settings row: $label") {
+            found = find(label, actionable = true)
+            found != null
+        }
+        val node = checkNotNull(found)
+        val bounds = Rect().also(node::getBoundsInScreen)
         val minimum = 48 * instrumentation.targetContext.resources.displayMetrics.density
         assertTrue("48dp target for $label: $bounds", bounds.height() >= minimum - 1 && bounds.width() >= minimum - 1)
-        assertTrue(node!!.performAction(AccessibilityNodeInfo.ACTION_CLICK))
+        assertTrue(node.performAction(AccessibilityNodeInfo.ACTION_CLICK))
         instrumentation.waitForIdleSync()
     }
     fun key(code: Int) {

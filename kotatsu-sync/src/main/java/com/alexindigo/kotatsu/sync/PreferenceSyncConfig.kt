@@ -12,8 +12,11 @@ class PreferenceSyncConfig(context: Context) : SyncConfig {
             CalendarIdentity(j.getLong("id"), j.getString("name"), j.getString("type"),
                 if (j.isNull("collection")) null else j.getString("collection"))
         }
+        val savedWeeks = prefs.getInt("horizon_weeks", DEFAULT_HORIZON_WEEKS)
+        // Unreleased debug builds allowed 1-26 weeks. On read, round up to the next choice, capped at the largest.
+        val weeks = calendarHorizonWeeks.firstOrNull { it >= savedWeeks } ?: calendarHorizonWeeks.last()
         return SyncSettings(prefs.getStringSet("calendars", emptySet()).orEmpty().mapNotNull { it.toLongOrNull() }.toSet(),
-            id, prefs.getInt("horizon_weeks", 8), readTargetMode(prefs.getString("new_event_mode", null), id != null), identity)
+            id, weeks, readTargetMode(prefs.getString("new_event_mode", null), id != null), identity)
     }
     fun write(settings: SyncSettings) {
         val explicit = settings.targetMode == TargetMode.EXPLICIT

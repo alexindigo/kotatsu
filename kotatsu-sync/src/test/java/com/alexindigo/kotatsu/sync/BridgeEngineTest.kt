@@ -197,6 +197,30 @@ class BridgeEngineTest {
         assertTrue(phone.rows.values.all { it.start >= now + BridgeEngine.WEEK })
         assertEquals(10, server.rows.size)
     }
+    @Test fun supportedHorizonsBoundRecurringImports() {
+        for (week in 0..12) {
+            val start = now + week * BridgeEngine.WEEK + 1000
+            val instance = event().copy(recurring = true, start = start, end = start + 1000, instanceStart = start)
+            server.rows[instance.key] = instance
+        }
+        for (weeks in listOf(2, 4, 8, 12)) {
+            settings = settings.copy(horizonWeeks = weeks)
+            val result = engine.pass(now)
+            assertTrue(result.stopReasons.isEmpty())
+            assertEquals(weeks, phone.rows.size)
+        }
+    }
+    @Test fun unsupportedHorizonsStopBeforeAnyWrites() {
+        server.rows[event().key] = event()
+        for (weeks in listOf(0, 1, 3, 7, 10, 13, 26)) {
+            settings = settings.copy(horizonWeeks = weeks)
+            val result = engine.pass(now)
+            assertEquals("Horizon: $weeks", setOf(SyncStopReason.CALENDAR_SETTINGS_REQUIRED), result.stopReasons)
+            assertEquals(0, result.changes)
+        }
+        assertEquals(0, phone.writes + server.writes)
+        assertTrue(store.all().isEmpty())
+    }
     @Test fun seriesEndingInsideHorizonDoesNotInventInstances() {
         repeat(3) { week -> val item = event().copy(recurring = true, instanceStart = now + week * BridgeEngine.WEEK + 1000,
             start = now + week * BridgeEngine.WEEK + 1000); server.rows[item.key] = item }

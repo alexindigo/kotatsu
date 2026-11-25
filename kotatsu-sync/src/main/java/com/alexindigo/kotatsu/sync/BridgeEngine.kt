@@ -21,7 +21,7 @@ class BridgeEngine(
         val eligible = calendars.values.filter { it.eligible }.map { it.id }.toSet()
         val chosen = settings.calendars.intersect(eligible)
         val destination = settings.destination(calendars.values)?.id
-        if (settings.horizonWeeks <= 0) {
+        if (settings.horizonWeeks !in calendarHorizonWeeks) {
             mappings.status = "stopped: invalid calendar horizon"
             return PassResult(stopReasons = setOf(SyncStopReason.CALENDAR_SETTINGS_REQUIRED), held = existingHolds())
         }
