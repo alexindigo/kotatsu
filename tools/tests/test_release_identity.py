@@ -99,11 +99,31 @@ class ReleaseIdentityTest(unittest.TestCase):
                 settings.write_text(original+('\ninclude(":extras:other")\n' if included else ''))
                 self.inventory_rejected('Unclassified Android application module.*extras:other')
 
+    def test_unknown_included_groovy_application_module_fails(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text()+'\ninclude(":extra")\n')
+        (self.root/'extra').mkdir()
+        (self.root/'extra/build.gradle').write_text("plugins { id 'com.android.application' }")
+        self.inventory_rejected('Unclassified Android application module.*extra')
+
+    def test_unknown_undeclared_nested_groovy_application_module_fails(self):
+        (self.root/'extras/other').mkdir(parents=True)
+        (self.root/'extras/other/build.gradle').write_text("apply plugin: 'com.android.application'")
+        self.inventory_rejected('Unclassified Android application module.*extras:other')
+
+    def test_groovy_builds_without_an_active_application_plugin_are_accepted(self):
+        (self.root/'extra').mkdir()
+        (self.root/'extra/build.gradle').write_text(
+            "// apply plugin: 'com.android.application'\n"
+            "plugins { id 'com.android.application' version '8.13.2' apply false }\n")
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
     def test_generated_gradle_builds_are_not_application_modules(self):
         for directory in ('build','app/build/generated','extras/.gradle/cache','app/.cxx/generated'):
             path=self.root/directory/'build.gradle.kts'
             path.parent.mkdir(parents=True,exist_ok=True)
             path.write_text('plugins { id("com.android.application") }')
+            path.with_name('build.gradle').write_text("apply plugin: 'com.android.application'")
         self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
 
     def test_missing_release_application_build_fails(self):
@@ -114,6 +134,19 @@ class ReleaseIdentityTest(unittest.TestCase):
         settings=self.root/'settings.gradle.kts'
         settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',''))
         self.inventory_rejected('Missing Android application module.*settings.gradle.kts.*kotatsu-notes')
+
+    def test_commented_release_application_settings_entry_does_not_count(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',
+            '/*\n/* Nested comment */\ninclude(":kotatsu-notes")\n*/'))
+        self.inventory_rejected('Missing Android application module.*settings.gradle.kts.*kotatsu-notes')
+
+    def test_multiline_settings_include_counts_only_live_arguments(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',
+            'val example = """\ninclude(":kotatsu-notes")\n"""\n'
+            'include(\n  // ":kotatsu-notes",\n  /* ":kotatsu-notes", */\n  ":kotatsu-notes",\n)'))
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
 
     def test_duplicate_application_settings_entry_fails(self):
         settings=self.root/'settings.gradle.kts'

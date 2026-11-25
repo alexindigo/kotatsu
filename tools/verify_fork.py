@@ -238,23 +238,62 @@ def execution_identity(root,base,args):
                                  args.source_receipt,args.expected_source_receipt_sha256)
 
 
+def gradle_declarations(text, *, kotlin):
+    """Mask comments and multiline strings before matching literal Gradle declarations."""
+    parts=re.compile(r'//[^\n]*|/\*|"""[\s\S]*?"""|'
+                     r"'''[\s\S]*?'''|'(?:\\.|[^'\\\n])*'|"
+                     r'"(?:\\.|[^"\\\n])*"')
+    delimiters=re.compile(r'/\*|\*/')
+    chunks=[];pos=0
+    while match:=parts.search(text,pos):
+        chunks.append(text[pos:match.start()]);pos=match.end()
+        token=match.group()
+        if token=='/*':
+            depth=1
+            for end in delimiters.finditer(text,pos):
+                if end.group()=='*/':depth-=1
+                elif kotlin:depth+=1
+                if not depth:
+                    pos=end.end();break
+            require(depth==0,'Unterminated Gradle block comment')
+            chunks.append(' '+'\n'*text.count('\n',match.start(),pos))
+        elif token.startswith('//'):
+            chunks.append(' ')
+        elif token.startswith(('"""',"'''")):
+            chunks.append('""'+'\n'*token.count('\n'))
+        else:
+            chunks.append(token)
+    chunks.append(text[pos:])
+    return ''.join(chunks)
+
+
 def verify_application_inventory(root):
-    settings=confined(root,'settings.gradle.kts').read_text()
+    settings=gradle_declarations(confined(root,'settings.gradle.kts').read_text(),kotlin=True)
     require(re.findall(r'rootProject\.name\s*=\s*"([^"]+)"',settings)==['Kotatsu'],'Wrong release root project')
     included=Counter(module for args in re.findall(r'^\s*include\s*\(([^)]*)\)',settings,re.M)
                      for module in re.findall(r'":?([\w-]+(?::[\w-]+)*)"',args))
     # Check declared projects, but do not let settings hide undeclared source builds.
-    builds={root.joinpath(*module.split(':'),'build.gradle.kts') for module in included}
+    build_names=('build.gradle.kts','build.gradle')
+    builds={root.joinpath(*module.split(':'),name) for module in included for name in build_names}
     def scan_failed(error):
         raise VerificationError(f'Cannot scan Android application modules: {error}') from error
     for directory,subdirs,files in os.walk(root,onerror=scan_failed):
         subdirs[:]=[name for name in subdirs if name not in ('build','.gradle','.git','.cxx','.externalNativeBuild')]
         path=Path(directory)
-        if path!=root and 'build.gradle.kts' in files:
-            builds.add(path/'build.gradle.kts')
+        if path!=root:
+            builds.update(path/name for name in build_names if name in files)
+    app_id=r'''(?:"com\.android\.application"|'com\.android\.application')'''
+    version=r'''(?:"[^"\n]*"|'[^'\n]*')'''
     plugin=re.compile(r'\b(?:alias\s*\(\s*libs\.plugins\.android\.application\s*\)|'
-                      r'id\s*\(\s*"com\.android\.application"\s*\))(?!\s*apply\s+false\b)')
-    applications={':'.join(p.parent.relative_to(root).parts) for p in builds if p.is_file() and plugin.search(p.read_text())}
+                      rf'id(?:\s*\(\s*{app_id}\s*\)|\s+{app_id}))'
+                      rf'(?:\s+version\s+{version})?(?P<disabled>\s+apply\s+false\b)?'
+                      rf'|\bapply\s*(?:\(\s*)?plugin\s*[:=]\s*{app_id}')
+    applications=set()
+    for path in builds:
+        if path.is_file():
+            declarations=gradle_declarations(path.read_text(),kotlin=path.suffix=='.kts')
+            if any(not match.group('disabled') for match in plugin.finditer(declarations)):
+                applications.add(':'.join(path.parent.relative_to(root).parts))
     release=set(RELEASE_APPS);non_release=set(NON_RELEASE_APPS)
     classified=release|non_release
     checks=(
