@@ -1,6 +1,9 @@
 package com.alexindigo.kotatsu.sync
 
-data class AddressBookChoice(val account: ContactAccount, val label: String)
+data class AddressBookChoice(val account: ContactAccount, val label: String) {
+    /** The unsuffixed collection name, never the disambiguated picker text. */
+    internal val collectionLabel: String get() = addressBookLabel(account)
+}
 
 internal fun addressBookChoices(accounts: Set<ContactAccount>): List<AddressBookChoice> {
     val parsed = accounts.map { AddressBookChoice(it, addressBookLabel(it)) }

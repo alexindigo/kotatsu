@@ -8,10 +8,11 @@ data class ContactsSettings(val target: ContactAccount? = null,
     val mode: TargetMode = if (target == null) TargetMode.AUTOMATIC else TargetMode.EXPLICIT,
 ) {
     fun destination(choices: List<AddressBookChoice>): AddressBookChoice? = if (mode == TargetMode.AUTOMATIC)
-        preferPersonal(choices, AddressBookChoice::label) else choices.singleOrNull { it.account == target }
+        preferPersonal(choices, AddressBookChoice::collectionLabel) else choices.singleOrNull { it.account == target }
 }
 data class ContactsResult(val changes: Int = 0, val stopReasons: Set<SyncStopReason> = emptySet(),
-    val retry: Boolean = false, val waiting: Int = 0)
+    // Null means no inventory was assessed; a fresh zero clears the previous count.
+    val retry: Boolean = false, val waiting: Int? = 0)
 data class ContactsMove(val destination: ContactAccount, val sourceIds: Set<Long>)
 interface ContactsMoveStore { var pendingContactsMove: ContactsMove? }
 
@@ -22,6 +23,11 @@ interface ContactsPort {
     /** Version-checked, atomic insert-data-aggregate-delete. Never writes to a SIM. */
     fun move(source: PhoneContact, destination: ContactAccount): Boolean
 }
+
+private fun ContactsPort.phoneCandidates(sourceIds: Set<Long>? = null, excluded: Set<Long> = emptySet()) =
+    sources().filter { it.origin == ContactOrigin.PHONE && (sourceIds == null || it.id in sourceIds) && it.id !in excluded }
+
+private fun List<PhoneContact>.bulkWaiting() = if (size >= BULK) size else 0
 
 /** No second contacts database: a committed move removes its own retry candidate. */
 class ContactsMover(private val contacts: ContactsPort, private val changed: () -> Unit = {}) {
@@ -35,9 +41,9 @@ class ContactsMover(private val contacts: ContactsPort, private val changed: () 
         if (destination == null) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
         if (destination !in contacts.addressBooks()) return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
         var failed = false
-        val sources = contacts.sources().filter { it.origin == ContactOrigin.PHONE &&
-            (sourceIds == null || it.id in sourceIds) && it.id !in excluded }
-        if (automatic && sources.size >= BULK) return ContactsResult(waiting = sources.size)
+        val sources = contacts.phoneCandidates(sourceIds, excluded)
+        val waiting = sources.bulkWaiting()
+        if (automatic && waiting > 0) return ContactsResult(waiting = waiting)
         for (source in sources) {
             // Re-read selection availability for each transaction, not just the initial list.
             if (destination !in contacts.addressBooks()) return ContactsResult(changes, setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
@@ -71,14 +77,18 @@ class ContactsTransferEngine(private val contacts: ContactsPort, private val sto
         val pending = store.pendingContactsMove ?: run {
             val target = settings.destination(contacts.addressBookChoices())?.account
                 ?: return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
-            ContactsMove(target, contacts.sources().filter { it.origin == ContactOrigin.PHONE }.map { it.id }.toSet())
+            ContactsMove(target, contacts.phoneCandidates().map { it.id }.toSet())
                 .also { store.pendingContactsMove = it }
         }
-        return resume(pending)
+        val result = resume(pending)
+        // Confirmation permits only its own IDs. Assess later arrivals without moving them.
+        val waiting = if (settings.destination(contacts.addressBookChoices()) == null) 0
+            else contacts.phoneCandidates(excluded = store.pendingContactsMove?.sourceIds.orEmpty()).bulkWaiting()
+        return result.copy(waiting = waiting)
     }
     private fun resume(move: ContactsMove): ContactsResult = mover.moveExisting(move.destination, move.sourceIds).also {
         if (it.stopReasons.isEmpty()) store.pendingContactsMove = null
     }
     private fun combine(results: List<ContactsResult>) = ContactsResult(changes,
-        results.flatMap { it.stopReasons }.toSet(), results.any { it.retry }, results.sumOf { it.waiting })
+        results.flatMap { it.stopReasons }.toSet(), results.any { it.retry }, results.mapNotNull { it.waiting }.sum())
 }

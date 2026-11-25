@@ -5,7 +5,10 @@ import java.util.UUID
 enum class LossDirection { PHONE, STANDARD }
 enum class LossResolution { RESTORE, DELETE_FROM_SERVER, KEEP, REMOVE }
 
-data class LossMember(val pair: Mapping, val phone: MuditaEvent?, val standard: StandardEvent?)
+data class CalendarWitness(val identity: CalendarIdentity, val eligible: Boolean)
+internal fun SyncCalendar.witness() = CalendarWitness(identity, eligible)
+data class LossMember(val pair: Mapping, val phone: MuditaEvent?, val standard: StandardEvent?,
+    val calendar: CalendarWitness? = null)
 data class CalendarHold(
     val id: String, val direction: LossDirection, val members: List<LossMember>,
     val calendars: Map<Long, String>, val resolution: LossResolution? = null,
@@ -17,7 +20,8 @@ data class CalendarHold(
 data class HeldCalendarLoss(val id: String, val direction: LossDirection, val count: Int, val calendars: List<String>)
 
 data class CalendarBaseline(val calendar: SyncCalendar, val keys: Set<EventKey>, val syncIds: Map<Long, String>)
-data class MuditaBaseline(val count: Int, val maxId: Long, val firstPassDone: Boolean, val keys: Set<Long>)
+data class MuditaBaseline(val count: Int, val maxId: Long, val firstPassDone: Boolean, val mappedIds: Set<Long>,
+    val observedIds: Set<Long>? = null)
 data class CalendarContinuity(
     val phone: MuditaBaseline? = null,
     val standard: Map<Long, CalendarBaseline> = emptyMap(),
@@ -41,6 +45,7 @@ internal data class CalendarObservation(
 
 internal data class CalendarAssessment(
     val losses: Map<LossDirection, List<LossMember>>,
+    val candidates: Map<LossDirection, List<LossMember>>,
     val retirements: Map<Mapping, ChangeCause>,
     val unavailable: Set<Long>,
     val resetPhone: Boolean,
@@ -62,8 +67,9 @@ internal fun assessCalendarChanges(
         // A falling high-water mark by itself is normal (the newest row can be
         // deleted). New, lower IDs together with a backwards high-water mark
         // are observable evidence of allocation restarting.
-        phone.isNotEmpty() && max < old.maxId && phone.keys.any { it !in old.keys &&
-            mapped.none { row -> row.pair.muditaId == it } } && mapped.any { it.phone == null }
+        phone.isNotEmpty() && max < old.maxId && old.observedIds?.let { previous ->
+            phone.keys.any { it !in previous && mapped.none { row -> row.pair.muditaId == it } }
+        } == true && mapped.any { it.phone == null }
     } == true
     val reused = mapped.filter { member ->
         val row = member.pair
@@ -74,25 +80,27 @@ internal fun assessCalendarChanges(
     val serverCandidates = mapped.filter { it.pair.calendarId in selected &&
         (!scope.identity(it.standard, it.pair.standardKey) || it.standard?.calendarId != it.pair.calendarId ||
             it.pair.calendarId in unavailable) }
-    val unexplained = serverCandidates.filterNot { it.pair.standardKey.eventId in missingSeries }
-    val serverLoss = serverCandidates.groupBy { it.pair.calendarId }.values.flatMap { cohort ->
-        val cal = cohort.first().pair.calendarId
-        val uncertain = unexplained.filter { it.pair.calendarId == cal }
-        val series = cohort.filter { it.pair.standardKey.eventId in missingSeries }.map { it.pair.standardKey.eventId }.toSet()
-        val total = maxOf(baseline.standard[cal]?.keys?.size ?: 0, mapped.count { it.pair.calendarId == cal })
-        if (cal in unavailable) cohort
-        else if (uncertain.size + series.size >= BULK || (uncertain.isNotEmpty() || series.size > 1) &&
-            cohort.size == total && total >= 2) cohort
+    // One removed series counts once, whether assessed locally or across healthy selected calendars.
+    fun List<LossMember>.logicalLossCount() = map { member ->
+        val key = member.pair.standardKey
+        if (key.eventId in missingSeries) EventKey(key.eventId) else key
+    }.distinct().size
+    val healthyCandidates = serverCandidates.filterNot { it.pair.calendarId in unavailable }
+    val bulkAcrossCalendars = healthyCandidates.logicalLossCount() >= BULK
+    val mappedCounts = mapped.groupingBy { it.pair.calendarId }.eachCount()
+    val serverLoss = serverCandidates.groupBy { it.pair.calendarId }.flatMap { (cal, cohort) ->
+        val singleRemovedSeries = cohort.all { it.pair.standardKey.eventId in missingSeries } && cohort.logicalLossCount() == 1
+        val total = maxOf(baseline.standard[cal]?.keys?.size ?: 0, mappedCounts.getValue(cal))
+        if (cal in unavailable || bulkAcrossCalendars || !singleRemovedSeries && cohort.size == total && total >= 2) cohort
         else emptyList()
     }
     // Include absence even when the remote was edited. Reconciliation must not
     // repopulate a suspicious phone store as a side effect of diff ordering.
-    val phoneCandidates = mapped.filter { it.pair.calendarId in selected && it.phone == null }
-    val totalPhone = maxOf(baseline.phone?.keys?.size ?: 0, mapped.size)
+    val missingPhone = mapped.filter { it.pair.calendarId in selected && it.phone == null }
+    val phoneCandidates = if (resetPhone && missingPhone.isEmpty()) mapped.filter { it.pair.calendarId in selected } else missingPhone
+    val totalPhone = maxOf(baseline.phone?.mappedIds?.size ?: 0, mapped.size)
     val globalPhoneLoss = resetPhone || phoneCandidates.size >= BULK || phone.isEmpty() && totalPhone >= 2
-    val phoneLoss = if (resetPhone && phoneCandidates.isEmpty()) mapped.filter { it.pair.calendarId in selected }
-        else if (resetPhone) phoneCandidates
-        else if (globalPhoneLoss) phoneCandidates else emptyList()
+    val phoneLoss = if (globalPhoneLoss) phoneCandidates else emptyList()
     val retirements = buildMap {
         for (member in mapped) {
             val row = member.pair
@@ -108,6 +116,7 @@ internal fun assessCalendarChanges(
         }
     }
     CalendarAssessment(mapOf(LossDirection.PHONE to phoneLoss, LossDirection.STANDARD to serverLoss),
+        mapOf(LossDirection.PHONE to phoneCandidates, LossDirection.STANDARD to serverCandidates),
         retirements, unavailable, resetPhone)
 }
 

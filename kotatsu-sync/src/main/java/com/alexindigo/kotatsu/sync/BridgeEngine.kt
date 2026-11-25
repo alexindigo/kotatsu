@@ -20,7 +20,7 @@ class BridgeEngine(
         val calendars = standard.calendars().associateBy { it.id }
         val eligible = calendars.values.filter { it.eligible }.map { it.id }.toSet()
         val chosen = settings.calendars.intersect(eligible)
-        val destination = settings.destination(calendars.values)?.id
+        val destination = settings.destination(calendars.values)?.identity
         if (settings.horizonWeeks !in calendarHorizonWeeks) {
             mappings.status = "stopped: invalid calendar horizon"
             return PassResult(stopReasons = setOf(SyncStopReason.CALENDAR_SETTINGS_REQUIRED), held = existingHolds())
@@ -30,7 +30,7 @@ class BridgeEngine(
         val observation = observe(calendars, settings.calendars, scope, now, end)
         val assessment = assessCalendarChanges(observation, mappings.continuity, scope)
         val guard = CalendarWriteGuard(mappings, observation, assessment)
-        val journal = WriteJournal(mudita, standard, mappings, mapper, scope, guard::authorizes, guard::authorizesRetirement) { changes++ }
+        val journal = WriteJournal(mudita, standard, mappings, mapper, scope, guard::permission) { changes++ }
         fun apply(intent: WriteIntent) = journal.write(intent)
         journal.recover()
         if (guard.resolveApproved(journal, scope, mapper, mudita, standard)) {
@@ -53,7 +53,7 @@ class BridgeEngine(
             return outcome == WriteOutcome.DONE
         }
         if (!mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination) }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination?.id) }) {
                 val match = remote.values.firstOrNull { it.key !in claimed && !journal.reserved(it.key) &&
                     guard.canImport(it.calendarId) && sameIdentity(event, mapper.toMudita(it)) }
                 if (match != null) {
@@ -130,7 +130,7 @@ class BridgeEngine(
             }
         }
         if (mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination) }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination?.id) }) {
                 if (!uploadNew(event)) firstRunComplete = false
             }
         }
@@ -160,7 +160,7 @@ class BridgeEngine(
             val actual = remote[row.standardKey] ?: standard.read(row.standardKey)
             if (row.calendarId in scope.chosen && row.standardKey !in remote && scope.includes(actual, row.standardKey))
                 discordant.add(row.calendarId)
-            LossMember(row, phone[row.muditaId], actual)
+            LossMember(row, phone[row.muditaId], actual, calendars[row.calendarId]?.witness())
         }
         val goneSeries = mapped.filter { it.pair.standardKey.instanceStart != null && it.standard == null }
             .map { it.pair.standardKey.eventId }.distinct().filter(standard::seriesRemoved).toSet()
@@ -169,11 +169,11 @@ class BridgeEngine(
         return CalendarObservation(calendars, selected, phone, remote, mapped, goneSeries, phoneDiscordant, discordant)
     }
 
-    private fun upload(event: MuditaEvent, calendarId: Long, journal: WriteJournal): WriteOutcome {
+    private fun upload(event: MuditaEvent, target: CalendarIdentity, journal: WriteJournal): WriteOutcome {
         if (phoneNow(event.id) != event) return WriteOutcome.RETRY
-        val template = StandardEvent(calendarId = calendarId, title = "", description = "", start = 0, end = 0)
+        val template = StandardEvent(calendarId = target.id, title = "", description = "", start = 0, end = 0)
         val replacement = mapper.toStandard(event, template)
-        return journal.write(WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = event, standardAfter = replacement))
+        return journal.write(WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = event, standardAfter = replacement, uploadTarget = target))
     }
 
     fun resolvePending(now: Long, id: String, resolution: WriteResolution) = synchronized(passLock) {
@@ -181,7 +181,7 @@ class BridgeEngine(
         val settings = config.read()
         val chosen = settings.calendars.intersect(standard.calendars().filter { it.eligible }.map { it.id }.toSet())
         val end = Math.addExact(now, Math.multiplyExact(settings.horizonWeeks.toLong(), WEEK))
-        WriteJournal(mudita, standard, mappings, mapper, SyncScope(chosen, now, end), { false }).resolve(id, resolution)
+        WriteJournal(mudita, standard, mappings, mapper, SyncScope(chosen, now, end), { WritePermission.BLOCK }).resolve(id, resolution)
     }
 
     fun resolveLoss(now: Long, id: String, resolution: LossResolution): PassResult = synchronized(passLock) {

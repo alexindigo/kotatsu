@@ -282,7 +282,7 @@ class SyncSettingsInstrumentedTest {
         BridgeStore(context).use { store ->
             val result = ContactsTransferEngine(scoped, store).pass(ContactsSettings(personal))
             assertEquals(3, result.waiting)
-            store.syncStatus = SyncStatus(1763856000000L, contactsWaiting = result.waiting)
+            store.syncStatus = SyncStatus(1763856000000L, contactsWaiting = checkNotNull(result.waiting))
         }
         val activity = openHost()
         withFixtureCleanup({ close(activity) }) {

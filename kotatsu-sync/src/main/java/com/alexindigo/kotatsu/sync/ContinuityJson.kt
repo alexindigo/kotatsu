@@ -6,7 +6,8 @@ import org.json.JSONObject
 internal object ContinuityJson {
     fun encode(value: CalendarContinuity) = JSONObject().apply {
         value.phone?.let { p -> put("phone", JSONObject().put("count", p.count).put("max", p.maxId)
-            .put("firstRun", p.firstPassDone).put("keys", JSONArray(p.keys.toList()))) }
+            .put("firstRun", p.firstPassDone).put("keys", JSONArray(p.mappedIds.toList()))
+            .put("observedIds", p.observedIds?.let { JSONArray(it.toList()) })) }
         put("standard", JSONArray(value.standard.values.map { s -> JSONObject().apply {
             put("id", s.calendar.id); put("type", s.calendar.accountType); put("syncing", s.calendar.syncing)
             put("name", s.calendar.accountName); put("label", s.calendar.label); put("collection", s.calendar.collectionId)
@@ -17,14 +18,19 @@ internal object ContinuityJson {
             put("id", h.id); put("direction", h.direction.name); put("resolution", h.resolution?.name)
             put("calendars", JSONObject(h.calendars.mapKeys { it.key.toString() }))
             put("members", JSONArray(h.members.map { m -> JSONObject().put("pair", IntentJson.mapping(m.pair))
-                .put("phone", IntentJson.phone(m.phone)).put("standard", IntentJson.standard(m.standard)) }))
+                .put("phone", IntentJson.phone(m.phone)).put("standard", IntentJson.standard(m.standard))
+                .put("calendar", m.calendar?.let { IntentJson.calendar(it.identity).put("eligible", it.eligible) }) }))
         } }))
         put("phoneOnly", JSONArray(value.phoneOnly.toList()))
     }.toString()
 
     fun decode(value: String): CalendarContinuity = with(JSONObject(value)) {
-        val phone = optJSONObject("phone")?.let { MuditaBaseline(it.getInt("count"), it.getLong("max"),
-            it.getBoolean("firstRun"), it.getJSONArray("keys").longs()) }
+        val phone = optJSONObject("phone")?.let {
+            val mapped = it.getJSONArray("keys").longs()
+            val count = it.getInt("count")
+            MuditaBaseline(count, it.getLong("max"), it.getBoolean("firstRun"), mapped,
+                it.optJSONArray("observedIds")?.longs() ?: mapped.takeIf { ids -> ids.size == count })
+        }
         val standard = getJSONArray("standard").objects().associate { s ->
             val id = s.getLong("id")
             val ids = s.getJSONObject("syncIds")
@@ -38,7 +44,8 @@ internal object ContinuityJson {
             val labels = h.getJSONObject("calendars")
             CalendarHold(h.getString("id"), LossDirection.valueOf(h.getString("direction")),
                 h.getJSONArray("members").objects().map { m -> LossMember(IntentJson.mapping(m.getJSONObject("pair")),
-                    IntentJson.phone(m.optJSONObject("phone")), IntentJson.standard(m.optJSONObject("standard"))) },
+                    IntentJson.phone(m.optJSONObject("phone")), IntentJson.standard(m.optJSONObject("standard")),
+                    m.optJSONObject("calendar")?.let { CalendarWitness(IntentJson.calendar(it), it.getBoolean("eligible")) }) },
                 labels.keys().asSequence().associate { it.toLong() to labels.getString(it) },
                 if (h.has("resolution")) LossResolution.valueOf(h.getString("resolution")) else null)
         }

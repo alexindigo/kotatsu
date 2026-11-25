@@ -260,10 +260,12 @@ class ContactsMoverInstrumentedTest {
         requireIsolatedPhoneBook(f.context)
         val id = f.insert("One-time")
         f.config.write(ContactsSettings(f.family))
+        BridgeStore(f.context).use { it.syncStatus = it.syncStatus.copy(contactsWaiting = 3) }
         assertEquals(ContactsResult(1), SyncRuntime.moveExistingContacts(f.context).get(15, TimeUnit.SECONDS))
         BridgeStore(f.context).use {
             assertEquals(1, it.syncStatus.changes); assertNotNull(it.syncStatus.lastPassAt)
             assertTrue(it.syncStatus.stopReasons.isEmpty()); assertNull(it.pendingContactsMove)
+            assertEquals(0, it.syncStatus.contactsWaiting)
         }
         assertEquals(1, f.rawIn(f.family).size)
         val remaining = f.insert("Keep")
@@ -293,7 +295,10 @@ class ContactsMoverInstrumentedTest {
 
     @Test fun contactsPermissionKeepsTheLastPassAndDoesNotDisableCalendarOrLoseThePendingAction() = scenario { f ->
         val id = f.insert("Pending")
-        BridgeStore(f.context).use { it.pendingContactsMove = ContactsMove(f.family, setOf(id)) }
+        BridgeStore(f.context).use {
+            it.pendingContactsMove = ContactsMove(f.family, setOf(id))
+            it.syncStatus = it.syncStatus.copy(contactsWaiting = 3)
+        }
         val denied = object : ContextWrapper(f.context) {
             override fun checkSelfPermission(permission: String): Int = if (permission == Manifest.permission.WRITE_CONTACTS)
                 android.content.pm.PackageManager.PERMISSION_DENIED else super.checkSelfPermission(permission)
@@ -304,7 +309,27 @@ class ContactsMoverInstrumentedTest {
         assertEquals(f.baselinePhone + id, f.rawIn(null).toSet())
         BridgeStore(f.context).use { assertNotNull(it.pendingContactsMove); assertEquals(previous, it.syncStatus) }
         assertEquals(1, SyncRuntime.pass(f.context).changes)
-        BridgeStore(f.context).use { assertNull(it.pendingContactsMove) }
+        BridgeStore(f.context).use { assertNull(it.pendingContactsMove); assertEquals(0, it.syncStatus.contactsWaiting) }
+    }
+
+    @Test fun confirmedContactsMovePersistsFreshWaitingCountButNotOnAccessDenial() = scenario { f ->
+        requireIsolatedPhoneBook(f.context)
+        repeat(3) { f.insert("Waiting $it") }
+        f.config.write(ContactsSettings(f.family))
+        val previous = SyncRuntime.pass(f.context)
+        assertEquals(3, previous.contactsWaiting)
+        val move = ContactsMove(f.family, f.rawIn(null).toSet())
+        val denied = object : ContextWrapper(f.context) {
+            override fun checkSelfPermission(permission: String): Int = if (permission == Manifest.permission.WRITE_CONTACTS)
+                android.content.pm.PackageManager.PERMISSION_DENIED else super.checkSelfPermission(permission)
+        }
+        assertEquals(setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED),
+            SyncRuntime.moveConfirmedContacts(denied, move).get(15, TimeUnit.SECONDS).stopReasons)
+        BridgeStore(f.context).use { assertEquals(previous, it.syncStatus); assertEquals(move, it.pendingContactsMove) }
+        assertEquals(3, SyncRuntime.moveConfirmedContacts(f.context, move).get(15, TimeUnit.SECONDS).changes)
+        BridgeStore(f.context).use { assertEquals(0, it.syncStatus.contactsWaiting); assertNull(it.pendingContactsMove) }
+        assertTrue(f.rawIn(null).isEmpty())
+        assertEquals(3, f.rawIn(f.family).size)
     }
 
     private fun row(mime: String, value: String, type: Int? = null) = ContentValues().apply {

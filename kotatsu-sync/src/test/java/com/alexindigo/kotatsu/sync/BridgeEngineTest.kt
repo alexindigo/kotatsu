@@ -86,6 +86,75 @@ class BridgeEngineTest {
         assertTrue(phone.rows.isEmpty())
     }
 
+    @Test fun threeIndependentStandardLossesAcrossPopulatedCalendarsHoldBeforeAnyRetirement() {
+        settings = SyncSettings(setOf(1, 2, 3), 1)
+        server.calendarList = (1L..3).map { SyncCalendar(it, "dav", true) }
+        (1L..9).forEach { server.rows[EventKey(it)] = event(it).copy(calendarId = (it - 1) / 3 + 1) }
+        engine.pass(now)
+        val baseline = store.all()
+        for (id in listOf(1L, 4L, 7L)) server.rows.remove(EventKey(id))
+        repeat(2) {
+            val result = engine.pass(now)
+            assertEquals(0, result.changes)
+            assertEquals(3, result.held.single().count)
+            assertEquals(baseline, store.all())
+            assertEquals(9, phone.rows.size)
+        }
+    }
+
+    @Test fun twoIndependentStandardLossesStillRetireWhenAnUnrelatedCalendarIsUnavailable() {
+        settings = SyncSettings(setOf(1, 2, 3), 1)
+        server.calendarList = (1L..3).map { SyncCalendar(it, "dav", true) }
+        (1L..9).forEach { server.rows[EventKey(it)] = event(it).copy(calendarId = (it - 1) / 3 + 1) }
+        engine.pass(now)
+        server.calendarList = server.calendarList.filterNot { it.id == 3L }
+        for (id in listOf(1L, 4L)) server.rows.remove(EventKey(id))
+        val result = engine.pass(now)
+        assertEquals(2, result.changes)
+        assertEquals(7, phone.rows.size)
+        assertEquals(listOf("3"), result.held.single().calendars)
+    }
+
+    @Test fun replacementCalendarCannotReceiveAnUnattemptedUploadFromTheJournal() {
+        seed()
+        val source = MuditaEvent(10, "Phone event", "", now, now + 1000)
+        phone.rows[source.id] = source
+        val intent = WriteIntent(kind = WriteKind.UPLOAD, phoneBefore = source,
+            standardAfter = event().copy(id = 0, title = source.title))
+        store.prepare(intent)
+        server.calendarList = server.calendarList.map { it.copy(accountName = "Replacement account") }
+        val writes = server.writes
+        assertEquals(0, engine.pass(now).changes)
+        assertEquals(writes, server.writes)
+        assertTrue(store.pending().isEmpty())
+        assertEquals(source, phone.rows[source.id])
+    }
+
+    @Test fun unchangedUnmappedLowIdDoesNotMakeAnOrdinaryNewestRowDeletionLookLikeAReset() {
+        // Leave an unrelated phone-only event unmapped, e.g. no upload destination.
+        settings = settings.copy(newEventCalendar = 9)
+        phone.rows[1] = MuditaEvent(1, "Phone only", "", now, now + 1000)
+        (1L..2).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val removed = store.all().maxBy { it.muditaId }
+        phone.rows.remove(removed.muditaId)
+        val result = engine.pass(now)
+        assertTrue(result.held.isEmpty())
+        assertFalse(removed.standardKey in server.rows)
+        assertTrue(1L in phone.rows)
+    }
+
+    @Test fun genuinelyNewLowIdsWithFallingHighWaterHoldPhoneLoss() {
+        phone.rows[99] = MuditaEvent(99, "Previously known", "", now, now + 1000)
+        settings = settings.copy(newEventCalendar = 9)
+        (1L..2).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        phone.rows.remove(store.all().maxOf { it.muditaId })
+        phone.rows[1] = MuditaEvent(1, "New low id", "", now, now + 1000)
+        assertEquals(LossDirection.PHONE, engine.pass(now).held.single().direction)
+        assertEquals(2, server.rows.size)
+    }
+
     @Test fun calendarKeepDoesNotAutomaticallyUploadTheRetiredPhoneCopies() {
         (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
         engine.pass(now)
@@ -109,6 +178,74 @@ class BridgeEngineTest {
         phone.rows.remove(pairs[3].muditaId)
         assertEquals(3, engine.resolveLoss(now, hold.id, LossResolution.DELETE_FROM_SERVER).changes)
         assertEquals(setOf(EventKey(4), EventKey(5), EventKey(6)), server.rows.keys)
+    }
+
+    @Test fun changedHeldStandardEventNeedsANewApprovalButOtherMembersStillResolve() {
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        store.all().take(3).forEach { phone.rows.remove(it.muditaId) }
+        val original = engine.pass(now).held.single()
+        val changed = event().copy(title = "New evidence")
+        server.rows[changed.key] = changed
+        val result = engine.resolveLoss(now, original.id, LossResolution.DELETE_FROM_SERVER)
+        assertEquals(2, result.changes)
+        val fresh = result.held.single()
+        assertNotEquals(original.id, fresh.id)
+        assertEquals(1, fresh.count)
+        assertEquals(changed, server.rows[changed.key])
+        assertEquals(0, engine.resolveLoss(now, original.id, LossResolution.DELETE_FROM_SERVER).changes)
+        assertEquals(fresh, engine.pass(now).held.single())
+        assertEquals(1, engine.resolveLoss(now, fresh.id, LossResolution.RESTORE).changes)
+        assertTrue(phone.rows.values.any { it.title == changed.title })
+        assertTrue(engine.pass(now).held.isEmpty())
+    }
+
+    @Test fun changedCollectionIdentityCannotReuseAnApprovalToRemovePhoneCopies() {
+        seed()
+        server.calendarList = server.calendarList.map { it.copy(collectionId = "Replacement") }
+        // Account is part of the trusted identity even if the first collection ID was unknown.
+        server.calendarList = server.calendarList.map { it.copy(accountName = "A") }
+        val first = engine.pass(now).held.single()
+        server.calendarList = server.calendarList.map { it.copy(accountName = "B") }
+        val approval = engine.resolveLoss(now, first.id, LossResolution.REMOVE)
+        assertEquals(0, approval.changes)
+        val fresh = approval.held.single()
+        assertNotEquals(first.id, fresh.id)
+        assertEquals(1, phone.rows.size)
+        assertEquals(1, engine.resolveLoss(now, fresh.id, LossResolution.REMOVE).changes)
+        assertEquals(1, server.rows.size)
+    }
+
+    @Test fun interruptedStandardDeleteIsAcknowledgedWithoutReissuingTheDelete() {
+        val copy = seed()
+        phone.rows.remove(copy.id)
+        server.afterDelete = { throw ProcessDeath() }
+        try { engine.pass(now); fail("Expected process death after delete") } catch (_: ProcessDeath) { }
+        assertTrue(store.intent!!.attempted)
+        assertFalse(store.intent!!.confirmed)
+        assertTrue(server.rows.isEmpty())
+        val writes = server.writes
+        val result = engine.pass(now)
+        assertEquals(writes, server.writes)
+        assertEquals(0, result.changes)
+        assertTrue(result.stopReasons.isEmpty())
+        assertTrue(store.pending().isEmpty())
+        assertTrue(store.all().isEmpty())
+    }
+
+    @Test fun absenceAfterAnAttemptedDeleteIsNotAcknowledgedDuringBulkPhoneLoss() {
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val row = store.all().first()
+        val intent = WriteIntent(kind = WriteKind.STANDARD_DELETE, mapping = row, standardBefore = event(), attempted = true)
+        store.prepare(intent)
+        server.rows.remove(row.standardKey)
+        store.all().take(3).forEach { phone.rows.remove(it.muditaId) }
+        val writes = server.writes
+        assertEquals(LossDirection.PHONE, engine.pass(now).held.single().direction)
+        assertEquals(writes, server.writes)
+        assertEquals(intent, store.pending().single())
+        assertTrue(row in store.all())
     }
 
     @Test fun statusCountsProviderMutationsButNotStableMappings() {
@@ -601,7 +738,7 @@ class BridgeEngineTest {
         val p = seed(); val row = store.rows.values.single()
         store.prepare(WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row, phoneBefore = p))
         phone.rows.clear(); server.rows[event().key] = event().copy(title = "Server winner")
-        WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK), { true }).recover()
+        WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK), { WritePermission.RETIRE }).recover()
         assertEquals(row, store.rows.values.single()); assertTrue(store.pending().isEmpty())
         engine.pass(now)
         assertEquals("Server winner", phone.rows.values.single().title)
@@ -799,7 +936,7 @@ class BridgeEngineTest {
             phoneBefore = p, phoneAfter = p, standardBefore = remote, attempted = true)
         store.prepare(pending)
         for (kind in WriteKind.entries) {
-            val journal = WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK), { true })
+            val journal = WriteJournal(phone, server, store, mapper, SyncScope(setOf(1), now, now + BridgeEngine.WEEK), { WritePermission.RETIRE })
             assertEquals(kind.name, WriteOutcome.UNRESOLVED, journal.write(WriteIntent(kind = kind, mapping = row,
                 phoneBefore = p, phoneAfter = p, standardBefore = remote, standardAfter = remote)))
             assertEquals(listOf(pending), store.pending())
@@ -836,6 +973,7 @@ class BridgeEngineTest {
         val insertIdentities = mutableMapOf<String, Long>()
         var allowUpdate = true
         var afterInsert: ((EventKey) -> Unit)? = null
+        var afterDelete: (() -> Unit)? = null
         var calendarList = listOf(SyncCalendar(1, "dav", true))
         var removedSeries = emptySet<Long>()
         override fun seriesRemoved(eventId: Long) = eventId in removedSeries
@@ -857,7 +995,12 @@ class BridgeEngineTest {
             if (!allowUpdate) return false
             writes++; rows[key] = event; return true
         }
-        override fun delete(key: EventKey): Boolean { writes++; return rows.remove(key) != null }
+        override fun delete(key: EventKey): Boolean {
+            writes++
+            val deleted = rows.remove(key) != null
+            afterDelete?.also { afterDelete = null; it() }
+            return deleted
+        }
     }
     private class MemoryMappings : MappingStore {
         val rows = linkedMapOf<Long, Mapping>(); var saves = 0; var failSave = false

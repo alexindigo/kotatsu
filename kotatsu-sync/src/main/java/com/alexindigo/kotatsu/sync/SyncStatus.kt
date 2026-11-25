@@ -45,8 +45,9 @@ data class SyncStatus(
         return this
     }
 
-    /** A denied provider has not performed a pass. Keep the previous result. */
-    fun afterAttempt(at: Long, changes: Int, reasons: Set<SyncStopReason>): SyncStatus =
-        if (reasons.any { it.accessRequired }) this else SyncStatus(at, changes, reasons,
-            held = held, contactsWaiting = contactsWaiting)
+    /** Access failure preserves the last real pass. Only a contacts assessment replaces its waiting count. */
+    fun afterAttempt(at: Long, changes: Int, reasons: Set<SyncStopReason>, assessedContactsWaiting: Int? = null): SyncStatus {
+        val next = if (reasons.any { it.accessRequired }) this else SyncStatus(at, changes, reasons, held = held)
+        return next.copy(contactsWaiting = assessedContactsWaiting ?: contactsWaiting)
+    }
 }

@@ -14,6 +14,7 @@ data class WriteIntent(
     val insertedId: Long? = null,
     val confirmed: Boolean = false,
     val lossId: String? = null,
+    val uploadTarget: CalendarIdentity? = null,
 )
 
 internal val WriteIntent.reservations: Set<String> get() = buildSet {
@@ -33,6 +34,8 @@ internal class SyncScope(val chosen: Set<Long>, private val now: Long, private v
 }
 
 enum class WriteOutcome { DONE, RETRY, UNRESOLVED }
+/** Discard and acknowledgement never grant permission to issue a provider write. */
+internal enum class WritePermission { BLOCK, DISCARD, RECONCILE, RETIRE, ACKNOWLEDGE_DELETE }
 data class PassResult(val retry: Boolean = false, val unresolved: Int = 0, val changes: Int = 0,
     val stopReasons: Set<SyncStopReason> = emptySet(), val held: List<HeldCalendarLoss> = emptyList())
 
@@ -47,8 +50,7 @@ internal class WriteJournal(
     private val phone: MuditaCalendarPort, private val standard: StandardCalendarPort,
     private val store: MappingStore, private val mapper: EventMapper,
     private val scope: SyncScope,
-    private val authorizes: (WriteIntent) -> Boolean,
-    private val authorizesRetirement: (WriteIntent) -> Boolean = authorizes,
+    private val permission: (WriteIntent) -> WritePermission,
     private val changed: () -> Unit = {},
 ) {
     var retry = false
@@ -65,7 +67,7 @@ internal class WriteJournal(
     private fun reservedIdentities() = store.pending().flatMap { it.reservations }.toSet() + deferred
     fun recover() { for (intent in store.pending()) attempt(intent) }
     fun write(original: WriteIntent): WriteOutcome {
-        if (!authorizes(original)) return WriteOutcome.UNRESOLVED
+        if (permission(original) !in setOf(WritePermission.RECONCILE, WritePermission.RETIRE)) return WriteOutcome.UNRESOLVED
         fun occupied(): WriteOutcome { unresolved++; return WriteOutcome.UNRESOLVED }
         if (original.reservations.any { it in reservedIdentities() }) return occupied()
         // Persist the receipt before the provider call. It is not ordinary event content.
@@ -76,9 +78,20 @@ internal class WriteJournal(
         return attempt(intent)
     }
     private fun attempt(intent: WriteIntent): WriteOutcome {
-        if (!authorizes(intent)) return WriteOutcome.UNRESOLVED
+        val allowed = permission(intent)
+        if (allowed == WritePermission.BLOCK) return WriteOutcome.UNRESOLVED
         if (!visited.add(intent.id)) return WriteOutcome.UNRESOLVED
-        val result = try { reconcile(intent) } catch (_: Exception) { WriteOutcome.RETRY }
+        val result = try {
+            when (allowed) {
+                WritePermission.DISCARD -> {
+                    check(!intent.attempted && !intent.confirmed)
+                    finish(intent)
+                }
+                WritePermission.ACKNOWLEDGE_DELETE -> acknowledgeDelete(intent)
+                WritePermission.RETIRE, WritePermission.RECONCILE -> reconcile(intent, allowed)
+                WritePermission.BLOCK -> error("Blocked before reconciliation")
+            }
+        } catch (_: Exception) { WriteOutcome.RETRY }
         if (result == WriteOutcome.RETRY) retry = true
         if (result == WriteOutcome.UNRESOLVED) unresolved++
         // Do not rediff an affected item again in this pass, even if its intent was acknowledged.
@@ -106,7 +119,20 @@ internal class WriteJournal(
     private fun pair(phone: MuditaEvent, remote: StandardEvent) = Mapping(phone.id, remote.key,
         remote.calendarId, mapper.muditaFingerprint(phone, remote.location.isNotEmpty()),
         mapper.standardFingerprint(remote), remote.location.isNotEmpty())
-    private fun reconcile(original: WriteIntent): WriteOutcome {
+    private fun acknowledgeDelete(intent: WriteIntent): WriteOutcome {
+        val row = checkNotNull(intent.mapping)
+        if (!intent.confirmed) {
+            if (!intent.attempted) return WriteOutcome.UNRESOLVED
+            val stillMissing = when (intent.kind) {
+                WriteKind.STANDARD_DELETE -> standard.read(row.standardKey) == null && phoneNow(row.muditaId) == null
+                WriteKind.PHONE_DELETE -> phoneNow(row.muditaId) == null
+                else -> false
+            }
+            if (!stillMissing) return WriteOutcome.RETRY
+        }
+        return finish(intent, remove = row.muditaId)
+    }
+    private fun reconcile(original: WriteIntent, allowed: WritePermission): WriteOutcome {
         var intent = original
         when (intent.kind) {
             WriteKind.IMPORT -> {
@@ -142,6 +168,9 @@ internal class WriteJournal(
                 if (id == null) {
                     if (intent.attempted) return WriteOutcome.UNRESOLVED
                     if (desired.calendarId !in scope.chosen || phoneNow(source.id) != source) return finish(intent)
+                    if (intent.uploadTarget != null && standard.calendars().none {
+                            it.eligible && it.identity == intent.uploadTarget
+                        }) return WriteOutcome.RETRY
                     intent = intent.copy(attempted = true); store.prepare(intent)
                     id = standard.insert(desired.calendarId, desired, intent.id) ?: return WriteOutcome.RETRY
                     changed()
@@ -173,11 +202,12 @@ internal class WriteJournal(
             WriteKind.PHONE_DELETE -> {
                 val row = checkNotNull(intent.mapping)
                 val current = phoneNow(row.muditaId)
-                if (intent.confirmed || (intent.attempted && current == null)) return finish(intent, remove = row.muditaId)
+                if (intent.confirmed) return acknowledgeDelete(intent)
+                if (intent.attempted && current == null) return WriteOutcome.RETRY
                 // An obsolete, unattempted retirement must not erase a user-deletion baseline.
                 if (intent.lossId == null && scope.includes(standard.read(row.standardKey), row.standardKey)) return finish(intent)
                 if (intent.lossId != null && standard.read(row.standardKey) != intent.standardBefore) return WriteOutcome.UNRESOLVED
-                if (!authorizesRetirement(intent)) return WriteOutcome.UNRESOLVED
+                if (allowed != WritePermission.RETIRE) return WriteOutcome.UNRESOLVED
                 if (current == null) return finish(intent, remove = row.muditaId)
                 if (current != intent.phoneBefore) return if (intent.attempted || intent.lossId != null) WriteOutcome.UNRESOLVED else finish(intent)
                 intent = intent.copy(attempted = true); store.prepare(intent)
@@ -207,16 +237,16 @@ internal class WriteJournal(
                 val before = checkNotNull(intent.standardBefore)
                 val row = checkNotNull(intent.mapping)
                 val current = standard.read(before.key)
-                if (intent.confirmed) return finish(intent, remove = row.muditaId)
-                if (current != null) {
-                    if (intent.attempted && current != before) return WriteOutcome.UNRESOLVED
-                    if (!scope.identity(before, before.key) || current != before || phoneNow(row.muditaId) != null)
-                        return if (intent.lossId != null) WriteOutcome.UNRESOLVED else finish(intent)
-                    intent = intent.copy(attempted = true); store.prepare(intent)
-                    if (!standard.delete(before.key)) return WriteOutcome.RETRY
-                    changed()
-                    intent = intent.copy(confirmed = true); store.prepare(intent)
-                }
+                if (intent.confirmed) return acknowledgeDelete(intent)
+                // Absence arrived after assessment. Reassess the whole cohort before drawing a conclusion.
+                if (current == null) return WriteOutcome.RETRY
+                if (intent.attempted && current != before) return WriteOutcome.UNRESOLVED
+                if (!scope.identity(before, before.key) || current != before || phoneNow(row.muditaId) != null)
+                    return if (intent.lossId != null) WriteOutcome.UNRESOLVED else finish(intent)
+                intent = intent.copy(attempted = true); store.prepare(intent)
+                if (!standard.delete(before.key)) return WriteOutcome.RETRY
+                changed()
+                intent = intent.copy(confirmed = true); store.prepare(intent)
                 return finish(intent, remove = row.muditaId)
             }
         }

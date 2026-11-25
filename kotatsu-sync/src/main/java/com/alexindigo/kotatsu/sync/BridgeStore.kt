@@ -170,10 +170,14 @@ internal object IntentJson {
         put("id", i.id); put("kind", i.kind.name); put("attempted", i.attempted); put("inserted", i.insertedId)
         put("confirmed", i.confirmed)
         put("phoneIds", JSONArray(i.phoneIdsBefore.toList()))
-        put("mapping", i.mapping?.let(::mapping)); put("loss", i.lossId)
+        put("mapping", i.mapping?.let(::mapping)); put("loss", i.lossId); put("uploadTarget", i.uploadTarget?.let(::calendar))
         put("phoneBefore", phone(i.phoneBefore)); put("phoneAfter", phone(i.phoneAfter))
         put("standardBefore", standard(i.standardBefore)); put("standardAfter", standard(i.standardAfter))
     }.toString()
+    fun calendar(id: CalendarIdentity) = JSONObject().put("id", id.id).put("name", id.accountName)
+        .put("type", id.accountType).put("collection", id.collectionId)
+    fun calendar(j: JSONObject) = CalendarIdentity(j.getLong("id"), j.getString("name"), j.getString("type"),
+        if (j.isNull("collection")) null else j.getString("collection"))
     fun mapping(m: Mapping) = JSONObject().apply {
         put("phone", m.muditaId); put("event", m.standardKey.eventId); put("instance", m.standardKey.instanceStart)
         put("calendar", m.calendarId); put("phoneFp", m.muditaFingerprint); put("standardFp", m.standardFingerprint)
@@ -207,6 +211,7 @@ internal object IntentJson {
             phone(j.optJSONObject("phoneBefore")), phone(j.optJSONObject("phoneAfter")),
             standard(j.optJSONObject("standardBefore")), standard(j.optJSONObject("standardAfter")),
             (0 until ids.length()).map { ids.getLong(it) }.toSet(), j.getBoolean("attempted"), j.longOrNull("inserted"),
-            j.getBoolean("confirmed"), if (j.isNull("loss")) null else j.getString("loss"))
+            j.getBoolean("confirmed"), if (j.isNull("loss")) null else j.getString("loss"),
+            j.optJSONObject("uploadTarget")?.let(::calendar))
     }
 }

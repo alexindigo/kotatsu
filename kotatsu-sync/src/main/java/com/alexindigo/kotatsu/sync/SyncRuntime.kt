@@ -49,8 +49,8 @@ object SyncRuntime {
         retry = retry || contacts.retry
         val previous = store.syncStatus
         val status = SyncStatus(System.currentTimeMillis(), changes, reasons, held = previous.held,
-            contactsWaiting = contacts.waiting)
-        store.syncStatus = previous.afterAttempt(status.lastPassAt!!, changes, reasons).copy(contactsWaiting = contacts.waiting)
+            contactsWaiting = contacts.waiting ?: previous.contactsWaiting)
+        store.syncStatus = previous.afterAttempt(status.lastPassAt!!, changes, reasons, contacts.waiting)
         if (retry) throw RetryPass()
         status
     }
@@ -64,21 +64,20 @@ object SyncRuntime {
         return try {
             val settings = PreferenceContactsConfig(context).read()
             if (!permitted(context, Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS))
-                return if (!existing && settings.mode == TargetMode.AUTOMATIC && store.pendingContactsMove == null) ContactsResult()
-                else ContactsResult(stopReasons = setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED))
+                return if (!existing && settings.mode == TargetMode.AUTOMATIC && store.pendingContactsMove == null) ContactsResult(waiting = null)
+                else ContactsResult(stopReasons = setOf(SyncStopReason.CONTACTS_ACCESS_REQUIRED), waiting = null)
             if (existing) engine.moveExisting(settings) else engine.pass(settings)
         } catch (error: Exception) {
             store.status = "contacts pass incomplete: ${error.javaClass.simpleName}: ${error.message.orEmpty()}"
-            ContactsResult(engine.changes, setOf(SyncStopReason.RETRY_REQUIRED), retry = true)
+            ContactsResult(engine.changes, setOf(SyncStopReason.RETRY_REQUIRED), retry = true, waiting = null)
         }
     }
+    private fun moveContacts(context: Context, store: BridgeStore) = contactsPass(context, store, existing = true).also { result ->
+        store.syncStatus = store.syncStatus.afterAttempt(System.currentTimeMillis(), result.changes, result.stopReasons, result.waiting)
+        store.status = if (result.stopReasons.isEmpty()) "contacts pass complete" else "stopped: ${result.stopReasons}"
+    }
     fun moveExistingContacts(context: Context) = enqueue {
-        BridgeStore(context).use { store ->
-            contactsPass(context, store, existing = true).also { result ->
-                store.syncStatus = store.syncStatus.afterAttempt(System.currentTimeMillis(), result.changes, result.stopReasons)
-                store.status = if (result.stopReasons.isEmpty()) "contacts pass complete" else "stopped: ${result.stopReasons}"
-            }
-        }
+        BridgeStore(context).use { store -> moveContacts(context, store) }
     }
 
     /** Confirmation carries the exact destination and phone identities shown to the user. */
@@ -89,10 +88,7 @@ object SyncRuntime {
                 "contacts move already pending"
             }
             if (pending == null) store.pendingContactsMove = confirmed
-            contactsPass(context, store, existing = true).also { result ->
-                store.syncStatus = store.syncStatus.afterAttempt(System.currentTimeMillis(), result.changes, result.stopReasons)
-                store.status = if (result.stopReasons.isEmpty()) "contacts pass complete" else "stopped: ${result.stopReasons}"
-            }
+            moveContacts(context, store)
         }
     }
 
