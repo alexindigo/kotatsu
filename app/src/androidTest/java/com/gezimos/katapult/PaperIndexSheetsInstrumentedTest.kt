@@ -72,7 +72,7 @@ class PaperIndexSheetsInstrumentedTest {
         // The header and the measured body are published separately to accessibility.
         ui.await("Import confirmation or incoming value missing") {
             ui.has(context.getString(R.string.policy_import_confirmation)) &&
-                ui.has(context.getString(R.string.config_import_replaces_settings)) &&
+                ui.find(context.getString(R.string.config_import_replaces_settings))?.isHeading == true &&
                 ui.has(context.getString(R.string.policy_media_info))
         }
         capture("import-preview")

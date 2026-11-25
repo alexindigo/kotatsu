@@ -33,6 +33,7 @@ Paths below are relative to the repository root. `kit/` in the tables means
 | 10 | `app/src/main/java/com/gezimos/katapult/ui/settings/LockscreenWidgetsPage.kt` | Widget controls, Widgets section, Add widget and management destinations |
 | 11 | `kit/PaperSheet.kt` | Shared bottom sheet drawing and heading; Activity and Action Service hosts own window lifetime and Back |
 | 12 | `kit/PaperTileAction.kt`, `kit/PaperShortcutEntry.kt` | Home-proportioned action tiles and independent shortcut launch/app-icon targets |
+| 13 | `kit/ConfirmationPage.kt` | Shared full-page decision layout; consumers own preview data and callbacks |
 
 ## Principles
 
@@ -132,7 +133,7 @@ the implementation, not from measuring an image.
 | 8 | Notice | 16 dp side inset, 2 dp top rule; row minimum 48 dp; 6 dp between tracks; message 14/18 sp Regular with 6 dp vertical padding | `Notice` |
 | 9 | Notice action/dismiss | Action minimum 64.5 x 48 dp, 14 sp Bold underlined; dismiss 48 x 48 dp, `×` 22.5 sp | `Notice` |
 | 10 | Close vector | 18 dp square, 2.25 dp strokes from 20% to 80% of bounds; separate from Notice's text `×` | `CloseMark` |
-| 11 | Plain full-row action | Minimum 48 dp high, 18/21.75 sp Regular, left aligned; no invented value/leader | `SheetAction` |
+| 11 | Plain full-row action | Minimum 48 dp high, 18/21.75 sp, left aligned, one line; Regular except the Bold confirming action; no invented value/leader | `SheetAction`, `ConfirmationPage` |
 | 12 | Two-target action entry | Name/help and trailing action each minimum 48 dp; help 14/18 sp; action 18/21.75 sp Bold; shared index tracks | `PaperActionEntry` |
 | 13 | Bracket card | Full measured content height; 2 dp bracket strokes, 7.5 dp caps; horizontal 14 dp and vertical 6 dp padding | `PaperCard` |
 | 14 | Card text | Name 18/21.75 sp Bold; help 14/18 sp Regular; size 14/18 sp Bold; tracks stacked without extra gaps; minimum content height 48 dp | `PaperCardEntry` |
@@ -146,6 +147,7 @@ the implementation, not from measuring an image.
 | 22 | Choice-sheet option | Minimum 48 dp without help; sheet and page options with help have a 67.5 dp minimum and full-width 14/16.5 sp help with 1.5 dp top gap | Private `SelectionRow` |
 | 23 | Selection tracks | Shared baseline leader geometry in muted; value cell centred on the name track; 20 dp checkbox, chosen/checked ink fill and paper check, otherwise 2.5 dp muted outline; external mark before box with 7.5 dp gap | `IndexTracks`, `IndexCheckbox` |
 | 24 | Tile action | 54 dp square, 2 dp ink border, 14 dp corners; 38 dp vector drawing box with approximately 1.5/24-unit strokes; 14/17.25 sp Lato Regular label 4 dp below, one line; whole tile and label form one button | `PaperTileAction` |
+| 25 | Confirmation question/detail | `GroupHeading` (14/17.25 sp Bold and 2 dp rule); optional `PaperHelp` detail with 6 dp between rule and detail block | `ConfirmationPage` |
 
 Targets must be at least 48 dp in both dimensions. A value word or a check
 drawing is not its own tiny target: the surrounding row or independent control
@@ -464,6 +466,24 @@ place; its drawing is not a separate target. Lock screen notification apps
 keeps the bulk action between its help and the list. The Hidden/Notify matrix
 continues to use its own two-target layout and checkbox outlines.
 
+### Full-page confirmation: a grouped decision
+
+```text
+< Clear all data
+  Erase all settings and restart Kotatsu?
+  -------------------------------------------------
+  Clear all data
+```
+
+Use `ConfirmationPage` with the normal page header and Back control. Render
+the existing decision prompt as a group heading above a 2 dp ink rule; keep
+any consequence detail below the rule in Regular sheet-help type. If the
+user must inspect incoming values, as in Config import, keep those rows
+between the rule and the actions. Only the confirming action is Bold; any
+existing Cancel action stays Regular. Back never confirms. No warning colour,
+card, checkbox, fake value or action bar. Existing confirmation sheets are
+not full-page confirmations.
+
 ## Values and interaction vocabulary
 
 | # | Content | Use |
@@ -687,7 +707,7 @@ semantics. A reusable component knows its children, never its consumers.
 | 4 | Check group boundaries | Each nonempty chapter group has one to six visible entries. Hide unavailable entries using `visible`; empty groups disappear. Do not split a meaningful group to match a screenshot |
 | 5 | Render a chapter | Pass it to `PaperIndexRenderer`. Reuse its help, choices, measured groups, footer and pager instead of hand-building them |
 | 6 | Route a destination | Add the category to the Settings owner's chapter map or push a stable secondary destination. Render only the current top page and use the same pop callback for header/device Back |
-| 7 | Build a secondary destination | `ChoiceSurface` for a pure choice, preserving its static/app-built classification and retained background; `HelpPage` for prose; `PagedSettingsPage` for item lists; `SettingsPage` for mixed blocks/editors. Group inseparable children in a `Column` |
+| 7 | Build a secondary destination | `ChoiceSurface` for a pure choice, preserving its static/app-built classification and retained background; `HelpPage` for prose; `PagedSettingsPage` for item lists; `SettingsPage` for mixed blocks/editors; `ConfirmationPage` for a full-page decision. Group inseparable children in a `Column` |
 | 8 | Add a reminder only when needed | Supply the shared `NoticeContent` from its state owner and, for chapters, the relevant `noticeGroup`. Do not copy Notice state into the page |
 | 9 | Check the result | Compare actual rendered anatomy, baselines, live values, targets, page boundaries and Back behaviour with this guide. Record any remaining mismatch rather than silently changing the style |
 

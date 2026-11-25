@@ -150,11 +150,13 @@ internal fun IndexLeader(ink: androidx.compose.ui.graphics.Color = LocalInk.curr
 }
 
 @Composable
-fun GroupHeading(title: String, columnLabel: String? = null, ruleWidth: Dp = 2.dp) {
+fun GroupHeading(title: String, columnLabel: String? = null, ruleWidth: Dp = 2.dp,
+    titleIsHeading: Boolean = false) {
     Column(Modifier.fillMaxWidth().padding(top = 3.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text(title, fontFamily = LatoFamily, fontSize = 14.sp, lineHeight = 17.25.sp,
-                fontWeight = FontWeight.Bold, color = LocalInk.current)
+                fontWeight = FontWeight.Bold, color = LocalInk.current,
+                modifier = if (titleIsHeading) Modifier.semantics { heading() } else Modifier)
             if (columnLabel != null) Text(columnLabel, fontFamily = LatoFamily, fontSize = 14.sp,
                 lineHeight = 17.25.sp, color = LocalInk.current)
         }
@@ -516,7 +518,7 @@ fun <T> PagedSettingsPage(title: String, items: List<T>, onDismiss: () -> Unit,
 }
 
 @Composable
-private fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = true, content: @Composable () -> Unit) {
+internal fun PagedContent(header: @Composable () -> Unit, swipePaging: Boolean = true, content: @Composable () -> Unit) {
     val position = rememberPagePosition()
     var page by position.page
     var count by position.count
@@ -602,21 +604,26 @@ fun ChoiceSurface(entry: SettingsEntry.Value, onDismiss: () -> Unit) {
 
 /** Help below a page or sheet title. Empty help has no layout footprint. */
 @Composable
-fun PaperHelp(text: String, modifier: Modifier = Modifier) {
+fun PaperHelp(text: String) {
+    PaperHelp(text, topPadding = 1.5.dp)
+}
+
+@Composable
+internal fun PaperHelp(text: String, topPadding: Dp) {
     if (text.isNotEmpty()) Text(text, fontFamily = LatoFamily, fontSize = 14.sp,
         lineHeight = 16.5.sp, color = LocalInk.current,
-        modifier = modifier.padding(top = 1.5.dp, bottom = 4.5.dp))
+        modifier = Modifier.padding(top = topPadding, bottom = 4.5.dp))
 }
 
 private val pageOptionHeight = 53.25.dp
 
 @Composable
-private fun SelectionRow(label: String, checked: Boolean, bold: Boolean, action: Modifier,
+private fun SelectionRow(label: String, checked: Boolean, bold: Boolean, modifier: Modifier,
     minimumHeight: Dp, help: String = "", external: Boolean = false) {
     val ink = LocalInk.current
     val muted = LocalPalette.current.muted
     Column(Modifier.fillMaxWidth().heightIn(min = if (help.isEmpty()) minimumHeight else 67.5.dp)
-        .inkFocus().then(action).padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
+        .inkFocus().then(modifier).padding(vertical = 9.dp), verticalArrangement = Arrangement.Center) {
         IndexTracks(title = {
             Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp,
                 fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal, color = ink,
@@ -699,8 +706,19 @@ fun HelpPage(title: String, paragraphs: List<String>, onDismiss: () -> Unit) {
 /** A full-row sheet action without a fabricated value or decorative leader. */
 @Composable
 fun SheetAction(label: String, onClick: () -> Unit) {
+    SheetActionRow(label, FontWeight.Normal, onClick)
+}
+
+@Composable
+internal fun EmphasizedSheetAction(label: String, onClick: () -> Unit) {
+    SheetActionRow(label, FontWeight.Bold, onClick)
+}
+
+@Composable
+private fun SheetActionRow(label: String, weight: FontWeight, onClick: () -> Unit) {
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).inkFocus()
         .clickable(role = Role.Button, onClick = onClick), contentAlignment = Alignment.CenterStart) {
-        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp, color = LocalInk.current)
+        Text(label, fontFamily = LatoFamily, fontSize = 18.sp, lineHeight = 21.75.sp, color = LocalInk.current,
+            fontWeight = weight, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }

@@ -103,6 +103,7 @@ import com.gezimos.katapult.ui.settings.Entry
 import com.gezimos.katapult.ui.settings.GroupHeading
 import com.gezimos.katapult.ui.settings.ChoiceOption
 import com.gezimos.katapult.ui.settings.CheckboxOption
+import com.gezimos.katapult.ui.settings.ConfirmationPage
 import com.gezimos.katapult.ui.settings.PagedSettingsPage
 import com.gezimos.katapult.ui.settings.PaperHelp
 import com.gezimos.katapult.ui.settings.AppChecklistPage
@@ -608,15 +609,13 @@ fun SettingsScreen(
                 popPage()
             }
         }
-        SettingsPage(stringResource(R.string.policy_import_confirmation), dismissImport) {
-            SheetText(stringResource(R.string.config_import_replaces_settings))
-            for ((choice, title) in sensitiveRows) {
-                preview.changes[choice.key]?.let { incoming ->
-                    Entry(SettingsEntry.Metadata(choice.key, stringResource(title),
-                        stringResource(if (incoming) R.string.policy_enabled else R.string.policy_disabled)))
-                }
-            }
-            SheetAction(stringResource(R.string.config_import)) {
+        ConfirmationPage(
+            title = stringResource(R.string.policy_import_confirmation),
+            question = stringResource(R.string.config_import_replaces_settings),
+            confirmLabel = stringResource(R.string.config_import),
+            onBack = dismissImport,
+            cancelLabel = stringResource(R.string.cancel),
+            onConfirm = {
                 val text = viewModel.pendingImportText
                 val current = text?.let { prefs.previewPolicyImport(it) }
                 if (current != null && current.localChoices != preview.localChoices) {
@@ -627,9 +626,16 @@ fun SettingsScreen(
                 } else {
                     Toast.makeText(context, R.string.config_import_failed, Toast.LENGTH_SHORT).show()
                 }
-            }
-            SheetAction(stringResource(R.string.cancel), dismissImport)
-        }
+            },
+            preview = {
+                for ((choice, title) in sensitiveRows) {
+                    preview.changes[choice.key]?.let { incoming ->
+                        Entry(SettingsEntry.Metadata(choice.key, stringResource(title),
+                            stringResource(if (incoming) R.string.policy_enabled else R.string.policy_disabled)))
+                    }
+                }
+            },
+        )
     }
 
     if (destination == "permissions") {
@@ -837,15 +843,18 @@ fun SettingsScreen(
     }
 
     if (destination == "clear") {
-        SettingsPage(stringResource(R.string.config_clear), popPage) {
-            SheetText(stringResource(R.string.config_clear_confirm))
-            SheetAction(stringResource(R.string.config_clear)) {
+        ConfirmationPage(
+            title = stringResource(R.string.config_clear),
+            question = stringResource(R.string.config_clear_confirm),
+            confirmLabel = stringResource(R.string.config_clear),
+            onBack = popPage,
+            onConfirm = {
                 popPage()
                 prefs.clearAll(context)
                 IconUtility.invalidateOverrides()
                 restartApp(context)
-            }
-        }
+            },
+        )
     }
       }
        }
