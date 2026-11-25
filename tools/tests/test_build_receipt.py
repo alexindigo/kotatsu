@@ -56,6 +56,19 @@ class BuildReceiptTest(unittest.TestCase):
     def test_current_tasks_inputs_and_artifacts(self):
         self.assertEqual(self.check()['mappingSha256'], self.files['app/build/outputs/mapping/release/mapping.txt'])
 
+    def test_non_release_apk_cannot_be_a_receipted_release_asset(self):
+        self.check()
+        for module in ('kotatsu-sync','fake-mudita-calendar'):
+            with self.subTest(module=module):
+                name=f'{module}/build/outputs/apk/release/{module}.apk'
+                path=self.root/name
+                path.parent.mkdir(parents=True)
+                path.write_bytes(b'non-release APK')
+                self.files[name]=verify.sha(path.read_bytes());self.pin()
+                with self.assertRaisesRegex(verify.VerificationError,'Non-release module.*release artifacts.*'+module):
+                    self.check()
+                del self.files[name]
+
     def test_wrong_original_provenance_index_even_with_repinned_receipt(self):
         self.check()
         self.value['deferredIndexSha256']=verify.APPROVED_BUNDLE_INDEX_SHA256;self.pin()

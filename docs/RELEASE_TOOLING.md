@@ -4,6 +4,10 @@ The release set is Kotatsu (`app`), Kotatsu Weather (`kotatsu-weather`) and
 Kotatsu Notes (`kotatsu-notes`). `tools/verify_fork.py` owns their identity
 inventory, shared version name and per-app version codes. Update those pins
 alongside the Gradle versions when preparing a release.
+Classify every Android application module beside `RELEASE_APPS` in that file:
+`kotatsu-sync` is not released yet, and `fake-mudita-calendar` is a test fixture
+that is never released. Both tools reject unclassified, missing or duplicate
+application modules; only `RELEASE_APPS` may supply release assets.
 
 `tools/prepare_release.py --root . --tag v<version> --output release-apks`
 checks the complete source/metadata set and copies the unique release output

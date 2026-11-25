@@ -5,15 +5,15 @@ import json
 from pathlib import Path
 import shutil
 
-from verify_fork import RELEASE_APPS, RELEASE_VERSION, VerificationError, require, source_release_identities, unique_apk
+from verify_fork import RELEASE_VERSION, VerificationError, require, source_release_identities, unique_apk
 
 
 def prepare(root, tag, output):
     root=Path(root).absolute();output=Path(output)
     require(tag=='v'+RELEASE_VERSION,'Release tag/source version mismatch')
-    source_release_identities(root)
+    sources=source_release_identities(root)
     inputs=[]
-    for module,spec in RELEASE_APPS.items():
+    for module,spec in sources.items():
         apk=unique_apk(root/module/'build/outputs/apk/release',root,'release',module)
         metadata=json.loads((apk.parent/'output-metadata.json').read_text())['elements'][0]
         require(type(metadata.get('versionCode')) is int and metadata['versionCode']==spec['versionCode'] and metadata.get('versionName')==RELEASE_VERSION,'Release metadata version mismatch: '+module)
