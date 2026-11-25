@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pinned source, packaged branding and optional bounded offline-capability checks."""
 import argparse
+from collections import Counter
 from decimal import Decimal, localcontext
 import hashlib
 import json
@@ -22,11 +23,16 @@ BASELINE='c6601b8128089db8ad28cdcc1f57361575066d5f'
 RELEASE_ID='com.alexindigo.kotatsu'
 NAMESPACE='com.gezimos.katapult'
 RELEASE_VERSION='0.7.0'
-# One inventory for source, metadata, compiled identities and release receipts.
+# Classify every Android application module in exactly one of these inventories.
+# Only RELEASE_APPS supplies metadata, compiled identities and release receipts.
 RELEASE_APPS={
     'app':{'applicationId':RELEASE_ID,'namespace':NAMESPACE,'versionCode':17,'label':'Kotatsu','debugVersionSuffix':'-debug'},
     'kotatsu-weather':{'applicationId':RELEASE_ID+'.weather','namespace':RELEASE_ID+'.weather','versionCode':12,'label':'Kotatsu Weather','debugVersionSuffix':''},
     'kotatsu-notes':{'applicationId':RELEASE_ID+'.notes','namespace':RELEASE_ID+'.notes','versionCode':11,'label':'Kotatsu Notes','debugVersionSuffix':''},
+}
+NON_RELEASE_APPS={
+    'kotatsu-sync':'Not released yet',
+    'fake-mudita-calendar':'Test fixture; never released',
 }
 ANDROID='{http://schemas.android.com/apk/res/android}'
 LOCALES=('', '-cs','-de','-es','-fr','-it','-nl','-pl','-pt')
@@ -232,13 +238,78 @@ def execution_identity(root,base,args):
                                  args.source_receipt,args.expected_source_receipt_sha256)
 
 
-def source_release_identities(root):
-    settings=confined(root,'settings.gradle.kts').read_text()
+def gradle_declarations(text, *, kotlin):
+    """Mask comments and multiline strings before matching literal Gradle declarations."""
+    parts=re.compile(r'//[^\n]*|/\*|"""[\s\S]*?"""|'
+                     r"'''[\s\S]*?'''|'(?:\\.|[^'\\\n])*'|"
+                     r'"(?:\\.|[^"\\\n])*"')
+    delimiters=re.compile(r'/\*|\*/')
+    chunks=[];pos=0
+    while match:=parts.search(text,pos):
+        chunks.append(text[pos:match.start()]);pos=match.end()
+        token=match.group()
+        if token=='/*':
+            depth=1
+            for end in delimiters.finditer(text,pos):
+                if end.group()=='*/':depth-=1
+                elif kotlin:depth+=1
+                if not depth:
+                    pos=end.end();break
+            require(depth==0,'Unterminated Gradle block comment')
+            chunks.append(' '+'\n'*text.count('\n',match.start(),pos))
+        elif token.startswith('//'):
+            chunks.append(' ')
+        elif token.startswith(('"""',"'''")):
+            chunks.append('""'+'\n'*token.count('\n'))
+        else:
+            chunks.append(token)
+    chunks.append(text[pos:])
+    return ''.join(chunks)
+
+
+def verify_application_inventory(root):
+    settings=gradle_declarations(confined(root,'settings.gradle.kts').read_text(),kotlin=True)
     require(re.findall(r'rootProject\.name\s*=\s*"([^"]+)"',settings)==['Kotatsu'],'Wrong release root project')
-    included=re.findall(r'include\(":([^"]+)"\)',settings)
-    applications={p.parent.name for p in root.glob('*/build.gradle.kts')
-                  if 'alias(libs.plugins.android.application)' in p.read_text()}
-    require(applications==set(RELEASE_APPS) and all(included.count(m)==1 for m in RELEASE_APPS),'Incomplete release app inventory/settings')
+    included=Counter(module for args in re.findall(r'^\s*include\s*\(([^)]*)\)',settings,re.M)
+                     for module in re.findall(r'":?([\w-]+(?::[\w-]+)*)"',args))
+    # Check declared projects, but do not let settings hide undeclared source builds.
+    build_names=('build.gradle.kts','build.gradle')
+    builds={root.joinpath(*module.split(':'),name) for module in included for name in build_names}
+    def scan_failed(error):
+        raise VerificationError(f'Cannot scan Android application modules: {error}') from error
+    for directory,subdirs,files in os.walk(root,onerror=scan_failed):
+        subdirs[:]=[name for name in subdirs if name not in ('build','.gradle','.git','.cxx','.externalNativeBuild')]
+        path=Path(directory)
+        if path!=root:
+            builds.update(path/name for name in build_names if name in files)
+    app_id=r'''(?:"com\.android\.application"|'com\.android\.application')'''
+    version=r'''(?:"[^"\n]*"|'[^'\n]*')'''
+    plugin=re.compile(r'\b(?:alias\s*\(\s*libs\.plugins\.android\.application\s*\)|'
+                      rf'id(?:\s*\(\s*{app_id}\s*\)|\s+{app_id}))'
+                      rf'(?:\s+version\s+{version})?(?P<disabled>\s+apply\s+false\b)?'
+                      rf'|\bapply\s*(?:\(\s*)?plugin\s*[:=]\s*{app_id}')
+    applications=set()
+    for path in builds:
+        if path.is_file():
+            declarations=gradle_declarations(path.read_text(),kotlin=path.suffix=='.kts')
+            if any(not match.group('disabled') for match in plugin.finditer(declarations)):
+                applications.add(':'.join(path.parent.relative_to(root).parts))
+    release=set(RELEASE_APPS);non_release=set(NON_RELEASE_APPS)
+    classified=release|non_release
+    checks=(
+        (release&non_release,'Non-release module also in release inventory'),
+        (applications-classified,'Unclassified Android application module'),
+        (release-applications,'Missing release application module'),
+        (non_release-applications,'Missing non-release application module'),
+        (classified-included.keys(),'Missing Android application module in settings.gradle.kts'),
+        ({m for m in classified if included[m]>1},'Duplicate Android application module in settings.gradle.kts'),
+    )
+    for modules,message in checks:
+        require(not modules,message+': '+', '.join(sorted(modules)))
+
+
+def source_release_identities(root):
+    verify_application_inventory(root)
     result={}
     for module,spec in RELEASE_APPS.items():
         build=confined(root,module+'/build.gradle.kts').read_text()
@@ -369,6 +440,7 @@ def build_identity(args,root,apk,provenance,index_digest):
     files=receipt.get('artifacts',{})
     require(all(name in files for name in required),'Missing bound APK/metadata/current mapping')
     for name,digest in files.items():
+        require(name.split('/',1)[0] not in NON_RELEASE_APPS,'Non-release module in release artifacts: '+name)
         require(sha(confined(root,name).read_bytes())==digest,'Build artifact/evidence changed: '+name)
     for module in RELEASE_APPS:
         require(confined(root,module+'/build/outputs/mapping/release/mapping.txt').stat().st_size>0,'Empty release mapping: '+module)
@@ -423,7 +495,7 @@ def release_identity(args):
     sources=source_release_identities(root)
     inspect_unsigned=args.inspect_unsigned
     require(not inspect_unsigned or args.variant=='release','Unsigned inspection requires release outputs')
-    apps={module:compiled_app_identity(args,root,module,inspect_unsigned) for module in RELEASE_APPS}
+    apps={module:compiled_app_identity(args,root,module,inspect_unsigned) for module in sources}
     build=None
     if args.variant=='release' and not inspect_unsigned:
         build=build_identity(args,root,Path(apps['app']['path']),provenance,ORIGINAL_INDEX_SHA256)

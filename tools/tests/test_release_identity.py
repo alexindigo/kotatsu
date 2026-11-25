@@ -16,21 +16,25 @@ prepare=importlib.util.module_from_spec(spec);spec.loader.exec_module(prepare)
 
 APPS={'app':('com.alexindigo.kotatsu',17,'Kotatsu'),
        'kotatsu-weather':('com.alexindigo.kotatsu.weather',12,'Kotatsu Weather'),
-      'kotatsu-notes':('com.alexindigo.kotatsu.notes',11,'Kotatsu Notes')}
+       'kotatsu-notes':('com.alexindigo.kotatsu.notes',11,'Kotatsu Notes')}
+NON_RELEASE_MODULES=('kotatsu-sync','fake-mudita-calendar')
+REPO=Path(__file__).resolve().parents[2]
 
 
 class ReleaseIdentityTest(unittest.TestCase):
     def setUp(self):
         temp=tempfile.TemporaryDirectory();self.addCleanup(temp.cleanup);self.root=Path(temp.name)
-        repo=Path(__file__).parents[2]
-        shutil.copyfile(repo/'settings.gradle.kts',self.root/'settings.gradle.kts')
+        shutil.copyfile(REPO/'settings.gradle.kts',self.root/'settings.gradle.kts')
+        for module in NON_RELEASE_MODULES:
+            (self.root/module).mkdir()
+            shutil.copyfile(REPO/module/'build.gradle.kts',self.root/module/'build.gradle.kts')
         self.metadata={};self.badging={};self.packages={};self.certs={};self.calls=[]
         self.args=argparse.Namespace(root=str(self.root),baseline=verify.BASELINE,variant='release',inspect_unsigned=True,
             apkanalyzer='analyzer',aapt2='aapt2',apksigner='signer',expected_cert_sha256='a'*64,report=str(self.root/'report.json'))
         for module,(package,code,label) in APPS.items():
             source=self.root/module/'src/main/res/values';source.mkdir(parents=True)
-            shutil.copyfile(repo/module/'build.gradle.kts',self.root/module/'build.gradle.kts')
-            shutil.copyfile(repo/module/'src/main/res/values/strings.xml',source/'strings.xml')
+            shutil.copyfile(REPO/module/'build.gradle.kts',self.root/module/'build.gradle.kts')
+            shutil.copyfile(REPO/module/'src/main/res/values/strings.xml',source/'strings.xml')
             directory=self.root/module/'build/outputs/apk/release';directory.mkdir(parents=True)
             (directory/'fixture.apk').write_bytes((module+' release bytes').encode())
             self.metadata[module]={'variantName':'release','applicationId':package,'elements':[{'outputFile':'fixture.apk','versionCode':code,'versionName':'0.7.0'}]}
@@ -69,12 +73,95 @@ class ReleaseIdentityTest(unittest.TestCase):
                     with self.assertRaises(verify.VerificationError):verify.source_release_identities(self.root)
                     path.write_text(original)
 
-    def test_missing_or_extra_application_module_fails_closed(self):
-        path=self.root/'settings.gradle.kts';path.write_text(path.read_text().replace('include(":kotatsu-notes")',''))
-        with self.assertRaisesRegex(verify.VerificationError,'inventory'):verify.source_release_identities(self.root)
-        shutil.copyfile(Path(__file__).parents[2]/'settings.gradle.kts',path)
-        (self.root/'extra').mkdir();(self.root/'extra/build.gradle.kts').write_text('alias(libs.plugins.android.application)')
-        with self.assertRaisesRegex(verify.VerificationError,'inventory'):verify.source_release_identities(self.root)
+    def inventory_rejected(self,message):
+        output=self.root/'published'
+        with self.assertRaisesRegex(prepare.VerificationError,message):prepare.prepare(self.root,'v0.7.0',output)
+        with self.assertRaisesRegex(verify.VerificationError,message):self.check()
+        self.assertFalse(output.exists())
+        self.assertFalse(Path(self.args.report).exists())
+        self.assertEqual(self.calls,[])
+
+    def test_real_source_tree_has_exactly_three_release_identities(self):
+        self.assertEqual(set(verify.source_release_identities(REPO)),set(APPS))
+
+    def test_unknown_application_module_fails_even_when_not_in_settings(self):
+        (self.root/'extra').mkdir()
+        (self.root/'extra/build.gradle.kts').write_text('plugins { alias(libs.plugins.android.application) }')
+        self.inventory_rejected('Unclassified Android application module.*extra')
+
+    def test_unknown_nested_application_module_fails_regardless_of_settings(self):
+        settings=self.root/'settings.gradle.kts'
+        original=settings.read_text()
+        (self.root/'extras/other').mkdir(parents=True)
+        (self.root/'extras/other/build.gradle.kts').write_text('plugins { id("com.android.application") }')
+        for included in (True,False):
+            with self.subTest(included=included):
+                settings.write_text(original+('\ninclude(":extras:other")\n' if included else ''))
+                self.inventory_rejected('Unclassified Android application module.*extras:other')
+
+    def test_unknown_included_groovy_application_module_fails(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text()+'\ninclude(":extra")\n')
+        (self.root/'extra').mkdir()
+        (self.root/'extra/build.gradle').write_text("plugins { id 'com.android.application' }")
+        self.inventory_rejected('Unclassified Android application module.*extra')
+
+    def test_unknown_undeclared_nested_groovy_application_module_fails(self):
+        (self.root/'extras/other').mkdir(parents=True)
+        (self.root/'extras/other/build.gradle').write_text("apply plugin: 'com.android.application'")
+        self.inventory_rejected('Unclassified Android application module.*extras:other')
+
+    def test_groovy_builds_without_an_active_application_plugin_are_accepted(self):
+        (self.root/'extra').mkdir()
+        (self.root/'extra/build.gradle').write_text(
+            "// apply plugin: 'com.android.application'\n"
+            "plugins { id 'com.android.application' version '8.13.2' apply false }\n")
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
+    def test_generated_gradle_builds_are_not_application_modules(self):
+        for directory in ('build','app/build/generated','extras/.gradle/cache','app/.cxx/generated'):
+            path=self.root/directory/'build.gradle.kts'
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_text('plugins { id("com.android.application") }')
+            path.with_name('build.gradle').write_text("apply plugin: 'com.android.application'")
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
+    def test_missing_release_application_build_fails(self):
+        (self.root/'kotatsu-notes/build.gradle.kts').unlink()
+        self.inventory_rejected('Missing release application module.*kotatsu-notes')
+
+    def test_missing_release_application_settings_entry_fails(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',''))
+        self.inventory_rejected('Missing Android application module.*settings.gradle.kts.*kotatsu-notes')
+
+    def test_commented_release_application_settings_entry_does_not_count(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',
+            '/*\n/* Nested comment */\ninclude(":kotatsu-notes")\n*/'))
+        self.inventory_rejected('Missing Android application module.*settings.gradle.kts.*kotatsu-notes')
+
+    def test_multiline_settings_include_counts_only_live_arguments(self):
+        settings=self.root/'settings.gradle.kts'
+        settings.write_text(settings.read_text().replace('include(":kotatsu-notes")',
+            'val example = """\ninclude(":kotatsu-notes")\n"""\n'
+            'include(\n  // ":kotatsu-notes",\n  /* ":kotatsu-notes", */\n  ":kotatsu-notes",\n)'))
+        self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
+
+    def test_duplicate_application_settings_entry_fails(self):
+        settings=self.root/'settings.gradle.kts'
+        original=settings.read_text()
+        for module in ('kotatsu-notes',*NON_RELEASE_MODULES):
+            with self.subTest(module=module):
+                settings.write_text(original+f'\ninclude(":paper-ui", ":{module}")\n')
+                self.inventory_rejected('Duplicate Android application module.*'+module)
+
+    def test_non_release_module_cannot_also_be_classified_as_release(self):
+        for module in NON_RELEASE_MODULES:
+            with self.subTest(module=module),mock.patch.dict(verify.RELEASE_APPS,{module:verify.RELEASE_APPS['app']}):
+                with self.assertRaisesRegex(verify.VerificationError,'Non-release module.*release inventory.*'+module):
+                    self.check()
+        self.assertFalse(Path(self.args.report).exists())
 
     def test_unsigned_inspection_reads_all_three_without_claiming_signing_or_build(self):
         report=self.check()
@@ -151,12 +238,20 @@ class ReleaseIdentityTest(unittest.TestCase):
             extra.unlink()
 
     def test_publication_names_are_complete_and_copy_exact_metadata_selected_bytes(self):
+        # Gradle may build non-release modules; their outputs are not release assets.
+        for module in NON_RELEASE_MODULES:
+            directory=self.root/module/'build/outputs/apk/release'
+            directory.mkdir(parents=True)
+            (directory/f'{module}.apk').write_bytes(b'non-release APK')
         output=self.root/'published'
         prepare.prepare(self.root,'v0.7.0',output)
         self.assertEqual({p.name for p in output.iterdir()},{'kotatsu-v0.7.0.apk','kotatsu-weather-v0.7.0.apk','kotatsu-notes-v0.7.0.apk'})
         for module in APPS:
             name=('kotatsu' if module=='app' else module)+'-v0.7.0.apk'
             self.assertEqual((output/name).read_bytes(),(module+' release bytes').encode())
+        report=self.check()
+        self.assertEqual(set(report['sources']),set(APPS))
+        self.assertEqual(set(report['apps']),set(APPS))
 
     def test_wrong_tag_or_incomplete_set_creates_no_publication(self):
         output=self.root/'published'
