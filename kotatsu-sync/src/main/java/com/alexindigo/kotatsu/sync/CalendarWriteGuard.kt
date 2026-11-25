@@ -41,25 +41,44 @@ internal class CalendarWriteGuard(
     private val phoneLoss = holds.any { it.direction == LossDirection.PHONE }
 
     fun reasons() = store.continuity.holds.filter { it.resolution == null }.map { it.reason }
-    fun canUpload(id: Long, calendar: Long?) = !assessment.resetPhone && id !in frozenPhone &&
-        id !in initial.phoneOnly && calendar !in assessment.unavailable
+    fun canConsiderPhone(id: Long) = !assessment.resetPhone && id !in frozenPhone && id !in initial.phoneOnly
+    fun canUpload(id: Long, calendar: Long) = canConsiderPhone(id) && calendar !in assessment.unavailable
     fun canImport(calendar: Long) = !assessment.resetPhone && calendar !in assessment.unavailable
+    fun witnessStillCurrent(intent: WriteIntent, calendars: List<SyncCalendar>): Boolean {
+        val id = intent.calendarId ?: return false
+        val matches = calendars.filter { it.id == id }
+        return matches.size <= 1 && matches.singleOrNull()?.witness() == observed.calendars[id]?.witness()
+    }
+
+    /** Prepared work from a previous pass has ownership but never replay authority. */
+    fun recovery(intent: WriteIntent): WritePermission {
+        // Durable success can be consumed without issuing another provider
+        // mutation, even when a later pass sees different continuity evidence.
+        if (intent.phase == AttemptPhase.CONFIRMED && intent.kind in mutationKinds &&
+            plans[intent.mapping?.standardKey]?.pair == intent.mapping && intent.mapping != null) return ACKNOWLEDGE
+        if (intent.phase != AttemptPhase.PREPARED) return permission(intent)
+        if (intent.lossId != null || intent.kind == WriteKind.UPLOAD) return DISCARD
+        return if (frozen(intent)) BLOCK else DISCARD
+    }
+
+    private fun frozen(intent: WriteIntent) = intent.mapping?.muditaId in frozenPhone ||
+        intent.mapping?.standardKey in frozenStandard || intent.standardBefore?.key in frozenStandard ||
+        intent.phoneBefore?.id in frozenPhone
 
     fun permission(intent: WriteIntent): WritePermission {
         val row = intent.mapping
         if (intent.lossId != null) {
             val hold = holds.singleOrNull { it.id == intent.lossId }
             val member = hold?.members?.singleOrNull { it.pair == row }
-            if (hold == null || member == null) return obsolete(intent)
+            if (hold == null || member == null) return BLOCK
             return approved(hold, member, intent)
         }
-        if (assessment.resetPhone || row in frozen || intent.standardBefore?.key in frozenStandard ||
-            intent.phoneBefore?.id in frozenPhone) return BLOCK
-        val calendar = row?.calendarId ?: intent.standardBefore?.calendarId ?: intent.standardAfter?.calendarId
+        if (assessment.resetPhone || frozen(intent)) return BLOCK
+        val calendar = intent.calendarId
         if (intent.kind == WriteKind.UPLOAD) {
             val target = calendar?.let { observed.calendars[it] }
             if (target == null || !target.eligible || calendar !in observed.selected || calendar in assessment.unavailable ||
-                intent.uploadTarget != null && intent.uploadTarget != target.identity) return obsolete(intent)
+                intent.uploadTarget != null && intent.uploadTarget != target.identity) return BLOCK
         }
         if (calendar in assessment.unavailable) return BLOCK
         // A recovered edit can advance fingerprints in this pass. Window and
@@ -70,43 +89,43 @@ internal class CalendarWriteGuard(
         return when (intent.kind) {
             WriteKind.STANDARD_DELETE -> when {
                 phoneLoss || plan == null || plan.pair != row || plan.phone != null || calendar !in observed.selected -> BLOCK
-                plan.standard == null && (intent.confirmed || intent.attempted) -> ACKNOWLEDGE_DELETE
+                intent.confirmed || plan.standard == null && intent.attempted -> ACKNOWLEDGE
                 plan.standard != null && plan.standard == intent.standardBefore -> RECONCILE
                 else -> BLOCK
             }
             WriteKind.PHONE_DELETE -> when {
                 plan == null -> BLOCK
-                intent.confirmed || intent.attempted && plan.phone == null -> ACKNOWLEDGE_DELETE
+                intent.confirmed || intent.attempted && plan.phone == null -> ACKNOWLEDGE
                 assessment.retirements[plan.pair]?.let { it != ChangeCause.UNEXPLAINED } == true -> RETIRE
-                else -> RECONCILE // Can drop an obsolete retirement, but not remove its copy.
+                intent.phase == AttemptPhase.ATTEMPTED && intent.phoneBefore != null && plan.phone == intent.phoneBefore -> CANCEL_RETIREMENT
+                else -> BLOCK
             }
             else -> RECONCILE
         }
     }
 
-    private fun obsolete(intent: WriteIntent) = if (!intent.attempted && !intent.confirmed) DISCARD else BLOCK
-
     private fun approved(hold: CalendarHold, member: LossMember, intent: WriteIntent): WritePermission {
         val row = member.pair
-        val live = plans[row.standardKey]?.takeIf { it.pair == row } ?: return obsolete(intent)
+        val live = plans[row.standardKey]?.takeIf { it.pair == row } ?: return BLOCK
         if (row.calendarId !in observed.selected || observed.discordantPhone ||
-            row.calendarId in observed.discordantCalendars || live.calendar != member.calendar) return obsolete(intent)
+            row.calendarId in observed.discordantCalendars || live.calendar != member.calendar) return BLOCK
         return when (hold.resolution) {
             LossResolution.RESTORE -> if (intent.kind == WriteKind.IMPORT && intent.standardBefore == member.standard &&
-                live == member && member.phone == null && row.calendarId !in assessment.unavailable) RECONCILE else obsolete(intent)
+                live == member && member.phone == null && row.calendarId !in assessment.unavailable) RECONCILE else BLOCK
             LossResolution.DELETE_FROM_SERVER -> when {
                 intent.kind != WriteKind.STANDARD_DELETE || intent.standardBefore != member.standard || member.phone != null ||
-                    live.phone != null || row.calendarId in assessment.unavailable -> obsolete(intent)
-                live.standard == null && (intent.confirmed || intent.attempted) -> ACKNOWLEDGE_DELETE
+                    live.phone != null || row.calendarId in assessment.unavailable -> BLOCK
+                live.standard == null && (intent.confirmed || intent.attempted) -> ACKNOWLEDGE
+                live == member && member.standard == null -> RETIRE
                 live == member -> RECONCILE
-                else -> obsolete(intent)
+                else -> BLOCK
             }
             LossResolution.REMOVE -> when {
                 intent.kind != WriteKind.PHONE_DELETE || intent.phoneBefore != member.phone ||
-                    intent.standardBefore != member.standard || live.standard != member.standard || assessment.resetPhone -> obsolete(intent)
-                live.phone == null && (intent.confirmed || intent.attempted) -> ACKNOWLEDGE_DELETE
+                    intent.standardBefore != member.standard || live.standard != member.standard || assessment.resetPhone -> BLOCK
+                live.phone == null && (intent.confirmed || intent.attempted) -> ACKNOWLEDGE
                 live == member -> RETIRE
-                else -> obsolete(intent)
+                else -> BLOCK
             }
             LossResolution.KEEP, null -> BLOCK
         }
@@ -116,17 +135,17 @@ internal class CalendarWriteGuard(
         phone: MuditaCalendarPort, standard: StandardCalendarPort): Boolean {
         val approved = holds.filter { it.resolution != null }
         if (approved.isEmpty()) return false
+        var didResolve = false
         for (hold in approved) {
             val currentPairs = store.all().toSet()
             val remaining = hold.members.filter { it.pair in currentPairs }
             val keep = mutableSetOf<Long>()
             val liveEvidence = mutableMapOf<Mapping, LossMember>()
+            val waitingForEvidence = mutableSetOf<LossMember>()
             for (member in remaining) {
                 val row = member.pair
                 val observedMember = current(hold, member) ?: continue
                 if (observedMember != member) continue
-                // Existing, unresolved journal ownership cannot be displaced by an approval.
-                if (journal.reserved(row.muditaId) || journal.reserved(row.standardKey)) continue
                 if (observed.discordantPhone || row.calendarId in observed.discordantCalendars ||
                     hold.direction == LossDirection.STANDARD && assessment.resetPhone) continue
                 val phones = phone.all()
@@ -139,29 +158,37 @@ internal class CalendarWriteGuard(
                 liveEvidence[row] = live
                 if (live != member) continue
                 val intent = when (hold.resolution) {
-                    LossResolution.KEEP -> { keep.add(row.muditaId); continue }
+                    LossResolution.KEEP -> null
                     LossResolution.REMOVE -> WriteIntent(kind = WriteKind.PHONE_DELETE, mapping = row,
                         phoneBefore = member.phone, standardBefore = member.standard, lossId = hold.id)
                     LossResolution.RESTORE -> {
-                        val source = liveStandard?.takeIf { livePhone == null && scope.includes(it, row.standardKey) } ?: continue
+                        val source = liveStandard?.takeIf { livePhone == null && scope.includes(it, row) } ?: continue
                         WriteIntent(kind = WriteKind.IMPORT, mapping = row, phoneAfter = mapper.toMudita(source),
                             standardBefore = source, phoneIdsBefore = phones.map { it.id }.toSet(), lossId = hold.id)
                     }
                     LossResolution.DELETE_FROM_SERVER -> {
-                        val source = liveStandard?.takeIf { livePhone == null && scope.identity(it, row.standardKey) } ?: continue
-                        WriteIntent(kind = WriteKind.STANDARD_DELETE, mapping = row, standardBefore = source, lossId = hold.id)
+                        if (livePhone != null || liveStandard != null && !scope.owns(liveStandard, row)) continue
+                        WriteIntent(kind = WriteKind.STANDARD_DELETE, mapping = row, standardBefore = liveStandard, lossId = hold.id)
                     }
                     null -> error("Missing resolution")
                 }
-                journal.write(intent)
+                if (intent != null && permission(intent) !in setOf(RECONCILE, RETIRE)) continue
+                if (!journal.supersedePrepared(row)) {
+                    // Retain exact approval while independent write evidence is awaited.
+                    waitingForEvidence.add(member)
+                    continue
+                }
+                if (intent == null) keep.add(row.muditaId) else journal.write(intent)
+                didResolve = true
             }
             if (keep.isNotEmpty()) store.keepPhoneOnly(keep)
             val after = store.all().toSet()
-            val pending = store.pending().filter { it.lossId == hold.id }
+            val allPending = store.pending()
+            val pending = allPending.filter { it.lossId == hold.id }
             val state = store.continuity
-            val pendingMembers = remaining.filter { member -> member.pair in after && pending.any {
-                it.mapping == member.pair && approved(hold, member, it) in setOf(RECONCILE, RETIRE, ACKNOWLEDGE_DELETE)
-            } }
+            val pendingMembers = remaining.filter { member -> member.pair in after && (member in waitingForEvidence || pending.any {
+                it.mapping == member.pair && approved(hold, member, it) in setOf(RECONCILE, RETIRE, ACKNOWLEDGE)
+            }) }
             val otherHolds = state.holds.filterNot { it.id == hold.id }
             val used = otherHolds.filter { it.direction == hold.direction }.flatMap { it.members }.toSet()
             val fresh = remaining.filter { it.pair in after && it !in pendingMembers }.mapNotNull { member ->
@@ -170,12 +197,23 @@ internal class CalendarWriteGuard(
             val review = replacement(hold, fresh)
             // Only in-flight, still-authorized operations can keep an approved ID.
             val inFlight = hold.takeIf { pendingMembers.isNotEmpty() }?.copy(members = pendingMembers)
-            store.continuity = state.copy(holds = otherHolds + listOfNotNull(inFlight, review))
+            val baselines = state.standard.toMutableMap()
+            if (hold.direction == LossDirection.STANDARD) {
+                for ((id, members) in hold.members.groupBy { it.pair.calendarId }) {
+                    val observedCalendar = observed.calendars[id] ?: continue
+                    if (id !in observed.selected || id !in assessment.unavailable || id in observed.discordantCalendars ||
+                        !observedCalendar.eligible || members.any { it.calendar != observedCalendar.witness() } ||
+                        after.any { it.calendarId == id } || allPending.any { it.calendarId == id }) continue
+                    // Complete the acceptance together with finishing the hold.
+                    baselines[id] = CalendarBaseline(observedCalendar, emptySet(), emptyMap())
+                }
+            }
+            store.continuity = state.copy(standard = baselines, holds = otherHolds + listOfNotNull(inFlight, review))
         }
-        return true
+        return didResolve
     }
 
-    fun recordTrusted(phone: List<MuditaEvent>, firstRun: Boolean) {
+    fun recordTrusted(phone: List<MuditaEvent>, journal: WriteJournal, firstRun: Boolean) {
         val state = store.continuity
         val pairs = store.all()
         val phoneIds = phone.map { it.id }.toSet()
@@ -189,11 +227,15 @@ internal class CalendarWriteGuard(
             baselines[id] = CalendarBaseline(calendar, keys, live.filter { it.calendarId == id && it.key in keys }
                 .mapNotNull { e -> e.syncId?.let { e.id to it } }.toMap())
         }
-        val phoneBaseline = if (phoneLoss || assessment.resetPhone || phone.isEmpty() && state.phone == null) state.phone
+        val trusted = !phoneLoss && !assessment.resetPhone && phoneIds.size == phone.size &&
+            phoneIds == journal.expectedPhoneIds(observed.phone.keys)
+        val phoneBaseline = if (!trusted || phone.isEmpty() && state.phone == null) state.phone
         else MuditaBaseline(phone.size, phoneIds.maxOrNull() ?: 0L, firstRun,
             pairs.map { it.muditaId }.filter { it in phoneIds }.toSet(), phoneIds)
         val updated = state.copy(phone = phoneBaseline, standard = baselines,
-            phoneOnly = if (phoneLoss || assessment.resetPhone) state.phoneOnly else state.phoneOnly.intersect(phoneIds))
+            phoneOnly = if (!trusted) state.phoneOnly else state.phoneOnly.intersect(phoneIds))
         if (updated != state) store.continuity = updated
     }
 }
+
+private val mutationKinds = setOf(WriteKind.PHONE_DELETE, WriteKind.STANDARD_DELETE, WriteKind.PHONE_UPDATE, WriteKind.STANDARD_UPDATE)

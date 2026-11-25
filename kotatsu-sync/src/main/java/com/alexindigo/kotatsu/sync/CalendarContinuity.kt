@@ -74,12 +74,11 @@ internal fun assessCalendarChanges(
     val reused = mapped.filter { member ->
         val row = member.pair
         val oldId = baseline.standard[row.calendarId]?.syncIds?.get(row.standardKey.eventId)
-        member.standard?.let { actual -> oldId != null && oldId != actual.syncId } == true
+        member.standard?.let { actual -> actual.calendarId == row.calendarId && oldId != null && oldId != actual.syncId } == true
     }
     unavailable += reused.map { it.pair.calendarId }
     val serverCandidates = mapped.filter { it.pair.calendarId in selected &&
-        (!scope.identity(it.standard, it.pair.standardKey) || it.standard?.calendarId != it.pair.calendarId ||
-            it.pair.calendarId in unavailable) }
+        (!scope.owns(it.standard, it.pair) || it.pair.calendarId in unavailable) }
     // One removed series counts once, whether assessed locally or across healthy selected calendars.
     fun List<LossMember>.logicalLossCount() = map { member ->
         val key = member.pair.standardKey
@@ -108,8 +107,8 @@ internal fun assessCalendarChanges(
                 row.calendarId !in selected -> ChangeCause.EXPLICIT_SELECTION
                 member in serverLoss -> ChangeCause.UNEXPLAINED
                 row.standardKey.eventId in missingSeries -> ChangeCause.SERIES_REMOVED
-                !scope.identity(member.standard, row.standardKey) || member.standard?.calendarId != row.calendarId -> ChangeCause.ONE_CHANGE
-                !scope.includes(member.standard, row.standardKey) -> ChangeCause.WINDOW
+                !scope.owns(member.standard, row) -> ChangeCause.ONE_CHANGE
+                !scope.includes(member.standard, row) -> ChangeCause.WINDOW
                 else -> continue
             }
             put(row, cause)

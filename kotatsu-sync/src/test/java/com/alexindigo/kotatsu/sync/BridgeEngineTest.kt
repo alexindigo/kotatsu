@@ -15,6 +15,122 @@ class BridgeEngineTest {
     private fun event(id: Long = 1) = StandardEvent(id, 1, "Title $id", "Body", "Home", now + 1000, now + 2000)
     private fun seed(): MuditaEvent { server.rows[EventKey(1)] = event(); engine.pass(now); return phone.rows.values.single() }
 
+    @Test fun firstRunMatchesInAHealthyCalendarEvenWhenTheDestinationIsBlocked() {
+        val family = SyncCalendar(2, "dav", true)
+        server.calendarList = server.calendarList + family
+        store.continuity = CalendarContinuity(standard = mapOf(1L to CalendarBaseline(server.calendarList.first(), emptySet(), emptyMap())))
+        server.calendarList = listOf(server.calendarList.first().copy(accountName = "Replacement"), family)
+        settings = SyncSettings(setOf(1, 2), 1)
+        val source = event().copy(calendarId = 2)
+        server.rows[source.key] = source
+        val matching = mapper.toMudita(source).copy(id = 10)
+        val unmatched = matching.copy(id = 11, title = "Unmatched")
+        phone.rows[10] = matching
+        phone.rows[11] = unmatched
+        engine.pass(now)
+        assertEquals(setOf(matching.id, unmatched.id), phone.rows.keys)
+        assertEquals(matching.id, store.all().single().muditaId)
+        assertEquals(0, server.writes)
+    }
+
+    @Test fun approvedRestoreSupersedesAPreparedDeleteWithoutDeletingTheStandardEvent() {
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val deleted = store.all().take(3)
+        deleted.forEach { phone.rows.remove(it.muditaId) }
+        val row = deleted.first()
+        store.prepare(WriteIntent(kind = WriteKind.STANDARD_DELETE, mapping = row, standardBefore = server.rows[row.standardKey]))
+        val hold = engine.pass(now).held.single()
+        assertEquals(3, hold.count)
+        assertEquals(3, engine.resolveLoss(now, hold.id, LossResolution.RESTORE).changes)
+        assertTrue(store.pending().isEmpty())
+        assertTrue(engine.pass(now).held.isEmpty())
+        assertEquals(4, phone.rows.size)
+        assertEquals(0, server.writes)
+    }
+
+    @Test fun acceptedIdentityReplacementCanSyncAfterTheLastOldMappingIsRemoved() {
+        seed()
+        server.calendarList = server.calendarList.map { it.copy(accountName = "Replacement") }
+        server.rows[event().key] = event().copy(title = "Replacement event")
+        val hold = engine.pass(now).held.single()
+        assertEquals(1, engine.resolveLoss(now, hold.id, LossResolution.REMOVE).changes)
+        assertEquals(server.calendarList.single(), store.continuity.standard[1L]?.calendar)
+        assertEquals(1, engine.pass(now).changes)
+        assertEquals("Replacement event", phone.rows.values.single().title)
+    }
+
+    @Test fun acceptedIdentityReplacementSurvivesDeathAfterTheLastPairIsAcknowledged() {
+        seed()
+        server.calendarList = server.calendarList.map { it.copy(accountName = "Replacement") }
+        server.rows[event().key] = event().copy(title = "Replacement event")
+        val hold = engine.pass(now).held.single()
+        val interrupted = object : MappingStore by store {
+            override var continuity: CalendarContinuity
+                get() = store.continuity
+                set(value) {
+                    if (store.all().isEmpty()) throw ProcessDeath()
+                    store.continuity = value
+                }
+        }
+        val pass = BridgeEngine(phone, server, interrupted, object : SyncConfig { override fun read() = settings }, mapper)
+        assertThrows(ProcessDeath::class.java) { pass.resolveLoss(now, hold.id, LossResolution.REMOVE) }
+        assertTrue(store.all().isEmpty())
+        assertEquals(LossResolution.REMOVE, store.continuity.holds.single().resolution)
+        engine.pass(now)
+        assertEquals(server.calendarList.single(), store.continuity.standard[1L]?.calendar)
+        assertTrue(store.continuity.holds.isEmpty())
+        engine.pass(now)
+        assertEquals("Replacement event", phone.rows.values.single().title)
+    }
+
+    @Test fun latePhoneResetCannotAdvanceTheBaselineFromAnUnassessedRead() {
+        phone.rows[99] = MuditaEvent(99, "Existing phone event", "", now, now + 1000)
+        settings = settings.copy(newEventCalendar = 9)
+        (1L..4).forEach { server.rows[EventKey(it)] = event(it) }
+        engine.pass(now)
+        val last = store.all().maxBy { it.muditaId }
+        val baseline = store.continuity.phone
+        phone.onRead = {
+            phone.rows.remove(last.muditaId)
+            phone.rows[1] = MuditaEvent(1, "Late replacement", "", now, now + 1000)
+        }
+        engine.pass(now)
+        assertEquals(baseline, store.continuity.phone)
+        assertEquals(LossDirection.PHONE, engine.pass(now).held.single().direction)
+        assertTrue(last.standardKey in server.rows)
+    }
+
+    @Test fun moveBetweenSelectedCalendarsRetiresOldOwnershipAndImportsUnderTheNewCalendar() {
+        val original = seed()
+        settings = SyncSettings(setOf(1, 2), 1)
+        server.calendarList = server.calendarList + SyncCalendar(2, "dav", true)
+        server.rows[event().key] = event().copy(calendarId = 2, title = "Moved")
+        engine.pass(now)
+        assertFalse(original.id in phone.rows)
+        engine.pass(now)
+        assertEquals(2L, store.all().single().calendarId)
+        assertEquals("Moved", phone.rows.values.single().title)
+        assertEquals(0, server.writes)
+    }
+
+    @Test fun targetDisappearingAfterPreparationDoesNotReserveThePairForever() {
+        val copy = seed()
+        phone.rows.remove(copy.id)
+        val interleaved = object : MappingStore by store {
+            override fun tryPrepare(intent: WriteIntent): Boolean = store.tryPrepare(intent).also {
+                if (it && intent.kind == WriteKind.STANDARD_DELETE) server.rows.remove(intent.standardBefore!!.key)
+            }
+        }
+        val pass = BridgeEngine(phone, server, interleaved, object : SyncConfig { override fun read() = settings }, mapper)
+        assertTrue(pass.pass(now).retry)
+        assertFalse(store.pending().single().attempted)
+        assertFalse(pass.pass(now).retry)
+        assertTrue(store.pending().isEmpty())
+        assertTrue(store.all().isEmpty())
+        assertEquals(0, server.writes)
+    }
+
     @Test fun bulkPhoneLossDoesNotDeleteAnyOfTheMappedServerEventsEvenAcrossPasses() {
         (1L..5).forEach { server.rows[EventKey(it)] = event(it) }
         engine.pass(now)
@@ -945,7 +1061,7 @@ class BridgeEngineTest {
     }
 
     private class ProcessDeath : Error()
-    private class Phone : MuditaCalendarPort {
+    internal class Phone : MuditaCalendarPort {
         val rows = linkedMapOf<Long, MuditaEvent>(); var schema = true; var writes = 0; var onRead: (() -> Unit)? = null
         private var nextId = 1L
         var afterInsert: ((Long) -> Unit)? = null
@@ -968,7 +1084,7 @@ class BridgeEngineTest {
         }
         override fun delete(id: Long): Boolean { writes++; return rows.remove(id) != null }
     }
-    private class Server : StandardCalendarPort {
+    internal class Server : StandardCalendarPort {
         val rows = linkedMapOf<EventKey, StandardEvent>(); var writes = 0
         val insertIdentities = mutableMapOf<String, Long>()
         var allowUpdate = true
@@ -1002,7 +1118,7 @@ class BridgeEngineTest {
             return deleted
         }
     }
-    private class MemoryMappings : MappingStore {
+    internal class MemoryMappings : MappingStore {
         val rows = linkedMapOf<Long, Mapping>(); var saves = 0; var failSave = false
         val intents = linkedMapOf<String, WriteIntent>()
         var intent: WriteIntent?

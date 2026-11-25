@@ -89,9 +89,10 @@ writes. That API requires duration, not dtend, for an exception request.
 Every provider mutation has an item-owned durable before/after intent. Identity
 reservations, mapping replacement/removal and intent acknowledgement are atomic.
 Observe and assess the cohort before replaying a pending write or applying a new
-diff. Both paths need the same journal authorization. Discarding an obsolete,
-unattempted intent and acknowledging an attempted deletion do not authorize
-any provider call that changes data. A missing delete target can be acknowledged
+diff. A prepared reservation is not replay authority: the next pass replans it
+without changing the mapping, or holds it until an exact approval supersedes it.
+This includes schema-3 before-images without a server sync ID. An attempted
+intent retains its evidence until reconciled. A missing delete target can be acknowledged
 on recovery only for an attempted write with continuing cohort evidence, or
 when success was already recorded. Persist provider-confirmed success separately
 from readback equality. A later edit must remain different from the intended baseline.
@@ -150,14 +151,17 @@ its base row is gone and the calendar is still present and syncing. Explicit
 unselection and ordinary window retirement are not inferred deletions. A held
 snapshot retains its mapping and before-images and does not age into deletion
 permission. Approval applies to unchanged snapshots only. Changed evidence
-that is still held receives a new review ID, not the old approval. Journaled
+that is still held receives a new review ID, not the old approval. After the
+last old pair and pending write are resolved, Keep or Remove can accept the
+exact eligible replacement calendar identity in that review. Journaled
 uploads retain their original destination identity; an unattempted upload to a
 no-longer-selected or unavailable calendar is discarded without an insert.
 
 Mudita exposes no real provider generation or deletion tombstone. Observed IDs
 (including unmapped rows), their high-water mark and the first-pass marker are
 observations, not proof of a reset. Mapped IDs are tracked separately for loss
-accounting.
+accounting. A final inventory only advances the baseline if its distinct IDs
+agree with the assessed read plus the journal's confirmed inserts and deletes.
 An undetectable wipe of a one-item store still looks like one ordinary delete;
 a replacement that presents many of the same IDs and no other distinguishing
 evidence can also be undetectable. A fresh read reduces but does not eliminate

@@ -293,7 +293,21 @@ class ContactsMoverInstrumentedTest {
         BridgeStore(f.context).use { assertNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
     }
 
-    @Test fun contactsPermissionKeepsTheLastPassAndDoesNotDisableCalendarOrLoseThePendingAction() = scenario { f ->
+    @Test fun contactsPermissionKeepsTheLastPassAndDoesNotDisableCalendarOrLoseThePendingAction() =
+        scenario(::contactsPermissionRecovery)
+
+    @Test fun contactsPermissionRecoveryRejectsAnUnrelatedPhoneSourceBeforeItCanMove() = scenario { f ->
+        requireIsolatedPhoneBook(f.context)
+        val unrelated = f.insert("Synthetic unrelated source")
+        val rejection = assertThrows(AssertionError::class.java) { contactsPermissionRecovery(f) }
+        assertTrue(rejection.message.orEmpty().startsWith("Fresh-emulator precondition:"))
+        assertEquals(listOf(unrelated), f.rawIn(null))
+        assertTrue(f.rawIn(f.personal).isEmpty())
+        assertTrue(f.rawIn(f.family).isEmpty())
+    }
+
+    private fun contactsPermissionRecovery(f: Fixture) {
+        requireIsolatedPhoneBook(f.context)
         val id = f.insert("Pending")
         BridgeStore(f.context).use {
             it.pendingContactsMove = ContactsMove(f.family, setOf(id))

@@ -9,7 +9,7 @@ class BridgeEngine(
     var changes: Int = 0
         private set
     fun pass(now: Long): PassResult = synchronized(passLock) { passSerialized(now) }
-    private fun passSerialized(now: Long): PassResult {
+    private fun passSerialized(now: Long, resolutionOnly: Boolean = false): PassResult {
         changes = 0
         fun existingHolds() = mappings.continuity.holds.filter { it.resolution == null }.map { it.reason }
         if (!mudita.schemaOk()) {
@@ -30,12 +30,17 @@ class BridgeEngine(
         val observation = observe(calendars, settings.calendars, scope, now, end)
         val assessment = assessCalendarChanges(observation, mappings.continuity, scope)
         val guard = CalendarWriteGuard(mappings, observation, assessment)
-        val journal = WriteJournal(mudita, standard, mappings, mapper, scope, guard::permission) { changes++ }
+        val journal = WriteJournal(mudita, standard, mappings, mapper, scope, guard::permission,
+            witnessesStillCurrent = { guard.witnessStillCurrent(it, standard.calendars()) }) { changes++ }
         fun apply(intent: WriteIntent) = journal.write(intent)
-        journal.recover()
-        if (guard.resolveApproved(journal, scope, mapper, mudita, standard)) {
+        journal.recover(guard::recovery)
+        if (guard.resolveApproved(journal, scope, mapper, mudita, standard) || resolutionOnly) {
+            guard.recordTrusted(mudita.all(), journal, mappings.firstRunDone)
             return PassResult(journal.retry, journal.unresolved, changes,
-                if (journal.retry) setOf(SyncStopReason.RETRY_REQUIRED) else emptySet(), guard.reasons())
+                buildSet {
+                    if (journal.retry) add(SyncStopReason.RETRY_REQUIRED)
+                    if (journal.unresolved > 0 || mappings.pending().isNotEmpty() && !journal.retry) add(SyncStopReason.REVIEW_REQUIRED)
+                }, guard.reasons())
         }
         // Recoveries can acknowledge/import/delete rows. Diff only the original
         // observation, but never treat an acknowledged identity as newly seen.
@@ -47,13 +52,13 @@ class BridgeEngine(
         var firstRunComplete = true
         var uploadRetry = false
         fun uploadNew(event: MuditaEvent): Boolean {
-            if (destination == null) return false
+            if (destination == null || !guard.canUpload(event.id, destination.id)) return false
             val outcome = upload(event, destination, journal)
             if (outcome == WriteOutcome.RETRY) uploadRetry = true
             return outcome == WriteOutcome.DONE
         }
         if (!mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination?.id) }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canConsiderPhone(it.id) }) {
                 val match = remote.values.firstOrNull { it.key !in claimed && !journal.reserved(it.key) &&
                     guard.canImport(it.calendarId) && sameIdentity(event, mapper.toMudita(it)) }
                 if (match != null) {
@@ -81,7 +86,7 @@ class BridgeEngine(
             val oldPhone = phone[row.muditaId]
             val visible = remote[row.standardKey]
             val live = visible ?: standard.read(row.standardKey)
-            val validIdentity = scope.identity(live, row.standardKey) && live?.calendarId == row.calendarId
+            val validIdentity = scope.owns(live, row)
             val oldStandard = live?.takeIf { validIdentity }
             if (oldStandard == null) {
                 // Retire the copy, never the standard row, when membership or recurrence identity changes.
@@ -126,16 +131,16 @@ class BridgeEngine(
             if (journal.reserved(row.muditaId) || journal.reserved(row.standardKey)) continue
             if (expired && mappings.all().any { it.muditaId == row.muditaId }) {
                 val after = standard.read(row.standardKey)
-                if (!scope.includes(after, row.standardKey)) retire(row, oldPhone)
+                if (!scope.includes(after, row)) retire(row, oldPhone)
             }
         }
         if (mappings.firstRunDone) {
-            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canUpload(it.id, destination?.id) }) {
+            for (event in phone.values.filter { it.id !in handled && !journal.reserved(it) && guard.canConsiderPhone(it.id) }) {
                 if (!uploadNew(event)) firstRunComplete = false
             }
         }
         val pending = mappings.pending().size
-        guard.recordTrusted(mudita.all(), mappings.firstRunDone)
+        guard.recordTrusted(mudita.all(), journal, mappings.firstRunDone)
         val retry = journal.retry || uploadRetry
         mappings.status = if (guard.reasons().isNotEmpty()) "calendar pass held"
             else if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
@@ -158,7 +163,7 @@ class BridgeEngine(
         val pairs = mappings.all()
         val mapped = pairs.map { row ->
             val actual = remote[row.standardKey] ?: standard.read(row.standardKey)
-            if (row.calendarId in scope.chosen && row.standardKey !in remote && scope.includes(actual, row.standardKey))
+            if (row.standardKey !in remote && scope.includes(actual, row))
                 discordant.add(row.calendarId)
             LossMember(row, phone[row.muditaId], actual, calendars[row.calendarId]?.witness())
         }
@@ -192,7 +197,7 @@ class BridgeEngine(
             resolution == LossResolution.RESTORE || resolution == LossResolution.DELETE_FROM_SERVER
         else resolution == LossResolution.KEEP || resolution == LossResolution.REMOVE)
         mappings.continuity = state.copy(holds = state.holds.map { if (it.id == id) it.copy(resolution = resolution) else it })
-        passSerialized(now)
+        passSerialized(now, resolutionOnly = true)
     }
 
     private fun phoneNow(id: Long): MuditaEvent? = mudita.all().firstOrNull { it.id == id }

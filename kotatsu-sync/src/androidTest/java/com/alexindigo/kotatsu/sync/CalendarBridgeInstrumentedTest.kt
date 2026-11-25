@@ -92,6 +92,28 @@ class CalendarBridgeInstrumentedTest {
         }
         assertEquals(4, f.store.writableDatabase.version)
     }
+
+    @Test fun schemaThreePreparedDeleteIsReplannedWithTheLiveServerIdentity() = scenario { f ->
+        val id = f.insert()
+        f.pass()
+        val mapping = f.store.all().single()
+        val live = f.standard.read(EventKey(id))!!
+        assertNotNull(live.syncId)
+        assertTrue(f.phone.delete(mapping.muditaId))
+        val legacy = WriteIntent(kind = WriteKind.STANDARD_DELETE, mapping = mapping, standardBefore = live.copy(syncId = null))
+        f.store.prepare(legacy)
+        f.store.writableDatabase.delete("state", "name = ?", arrayOf("continuity"))
+        f.store.writableDatabase.version = 3
+        f.store.close()
+        BridgeStore(f.context).use {
+            assertEquals(listOf(legacy), it.pending())
+            val result = BridgeEngine(f.phone, f.standard, it, f.config).pass(f.now)
+            assertEquals(1, result.changes)
+            assertNull(f.standard.read(live.key))
+            assertTrue(it.pending().isEmpty())
+            assertTrue(it.all().isEmpty())
+        }
+    }
     @Test fun standardEventAppearsInMuditaAndPhoneEditKeepsUnsupportedFields() = scenario { f ->
         val id = f.insert(location = "Original place")
         val reminders = listOf(10, 60).map { minutes ->
