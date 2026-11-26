@@ -1,0 +1,7 @@
+App icon ic_kotatsu_sync: Kotatsu's own drawing (K and sync arrows) inside the
+shared tile frame. The frame path matches ic_calculator_icon.xml in Mudita's
+Kompakt Calculator (https://github.com/mudita/MuditaOS-K-Calculator-opensource).
+The upstream README states: "This project is licensed under GPLv3".
+
+Lato Regular and Bold (from paper-ui), Copyright (c) 2010-2015 Lukasz Dziedzic.
+SIL Open Font License 1.1; see ../paper-ui/LICENSE-Lato.txt.
