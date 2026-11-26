@@ -2,6 +2,286 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.7.1] - 2026-11-25
+
+This release includes Kotatsu, Kotatsu Weather and Kotatsu Notes. Kotatsu Sync
+changes are recorded below for source history only. Kotatsu Sync is not packaged
+in 0.7.1; its release tooling is a separate change.
+
+### 2026-11-25
+
+#### Fix
+
+The launcher hides its screenshot preview before taking the next capture, so the previous thumbnail does not appear in the new image. Overlapping captures wait for their own preview suppression, and the preview can recover from failed surface transactions or window removal and show the next result.
+
+- Exclude the previous preview from new screenshot captures (`d0068a7`).
+- Recover from failed preview transactions without leaving stale preview pixels (`89b28da`).
+- Tie capture readiness to the active preview suppression leases (`4260662`).
+- Use a compositor-compatible hidden buffer and restore visibility when reusing the preview (`93b1c53`).
+
+#### Tests
+
+The Sync settings test now waits for the full confirmation before pressing Move and for the serialized operation to finish before asserting the persisted Last sync status. This changes only the test, not the move itself.
+
+- Wait for the confirmed contact move and its status update in settings tests (`a8cb99e`).
+
+#### Integration
+
+The screenshot-preview branch incorporated the concurrent Sync test fix. The merge adds no separately described behavior.
+
+- Integrate main into the screenshot-preview branch (`8f3d284`).
+
+### 2026-11-24
+
+#### Fix
+
+Sync's calendar recovery checks that an approval still matches the evidence it was granted for, and then checks the same write permissions for new and recovering operations. Its contact moves also keep the waiting count current and distinguish address-book identity from its display label. These changes are source-only in 0.7.1.
+
+- Revalidate calendar review evidence, hold bulk losses across calendars and preserve accurate contact-move status (`2efbfbc`).
+- Use one calendar write policy for new work and recovery, with model tests for interruptions (`2946657`).
+
+#### Feature
+
+Secondary settings now use the same Paper controls as the main settings book. Long choices and checklists retain help and can page; short Notes quote choices open in sheets, while the note picker stays a page. Launcher import and reset use the same confirmation page style. In the Sync source, Look ahead is a short sheet with four choices, and legacy horizons map to a supported value on read.
+
+- Share option rows, selection marks and help across sheets, paged choices and checklists (`5b8a68d`).
+- Use a shared Paper confirmation page for launcher import and reset (`fbf1c2e`).
+- Open Notes quote frequency and order as short Paper sheets (`de6b8a5`).
+- Offer 2, 4, 8 and 12 weeks in the Sync Look ahead sheet (`19f653d`).
+
+#### Release tooling
+
+Release staging and verification distinguish the three publishable apps from Sync and the fake calendar fixture. Gradle settings and the tools now use a shared module inventory, reject unknown, missing or duplicate entries, and require Kotlin build scripts for the three release apps. This changes what the tooling checks, not the set of published APKs.
+
+- Classify release apps separately from Sync and the calendar fixture (`da08d18`).
+- Detect undeclared Android application builds in nested directories (`d830a1b`).
+- Distinguish active application plugin declarations from comments and inactive declarations (`ff5626b`).
+- Declare the module inventory once for Gradle settings and release tooling (`147dd10`).
+- Require Kotlin build scripts for release apps (`549689f`).
+
+#### Integration
+
+The release-tooling and Sync branches incorporated concurrent changes from main. The Paper merge also uses the shared confirmation page for Sync contact moves and server deletions, reconciles the shared action row and updates the settings assertions for the new controls. Changes already described under their own commits are not repeated here.
+
+- Integrate main into the release-module classification branch (`a8f530a`).
+- Integrate the Paper pages into Sync and reconcile action rows, confirmations and tests (`6caee7e`).
+- Integrate the release-module classification into Sync (`46ec914`).
+- Integrate the Gradle module inventory changes into Sync (`aeac51e`).
+
+### 2026-11-22
+
+#### Fix
+
+Sync source changes protect pending calendar writes and hold unexplained calendar loss instead of propagating it. Settings check dependent choices on the same serial lane as sync work and handle unavailable setup. The launcher checklist also tests its controls at different scales.
+
+- Keep competing calendar passes from aborting on an occupied reservation (`abda716`).
+- Report unavailable Sync setup and check launcher control layout at scale (`36f6845`).
+- Validate dependent settings on the serialized sync lane (`28d23c0`).
+- Hold unexplained calendar loss before either provider propagates it (`34fe3df`).
+- Keep account and calendar choices explicit and retire insert receipts (`90075bd`).
+
+#### Feature
+
+Sync's source gains settings for calendar and contacts choices and a Paper index chapter for navigating them. Pass status uses typed outcomes and readable wording. The shared control columns also let the launcher's Hidden and Notify labels fit the text scale.
+
+- Add the Sync settings screen and shared size-aware control columns (`437b26e`).
+- Render typed sync status in plain language (`70fb3b4`).
+- Rebuild the Sync settings screen as a Paper index chapter (`87f063b`).
+
+#### Tests
+
+Sync tests isolate provider and contact fixtures so existing device data is not part of their setup or assertions. They now check rollback on the production move path and audit the isolation guards; there is no shipped APK change from these tests.
+
+- Isolate fixtures and verify production contact-move rollback (`6a6b5d7`).
+- Give Sync provider cases owned device state and settings fixtures (`fe69fa0`).
+- Strengthen contact isolation checks and the fixture-isolation audit (`0c9d1df`).
+
+#### Integration
+
+The settings branch incorporated the concurrent main history. The merge adds no separately described behavior.
+
+- Integrate main into the Sync settings branch (`f5fda1b`).
+
+### 2026-11-21
+
+#### Fix
+
+Sync source changes keep retry state when old calendar retirement decisions no longer apply. Contact moves also preserve each photo and the selected defaults instead of letting Android choose replacements.
+
+- Preserve pending sync retries and discard obsolete retirement baselines (`276485d`).
+- Preserve each full-size contact photo and selected primary defaults (`b2fa747`).
+
+#### Feature
+
+Sync source gains component-start job arming, moves into selected Android sync address books, and visibility of external adapters. Durable pass status and retry ownership let an interrupted one-time move resume for the original destination rather than reroute contacts.
+
+- Arm Sync work on component start and package replacement (`1e928d4`).
+- Move phone contacts into selected sync address books (`edeea6d`).
+- Persist pass status and the destination of pending one-time contact moves (`92e6fee`).
+- Make external calendar and contact sync adapters visible to the bridge (`fe3b59c`).
+
+#### Tests
+
+Emulator fixtures now wait for platform ownership changes and shell command completion instead of guessing from delays. Read-only shell observations respect the enclosing wait deadline. These changes affect tests, not the released runtime.
+
+- Wait for platform ownership and acknowledged shell completion (`2765d7f`).
+- Bound shell observations by the outer wait deadline (`ef13e04`).
+
+#### Integration
+
+The calendar review follow-up incorporated concurrent main history. Its merged changes are described under their own commits.
+
+- Integrate main into the Sync review follow-up (`b9279e8`).
+
+### 2026-11-20
+
+#### Fix
+
+Sync source learns to recover calendar state at individual writes after interruptions, preserve event descriptions when the generated location line is edited, and reserve only rows with pending write ownership. The changes preserve unrelated work and avoid treating historical receipts as pending writes.
+
+- Preserve calendar state and recurrence behavior across interrupted passes (`9303b7f`).
+- Keep the real description separate from edits to the generated location line (`63d1ace`).
+- Recover pending writes per calendar item from durable evidence (`1fd0a23`).
+- Scope receipt reservations to writes that are still pending (`9e1e39a`).
+
+#### Feature
+
+The repository adds an in-development bridge between Mudita Calendar and Android calendars. Provider ports and field mapping support the two-way engine, and Android jobs schedule serialized passes. There is no Sync APK in this release.
+
+- Add the calendar provider ports and event mapping (`7fdcc0b`).
+- Add the two-way calendar bridge and persistent mapping store (`49a9681`).
+- Schedule serialized calendar bridge passes (`cfafaa4`).
+
+#### Tests
+
+The bridge is exercised against real Android calendar APIs and an emulator-only Mudita stand-in. Connected CI runs those cases without turning the stand-in into a release asset.
+
+- Add the emulator provider fixture and run the Sync suite in CI (`86d67f1`).
+
+### 2026-11-19
+
+#### Fix
+
+Recent apps now treats a relaunch immediately after a stop request as reuse only when there is supporting evidence. Closing without usage consent keeps the necessary clocks but not usage-derived history.
+
+- Tighten close anchors and verify reuse and no-consent behavior (`d8cd417`).
+
+#### Tests and CI
+
+Pull requests gain the full connected matrix and shared emulator preparation. The runner resets onboarding and rejects missing required suites, and failed UI waits retain the window hierarchy and logcat. Fixture audits now inspect actual rendered entry ordering and structural cleanup boundaries, and the Weather replay test observes the frame at hide time; none is a Weather runtime change.
+
+- Audit rendered Settings order and structural fixture-cleanup boundaries (`aca3d4e`).
+- Capture UI hierarchy and logcat when a wait times out (`c7b973e`).
+- Add shared emulator preparation and connected-suite/JUnit tooling (`4e1ae06`).
+- Run the connected suites on pull requests (`961ab8a`).
+- Keep cleanup scanning aligned with Kotlin and Java declaration syntax (`5668aa2`).
+- Reset onboarding and reject missing required CI suites (`9365038`).
+- Capture the Weather replay oracle at the hide boundary (`6c073f2`).
+
+#### Docs
+
+Contributors now have a description of the local checks and the PR CI matrix. The documentation also points to evidence available after a UI failure.
+
+- Document local checks and CI for pull requests (`01d2720`).
+
+#### Integration
+
+The close-anchor and cleanup-guard branches incorporated changes already recorded in main. These merges do not introduce separate product changes.
+
+- Integrate main into the recent-close anchor follow-up (`c454357`).
+- Integrate main's connected checks into the cleanup-guard follow-up (`b985b00`).
+- Integrate main's close-anchor changes into the cleanup-guard follow-up (`3ef3077`).
+
+### 2026-11-18
+
+#### Fix
+
+Recent apps captures the selected row before dismissal and uses Android activity-resume evidence to tell a genuine reopen from stale history. The close trail is matched within the right boot and accounts for Android's actual timestamp shift, keeping unproven reopens hidden. Without usage consent, the action does not collect usage history.
+
+- Capture the close boundary before dismissal changes the offered list (`fe71a3a`).
+- Anchor closes in Android's usage-event stream (`73f412f`).
+- Match a close's event trail only within its boot (`8859a4f`).
+- Place closes using the exact shift applied by Android (`6b2f119`).
+- Keep unproven reopens hidden and cover actions without usage consent (`6c59d95`).
+
+#### Tests
+
+Test cleanup now waits for accessibility state to persist, and guard checks no longer mistake expression-bodied code or localized layout for failures. These changes are in the test fixtures and audits.
+
+- Reconcile the accessibility fixture's live and persisted settings (`e808d04`).
+- Keep cleanup guards within expression-bodied functions (`ad8bff4`).
+- Make fixture guards independent of locale and line wrapping (`72ae114`).
+
+#### Integration
+
+Three follow-up branches incorporated concurrent launcher and test history. The merges are recorded here; their individual changes are counted once.
+
+- Integrate main into the editor-input follow-up (`5e17aed`).
+- Integrate main into the recent-close records follow-up (`a5b1207`).
+- Integrate main into the Settings page-fill follow-up (`d61e1f3`).
+
+### 2026-11-17
+
+#### Fix
+
+Settings fits complete groups into the available page space before advancing, while overflowing content remains reachable. Recent apps keeps a closed entry off the list until Android reports a new resume rather than counting an old pause as reuse.
+
+- Fill Settings pages before advancing, accounting for the visible notice (`33f95e2`).
+- Keep closed apps hidden until Android reports a fresh resume (`e46821b`).
+
+#### Tests
+
+Fixture cleanup now attempts independent widget-host and Android task restorations even when one fails. The suite reports queued Notes cleanup failures and checks shell exit status, so neither a missing acknowledgement nor a cleanup error masks the original failure.
+
+- Return queued cleanup failures to the test thread (`e52338a`).
+- Attempt Weather and Notes widget-host restorations independently (`ee04f43`).
+- Isolate independent test fixture restorations (`966e445`).
+- Confirm exit status rather than assuming bounded shell commands succeeded (`64adb79`).
+
+#### Docs
+
+The Recent apps guide distinguishes acting on the newest row from acting on other rows. The accessibility assertion checks the wording the guide describes.
+
+- Clarify Recent apps return-to-Home behavior and verify native action names (`d2d91b2`).
+
+### 2026-11-16
+
+#### Fix
+
+Launcher and Weather editors keep input tied to the window that owns it, so a stale keyboard or focus event cannot act on the next editor. Edge swipe settings hide their dependent rows when disabled and restore the saved choices when enabled.
+
+- Fix keyboard and focus ownership across launcher and Weather editor windows (`a74e5d7`).
+- Hide dependent edge swipe controls while the master switch is off (`7df169e`).
+
+#### Feature
+
+Recent apps labels its action Hide on Android 14 and later, where it cannot stop other apps. Hidden Apps names its checkbox for the state it represents, including in translated accessibility labels.
+
+- Use Hide on Android 14+ and keep Close on earlier Android versions (`243478a`).
+- Label the Hidden checkbox by its state in each locale (`0ac7583`).
+
+#### Tests
+
+Fixtures own the activity, service, provider and preference state they need, report unexpected HOME ownership, and keep original failures visible during cleanup. Owned inventories and cold wallpaper readbacks make the assertions independent of previous tests. This block changes test coverage, not release behavior.
+
+- Give fixtures ownership of service, widget provider and Settings task state (`5253521`).
+- Preserve original failures through fixture cleanup (`ed0cf36`).
+- Supply an owned duplicate-label launcher inventory (`ac19076`).
+- Verify cold wallpaper restoration without changing saved activation values (`4bb45b2`).
+- Report the resolved HOME on ownership failures (`51bed90`).
+- Seed preferences within the owning fixture scope (`e859021`).
+- Keep Notes assertions visible through cleanup (`b2e65d4`).
+- Keep launcher assertions visible through cleanup (`a10077b`).
+
+### 2026-11-15
+
+#### Fix
+
+Returning from a child Settings page restores the parent's page or scroll position. Screenshot previews follow capture order even if writes finish out of order, so a late save cannot replace a newer result or bring back an expired preview.
+
+- Preserve Settings positions across child pages (`f27145b`).
+- Keep screenshot previews ordered by capture (`11913cd`).
+
 ## [0.7.0] - 2026-11-14
 
 ### Added
