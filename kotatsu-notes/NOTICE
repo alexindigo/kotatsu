@@ -1,6 +1,11 @@
-Kotatsu Notes launcher icon and checkbox: independently drawn primitive shapes,
-following Kotatsu's monochrome style and the measured Mudita Notes presentation.
-No Mudita Notes source or resources are included.
+App icon ic_kotatsu_notes: Kotatsu's own drawing (K and open book) inside the
+shared tile frame. The frame path matches ic_calculator_icon.xml in Mudita's
+Kompakt Calculator (https://github.com/mudita/MuditaOS-K-Calculator-opensource).
+The upstream README states: "This project is licensed under GPLv3".
 
-Lato Regular, Medium and Bold, Copyright (c) 2010-2015 Lukasz Dziedzic.
-SIL Open Font License 1.1; see LICENSE-Lato.txt in this module.
+Checkbox: independently drawn primitive shapes, following Kotatsu's monochrome
+style and the measured Mudita Notes presentation. No Mudita Notes source or
+resources are included.
+
+Lato Regular and Bold (from paper-ui) and Medium, Copyright (c) 2010-2015
+Lukasz Dziedzic. SIL Open Font License 1.1; see LICENSE-Lato.txt in this module.
