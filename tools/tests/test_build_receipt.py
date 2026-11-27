@@ -10,6 +10,10 @@ spec = importlib.util.spec_from_file_location('verify_fork', Path(__file__).pare
 verify = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verify)
 
+APP_IDS={'app':'com.alexindigo.kotatsu','kotatsu-weather':'com.alexindigo.kotatsu.weather',
+         'kotatsu-notes':'com.alexindigo.kotatsu.notes','kotatsu-sync':'com.alexindigo.kotatsu.sync'}
+COMPANIONS=('kotatsu-weather','kotatsu-notes','kotatsu-sync')
+
 
 class BuildReceiptTest(unittest.TestCase):
     def setUp(self):
@@ -18,7 +22,7 @@ class BuildReceiptTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.provenance = {'head': 'a'*40, 'headTree': 'b'*40, 'sourceReceiptSha256': 'c'*64}
         self.tasks = []
-        release_tasks=[':'+module+':'+task for module in ('app','kotatsu-weather','kotatsu-notes')
+        release_tasks=[':'+module+':'+task for module in APP_IDS
                        for task in ('testReleaseUnitTest','lintRelease','assembleRelease')]
         for number, task in enumerate(release_tasks):
             prefix=task.rsplit(':',1)[0]
@@ -31,7 +35,7 @@ class BuildReceiptTest(unittest.TestCase):
             log.write_text(text)
             self.tasks.append({'task': task, 'exitCode': 0, 'log': str(log), 'logSha256': verify.sha(log.read_bytes())})
         self.files = {}
-        for module,package in (('app','com.alexindigo.kotatsu'),('kotatsu-weather','com.alexindigo.kotatsu.weather'),('kotatsu-notes','com.alexindigo.kotatsu.notes')):
+        for module,package in APP_IDS.items():
             for suffix in ('apk/release/app.apk','apk/release/output-metadata.json','mapping/release/mapping.txt','mapping/release/resources.txt'):
                 name=module+'/build/outputs/'+suffix
                 path = self.root / name
@@ -54,20 +58,22 @@ class BuildReceiptTest(unittest.TestCase):
         return verify.build_identity(self.args, self.root, self.apk, self.provenance, 'd'*64)
 
     def test_current_tasks_inputs_and_artifacts(self):
-        self.assertEqual(self.check()['mappingSha256'], self.files['app/build/outputs/mapping/release/mapping.txt'])
+        result=self.check()
+        self.assertEqual(result['mappingSha256'], self.files['app/build/outputs/mapping/release/mapping.txt'])
+        self.assertEqual(result['apps'],list(APP_IDS))
+        self.assertEqual(result['tasks'],[t['task'] for t in self.tasks])
+        self.assertEqual((len(result['tasks']),len(self.files)),(12,16))
 
     def test_non_release_apk_cannot_be_a_receipted_release_asset(self):
         self.check()
-        for module in ('kotatsu-sync','fake-mudita-calendar'):
-            with self.subTest(module=module):
-                name=f'{module}/build/outputs/apk/release/{module}.apk'
-                path=self.root/name
-                path.parent.mkdir(parents=True)
-                path.write_bytes(b'non-release APK')
-                self.files[name]=verify.sha(path.read_bytes());self.pin()
-                with self.assertRaisesRegex(verify.VerificationError,'Non-release module.*release artifacts.*'+module):
-                    self.check()
-                del self.files[name]
+        name='fake-mudita-calendar/build/outputs/apk/release/fake-mudita-calendar.apk'
+        path=self.root/name
+        path.parent.mkdir(parents=True)
+        path.write_bytes(b'non-release APK')
+        self.check()  # Output on disk is allowed but not part of the release receipt.
+        self.files[name]=verify.sha(path.read_bytes());self.pin()
+        with self.assertRaisesRegex(verify.VerificationError,'Non-release module.*release artifacts.*fake-mudita-calendar'):
+            self.check()
 
     def test_wrong_original_provenance_index_even_with_repinned_receipt(self):
         self.check()
@@ -119,29 +125,35 @@ class BuildReceiptTest(unittest.TestCase):
 
     def test_companion_tasks_and_artifacts_cannot_be_omitted_or_replayed(self):
         self.check()
-        for module in ('kotatsu-weather','kotatsu-notes'):
+        for module in COMPANIONS:
             with self.subTest(module=module):
                 saved=self.value['tasks']
                 self.value['tasks']=[t for t in saved if not t['task'].startswith(':'+module+':')]
                 self.pin()
-                with self.assertRaisesRegex(verify.VerificationError,'all three apps'):self.check()
+                with self.assertRaisesRegex(verify.VerificationError,'all four apps'):self.check()
                 self.value['tasks']=saved;self.pin()
                 for suffix in ('apk/release/app.apk','apk/release/output-metadata.json','mapping/release/mapping.txt','mapping/release/resources.txt'):
                     name=module+'/build/outputs/'+suffix
                     digest=self.files.pop(name);self.pin()
                     with self.assertRaisesRegex(verify.VerificationError,'Missing bound'):self.check()
                     self.files[name]=digest;self.pin()
-                path=self.root/(module+'/build/outputs/mapping/release/mapping.txt')
-                path.write_bytes(b'stale companion mapping')
-                with self.assertRaisesRegex(verify.VerificationError,'artifact'):self.check()
-                path.write_bytes(b'fresh fixture')
+                    path=self.root/name;original=path.read_bytes()
+                    path.write_bytes(original+b' ' if suffix.endswith('.json') else b'stale companion artifact')
+                    with self.assertRaisesRegex(verify.VerificationError,'Build artifact/evidence changed'):self.check()
+                    path.write_bytes(original)
 
     def test_cached_companion_optimization_is_rejected(self):
         self.check()
-        for module in ('kotatsu-weather','kotatsu-notes'):
+        for module in COMPANIONS:
             task=next(t for t in self.tasks if t['task']==':'+module+':assembleRelease')
             log=Path(task['log']);original=log.read_text()
             log.write_text(original.replace(':minifyReleaseWithR8\n',':minifyReleaseWithR8 FROM-CACHE\n'))
             task['logSha256']=verify.sha(log.read_bytes());self.pin()
             with self.assertRaisesRegex(verify.VerificationError,'not freshly'):self.check()
             log.write_text(original);task['logSha256']=verify.sha(log.read_bytes());self.pin()
+
+    def test_sync_task_log_cannot_be_replaced_with_other_app_evidence(self):
+        task=self.tasks[-1];self.assertEqual(task['task'],':kotatsu-sync:assembleRelease')
+        other=self.tasks[-4];self.assertEqual(other['task'],':kotatsu-notes:assembleRelease')
+        task.update(log=other['log'],logSha256=other['logSha256']);self.pin()
+        with self.assertRaisesRegex(verify.VerificationError,'Missing actual task output'):self.check()
