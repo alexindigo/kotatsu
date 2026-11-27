@@ -30,9 +30,11 @@ class IconSelectionTest {
             IconSelections.resolve("res:unknown_clock", "res:kotatsu_clock"))
     }
 
-    @Test fun clockDefaultAndLegacyReferenceSelectTheKotatsuGlyph() {
+    @Test fun clockAndFilesDefaultsAndLegacyReferencesSelectTheKotatsuGlyphs() {
         assertEquals("res:kotatsu_clock", DefaultIcons.reference("com.android.deskclock"))
         assertEquals(IconSelection.Bundled("kotatsu_clock"), IconSelections.parse("res:mudita_clock"))
+        assertEquals("res:kotatsu_folder", DefaultIcons.reference("com.android.documentsui"))
+        assertEquals(IconSelection.Bundled("kotatsu_folder"), IconSelections.parse("res:mudita_folder"))
     }
 
     @Test fun kotatsuDefaultsApplyOnlyWithoutAManualChoice() {

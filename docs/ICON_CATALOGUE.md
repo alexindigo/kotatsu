@@ -30,7 +30,7 @@ each chosen by hand:
 | 1 | Calendar (stock) | `com.android.calendar` | Bundled `calendar` |
 | 2 | Clock | `com.android.deskclock` | `kotatsu_clock` (Kotatsu's own clock glyph) |
 | 3 | Delta Chat | `com.b44t.messenger` | `delta_chat` (Mudita Messages' bubble with Delta Chat's delta) |
-| 4 | Files | `com.android.documentsui` | `mudita_folder` (Mudita Music's folder glyph) |
+| 4 | Files | `com.android.documentsui` | `kotatsu_folder` (Kotatsu's own folder glyph) |
 | 5 | FM Radio | `com.android.fmradio` | Bundled `radio` |
 | 6 | Gallery (stock) | `com.android.gallery3d` | Bundled `gallery` |
 | 7 | Search | `com.android.quicksearchbox` | Bundled `search` |
@@ -44,14 +44,14 @@ overridden; package fallback applies only when no shortcut drawable exists.
 
 New catalogue overrides use `catalogue:<stable-id>`. Existing `file:` imports
 and `res:` bundled choices remain valid. `IconSelections` resolves saved
-`res:mudita_clock` choices to `res:kotatsu_clock` without rewriting preferences.
-App and shortcut keys retain their separate identities. The shared AndroidSVG
-1.4 renderer first fits the source viewBox into
+`res:mudita_clock` and `res:mudita_folder` choices to `res:kotatsu_clock` and
+`res:kotatsu_folder`, respectively, without rewriting preferences. App and
+shortcut keys retain their separate identities. The shared AndroidSVG 1.4
+renderer first fits the source viewBox into
 the same centred 60% transparent viewport used by bundled tiles, preserving strokes,
 fills, primitives, transformations and unpainted geometry. `IconGlyph` then caps
 visible ink (alpha ≥128) at 54% of the tile, centring oversized glyphs without
-enlarging or changing smaller ones. Bundled resources use the same cap except the
-`mudita_` category: Mudita artwork is drawn as Mudita drew it. New PNG and SVG
+enlarging or changing smaller ones. All bundled glyphs use the same cap. New PNG and SVG
 imports follow the cap at import time; existing saved imports retain their stored
 artwork. Original app and shortcut icons retain their own geometry.
 

@@ -37,6 +37,7 @@ object IconUtility {
     data class BundledIcon(val resId: Int, val resName: String, val label: String)
 
     private const val KOTATSU_CLOCK_LABEL = "Clock (Kotatsu)"
+    private const val KOTATSU_FOLDER_LABEL = "Folder (Kotatsu)"
 
     val bundledIcons: List<BundledIcon> = listOf(
         BundledIcon(R.drawable.signal, "signal", "Signal"),
@@ -83,7 +84,7 @@ object IconUtility {
         BundledIcon(R.drawable.discord, "discord", "Discord"),
         BundledIcon(R.drawable.librofm, "librofm", "Libro.fm"),
         BundledIcon(R.drawable.kotatsu_clock, "kotatsu_clock", KOTATSU_CLOCK_LABEL),
-        BundledIcon(R.drawable.mudita_folder, "mudita_folder", "Folder (Mudita)"),
+        BundledIcon(R.drawable.kotatsu_folder, "kotatsu_folder", KOTATSU_FOLDER_LABEL),
         BundledIcon(R.drawable.delta_chat, "delta_chat", "Delta Chat"),
     )
 
@@ -142,9 +143,7 @@ object IconUtility {
     fun renderDrawableResource(context: Context, resId: Int, sizePx: Int): Bitmap? {
         return try {
             val drawable = ContextCompat.getDrawable(context, resId) ?: return null
-            val bitmap = renderBundledIcon(drawable, sizePx)
-            if (IconGlyph.isMuditaArtwork(context.resources.getResourceEntryName(resId))) bitmap
-            else IconGlyph.cap(bitmap)
+            IconGlyph.cap(renderBundledIcon(drawable, sizePx))
         } catch (_: Exception) {
             null
         }

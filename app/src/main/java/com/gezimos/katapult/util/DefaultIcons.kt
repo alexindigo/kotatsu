@@ -10,7 +10,7 @@ object DefaultIcons {
         "com.android.calendar" to "res:calendar",
         "com.android.deskclock" to "res:kotatsu_clock",
         "com.b44t.messenger" to "res:delta_chat",
-        "com.android.documentsui" to "res:mudita_folder",
+        "com.android.documentsui" to "res:kotatsu_folder",
         "com.android.fmradio" to "res:radio",
         "com.android.gallery3d" to "res:gallery",
         "com.android.quicksearchbox" to "res:search",

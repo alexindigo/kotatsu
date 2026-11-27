@@ -11,9 +11,6 @@ import androidx.core.graphics.createBitmap
 object IconGlyph {
     const val MAX_SHARE = 0.54f
 
-    /** Mudita artwork, drawn as Mudita drew it (including bundled stock-app replacements). */
-    fun isMuditaArtwork(resourceName: String): Boolean = resourceName.startsWith("mudita_")
-
     /** Cap visible ink, not drawable/viewBox bounds. Smaller artwork stays pixel-identical. */
     fun cap(bitmap: Bitmap): Bitmap {
         val pixels = IntArray(bitmap.width * bitmap.height)

@@ -2,7 +2,7 @@ Default app icons (app/src/main/res/drawable):
 
 kotatsu_clock: Kotatsu's own clock drawing (glyph only, no tile frame).
 
-mudita_folder: the folder glyph (ic_folder) of Mudita's Kompakt Music player app (Mudita), unchanged.
+kotatsu_folder: Kotatsu's own folder drawing (glyph only, no tile frame).
 
 delta_chat: the speech bubble from the icon of Mudita's Kompakt Messages app (Mudita), with the
 delta letter from Delta Chat's logo (https://github.com/deltachat/deltachat-pages,

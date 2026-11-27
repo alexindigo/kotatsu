@@ -55,33 +55,39 @@ class IconRenderingInstrumentedTest {
         }
     }
 
-    @Test fun defaultAndSavedLegacyClockRenderTheSameCappedGlyph() {
-        val key = "com.android.deskclock"
+    @Test fun defaultAndSavedLegacyClockRenderTheSameCappedGlyph() =
+        assertBundledDefaultAndLegacy("com.android.deskclock", "kotatsu_clock", "res:mudita_clock")
+
+    @Test fun defaultAndSavedLegacyFolderRenderTheSameCappedGlyph() =
+        assertBundledDefaultAndLegacy("com.android.documentsui", "kotatsu_folder", "res:mudita_folder")
+
+    private fun assertBundledDefaultAndLegacy(key: String, drawableName: String, legacyReference: String) {
         val prefs = PrefsManager(context)
-        assertNull("Preserve an unexpected existing Clock override", prefs.getIconOverride(key))
+        assertNull("Preserve an unexpected existing override for $key", prefs.getIconOverride(key))
         withFixtureCleanup(body = {
-            val clock = IconUtility.bundledIcons.singleOrNull { it.resName == "kotatsu_clock" }
-            assertNotNull("Missing Kotatsu Clock from bundled icons", clock)
-            for (size in listOf(96, 107, 192)) {
-                val expected = IconUtility.renderDrawableResource(context, clock!!.resId, size)!!
+            val icon = IconUtility.bundledIcons.singleOrNull { it.resName == drawableName }
+            assertNotNull("Missing $drawableName from bundled icons", icon)
+            val sizes = listOf(96, 107, 192)
+            for (size in sizes) {
+                val expected = IconUtility.renderDrawableResource(context, icon!!.resId, size)!!
                 val actual = IconUtility.loadIcon(context, key, "", size)!!
                 val share = inkShare(actual)
-                Log.i("KotatsuIconProof", "kotatsu_clock size=$size inkShare=$share")
-                assertEquals("Clock/$size visible ink", 0.54f, share, 0.02f)
-                assertTrue("Stock Clock default/$size", expected.sameAs(actual))
+                Log.i("KotatsuIconProof", "$drawableName size=$size inkShare=$share")
+                assertEquals("$drawableName/$size visible ink", 0.54f, share, 0.02f)
+                assertTrue("Stock default $drawableName/$size", expected.sameAs(actual))
             }
-            assertTrue(prefs.commitIconOverride(key, "res:mudita_clock"))
+            assertTrue(prefs.commitIconOverride(key, legacyReference))
             IconUtility.clearCacheFor(key)
-            for (size in listOf(96, 107, 192)) {
-                val expected = IconUtility.renderDrawableResource(context, clock!!.resId, size)!!
-                assertTrue("Saved legacy Clock/$size", expected.sameAs(IconUtility.loadIcon(context, key, "", size)))
+            for (size in sizes) {
+                val expected = IconUtility.renderDrawableResource(context, icon!!.resId, size)!!
+                assertTrue("Saved $legacyReference/$size", expected.sameAs(IconUtility.loadIcon(context, key, "", size)))
             }
-            assertEquals("res:mudita_clock", prefs.getIconOverride(key))
+            assertEquals(legacyReference, prefs.getIconOverride(key))
 
-            assertTrue(prefs.commitIconOverride(key, "future:unknown_clock"))
+            assertTrue(prefs.commitIconOverride(key, "future:unknown_icon"))
             IconUtility.clearCacheFor(key)
             val expectedOriginal = IconUtility.loadIcon(context, key, "", 96)!!
-            assertTrue(prefs.commitIconOverride(key, "res:unknown_clock"))
+            assertTrue(prefs.commitIconOverride(key, "res:unknown_icon"))
             IconUtility.clearCacheFor(key)
             assertTrue("An unknown bundled choice still falls back to the installed icon",
                 expectedOriginal.sameAs(IconUtility.loadIcon(context, key, "", 96)))
@@ -91,25 +97,6 @@ class IconRenderingInstrumentedTest {
                     .remove("icon_override_$key").commit())
             }, { IconUtility.clearCacheFor(key) },
         ))
-    }
-
-    @Test fun muditaFolderRetainsLegacyPixels() {
-        val resId = R.drawable.mudita_folder
-        for (size in listOf(96, 192)) {
-            val drawable = context.getDrawable(resId)!!
-            val maxInner = (size * 0.60f).toInt()
-            val scale = minOf(maxInner.toFloat() / drawable.intrinsicWidth,
-                maxInner.toFloat() / drawable.intrinsicHeight)
-            val w = (drawable.intrinsicWidth * scale).toInt()
-            val h = (drawable.intrinsicHeight * scale).toInt()
-            val left = (size - w) / 2
-            val top = (size - h) / 2
-            val legacy = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
-            drawable.setBounds(left, top, left + w, top + h)
-            drawable.draw(Canvas(legacy))
-            Log.i("KotatsuIconProof", "mudita_folder size=$size legacyInkShare=${inkShare(legacy)}")
-            assertTrue("Mudita artwork changed", legacy.sameAs(IconUtility.renderDrawableResource(context, resId, size)))
-        }
     }
 
     @Test fun paddedGlyphsRemainIdenticalAndOversizedInkIsCenteredWithoutStretching() {

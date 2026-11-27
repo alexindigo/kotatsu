@@ -13,6 +13,12 @@ object IconSelections {
     const val BUNDLED_PREFIX = "res:"
     const val IMPORTED_PREFIX = "file:"
 
+    // Bundled names saved by older releases; resolve without rewriting preferences.
+    private val legacyBundledNames = mapOf(
+        "mudita_clock" to "kotatsu_clock",
+        "mudita_folder" to "kotatsu_folder",
+    )
+
     /**
      * [override] is the user's saved choice; [automatic] is the app's default reference
      * (Kotatsu's own default, else an exact catalogue brand match). Both use the saved-choice syntax.
@@ -24,11 +30,12 @@ object IconSelections {
     }
 
     fun parse(reference: String): IconSelection = when {
-        // Old releases saved this name. Use the new glyph without rewriting preferences.
-        reference == "res:mudita_clock" -> IconSelection.Bundled("kotatsu_clock")
         reference.startsWith(CATALOGUE_PREFIX) -> IconSelection.Catalogue(reference.removePrefix(CATALOGUE_PREFIX))
         reference.startsWith(IMPORTED_PREFIX) -> IconSelection.Imported(reference.removePrefix(IMPORTED_PREFIX))
-        reference.startsWith(BUNDLED_PREFIX) -> IconSelection.Bundled(reference.removePrefix(BUNDLED_PREFIX))
+        reference.startsWith(BUNDLED_PREFIX) -> {
+            val name = reference.removePrefix(BUNDLED_PREFIX)
+            IconSelection.Bundled(legacyBundledNames[name] ?: name)
+        }
         else -> IconSelection.Original
     }
 }
