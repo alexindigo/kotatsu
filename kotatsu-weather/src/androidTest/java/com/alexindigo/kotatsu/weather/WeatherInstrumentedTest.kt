@@ -141,6 +141,19 @@ class WeatherInstrumentedTest {
         }
     }
 
+    @Test fun weatherIconUsesTheRedrawnCloud() {
+        val size = 192
+        val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        // Isolate the size-dependent vector bitmap cache from the frame test.
+        context.packageManager.getApplicationIcon(context.applicationInfo).mutate().apply {
+            setBounds(0, 0, size, size)
+            draw(Canvas(bitmap))
+        }
+        // On the cloud's left lobe, sample the new contour and the gap above it.
+        assertTrue("Cloud contour at 84,115", Color.alpha(bitmap.getPixel(84, 115)) >= 128)
+        assertTrue("Cloud gap at 88,113", Color.alpha(bitmap.getPixel(88, 113)) < 128)
+    }
+
     @Test fun parseForecastFixture() {
         val result = forecast()
         assertEquals(25, result.samples.size)
