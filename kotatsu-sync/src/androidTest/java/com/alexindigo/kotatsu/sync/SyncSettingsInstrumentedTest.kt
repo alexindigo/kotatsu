@@ -861,14 +861,7 @@ class SyncSettingsInstrumentedTest {
             check(MuditaCalendar(resolver).all().isEmpty()) { "Test Mudita provider must be isolated; existing rows are not fixture-owned" }
             ownsMuditaProvider = true
             if (withAccounts) {
-                for (book in listOf(personal, family)) {
-                    val account = Account(book.name, book.type)
-                    check(AccountManager.get(context).addAccountExplicitly(account, null, null)); accounts += account
-                    resolver.insert(Settings.CONTENT_URI, ContentValues().apply {
-                        put(Settings.ACCOUNT_NAME, book.name); put(Settings.ACCOUNT_TYPE, book.type)
-                        put(Settings.SHOULD_SYNC, 1); put(Settings.UNGROUPED_VISIBLE, 1)
-                    })!!
-                }
+                instrumentation.registerContactBooks(listOf(personal, family), accounts)
                 familyCalendar = calendar(familyCalendarName, type)
                 personalCalendar = calendar(personalCalendarName, type)
                 calendar(localCalendarName, "LOCAL")

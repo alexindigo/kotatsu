@@ -18,16 +18,22 @@ public class FixtureReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
         String name = intent.getStringExtra("name");
         if (name == null || !name.startsWith("kotatsu-external-test-")) throw new IllegalArgumentException("Fixture name");
-        Account account = new Account(name, "com.alexindigo.kotatsu.fakesyncadapter.account");
+        Account account = new Account(name, "at.bitfire.davdroid.address_book");
         android.content.ContentResolver resolver = context.getContentResolver();
         try {
             switch (intent.getStringExtra("operation")) {
-                case "seed": {
+                case "register": {
                     if (!AccountManager.get(context).addAccountExplicitly(account, null, null)) throw new IllegalStateException("Account creation");
+                    break;
+                }
+                case "publish-book": {
                     ContentValues settings = new ContentValues();
                     settings.put("account_name", name); settings.put("account_type", account.type);
                     settings.put(ContactsContract.Settings.SHOULD_SYNC, 1); settings.put(ContactsContract.Settings.UNGROUPED_VISIBLE, 1);
-                    resolver.insert(ContactsContract.Settings.CONTENT_URI, settings);
+                    if (resolver.insert(ContactsContract.Settings.CONTENT_URI, settings) == null) throw new IllegalStateException("Settings creation");
+                    break;
+                }
+                case "seed-calendar": {
                     ContentValues calendar = new ContentValues();
                     calendar.put(Calendars.ACCOUNT_NAME, name); calendar.put(Calendars.ACCOUNT_TYPE, account.type);
                     calendar.put(Calendars.NAME, name); calendar.put(Calendars.OWNER_ACCOUNT, name);
@@ -44,6 +50,7 @@ public class FixtureReceiver extends BroadcastReceiver {
                 }
                 case "cleanup": {
                     String[] args = {name, account.type};
+                    resolver.delete(syncUri(ContactsContract.RawContacts.CONTENT_URI, account), "account_name = ? AND account_type = ?", args);
                     resolver.delete(syncUri(Calendars.CONTENT_URI, account), "account_name = ? AND account_type = ?", args);
                     resolver.delete(ContactsContract.Settings.CONTENT_URI, "account_name = ? AND account_type = ?", args);
                     if (!AccountManager.get(context).removeAccountExplicitly(account)) throw new IllegalStateException("Account removal");

@@ -68,25 +68,47 @@ class ExternalSyncAdapterInstrumentedTest {
         }
     }
 
+    @Test fun automaticMoveWaitsForThePreferredDavx5BookToPublishSettings() = scenario { f ->
+        requireIsolatedPhoneBook(f.context)
+        val personal = ContactAccount("kotatsu-external-test-Personal-${UUID.randomUUID()}", TYPE)
+        f.register(personal)
+        val port = AndroidContacts(f.context)
+        assertTrue(android.accounts.AccountManager.get(f.context).getAccountsByType(TYPE).any { it.name == personal.name })
+        assertEquals(setOf(f.account), port.addressBooks())
+        f.localId = ContentUris.parseId(f.resolver.insert(RawContacts.CONTENT_URI, ContentValues())!!)
+        val store = object : ContactsMoveStore { override var pendingContactsMove: ContactsMove? = null }
+        val engine = ContactsTransferEngine(port, store)
+        val before = engine.pass(ContactsSettings())
+        assertEquals("A registered Personal book has not acknowledged eligibility; do not move to Family", 0, before.changes)
+        assertEquals(setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED), before.stopReasons)
+        assertTrue(phoneSourceIds(f.context).contains(f.localId))
+
+        f.publishBook(personal)
+        assertEquals(ContactsResult(1), engine.pass(ContactsSettings()))
+        assertTrue(phoneSourceIds(f.context).isEmpty())
+        assertEquals(listOf(personal), port.sources().map { it.account })
+    }
+
     private fun scenario(body: (Fixture) -> Unit) {
         val f = Fixture()
         withFixtureCleanup(
             { f.context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS) },
             { for (id in listOf(f.localId, f.unrelatedId, f.destinationId).filter { it >= 0 }) f.resolver.delete(ContentUris.withAppendedId(RawContacts.CONTENT_URI, id), null, null) },
-            { if (f.seedAttempted) f.command("cleanup") },
+            { f.cleanupAccounts() },
         ) { f.setup(); body(f) }
     }
     private class Fixture {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val resolver = context.contentResolver
-        val account = ContactAccount("kotatsu-external-test-${UUID.randomUUID()}", TYPE)
-        var seedAttempted = false
+        val account = ContactAccount("kotatsu-external-test-Family-${UUID.randomUUID()}", TYPE)
+        private val registered = mutableListOf<ContactAccount>()
         var localId = -1L
         var unrelatedId = -1L
         var destinationId = -1L
         var calendarId = -1L
         fun setup() {
+            check(android.os.Build.HARDWARE == "ranchu") { "External DAVx5 fixture requires a disposable AVD" }
             context.getSystemService(JobScheduler::class.java).cancelAll(); SyncRuntime.enqueue {}.get(15, TimeUnit.SECONDS)
             for (permission in listOf(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS,
                 Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)) {
@@ -95,21 +117,32 @@ class ExternalSyncAdapterInstrumentedTest {
             }
             // Shell, not the target uid, talks to the fixture. Never grant
             // implicit visibility by binding or sending it a target-uid intent.
-            seedAttempted = true; command("seed")
+            register(account)
+            publishBook(account)
+            command("seed-calendar")
             calendarId = resolver.query(Calendars.CONTENT_URI, arrayOf(Calendars._ID),
                 "account_name = ? AND account_type = ?", arrayOf(account.name, TYPE), null)!!.use {
                 check(it.moveToFirst()); it.getLong(0)
             }
         }
-        fun command(operation: String) {
+        fun register(book: ContactAccount) {
+            command("register", book)
+            registered += book
+        }
+        fun cleanupAccounts() = withFixtureCleanup(*registered.map { book -> { command("cleanup", book) } }.toTypedArray()) {}
+        fun publishBook(book: ContactAccount) {
+            instrumentation.awaitContactsProviderAccounts(listOf(book))
+            command("publish-book", book)
+        }
+        fun command(operation: String, book: ContactAccount = account) {
             val output = ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
-                "am broadcast --receiver-foreground --include-stopped-packages -n $PACKAGE/com.alexindigo.kotatsu.fakesyncadapter.FixtureReceiver --es operation $operation --es name ${account.name}"
+                "am broadcast --receiver-foreground --include-stopped-packages -n $PACKAGE/com.alexindigo.kotatsu.fakesyncadapter.FixtureReceiver --es operation $operation --es name ${book.name}"
             )).bufferedReader().use { it.readText() }
             check(output.contains("result=0") && output.contains("fixture complete")) { output }
         }
     }
     companion object {
         private const val PACKAGE = "com.alexindigo.kotatsu.fakemuditacalendar.test"
-        private const val TYPE = "com.alexindigo.kotatsu.fakesyncadapter.account"
+        private const val TYPE = "at.bitfire.davdroid.address_book"
     }
 }

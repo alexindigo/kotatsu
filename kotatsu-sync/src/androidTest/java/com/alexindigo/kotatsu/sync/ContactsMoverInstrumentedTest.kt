@@ -403,12 +403,7 @@ class ContactsMoverInstrumentedTest {
             config.write(ContactsSettings())
             baselinePhone = phoneSourceIds(context)
             baselineAggregates = liveAggregateCount()
-            for (account in listOf(personal, family)) {
-                val a = Account(account.name, account.type); check(AccountManager.get(context).addAccountExplicitly(a, null, null)); added.add(a)
-                resolver.insert(Settings.CONTENT_URI, ContentValues().apply {
-                    put(Settings.ACCOUNT_NAME, a.name); put(Settings.ACCOUNT_TYPE, a.type); put(Settings.SHOULD_SYNC, 1); put(Settings.UNGROUPED_VISIBLE, 1)
-                })!!
-            }
+            instrumentation.registerContactBooks(listOf(personal, family), added)
             check(personal in port.addressBooks() && family in port.addressBooks())
         }
         fun trackedContext(onAuthority: (String?) -> Unit = {}, beforeBatch: () -> Unit = {},

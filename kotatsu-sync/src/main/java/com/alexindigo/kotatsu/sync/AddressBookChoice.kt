@@ -5,6 +5,19 @@ data class AddressBookChoice(val account: ContactAccount, val label: String) {
     internal val collectionLabel: String get() = addressBookLabel(account)
 }
 
+/** A registered DAVx5 collection with no Settings row is not known absent or writable. */
+data class AddressBookCatalog(val available: Set<ContactAccount> = emptySet(),
+    internal val unacknowledged: Set<ContactAccount> = emptySet(),
+) {
+    val choices = addressBookChoices(available)
+
+    internal fun automaticDestination(): AddressBookChoice? {
+        val candidates = if (unacknowledged.isEmpty()) choices else addressBookChoices(available + unacknowledged)
+        val preferred = preferPersonal(candidates, AddressBookChoice::collectionLabel)
+        return choices.singleOrNull { it.account == preferred?.account }
+    }
+}
+
 internal fun addressBookChoices(accounts: Set<ContactAccount>): List<AddressBookChoice> {
     val parsed = accounts.map { AddressBookChoice(it, addressBookLabel(it)) }
     val counts = parsed.groupingBy { it.label }.eachCount()
@@ -31,5 +44,5 @@ internal fun addressBookLabel(account: ContactAccount): String {
     return account.name
 }
 
-private val DAVX5_BOOK_TYPES = setOf("at.bitfire.davdroid.address_book", "at.bitfire.davdroid.address_book.mudita")
+internal val DAVX5_BOOK_TYPES = setOf("at.bitfire.davdroid.address_book", "at.bitfire.davdroid.address_book.mudita")
 private val DAVX5_SUFFIX = Regex(" #[0-9]+$")

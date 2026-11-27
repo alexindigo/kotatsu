@@ -7,8 +7,8 @@ data class PhoneContact(val id: Long, val version: Long, val account: ContactAcc
 data class ContactsSettings(val target: ContactAccount? = null,
     val mode: TargetMode = if (target == null) TargetMode.AUTOMATIC else TargetMode.EXPLICIT,
 ) {
-    fun destination(choices: List<AddressBookChoice>): AddressBookChoice? = if (mode == TargetMode.AUTOMATIC)
-        preferPersonal(choices, AddressBookChoice::collectionLabel) else choices.singleOrNull { it.account == target }
+    fun destination(catalog: AddressBookCatalog): AddressBookChoice? = if (mode == TargetMode.AUTOMATIC)
+        catalog.automaticDestination() else catalog.choices.singleOrNull { it.account == target }
 }
 data class ContactsResult(val changes: Int = 0, val stopReasons: Set<SyncStopReason> = emptySet(),
     // Null means no inventory was assessed; a fresh zero clears the previous count.
@@ -18,7 +18,7 @@ interface ContactsMoveStore { var pendingContactsMove: ContactsMove? }
 
 interface ContactsPort {
     fun addressBooks(): Set<ContactAccount>
-    fun addressBookChoices(): List<AddressBookChoice> = addressBookChoices(addressBooks())
+    fun addressBookCatalog(): AddressBookCatalog = AddressBookCatalog(addressBooks())
     fun sources(): List<PhoneContact>
     /** Version-checked, atomic insert-data-aggregate-delete. Never writes to a SIM. */
     fun move(source: PhoneContact, destination: ContactAccount): Boolean
@@ -67,22 +67,23 @@ class ContactsTransferEngine(private val contacts: ContactsPort, private val sto
         val pending = store.pendingContactsMove
         val results = mutableListOf<ContactsResult>()
         if (pending != null) results.add(resume(pending))
-        val target = settings.destination(contacts.addressBookChoices())?.account
-        if (target != null || settings.mode == TargetMode.EXPLICIT)
+        val catalog = contacts.addressBookCatalog()
+        val target = settings.destination(catalog)?.account
+        if (target != null || settings.mode == TargetMode.EXPLICIT || catalog.unacknowledged.isNotEmpty())
             results.add(mover.pass(target, excluded = pending?.sourceIds.orEmpty()))
         return combine(results)
     }
     fun moveExisting(settings: ContactsSettings): ContactsResult {
         changes = 0
         val pending = store.pendingContactsMove ?: run {
-            val target = settings.destination(contacts.addressBookChoices())?.account
+            val target = settings.destination(contacts.addressBookCatalog())?.account
                 ?: return ContactsResult(stopReasons = setOf(SyncStopReason.ADDRESS_BOOK_REQUIRED))
             ContactsMove(target, contacts.phoneCandidates().map { it.id }.toSet())
                 .also { store.pendingContactsMove = it }
         }
         val result = resume(pending)
         // Confirmation permits only its own IDs. Assess later arrivals without moving them.
-        val waiting = if (settings.destination(contacts.addressBookChoices()) == null) 0
+        val waiting = if (settings.destination(contacts.addressBookCatalog()) == null) 0
             else contacts.phoneCandidates(excluded = store.pendingContactsMove?.sourceIds.orEmpty()).bulkWaiting()
         return result.copy(waiting = waiting)
     }
