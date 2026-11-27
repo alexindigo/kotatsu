@@ -233,4 +233,4 @@ Kotatsu is based on [Katapult by gezimos](https://github.com/gezimos/Katapult), 
 | 5 | AndroidSVG 1.4 | Paul LeBeau / Cave Rock Software Ltd.; [Apache-2.0](app/src/main/assets/icons/notices/androidsvg-LICENSE) |
 | 6 | Weather data | [Open-Meteo](https://open-meteo.com/); [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
-See the [icon catalogue](docs/ICON_CATALOGUE.md) for provenance and packaged notices, and [Kotatsu Weather's NOTICE](kotatsu-weather/NOTICE) for its Material weather icons and its own K and cloud drawing inside the shared tile frame. The accessibility-overlay approach was inspired by [Lockscreen Widgets](https://github.com/zacharee/LockscreenWidgets) by Zachary Wander; no code was copied.
+See the [icon catalogue](docs/ICON_CATALOGUE.md) for provenance and packaged notices, and [Kotatsu Weather's NOTICE](kotatsu-weather/NOTICE) for its Material weather icons and the shared tile frame. The accessibility-overlay approach was inspired by [Lockscreen Widgets](https://github.com/zacharee/LockscreenWidgets) by Zachary Wander; no code was copied.
