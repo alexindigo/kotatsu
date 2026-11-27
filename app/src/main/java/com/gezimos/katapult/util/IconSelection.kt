@@ -24,6 +24,8 @@ object IconSelections {
     }
 
     fun parse(reference: String): IconSelection = when {
+        // Old releases saved this name. Use the new glyph without rewriting preferences.
+        reference == "res:mudita_clock" -> IconSelection.Bundled("kotatsu_clock")
         reference.startsWith(CATALOGUE_PREFIX) -> IconSelection.Catalogue(reference.removePrefix(CATALOGUE_PREFIX))
         reference.startsWith(IMPORTED_PREFIX) -> IconSelection.Imported(reference.removePrefix(IMPORTED_PREFIX))
         reference.startsWith(BUNDLED_PREFIX) -> IconSelection.Bundled(reference.removePrefix(BUNDLED_PREFIX))

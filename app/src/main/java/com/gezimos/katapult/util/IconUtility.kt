@@ -36,6 +36,8 @@ object IconUtility {
 
     data class BundledIcon(val resId: Int, val resName: String, val label: String)
 
+    private const val KOTATSU_CLOCK_LABEL = "Clock (Kotatsu)"
+
     val bundledIcons: List<BundledIcon> = listOf(
         BundledIcon(R.drawable.signal, "signal", "Signal"),
         BundledIcon(R.drawable.telegram, "telegram", "Telegram"),
@@ -80,7 +82,7 @@ object IconUtility {
         BundledIcon(R.drawable.einkbro, "einkbro", "Einkbro"),
         BundledIcon(R.drawable.discord, "discord", "Discord"),
         BundledIcon(R.drawable.librofm, "librofm", "Libro.fm"),
-        BundledIcon(R.drawable.mudita_clock, "mudita_clock", "Clock (Mudita)"),
+        BundledIcon(R.drawable.kotatsu_clock, "kotatsu_clock", KOTATSU_CLOCK_LABEL),
         BundledIcon(R.drawable.mudita_folder, "mudita_folder", "Folder (Mudita)"),
         BundledIcon(R.drawable.delta_chat, "delta_chat", "Delta Chat"),
     )

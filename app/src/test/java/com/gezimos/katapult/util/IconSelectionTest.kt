@@ -26,6 +26,13 @@ class IconSelectionTest {
 
     @Test fun unknownRetainedChoicesDoNotBecomeAnotherBrand() {
         assertEquals(IconSelection.Original, IconSelections.resolve("future:my-icon", "catalogue:simple-icons:signal"))
+        assertEquals(IconSelection.Bundled("unknown_clock"),
+            IconSelections.resolve("res:unknown_clock", "res:kotatsu_clock"))
+    }
+
+    @Test fun clockDefaultAndLegacyReferenceSelectTheKotatsuGlyph() {
+        assertEquals("res:kotatsu_clock", DefaultIcons.reference("com.android.deskclock"))
+        assertEquals(IconSelection.Bundled("kotatsu_clock"), IconSelections.parse("res:mudita_clock"))
     }
 
     @Test fun kotatsuDefaultsApplyOnlyWithoutAManualChoice() {

@@ -8,7 +8,7 @@ package com.gezimos.katapult.util
 object DefaultIcons {
     private val byPackage: Map<String, String> = mapOf(
         "com.android.calendar" to "res:calendar",
-        "com.android.deskclock" to "res:mudita_clock",
+        "com.android.deskclock" to "res:kotatsu_clock",
         "com.b44t.messenger" to "res:delta_chat",
         "com.android.documentsui" to "res:mudita_folder",
         "com.android.fmradio" to "res:radio",
