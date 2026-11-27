@@ -95,7 +95,7 @@ access workflow. The current guest checkout is
 `/srv/kotatsu/source/kotatsu-release-20261013`. Inside that guest:
 
 ```bash
-python -B tools/verify_icon_catalogue.py --root "$PWD" --apk app/build/outputs/apk/release/kotatsu-v0.7.1-release.apk
+python -B tools/verify_icon_catalogue.py --root "$PWD" --apk app/build/outputs/apk/release/kotatsu-v0.7.2-release.apk
 ```
 
 The verifier checks every named entry and actual packaged asset byte, included

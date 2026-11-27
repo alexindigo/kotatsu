@@ -10,7 +10,7 @@ Kotatsu is a privacy-focused Android launcher for the Mudita Kompakt e-ink phone
 
 **The launcher has no Internet permission or built-in updater.** Kotatsu Weather is a separate, optional app that uses the network.
 
-[Download the latest release](https://github.com/alexindigo/kotatsu/releases/latest) · [Website](https://alexindigo.github.io/kotatsu/) · [What's new in 0.7.1](CHANGELOG.md)
+[Download the latest release](https://github.com/alexindigo/kotatsu/releases/latest) · [Website](https://alexindigo.github.io/kotatsu/) · [What's new in 0.7.2](CHANGELOG.md)
 
 Kotatsu on a Mudita Kompakt:
 
@@ -49,17 +49,16 @@ Kotatsu on a Mudita Kompakt:
 
 Requires **Android 11 or newer** (API 30). Kompakt-specific integration, including lock-screen widget hosting, is designed for the Mudita Kompakt.
 
-Get the APKs from [Kotatsu Releases](https://github.com/alexindigo/kotatsu/releases/latest). The [v0.7.1 release](https://github.com/alexindigo/kotatsu/releases/tag/v0.7.1) includes:
+Get the APKs from [Kotatsu Releases](https://github.com/alexindigo/kotatsu/releases/latest). The [v0.7.2 release](https://github.com/alexindigo/kotatsu/releases/tag/v0.7.2) includes:
 
 | # | APK | Install for |
 |---|---|---|
-| 1 | [kotatsu-v0.7.1.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.1/kotatsu-v0.7.1.apk) | The launcher |
-| 2 | [kotatsu-weather-v0.7.1.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.1/kotatsu-weather-v0.7.1.apk) | Optional weather widget; separate app with network access |
-| 3 | [kotatsu-notes-v0.7.1.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.1/kotatsu-notes-v0.7.1.apk) | Optional Mudita Notes task-list and quote widgets; separate app |
+| 1 | [kotatsu-v0.7.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.2/kotatsu-v0.7.2.apk) | The launcher |
+| 2 | [kotatsu-weather-v0.7.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.2/kotatsu-weather-v0.7.2.apk) | Optional weather widget; separate app with network access |
+| 3 | [kotatsu-notes-v0.7.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.2/kotatsu-notes-v0.7.2.apk) | Optional Mudita Notes task-list and quote widgets; separate app |
+| 4 | [kotatsu-sync-v0.7.2.apk](https://github.com/alexindigo/kotatsu/releases/download/v0.7.2/kotatsu-sync-v0.7.2.apk) | Optional calendar and contacts bridge for Kompakt; uses DAVx5 for server sync |
 
-Release asset names follow `kotatsu-v<version>.apk`, `kotatsu-weather-v<version>.apk` and `kotatsu-notes-v<version>.apk`.
-
-Kotatsu Sync can be built from source and is prepared for the next release as `kotatsu-sync-v<version>.apk`. It is not in the current download set.
+Release asset names follow `kotatsu-v<version>.apk`, `kotatsu-weather-v<version>.apk`, `kotatsu-notes-v<version>.apk` and `kotatsu-sync-v<version>.apk`.
 
 Open the downloaded APK on the phone and allow installation from that source when Android asks. Open Kotatsu to preview it; choose it as the default Home app in Android settings when ready. Updates are installed manually from Releases.
 
@@ -69,7 +68,7 @@ The release APK signing certificate's **SHA-256** is:
 8fa0f259c8cf159d9fa4d995ab1b55fae7eb3c463a249b985b20107edfbbf607
 ```
 
-This is the certificate fingerprint, not an APK file checksum. With Android SDK Build Tools installed, inspect an APK using `apksigner verify --print-certs kotatsu-v0.7.1.apk`.
+This is the certificate fingerprint, not an APK file checksum. With Android SDK Build Tools installed, inspect an APK using `apksigner verify --print-certs kotatsu-v0.7.2.apk`.
 
 ## Kotatsu Weather
 

@@ -2,6 +2,84 @@
 
 Kotatsu changelog. The sections after 0.1 are inherited Katapult history through v1.6.
 
+## [0.7.2] - 2026-11-27
+
+Kotatsu Sync is available for the first time as a fourth, optional APK for
+Mudita Kompakt. It mirrors selected calendars with supported Mudita Calendar
+and moves phone contacts to a selected sync address book. For CalDAV/CardDAV
+server sync, install [DAVx5](https://f-droid.org/packages/at.bitfire.davdroid/)
+separately. Kotatsu Sync has no Internet permission; DAVx5 talks to your server.
+Last sync in Kotatsu Sync reports local bridge work, not a server transfer.
+Sync, Weather and Notes have new launcher icons, and the Kotatsu launcher has
+new default Clock and Files icons.
+
+### 2026-11-27
+
+#### Fix
+
+When a selected calendar disappears, Sync now reports that the selection is unavailable instead of leaving it out of the result without explanation. Available selections still run, and the missing selection is kept rather than silently replaced.
+
+- Report missing calendar selections and wait for the calendar fixture to be ready (`063a757`).
+
+#### Tests
+
+Sync's contact tests use the same fixture protocol to prepare and inspect Android provider state. They keep account operations scoped to the fixture identity, so the tests observe the same state they set up.
+
+- Share the contact-book setup and isolation protocol across Sync tests (`4e89ba5`).
+
+#### Integration
+
+The release tooling and calendar follow-up integrated concurrent changes. The merges add no separately described behavior.
+
+- Integrate main into the Sync release tooling branch (`ab088ad`).
+- Integrate main into the Sync calendar follow-up (`188fb54`).
+
+### 2026-11-26
+
+#### Fix
+
+Sync distinguishes a registered DAVx5 address book that is still initializing from one that is missing. It rechecks destination readiness before moving contacts, so it does not start a move into a book that Android has not made ready.
+
+- Wait for DAVx5 address-book readiness before moving contacts (`f3c3f2f`).
+
+#### Feature
+
+Sync is built and verified as a standalone release app, with its notices bundled and the test providers kept out of the APK. Its settings are available in Czech, Dutch, French, German, Italian, Polish, Portuguese and Spanish. Weather gets a distinct launcher icon, and the launcher uses new default Clock and Files glyphs without replacing users' custom selections.
+
+- Package Kotatsu Sync as the fourth release app (`8145515`).
+- Translate Kotatsu Sync into eight locales (`16624c6`).
+- Replace the Kotatsu Weather launcher icon (`5f3f125`).
+- Replace the default Files glyph (`eb20b32`).
+- Replace the default Clock glyph (`fac7c20`).
+
+#### Docs
+
+Notices distinguish third-party material from Kotatsu's own work. The README also describes the Weather attribution that remains after its icon replacement.
+
+- Keep NOTICE files focused on third-party material (`e253e8c`).
+- Match the README to the trimmed Weather NOTICE (`ff262c8`).
+
+### 2026-11-25
+
+#### Fix
+
+The screenshot preview retries layer creation when the compositor briefly refuses it. Retries are bounded per surface, giving the preview a chance to appear without retrying indefinitely on a broken surface.
+
+- Retry screenshot preview layer creation with a bounded budget (`294ba13`).
+
+#### Feature
+
+Kotatsu Sync and Kotatsu Notes get their own launcher icons. The new icons make the two optional apps easier to tell apart in the app list.
+
+- Replace the Kotatsu Sync launcher icon (`7865cfd`).
+- Replace the Kotatsu Notes launcher icon (`3b0789d`).
+
+#### Integration
+
+The screenshot-preview follow-up incorporated the v0.7.1 release commit. The merge adds no separately described behavior.
+
+- Integrate main into the screenshot layer retry branch (`d324b99`).
+
 ## [0.7.1] - 2026-11-25
 
 This release includes Kotatsu, Kotatsu Weather and Kotatsu Notes. Kotatsu Sync

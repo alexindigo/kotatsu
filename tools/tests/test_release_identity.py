@@ -16,12 +16,12 @@ sys.path.insert(0,str(Path(__file__).parents[1]))
 import prepare_release as prepare
 import verify_fork as verify
 
-APPS={'app':('com.alexindigo.kotatsu',18,'Kotatsu'),
-       'kotatsu-weather':('com.alexindigo.kotatsu.weather',13,'Kotatsu Weather'),
-       'kotatsu-notes':('com.alexindigo.kotatsu.notes',12,'Kotatsu Notes'),
-       'kotatsu-sync':('com.alexindigo.kotatsu.sync',12,'Kotatsu Sync')}
-ASSETS={'app':'kotatsu-v0.7.1.apk','kotatsu-weather':'kotatsu-weather-v0.7.1.apk',
-        'kotatsu-notes':'kotatsu-notes-v0.7.1.apk','kotatsu-sync':'kotatsu-sync-v0.7.1.apk'}
+APPS={'app':('com.alexindigo.kotatsu',19,'Kotatsu'),
+       'kotatsu-weather':('com.alexindigo.kotatsu.weather',14,'Kotatsu Weather'),
+       'kotatsu-notes':('com.alexindigo.kotatsu.notes',13,'Kotatsu Notes'),
+       'kotatsu-sync':('com.alexindigo.kotatsu.sync',13,'Kotatsu Sync')}
+ASSETS={'app':'kotatsu-v0.7.2.apk','kotatsu-weather':'kotatsu-weather-v0.7.2.apk',
+        'kotatsu-notes':'kotatsu-notes-v0.7.2.apk','kotatsu-sync':'kotatsu-sync-v0.7.2.apk'}
 COMPANIONS=('kotatsu-weather','kotatsu-notes','kotatsu-sync')
 SYNC='kotatsu-sync'
 NON_RELEASE_MODULES=('fake-mudita-calendar',)
@@ -47,10 +47,10 @@ class ReleaseIdentityTest(unittest.TestCase):
             shutil.copyfile(REPO/module/'src/main/res/values/strings.xml',source/'strings.xml')
             directory=self.root/module/'build/outputs/apk/release';directory.mkdir(parents=True)
             (directory/'fixture.apk').write_bytes((module+' release bytes').encode())
-            self.metadata[module]={'variantName':'release','applicationId':package,'elements':[{'outputFile':'fixture.apk','versionCode':code,'versionName':'0.7.1'}]}
+            self.metadata[module]={'variantName':'release','applicationId':package,'elements':[{'outputFile':'fixture.apk','versionCode':code,'versionName':'0.7.2'}]}
             self.write_metadata(module)
             self.packages[module]=package;self.certs[module]='a'*64
-            self.badging[module]=f"package: name='{package}' versionCode='{code}' versionName='0.7.1'\napplication-label:'{label}'\n"
+            self.badging[module]=f"package: name='{package}' versionCode='{code}' versionName='0.7.2'\napplication-label:'{label}'\n"
         self.provenance={'head':'a'*40,'headTree':'b'*40,'sourceReceiptSha256':'c'*64}
         self.badging[SYNC]+=''.join(f"application-label-{locale}:'Kotatsu Sync'\n" for locale in 'cs de es fr it nl pl pt'.split())
         self.sync_manifest=ET.parse(REPO/SYNC/'src/main/AndroidManifest.xml').getroot()
@@ -106,7 +106,7 @@ class ReleaseIdentityTest(unittest.TestCase):
         self.assertEqual(set(verify.source_release_identities(self.root)),set(APPS))
         for module in APPS:
             path=self.root/module/'build.gradle.kts';original=path.read_text()
-            for old,new in (('versionName = "0.7.1"','versionName = "stale"'),
+            for old,new in (('versionName = "0.7.2"','versionName = "stale"'),
                             ('versionCode = '+str(APPS[module][1]),'versionCode = 1'),
                             ('applicationId = "'+APPS[module][0]+'"','applicationId = "other.app"')):
                 with self.subTest(module=module,field=old):
@@ -116,7 +116,7 @@ class ReleaseIdentityTest(unittest.TestCase):
 
     def inventory_rejected(self,message):
         output=self.root/'published'
-        with self.assertRaisesRegex(prepare.VerificationError,message):prepare.prepare(self.root,'v0.7.1',output)
+        with self.assertRaisesRegex(prepare.VerificationError,message):prepare.prepare(self.root,'v0.7.2',output)
         with self.assertRaisesRegex(verify.VerificationError,message):self.check()
         self.assertFalse(output.exists())
         self.assertFalse(Path(self.args.report).exists())
@@ -125,7 +125,7 @@ class ReleaseIdentityTest(unittest.TestCase):
     def test_real_source_tree_has_exactly_four_release_identities(self):
         self.assertEqual({m:(row['applicationId'],row['versionCode'],row['versionName'])
                           for m,row in verify.source_release_identities(REPO).items()},
-                         {m:(package,code,'0.7.1') for m,(package,code,_) in APPS.items()})
+                         {m:(package,code,'0.7.2') for m,(package,code,_) in APPS.items()})
 
     def test_unknown_module_fails_even_without_any_plugin_declaration(self):
         for module in ('extra','extra/nested'):
@@ -251,7 +251,7 @@ class ReleaseIdentityTest(unittest.TestCase):
             original=copy.deepcopy(self.metadata[module]);badging=self.badging[module]
             with self.subTest(module=module):
                 self.metadata[module]['elements'][0]['versionName']='0.5.1';self.write_metadata(module)
-                self.badging[module]=badging.replace('0.7.1','0.5.1')
+                self.badging[module]=badging.replace('0.7.2','0.5.1')
                 with self.assertRaisesRegex(verify.VerificationError,'metadata version'):self.check()
                 self.metadata[module]=original;self.write_metadata(module)
                 with self.assertRaisesRegex(verify.VerificationError,'Compiled APK version'):self.check()
@@ -287,7 +287,7 @@ class ReleaseIdentityTest(unittest.TestCase):
             locales=''.join(line+'\n' for line in self.badging[module].splitlines() if line.startswith('application-label-'))
             directory=self.root/module/'build/outputs/apk/release'
             directory.rename(directory.parent/'debug')
-            version='0.7.1-debug' if module=='app' else '0.7.1'
+            version='0.7.2-debug' if module=='app' else '0.7.2'
             if module=='app':label+=' Debug'
             self.packages[module]=package+'.debug'
             self.badging[module]=f"package: name='{package}.debug' versionCode='{code}' versionName='{version}'\napplication-label:'{label}'\napplication-debuggable\n"+locales
@@ -298,10 +298,10 @@ class ReleaseIdentityTest(unittest.TestCase):
         self.sync_resources='';self.sync_dex='';self.mapping.unlink()
         report=self.check()
         self.assertTrue(report['signaturesVerified'])
-        self.assertEqual(report['apps']['app']['versionName'],'0.7.1-debug')
-        self.assertEqual(report['apps']['kotatsu-weather']['versionName'],'0.7.1')
-        self.assertEqual(report['apps']['kotatsu-notes']['versionName'],'0.7.1')
-        self.assertEqual(report['apps'][SYNC]['versionName'],'0.7.1')
+        self.assertEqual(report['apps']['app']['versionName'],'0.7.2-debug')
+        self.assertEqual(report['apps']['kotatsu-weather']['versionName'],'0.7.2')
+        self.assertEqual(report['apps']['kotatsu-notes']['versionName'],'0.7.2')
+        self.assertEqual(report['apps'][SYNC]['versionName'],'0.7.2')
         self.assertEqual(report['apps'][SYNC]['applicationId'],'com.alexindigo.kotatsu.sync.debug')
         self.assertNotIn('syncReleaseBoundary',report['apps'][SYNC])
 
@@ -321,7 +321,7 @@ class ReleaseIdentityTest(unittest.TestCase):
             directory.mkdir(parents=True)
             (directory/f'{module}.apk').write_bytes(b'non-release APK')
         output=self.root/'published'
-        prepare.prepare(self.root,'v0.7.1',output)
+        prepare.prepare(self.root,'v0.7.2',output)
         self.assertEqual({p.name for p in output.iterdir()},set(ASSETS.values()))
         for module,name in ASSETS.items():
             source=self.root/module/'build/outputs/apk/release/fixture.apk'
@@ -334,12 +334,12 @@ class ReleaseIdentityTest(unittest.TestCase):
         output=self.root/'published'
         with self.assertRaisesRegex(prepare.VerificationError,'tag'):prepare.prepare(self.root,'v0.5.2',output)
         self.metadata['kotatsu-notes']['elements'][0]['versionCode']=1;self.write_metadata('kotatsu-notes')
-        with self.assertRaisesRegex(prepare.VerificationError,'metadata version'):prepare.prepare(self.root,'v0.7.1',output)
+        with self.assertRaisesRegex(prepare.VerificationError,'metadata version'):prepare.prepare(self.root,'v0.7.2',output)
         self.assertFalse(output.exists())
 
     def artifact_rejected(self,message):
         output=self.root/'published'
-        with self.assertRaisesRegex(prepare.VerificationError,message):prepare.prepare(self.root,'v0.7.1',output)
+        with self.assertRaisesRegex(prepare.VerificationError,message):prepare.prepare(self.root,'v0.7.2',output)
         self.compiled_rejected(message)
         self.assertFalse(output.exists())
 
