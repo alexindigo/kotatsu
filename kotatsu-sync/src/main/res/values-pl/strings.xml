@@ -1,0 +1,100 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Dostęp do kalendarza</string>
+    <string name="contacts_access">Dostęp do kontaktów</string>
+    <string name="access">Dostęp</string>
+    <string name="calendars">Kalendarze</string>
+    <string name="contacts_group">Kontakty</string>
+    <string name="sync_group">Synchronizacja</string>
+    <string name="granted">Przyznany</string>
+    <string name="not_granted">Nieprzyznany</string>
+    <string name="calendar_access_help">Odczytywanie i zmienianie kalendarzy</string>
+    <string name="contacts_access_help">Odczytywanie i zmienianie kontaktów</string>
+    <string name="calendars_help">Wybierz kalendarze dla Mudita Calendar</string>
+    <string name="new_events_help">Kalendarz nowych wydarzeń w Mudita Calendar</string>
+    <string name="look_ahead_help">Ile tygodni naprzód widać w Mudita Calendar</string>
+    <string name="contacts_go_to_help">Przenoś tu nowe kontakty z telefonu</string>
+    <string name="chosen_calendar_unavailable">Wybrany kalendarz jest niedostępny</string>
+    <string name="no_address_books">Brak dostępnych książek adresowych</string>
+    <string name="new_events">Nowe wydarzenia</string>
+    <string name="look_ahead">Zakres dat</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d tydzień</item>
+        <item quantity="few">%1$d tygodnie</item>
+        <item quantity="many">%1$d tygodni</item>
+        <item quantity="other">%1$d tygodnia</item>
+    </plurals>
+    <string name="contacts_go_to">Docelowa książka</string>
+    <string name="phone_contacts">Kontakty w telefonie</string>
+    <string name="move_to">Przenieś kontakty z telefonu do książki %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d kontakt czeka na przeniesienie</item>
+        <item quantity="few">%1$d kontakty czekają na przeniesienie</item>
+        <item quantity="many">%1$d kontaktów czeka na przeniesienie</item>
+        <item quantity="other">%1$d kontaktu czeka na przeniesienie</item>
+    </plurals>
+    <string name="last_sync">Ostatnia synchronizacja</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d zmiana</item>
+        <item quantity="few">%1$d zmiany</item>
+        <item quantity="many">%1$d zmian</item>
+        <item quantity="other">%1$d zmiany</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Wstrzymano: aplikacja Mudita Calendar się zmieniła</string>
+    <string name="stopped_calendar_settings">Wstrzymano: sprawdź ustawienia kalendarza</string>
+    <string name="stopped_address_book">Wstrzymano: wybierz książkę adresową</string>
+    <string name="stopped_retry">Wstrzymano: nastąpi ponowna próba</string>
+    <string name="stopped_review">Wstrzymano: nastąpi ponowna próba</string>
+    <string name="stopped_scheduling">Nie udało się rozpocząć synchronizacji</string>
+    <string name="sync_now">Synchronizuj teraz</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Brak dostępnych kalendarzy lub książek adresowych</string>
+    <string name="davx5_unavailable">Nie można otworzyć DAVx5 na tym telefonie</string>
+    <string name="unavailable">Niedostępne</string>
+    <string name="move_phone_contacts">Przenieś kontakty z telefonu</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d kontakt zostanie przeniesiony do książki %2$s. Pozostanie na tym telefonie i zsynchronizuje się z Twoim serwerem.</item>
+        <item quantity="few">%1$d kontakty zostaną przeniesione do książki %2$s. Pozostaną na tym telefonie i zsynchronizują się z Twoim serwerem.</item>
+        <item quantity="many">Do książki %2$s trafi %1$d kontaktów. Kontakty pozostaną na tym telefonie i zsynchronizują się z Twoim serwerem.</item>
+        <item quantity="other">Do książki %2$s trafi %1$d kontaktu. Przeniesione dane pozostaną na tym telefonie i zsynchronizują się z Twoim serwerem.</item>
+    </plurals>
+    <string name="move">Przenieś</string>
+    <string name="cancel">Anuluj</string>
+    <string name="calendar_changes">Zmiany w kalendarzu</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Wstrzymano: w aplikacji Mudita Calendar brakuje %1$d wydarzenia</item>
+        <item quantity="few">Wstrzymano: w aplikacji Mudita Calendar brakuje %1$d wydarzeń</item>
+        <item quantity="many">Wstrzymano: w aplikacji Mudita Calendar brakuje %1$d wydarzeń</item>
+        <item quantity="other">Wstrzymano: w aplikacji Mudita Calendar brakuje %1$d wydarzenia</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Wstrzymano: brakuje %1$d wydarzenia (%2$s)</item>
+        <item quantity="few">Wstrzymano: brakuje %1$d wydarzeń (%2$s)</item>
+        <item quantity="many">Wstrzymano: brakuje %1$d wydarzeń (%2$s)</item>
+        <item quantity="other">Wstrzymano: brakuje %1$d wydarzenia (%2$s)</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">Z aplikacji Mudita Calendar nagle zniknęło %1$d wydarzenie. Na Twoim serwerze nic się nie zmieniło.</item>
+        <item quantity="few">Z aplikacji Mudita Calendar naraz zniknęły %1$d wydarzenia. Na Twoim serwerze nic się nie zmieniło.</item>
+        <item quantity="many">Z aplikacji Mudita Calendar naraz zniknęło %1$d wydarzeń. Na Twoim serwerze nic się nie zmieniło.</item>
+        <item quantity="other">Z aplikacji Mudita Calendar naraz zniknęło %1$d wydarzenia. Na Twoim serwerze nic się nie zmieniło.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">Nagle zniknęło %1$d wydarzenie (%2$s). W aplikacji Mudita Calendar nic się nie zmieniło.</item>
+        <item quantity="few">Naraz zniknęły %1$d wydarzenia (%2$s). W aplikacji Mudita Calendar nic się nie zmieniło.</item>
+        <item quantity="many">Naraz zniknęło %1$d wydarzeń (%2$s). W aplikacji Mudita Calendar nic się nie zmieniło.</item>
+        <item quantity="other">Naraz zniknęło %1$d wydarzenia (%2$s). W aplikacji Mudita Calendar nic się nie zmieniło.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">Z Twojego serwera zostanie usunięte %1$d wydarzenie (%2$s).</item>
+        <item quantity="few">Z Twojego serwera zostaną usunięte %1$d wydarzenia (%2$s).</item>
+        <item quantity="many">Z Twojego serwera usuniemy %1$d wydarzeń (%2$s).</item>
+        <item quantity="other">Z Twojego serwera usuniemy %1$d wydarzenia (%2$s).</item>
+    </plurals>
+    <string name="restore_phone">Przywróć w aplikacji Mudita Calendar</string>
+    <string name="delete_from_server">Usuń także z serwera</string>
+    <string name="keep_phone">Zachowaj w aplikacji Mudita Calendar</string>
+    <string name="remove_phone">Usuń z aplikacji Mudita Calendar</string>
+    <string name="delete_server_title">Usuń z serwera</string>
+    <string name="delete">Usuń</string>
+</resources>

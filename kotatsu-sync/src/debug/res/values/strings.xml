@@ -1,1 +1,1 @@
-<resources><string name="test_account_name">Kotatsu Sync test account</string></resources>
+<resources><string name="test_account_name" translatable="false">Kotatsu Sync test account</string></resources>

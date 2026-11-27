@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Accès au calendrier</string>
+    <string name="contacts_access">Accès aux contacts</string>
+    <string name="access">Accès</string>
+    <string name="calendars">Calendriers</string>
+    <string name="contacts_group">Contacts</string>
+    <string name="sync_group">Synchronisation</string>
+    <string name="granted">Accordé</string>
+    <string name="not_granted">Non accordé</string>
+    <string name="calendar_access_help">Lire et modifier les calendriers</string>
+    <string name="contacts_access_help">Lire et modifier les contacts</string>
+    <string name="calendars_help">Choisir les calendriers à afficher dans Mudita Calendar</string>
+    <string name="new_events_help">Calendrier des nouveaux événements dans Mudita Calendar</string>
+    <string name="look_ahead_help">Jusqu\'à quand afficher les événements à venir dans Mudita Calendar</string>
+    <string name="contacts_go_to_help">Déplacer les nouveaux contacts du téléphone vers ce carnet d\'adresses</string>
+    <string name="chosen_calendar_unavailable">Le calendrier choisi est indisponible</string>
+    <string name="no_address_books">Aucun carnet d\'adresses disponible</string>
+    <string name="new_events">Nouveaux événements</string>
+    <string name="look_ahead">Horizon</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d semaine</item>
+        <item quantity="many">%1$d de semaines</item>
+        <item quantity="other">%1$d semaines</item>
+    </plurals>
+    <string name="contacts_go_to">Carnet de destination</string>
+    <string name="phone_contacts">Contacts du téléphone</string>
+    <string name="move_to">Déplacer les contacts du téléphone vers %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d contact en attente de déplacement</item>
+        <item quantity="many">%1$d de contacts en attente de déplacement</item>
+        <item quantity="other">%1$d contacts en attente de déplacement</item>
+    </plurals>
+    <string name="last_sync">Dernière synchronisation</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d changement</item>
+        <item quantity="many">%1$d de changements</item>
+        <item quantity="other">%1$d changements</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Arrêt : Mudita Calendar a changé</string>
+    <string name="stopped_calendar_settings">Arrêt : vérifier les paramètres du calendrier</string>
+    <string name="stopped_address_book">Arrêt : choisir un carnet d\'adresses</string>
+    <string name="stopped_retry">Arrêt : nouvel essai prévu</string>
+    <string name="stopped_review">Arrêt : nouvel essai prévu</string>
+    <string name="stopped_scheduling">La synchronisation n\'a pas pu démarrer</string>
+    <string name="sync_now">Synchroniser maintenant</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Aucun calendrier ni carnet d\'adresses disponible</string>
+    <string name="davx5_unavailable">Impossible d\'ouvrir DAVx5 sur ce téléphone</string>
+    <string name="unavailable">Indisponible</string>
+    <string name="move_phone_contacts">Déplacer les contacts du téléphone</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d contact sera déplacé vers %2$s. Il restera sur ce téléphone et sera synchronisé avec votre serveur.</item>
+        <item quantity="many">%1$d de contacts seront déplacés vers %2$s. Ils resteront sur ce téléphone et seront synchronisés avec votre serveur.</item>
+        <item quantity="other">%1$d contacts seront déplacés vers %2$s. Ils resteront sur ce téléphone et seront synchronisés avec votre serveur.</item>
+    </plurals>
+    <string name="move">Déplacer</string>
+    <string name="cancel">Annuler</string>
+    <string name="calendar_changes">Changements du calendrier</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Arrêt : il manque %1$d événement dans Mudita Calendar</item>
+        <item quantity="many">Arrêt : il manque %1$d d\'événements dans Mudita Calendar</item>
+        <item quantity="other">Arrêt : il manque %1$d événements dans Mudita Calendar</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Arrêt : il manque %1$d événement dans %2$s</item>
+        <item quantity="many">Arrêt : il manque %1$d d\'événements dans %2$s</item>
+        <item quantity="other">Arrêt : il manque %1$d événements dans %2$s</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">%1$d événement a soudain disparu de Mudita Calendar. Rien n\'a changé sur votre serveur.</item>
+        <item quantity="many">%1$d d\'événements ont disparu d\'un coup de Mudita Calendar. Rien n\'a changé sur votre serveur.</item>
+        <item quantity="other">%1$d événements ont disparu d\'un coup de Mudita Calendar. Rien n\'a changé sur votre serveur.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">%1$d événement a soudain disparu (%2$s). Rien n\'a changé dans Mudita Calendar.</item>
+        <item quantity="many">%1$d d\'événements ont disparu d\'un coup (%2$s). Rien n\'a changé dans Mudita Calendar.</item>
+        <item quantity="other">%1$d événements ont disparu d\'un coup (%2$s). Rien n\'a changé dans Mudita Calendar.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">%1$d événement sera supprimé de votre serveur (%2$s).</item>
+        <item quantity="many">%1$d d\'événements seront supprimés de votre serveur (%2$s).</item>
+        <item quantity="other">%1$d événements seront supprimés de votre serveur (%2$s).</item>
+    </plurals>
+    <string name="restore_phone">Rétablir dans Mudita Calendar</string>
+    <string name="delete_from_server">Supprimer aussi du serveur</string>
+    <string name="keep_phone">Conserver dans Mudita Calendar</string>
+    <string name="remove_phone">Retirer de Mudita Calendar</string>
+    <string name="delete_server_title">Supprimer du serveur</string>
+    <string name="delete">Supprimer</string>
+</resources>

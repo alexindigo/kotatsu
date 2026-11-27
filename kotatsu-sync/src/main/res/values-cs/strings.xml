@@ -1,0 +1,100 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Přístup ke kalendáři</string>
+    <string name="contacts_access">Přístup ke kontaktům</string>
+    <string name="access">Přístup</string>
+    <string name="calendars">Kalendáře</string>
+    <string name="contacts_group">Kontakty</string>
+    <string name="sync_group">Synchronizace</string>
+    <string name="granted">Uděleno</string>
+    <string name="not_granted">Neuděleno</string>
+    <string name="calendar_access_help">Číst a měnit kalendáře</string>
+    <string name="contacts_access_help">Číst a měnit kontakty</string>
+    <string name="calendars_help">Vyberte, které kalendáře se zobrazí v aplikaci Mudita Calendar</string>
+    <string name="new_events_help">Kalendář pro nové události v aplikaci Mudita Calendar</string>
+    <string name="look_ahead_help">Jak daleko dopředu se zobrazí události v aplikaci Mudita Calendar</string>
+    <string name="contacts_go_to_help">Přesouvat nové kontakty z telefonu do tohoto adresáře</string>
+    <string name="chosen_calendar_unavailable">Vybraný kalendář není k dispozici</string>
+    <string name="no_address_books">Nejsou k dispozici žádné adresáře</string>
+    <string name="new_events">Nové události</string>
+    <string name="look_ahead">Výhled</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d týden</item>
+        <item quantity="few">%1$d týdny</item>
+        <item quantity="many">%1$d týdne</item>
+        <item quantity="other">%1$d týdnů</item>
+    </plurals>
+    <string name="contacts_go_to">Cíl pro kontakty</string>
+    <string name="phone_contacts">Kontakty v telefonu</string>
+    <string name="move_to">Přesunout kontakty z telefonu do adresáře %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d kontakt čeká na přesun</item>
+        <item quantity="few">%1$d kontakty čekají na přesun</item>
+        <item quantity="many">%1$d kontaktu čeká na přesun</item>
+        <item quantity="other">%1$d kontaktů čeká na přesun</item>
+    </plurals>
+    <string name="last_sync">Poslední synchronizace</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d změna</item>
+        <item quantity="few">%1$d změny</item>
+        <item quantity="many">%1$d změny</item>
+        <item quantity="other">%1$d změn</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Zastaveno: aplikace Mudita Calendar se změnila</string>
+    <string name="stopped_calendar_settings">Zastaveno: zkontrolujte nastavení kalendáře</string>
+    <string name="stopped_address_book">Zastaveno: vyberte adresář</string>
+    <string name="stopped_retry">Zastaveno: synchronizace se zkusí znovu</string>
+    <string name="stopped_review">Zastaveno: synchronizace se zkusí znovu</string>
+    <string name="stopped_scheduling">Synchronizaci se nepodařilo spustit</string>
+    <string name="sync_now">Synchronizovat teď</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Nejsou k dispozici žádné kalendáře ani adresáře</string>
+    <string name="davx5_unavailable">DAVx5 nelze v tomto telefonu otevřít</string>
+    <string name="unavailable">Nedostupné</string>
+    <string name="move_phone_contacts">Přesunout kontakty z telefonu</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d kontakt se přesune do adresáře %2$s. Zůstane v telefonu a synchronizuje se s vaším serverem.</item>
+        <item quantity="few">%1$d kontakty se přesunou do adresáře %2$s. Zůstanou v telefonu a synchronizují se s vaším serverem.</item>
+        <item quantity="many">%1$d kontaktu se přesune do adresáře %2$s. Zůstane v telefonu a synchronizuje se s vaším serverem.</item>
+        <item quantity="other">%1$d kontaktů se přesune do adresáře %2$s. Kontakty zůstanou v telefonu a synchronizují se s vaším serverem.</item>
+    </plurals>
+    <string name="move">Přesunout</string>
+    <string name="cancel">Zrušit</string>
+    <string name="calendar_changes">Změny v kalendáři</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Zastaveno: v aplikaci Mudita Calendar chybí %1$d událost</item>
+        <item quantity="few">Zastaveno: v aplikaci Mudita Calendar chybí %1$d události</item>
+        <item quantity="many">Zastaveno: v aplikaci Mudita Calendar chybí %1$d události</item>
+        <item quantity="other">Zastaveno: v aplikaci Mudita Calendar chybí %1$d událostí</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Zastaveno: chybí %1$d událost (%2$s)</item>
+        <item quantity="few">Zastaveno: chybí %1$d události (%2$s)</item>
+        <item quantity="many">Zastaveno: chybí %1$d události (%2$s)</item>
+        <item quantity="other">Zastaveno: chybí %1$d událostí (%2$s)</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">Z aplikace Mudita Calendar náhle zmizela %1$d událost. Na vašem serveru se nic nezměnilo.</item>
+        <item quantity="few">Z aplikace Mudita Calendar najednou zmizely %1$d události. Na vašem serveru se nic nezměnilo.</item>
+        <item quantity="many">Z aplikace Mudita Calendar najednou zmizelo %1$d události. Na vašem serveru se nic nezměnilo.</item>
+        <item quantity="other">Z aplikace Mudita Calendar najednou zmizelo %1$d událostí. Na vašem serveru se nic nezměnilo.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">Náhle zmizela %1$d událost (%2$s). V aplikaci Mudita Calendar se nic nezměnilo.</item>
+        <item quantity="few">Najednou zmizely %1$d události (%2$s). V aplikaci Mudita Calendar se nic nezměnilo.</item>
+        <item quantity="many">Najednou zmizelo %1$d události (%2$s). V aplikaci Mudita Calendar se nic nezměnilo.</item>
+        <item quantity="other">Najednou zmizelo %1$d událostí (%2$s). V aplikaci Mudita Calendar se nic nezměnilo.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">Na vašem serveru se smaže %1$d událost (%2$s).</item>
+        <item quantity="few">Na vašem serveru se smažou %1$d události (%2$s).</item>
+        <item quantity="many">Na vašem serveru se smaže %1$d události (%2$s).</item>
+        <item quantity="other">Na vašem serveru se smaže %1$d událostí (%2$s).</item>
+    </plurals>
+    <string name="restore_phone">Obnovit v aplikaci Mudita Calendar</string>
+    <string name="delete_from_server">Smazat i ze serveru</string>
+    <string name="keep_phone">Ponechat v aplikaci Mudita Calendar</string>
+    <string name="remove_phone">Odebrat z aplikace Mudita Calendar</string>
+    <string name="delete_server_title">Smazat ze serveru</string>
+    <string name="delete">Smazat</string>
+</resources>

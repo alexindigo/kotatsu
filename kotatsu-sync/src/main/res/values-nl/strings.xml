@@ -1,0 +1,82 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Toegang tot agenda</string>
+    <string name="contacts_access">Toegang tot contacten</string>
+    <string name="access">Toegang</string>
+    <string name="calendars">Agenda’s</string>
+    <string name="contacts_group">Contacten</string>
+    <string name="sync_group">Synchronisatie</string>
+    <string name="granted">Verleend</string>
+    <string name="not_granted">Niet verleend</string>
+    <string name="calendar_access_help">Agenda’s lezen en wijzigen</string>
+    <string name="contacts_access_help">Contacten lezen en wijzigen</string>
+    <string name="calendars_help">Kies welke agenda’s in Mudita Calendar verschijnen</string>
+    <string name="new_events_help">Agenda voor nieuwe afspraken in Mudita Calendar</string>
+    <string name="look_ahead_help">Hoe ver vooruit Mudita Calendar afspraken toont</string>
+    <string name="contacts_go_to_help">Nieuwe telefooncontacten naar dit adresboek verplaatsen</string>
+    <string name="chosen_calendar_unavailable">De gekozen agenda is niet beschikbaar</string>
+    <string name="no_address_books">Geen adresboeken beschikbaar</string>
+    <string name="new_events">Nieuwe afspraken</string>
+    <string name="look_ahead">Vooruitkijken</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d week</item>
+        <item quantity="other">%1$d weken</item>
+    </plurals>
+    <string name="contacts_go_to">Doeladresboek</string>
+    <string name="phone_contacts">Telefooncontacten</string>
+    <string name="move_to">Telefooncontacten verplaatsen naar %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d contact wacht op verplaatsing</item>
+        <item quantity="other">%1$d contacten wachten op verplaatsing</item>
+    </plurals>
+    <string name="last_sync">Laatste synchronisatie</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d wijziging</item>
+        <item quantity="other">%1$d wijzigingen</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Gestopt: Mudita Calendar is gewijzigd</string>
+    <string name="stopped_calendar_settings">Gestopt: controleer de agenda-instellingen</string>
+    <string name="stopped_address_book">Gestopt: kies een adresboek</string>
+    <string name="stopped_retry">Gestopt: nieuwe poging volgt</string>
+    <string name="stopped_review">Gestopt: nieuwe poging volgt</string>
+    <string name="stopped_scheduling">Synchronisatie kon niet starten</string>
+    <string name="sync_now">Nu synchroniseren</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Geen agenda’s of adresboeken beschikbaar</string>
+    <string name="davx5_unavailable">DAVx5 kan niet worden geopend op deze telefoon</string>
+    <string name="unavailable">Niet beschikbaar</string>
+    <string name="move_phone_contacts">Telefooncontacten verplaatsen</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d contact wordt verplaatst naar %2$s. Het blijft op deze telefoon staan en wordt gesynchroniseerd met je server.</item>
+        <item quantity="other">%1$d contacten worden verplaatst naar %2$s. Ze blijven op deze telefoon staan en worden gesynchroniseerd met je server.</item>
+    </plurals>
+    <string name="move">Verplaatsen</string>
+    <string name="cancel">Annuleren</string>
+    <string name="calendar_changes">Agendawijzigingen</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Gestopt: %1$d afspraak ontbreekt in Mudita Calendar</item>
+        <item quantity="other">Gestopt: %1$d afspraken ontbreken in Mudita Calendar</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Gestopt: %1$d afspraak ontbreekt in %2$s</item>
+        <item quantity="other">Gestopt: %1$d afspraken ontbreken in %2$s</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">%1$d afspraak is plotseling verdwenen uit Mudita Calendar. Er is niets gewijzigd op je server.</item>
+        <item quantity="other">%1$d afspraken zijn tegelijk verdwenen uit Mudita Calendar. Er is niets gewijzigd op je server.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">%1$d afspraak is plotseling verdwenen uit %2$s. Er is niets gewijzigd in Mudita Calendar.</item>
+        <item quantity="other">%1$d afspraken zijn tegelijk verdwenen uit %2$s. Er is niets gewijzigd in Mudita Calendar.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">%1$d afspraak wordt verwijderd uit %2$s op je server.</item>
+        <item quantity="other">%1$d afspraken worden verwijderd uit %2$s op je server.</item>
+    </plurals>
+    <string name="restore_phone">Herstellen in Mudita Calendar</string>
+    <string name="delete_from_server">Ook van de server verwijderen</string>
+    <string name="keep_phone">Behouden in Mudita Calendar</string>
+    <string name="remove_phone">Verwijderen uit Mudita Calendar</string>
+    <string name="delete_server_title">Van de server verwijderen</string>
+    <string name="delete">Verwijderen</string>
+</resources>

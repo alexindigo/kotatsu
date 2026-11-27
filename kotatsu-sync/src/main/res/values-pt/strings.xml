@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Acesso ao calendário</string>
+    <string name="contacts_access">Acesso aos contactos</string>
+    <string name="access">Acesso</string>
+    <string name="calendars">Calendários</string>
+    <string name="contacts_group">Contactos</string>
+    <string name="sync_group">Sincronização</string>
+    <string name="granted">Concedido</string>
+    <string name="not_granted">Não concedido</string>
+    <string name="calendar_access_help">Ler e alterar calendários</string>
+    <string name="contacts_access_help">Ler e alterar contactos</string>
+    <string name="calendars_help">Escolher os calendários que aparecem no Mudita Calendar</string>
+    <string name="new_events_help">Calendário para novos eventos no Mudita Calendar</string>
+    <string name="look_ahead_help">Com que antecedência os eventos aparecem no Mudita Calendar</string>
+    <string name="contacts_go_to_help">Mover novos contactos do telefone para este livro de endereços</string>
+    <string name="chosen_calendar_unavailable">O calendário escolhido está indisponível</string>
+    <string name="no_address_books">Não há livros de endereços disponíveis</string>
+    <string name="new_events">Novos eventos</string>
+    <string name="look_ahead">Antecedência</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d semana</item>
+        <item quantity="many">%1$d de semanas</item>
+        <item quantity="other">%1$d semanas</item>
+    </plurals>
+    <string name="contacts_go_to">Destino dos contactos</string>
+    <string name="phone_contacts">Contactos do telefone</string>
+    <string name="move_to">Mover contactos do telefone para %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d contacto por mover</item>
+        <item quantity="many">%1$d de contactos por mover</item>
+        <item quantity="other">%1$d contactos por mover</item>
+    </plurals>
+    <string name="last_sync">Última sincronização</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d alteração</item>
+        <item quantity="many">%1$d de alterações</item>
+        <item quantity="other">%1$d alterações</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Interrompida: o Mudita Calendar mudou</string>
+    <string name="stopped_calendar_settings">Interrompida: verificar as definições do calendário</string>
+    <string name="stopped_address_book">Interrompida: escolher um livro de endereços</string>
+    <string name="stopped_retry">Interrompida: será feita nova tentativa</string>
+    <string name="stopped_review">Interrompida: será feita nova tentativa</string>
+    <string name="stopped_scheduling">Não foi possível iniciar a sincronização</string>
+    <string name="sync_now">Sincronizar agora</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Não há calendários nem livros de endereços disponíveis</string>
+    <string name="davx5_unavailable">Não é possível abrir o DAVx5 neste telefone</string>
+    <string name="unavailable">Indisponível</string>
+    <string name="move_phone_contacts">Mover contactos do telefone</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d contacto será movido para %2$s. Ficará neste telefone e será sincronizado com o seu servidor.</item>
+        <item quantity="many">%1$d de contactos serão movidos para %2$s. Ficarão neste telefone e serão sincronizados com o seu servidor.</item>
+        <item quantity="other">%1$d contactos serão movidos para %2$s. Ficarão neste telefone e serão sincronizados com o seu servidor.</item>
+    </plurals>
+    <string name="move">Mover</string>
+    <string name="cancel">Cancelar</string>
+    <string name="calendar_changes">Alterações no calendário</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Interrompida: falta %1$d evento no Mudita Calendar</item>
+        <item quantity="many">Interrompida: faltam %1$d de eventos no Mudita Calendar</item>
+        <item quantity="other">Interrompida: faltam %1$d eventos no Mudita Calendar</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Interrompida: falta %1$d evento em %2$s</item>
+        <item quantity="many">Interrompida: faltam %1$d de eventos em %2$s</item>
+        <item quantity="other">Interrompida: faltam %1$d eventos em %2$s</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">%1$d evento desapareceu de repente do Mudita Calendar. Nada foi alterado no seu servidor.</item>
+        <item quantity="many">%1$d de eventos desapareceram de uma só vez do Mudita Calendar. Nada foi alterado no seu servidor.</item>
+        <item quantity="other">%1$d eventos desapareceram de uma só vez do Mudita Calendar. Nada foi alterado no seu servidor.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">%1$d evento desapareceu de repente de %2$s. Nada foi alterado no Mudita Calendar.</item>
+        <item quantity="many">%1$d de eventos desapareceram de uma só vez de %2$s. Nada foi alterado no Mudita Calendar.</item>
+        <item quantity="other">%1$d eventos desapareceram de uma só vez de %2$s. Nada foi alterado no Mudita Calendar.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">%1$d evento será apagado de %2$s no seu servidor.</item>
+        <item quantity="many">%1$d de eventos serão apagados de %2$s no seu servidor.</item>
+        <item quantity="other">%1$d eventos serão apagados de %2$s no seu servidor.</item>
+    </plurals>
+    <string name="restore_phone">Restaurar no Mudita Calendar</string>
+    <string name="delete_from_server">Apagar também do servidor</string>
+    <string name="keep_phone">Manter no Mudita Calendar</string>
+    <string name="remove_phone">Remover do Mudita Calendar</string>
+    <string name="delete_server_title">Apagar do servidor</string>
+    <string name="delete">Apagar</string>
+</resources>

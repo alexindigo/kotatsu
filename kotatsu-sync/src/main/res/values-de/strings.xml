@@ -1,0 +1,82 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Kalenderzugriff</string>
+    <string name="contacts_access">Kontaktzugriff</string>
+    <string name="access">Zugriff</string>
+    <string name="calendars">Kalender</string>
+    <string name="contacts_group">Kontakte</string>
+    <string name="sync_group">Synchronisierung</string>
+    <string name="granted">Gewährt</string>
+    <string name="not_granted">Nicht gewährt</string>
+    <string name="calendar_access_help">Kalender lesen und ändern</string>
+    <string name="contacts_access_help">Kontakte lesen und ändern</string>
+    <string name="calendars_help">Kalender für Mudita Calendar auswählen</string>
+    <string name="new_events_help">Kalender für neue Termine in Mudita Calendar</string>
+    <string name="look_ahead_help">Wie weit im Voraus Mudita Calendar Termine anzeigt</string>
+    <string name="contacts_go_to_help">Neue Telefonkontakte hierher verschieben</string>
+    <string name="chosen_calendar_unavailable">Der gewählte Kalender ist nicht verfügbar</string>
+    <string name="no_address_books">Keine Adressbücher verfügbar</string>
+    <string name="new_events">Neue Termine</string>
+    <string name="look_ahead">Vorausschau</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d Woche</item>
+        <item quantity="other">%1$d Wochen</item>
+    </plurals>
+    <string name="contacts_go_to">Zieladressbuch</string>
+    <string name="phone_contacts">Telefonkontakte</string>
+    <string name="move_to">Telefonkontakte nach %1$s verschieben</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">Noch %1$d Kontakt zu verschieben</item>
+        <item quantity="other">Noch %1$d Kontakte zu verschieben</item>
+    </plurals>
+    <string name="last_sync">Letzte Synchronisierung</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d Änderung</item>
+        <item quantity="other">%1$d Änderungen</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Angehalten: Mudita Calendar hat sich geändert</string>
+    <string name="stopped_calendar_settings">Angehalten: Kalendereinstellungen prüfen</string>
+    <string name="stopped_address_book">Angehalten: Adressbuch auswählen</string>
+    <string name="stopped_retry">Angehalten: Ein neuer Versuch folgt</string>
+    <string name="stopped_review">Angehalten: Ein neuer Versuch folgt</string>
+    <string name="stopped_scheduling">Synchronisierung konnte nicht starten</string>
+    <string name="sync_now">Jetzt synchronisieren</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Keine Kalender oder Adressbücher verfügbar</string>
+    <string name="davx5_unavailable">DAVx5 lässt sich auf diesem Telefon nicht öffnen</string>
+    <string name="unavailable">Nicht verfügbar</string>
+    <string name="move_phone_contacts">Telefonkontakte verschieben</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d Kontakt wird nach %2$s verschoben. Er bleibt auf diesem Telefon und wird mit deinem Server synchronisiert.</item>
+        <item quantity="other">%1$d Kontakte werden nach %2$s verschoben. Sie bleiben auf diesem Telefon und werden mit deinem Server synchronisiert.</item>
+    </plurals>
+    <string name="move">Verschieben</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="calendar_changes">Kalenderänderungen</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Angehalten: In Mudita Calendar fehlt %1$d Termin</item>
+        <item quantity="other">Angehalten: In Mudita Calendar fehlen %1$d Termine</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Angehalten: In %2$s fehlt %1$d Termin</item>
+        <item quantity="other">Angehalten: In %2$s fehlen %1$d Termine</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">%1$d Termin ist plötzlich aus Mudita Calendar verschwunden. Auf deinem Server wurde nichts geändert.</item>
+        <item quantity="other">%1$d Termine sind auf einmal aus Mudita Calendar verschwunden. Auf deinem Server wurde nichts geändert.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">%1$d Termin ist plötzlich aus %2$s verschwunden. In Mudita Calendar wurde nichts geändert.</item>
+        <item quantity="other">%1$d Termine sind auf einmal aus %2$s verschwunden. In Mudita Calendar wurde nichts geändert.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">%1$d Termin wird auf deinem Server aus %2$s gelöscht.</item>
+        <item quantity="other">%1$d Termine werden auf deinem Server aus %2$s gelöscht.</item>
+    </plurals>
+    <string name="restore_phone">In Mudita Calendar wiederherstellen</string>
+    <string name="delete_from_server">Auch vom Server löschen</string>
+    <string name="keep_phone">In Mudita Calendar behalten</string>
+    <string name="remove_phone">Aus Mudita Calendar entfernen</string>
+    <string name="delete_server_title">Vom Server löschen</string>
+    <string name="delete">Löschen</string>
+</resources>

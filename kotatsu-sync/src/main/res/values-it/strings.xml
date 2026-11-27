@@ -1,0 +1,91 @@
+<resources>
+    <string name="app_name">Kotatsu Sync</string>
+    <string name="calendar_access">Accesso al calendario</string>
+    <string name="contacts_access">Accesso ai contatti</string>
+    <string name="access">Accesso</string>
+    <string name="calendars">Calendari</string>
+    <string name="contacts_group">Contatti</string>
+    <string name="sync_group">Sincronizzazione</string>
+    <string name="granted">Concesso</string>
+    <string name="not_granted">Non concesso</string>
+    <string name="calendar_access_help">Leggi e modifica i calendari</string>
+    <string name="contacts_access_help">Leggi e modifica i contatti</string>
+    <string name="calendars_help">Scegli quali calendari mostrare in Mudita Calendar</string>
+    <string name="new_events_help">Calendario per i nuovi eventi di Mudita Calendar</string>
+    <string name="look_ahead_help">Fino a quando mostrare gli eventi futuri in Mudita Calendar</string>
+    <string name="contacts_go_to_help">Sposta i nuovi contatti del telefono in questa rubrica</string>
+    <string name="chosen_calendar_unavailable">Il calendario scelto non è disponibile</string>
+    <string name="no_address_books">Nessuna rubrica disponibile</string>
+    <string name="new_events">Nuovi eventi</string>
+    <string name="look_ahead">Orizzonte</string>
+    <plurals name="weeks">
+        <item quantity="one">%1$d settimana</item>
+        <item quantity="many">%1$d di settimane</item>
+        <item quantity="other">%1$d settimane</item>
+    </plurals>
+    <string name="contacts_go_to">Rubrica di destinazione</string>
+    <string name="phone_contacts">Contatti del telefono</string>
+    <string name="move_to">Sposta i contatti del telefono in %1$s</string>
+    <plurals name="contacts_waiting">
+        <item quantity="one">%1$d contatto in attesa di essere spostato</item>
+        <item quantity="many">%1$d di contatti in attesa di essere spostati</item>
+        <item quantity="other">%1$d contatti in attesa di essere spostati</item>
+    </plurals>
+    <string name="last_sync">Ultima sincronizzazione</string>
+    <plurals name="sync_status">
+        <item quantity="one">%1$d cambiamento</item>
+        <item quantity="many">%1$d di cambiamenti</item>
+        <item quantity="other">%1$d cambiamenti</item>
+    </plurals>
+    <string name="stopped_calendar_changed">Interrotta: Mudita Calendar è cambiato</string>
+    <string name="stopped_calendar_settings">Interrotta: controlla le impostazioni del calendario</string>
+    <string name="stopped_address_book">Interrotta: scegli una rubrica</string>
+    <string name="stopped_retry">Interrotta: verrà effettuato un nuovo tentativo</string>
+    <string name="stopped_review">Interrotta: verrà effettuato un nuovo tentativo</string>
+    <string name="stopped_scheduling">Impossibile avviare la sincronizzazione</string>
+    <string name="sync_now">Sincronizza ora</string>
+    <string name="davx5">DAVx5</string>
+    <string name="no_davx5_catalogs">Nessun calendario o rubrica disponibile</string>
+    <string name="davx5_unavailable">Impossibile aprire DAVx5 su questo telefono</string>
+    <string name="unavailable">Non disponibile</string>
+    <string name="move_phone_contacts">Sposta i contatti del telefono</string>
+    <plurals name="move_confirmation">
+        <item quantity="one">%1$d contatto verrà spostato in %2$s. Resterà su questo telefono e verrà sincronizzato con il tuo server.</item>
+        <item quantity="many">%1$d di contatti verranno spostati in %2$s. Resteranno su questo telefono e verranno sincronizzati con il tuo server.</item>
+        <item quantity="other">%1$d contatti verranno spostati in %2$s. Resteranno su questo telefono e verranno sincronizzati con il tuo server.</item>
+    </plurals>
+    <string name="move">Sposta</string>
+    <string name="cancel">Annulla</string>
+    <string name="calendar_changes">Cambiamenti del calendario</string>
+    <plurals name="held_phone_status">
+        <item quantity="one">Interrotta: manca %1$d evento in Mudita Calendar</item>
+        <item quantity="many">Interrotta: mancano %1$d di eventi in Mudita Calendar</item>
+        <item quantity="other">Interrotta: mancano %1$d eventi in Mudita Calendar</item>
+    </plurals>
+    <plurals name="held_standard_status">
+        <item quantity="one">Interrotta: manca %1$d evento in %2$s</item>
+        <item quantity="many">Interrotta: mancano %1$d di eventi in %2$s</item>
+        <item quantity="other">Interrotta: mancano %1$d eventi in %2$s</item>
+    </plurals>
+    <plurals name="held_phone_intro">
+        <item quantity="one">%1$d evento è sparito all\'improvviso da Mudita Calendar. Sul tuo server non è cambiato nulla.</item>
+        <item quantity="many">%1$d di eventi sono spariti tutti insieme da Mudita Calendar. Sul tuo server non è cambiato nulla.</item>
+        <item quantity="other">%1$d eventi sono spariti tutti insieme da Mudita Calendar. Sul tuo server non è cambiato nulla.</item>
+    </plurals>
+    <plurals name="held_standard_intro">
+        <item quantity="one">%1$d evento è sparito all\'improvviso da %2$s. In Mudita Calendar non è cambiato nulla.</item>
+        <item quantity="many">%1$d di eventi sono spariti tutti insieme da %2$s. In Mudita Calendar non è cambiato nulla.</item>
+        <item quantity="other">%1$d eventi sono spariti tutti insieme da %2$s. In Mudita Calendar non è cambiato nulla.</item>
+    </plurals>
+    <plurals name="delete_server_intro">
+        <item quantity="one">%1$d evento verrà eliminato da %2$s sul tuo server.</item>
+        <item quantity="many">%1$d di eventi verranno eliminati da %2$s sul tuo server.</item>
+        <item quantity="other">%1$d eventi verranno eliminati da %2$s sul tuo server.</item>
+    </plurals>
+    <string name="restore_phone">Ripristina in Mudita Calendar</string>
+    <string name="delete_from_server">Elimina anche dal server</string>
+    <string name="keep_phone">Mantieni in Mudita Calendar</string>
+    <string name="remove_phone">Rimuovi da Mudita Calendar</string>
+    <string name="delete_server_title">Elimina dal server</string>
+    <string name="delete">Elimina</string>
+</resources>
