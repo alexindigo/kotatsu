@@ -6,7 +6,6 @@ import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Intent
-import android.os.ParcelFileDescriptor
 import android.provider.CalendarContract
 import android.provider.CalendarContract.Calendars
 import android.provider.ContactsContract
@@ -25,14 +24,14 @@ import java.util.concurrent.TimeUnit
 @RunWith(AndroidJUnit4::class)
 class ExternalSyncAdapterInstrumentedTest {
     @Test fun externalContactsAndCalendarSyncAdaptersAndTheirMetadataAreVisible() = scenario { f ->
-        val adapters = ContentResolver.getSyncAdapterTypes().filter { it.accountType == TYPE }
+        val adapters = ContentResolver.getSyncAdapterTypes().filter { it.accountType == f.account.type }
         assertEquals("Both external adapters must survive package-visibility filtering",
             setOf(ContactsContract.AUTHORITY, CalendarContract.AUTHORITY), adapters.map { it.authority }.toSet())
         assertTrue(adapters.all { it.supportsUploading() && it.isUserVisible })
         val services = f.context.packageManager.queryIntentServices(Intent("android.content.SyncAdapter"), 0)
             .filter { it.serviceInfo.packageName == PACKAGE }
         assertEquals(2, services.size)
-        assertTrue(android.accounts.AccountManager.get(f.context).authenticatorTypes.any { it.type == TYPE })
+        assertTrue(android.accounts.AccountManager.get(f.context).authenticatorTypes.any { it.type == f.account.type })
         assertTrue(AndroidContacts(f.context).addressBooks().contains(f.account))
     }
 
@@ -59,7 +58,7 @@ class ExternalSyncAdapterInstrumentedTest {
         assertEquals(ContactsResult(1), ContactsMover(AndroidContacts(f.context)).pass(f.account, setOf(f.localId)))
         assertEquals(unrelated, AndroidContacts(f.context).sources().single { it.id == f.unrelatedId })
         f.resolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts._ID, RawContacts.DIRTY),
-            "account_name = ? AND account_type = ? AND deleted = 0", arrayOf(f.account.name, TYPE), null)!!.use {
+            "account_name = ? AND account_type = ? AND deleted = 0", arrayOf(f.account.name, f.account.type), null)!!.use {
             assertTrue(it.moveToFirst()); assertEquals(1, it.count); assertEquals(1, it.getInt(1))
             f.destinationId = it.getLong(0)
         }
@@ -68,12 +67,12 @@ class ExternalSyncAdapterInstrumentedTest {
         }
     }
 
-    @Test fun automaticMoveWaitsForThePreferredDavx5BookToPublishSettings() = scenario { f ->
+    @Test @RequiresIsolatedPhoneBook fun automaticMoveWaitsForThePreferredDavx5BookToPublishSettings() = scenario { f ->
         requireIsolatedPhoneBook(f.context)
-        val personal = ContactAccount("kotatsu-external-test-Personal-${UUID.randomUUID()}", TYPE)
+        val personal = ContactAccount("kotatsu-external-test-Personal-${UUID.randomUUID()}", f.account.type)
         f.register(personal)
         val port = AndroidContacts(f.context)
-        assertTrue(android.accounts.AccountManager.get(f.context).getAccountsByType(TYPE).any { it.name == personal.name })
+        assertTrue(android.accounts.AccountManager.get(f.context).getAccountsByType(personal.type).any { it.name == personal.name })
         assertEquals(setOf(f.account), port.addressBooks())
         f.localId = ContentUris.parseId(f.resolver.insert(RawContacts.CONTENT_URI, ContentValues())!!)
         val store = object : ContactsMoveStore { override var pendingContactsMove: ContactsMove? = null }
@@ -101,7 +100,7 @@ class ExternalSyncAdapterInstrumentedTest {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = instrumentation.targetContext
         val resolver = context.contentResolver
-        val account = ContactAccount("kotatsu-external-test-Family-${UUID.randomUUID()}", TYPE)
+        lateinit var account: ContactAccount
         private val registered = mutableListOf<ContactAccount>()
         var localId = -1L
         var unrelatedId = -1L
@@ -117,32 +116,28 @@ class ExternalSyncAdapterInstrumentedTest {
             }
             // Shell, not the target uid, talks to the fixture. Never grant
             // implicit visibility by binding or sending it a target-uid intent.
-            register(account)
-            publishBook(account)
-            command("seed-calendar")
+            val name = "kotatsu-external-test-Family-${UUID.randomUUID()}"
+            account = ContactAccount(name, command("seed", name)).also { registered += it }
             calendarId = resolver.query(Calendars.CONTENT_URI, arrayOf(Calendars._ID),
-                "account_name = ? AND account_type = ?", arrayOf(account.name, TYPE), null)!!.use {
+                "account_name = ? AND account_type = ?", arrayOf(account.name, account.type), null)!!.use {
                 check(it.moveToFirst()); it.getLong(0)
             }
         }
         fun register(book: ContactAccount) {
-            command("register", book)
+            check(command("register", book.name) == book.type)
             registered += book
         }
-        fun cleanupAccounts() = withFixtureCleanup(*registered.map { book -> { command("cleanup", book) } }.toTypedArray()) {}
+        fun cleanupAccounts() = withFixtureCleanup(*registered.map { book -> { check(command("cleanup", book.name) == book.type) } }.toTypedArray()) {}
         fun publishBook(book: ContactAccount) {
-            instrumentation.awaitContactsProviderAccounts(listOf(book))
-            command("publish-book", book)
+            check(command("publish-book", book.name) == book.type)
         }
-        fun command(operation: String, book: ContactAccount = account) {
-            val output = ParcelFileDescriptor.AutoCloseInputStream(instrumentation.uiAutomation.executeShellCommand(
-                "am broadcast --receiver-foreground --include-stopped-packages -n $PACKAGE/com.alexindigo.kotatsu.fakesyncadapter.FixtureReceiver --es operation $operation --es name ${book.name}"
-            )).bufferedReader().use { it.readText() }
-            check(output.contains("result=0") && output.contains("fixture complete")) { output }
+        private fun command(operation: String, name: String): String {
+            val type = instrumentation.runFixtureTool("ExternalSyncFixture", "$operation $name")
+            check(type.matches(Regex("[A-Za-z0-9._-]+"))) { "External fixture $operation failed: $type" }
+            return type
         }
     }
     companion object {
-        private const val PACKAGE = "com.alexindigo.kotatsu.fakemuditacalendar.test"
-        private const val TYPE = "at.bitfire.davdroid.address_book"
+        private const val PACKAGE = EXTERNAL_FIXTURE_PACKAGE
     }
 }

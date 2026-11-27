@@ -34,10 +34,19 @@ internal fun Instrumentation.awaitContactsProviderAccounts(books: List<ContactAc
     val resolver = targetContext.contentResolver
     // Ensure provider initialization opened the contacts DB before launching the read-only observer.
     resolver.query(RawContacts.CONTENT_URI, arrayOf(RawContacts._ID), "0", null, null)!!.close()
-    val command = "su 0 timeout 10 env CLASSPATH=${context.packageCodePath} app_process /system/bin ${ContactsProviderAccounts::class.java.name} $args"
-    val output = ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command))
-        .bufferedReader().use { it.readText().trim() }
+    val output = runFixtureTool("ContactsProviderAccounts", args)
     check(output == "accounts reconciled") { "ContactsProvider acknowledgement failed for $books: $output" }
+}
+
+internal const val EXTERNAL_FIXTURE_PACKAGE = "com.alexindigo.kotatsu.fakemuditacalendar.test"
+
+internal fun Instrumentation.runFixtureTool(tool: String, args: String): String {
+    fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command))
+        .bufferedReader().use { it.readText().trim() }
+    // Use shell for APK resolution and setup, not the Sync UID (would mask package visibility).
+    val apk = shell("pm path $EXTERNAL_FIXTURE_PACKAGE").removePrefix("package:")
+    check(apk.matches(Regex("/data/app/[A-Za-z0-9./_~=-]+/base\\.apk"))) { "Unexpected fixture APK path: $apk" }
+    return shell("su 0 timeout 20 env CLASSPATH=$apk app_process /system/bin com.alexindigo.kotatsu.fakesyncadapter.$tool $args")
 }
 
 private val ACCOUNT_TOKEN = Regex("[A-Za-z0-9._-]+")

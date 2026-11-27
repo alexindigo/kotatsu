@@ -185,7 +185,7 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
-    @Test fun launcherArmsJobsAndEveryCalendarAndPickerPersists() = fixture { f ->
+    @Test @RequiresIsolatedPhoneBook fun launcherArmsJobsAndEveryCalendarAndPickerPersists() = fixture { f ->
         val launch = context.packageManager.getLaunchIntentForPackage(context.packageName)
         assertEquals(SyncSettingsActivity::class.java.name, launch!!.component!!.className)
         val activity = open()
@@ -248,7 +248,7 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
-    @Test fun confirmedMoveUsesTheDisplayedBookAndOnlyTheDisplayedContacts() = fixture { f ->
+    @Test @RequiresIsolatedPhoneBook fun confirmedMoveUsesTheDisplayedBookAndOnlyTheDisplayedContacts() = fixture { f ->
         val activity = open()
         withFixtureCleanup({ close(activity) }) {
             seek("Phone contacts")
@@ -385,7 +385,7 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
-    @Test fun syncNowUpdatesLastSyncAfterTheConsumerChangesAndShowsStops() = fixture { f ->
+    @Test @RequiresIsolatedPhoneBook fun syncNowUpdatesLastSyncAfterTheConsumerChangesAndShowsStops() = fixture { f ->
         val activity = open()
         withFixtureCleanup({ close(activity) }) {
             openCalendars(); ui.click(personalCalendarName); ui.back()
@@ -449,9 +449,12 @@ class SyncSettingsInstrumentedTest {
     @Test fun missingAccessPreservesTheLastRealPassOrHidesTheRow() = fixture(ownerOnly = true) {
         val activity = openHost()
         lateinit var owner: SyncSettingsOwner
+        val phoneBefore = phoneSourceIds(context)
         withFixtureCleanup({ close(activity) }) {
             for (missing in listOf(PERMISSIONS.take(2), PERMISSIONS.drop(2), PERMISSIONS)) {
-                val denied = object : ContextWrapper(ownerTestContext(context)) {
+                // The real pass still handles contacts when only calendar access is denied.
+                // This test supplies no contact sources; it is about the status of a permission-only attempt.
+                val denied = object : ContextWrapper(ownerTestContext(context, readContactSources = false)) {
                     override fun getApplicationContext(): Context = this
                     override fun checkSelfPermission(permission: String) = if (permission in missing) PackageManager.PERMISSION_DENIED
                         else super.checkSelfPermission(permission)
@@ -474,6 +477,7 @@ class SyncSettingsInstrumentedTest {
                     SyncStatus(System.currentTimeMillis(), 0, setOf(SyncStopReason.REVIEW_REQUIRED)))) {
                     BridgeStore(context).use { it.syncStatus = real }
                     SyncRuntime.enqueue { SyncRuntime.pass(denied) }.get(15, TimeUnit.SECONDS)
+                    assertEquals(phoneBefore, phoneSourceIds(context))
                     assertEquals("Permission-only attempts cannot replace the last real pass", real, status())
                     SyncRuntime.schedulingFailed(context, IllegalStateException("fixture scheduling failure"))
                     main { owner.refresh() }

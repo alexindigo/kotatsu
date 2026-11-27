@@ -1,4 +1,4 @@
-package com.alexindigo.kotatsu.sync;
+package com.alexindigo.kotatsu.fakesyncadapter;
 
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
@@ -22,7 +22,7 @@ public final class ContactsProviderAccounts {
         }
     }
 
-    private static void await(String[] accounts) throws InterruptedException {
+    static void await(String... accounts) throws InterruptedException {
         File directory = new File("/data/user/0/com.android.providers.contacts/databases");
         Semaphore changed = new Semaphore(0);
         // The worker commits the contacts DB, then reconciles the profile DB with the

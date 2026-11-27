@@ -13,27 +13,27 @@ import android.provider.CalendarContract.Calendars;
 import android.provider.CalendarContract.Events;
 import android.provider.ContactsContract;
 
-/** Only shell sets up the fixture; target-uid interaction would mask package visibility. */
+/** Only the shell-side driver sets up the fixture; target-uid interaction would mask package visibility. */
 public class FixtureReceiver extends BroadcastReceiver {
     @Override public void onReceive(Context context, Intent intent) {
         String name = intent.getStringExtra("name");
-        if (name == null || !name.startsWith("kotatsu-external-test-")) throw new IllegalArgumentException("Fixture name");
-        Account account = new Account(name, "at.bitfire.davdroid.address_book");
+        if (!ExternalSyncFixture.validName(name)) throw new IllegalArgumentException("Fixture name");
+        Account account = new Account(name, ExternalSyncFixture.ACCOUNT_TYPE);
         android.content.ContentResolver resolver = context.getContentResolver();
         try {
             switch (intent.getStringExtra("operation")) {
-                case "register": {
+                case ExternalSyncFixture.REGISTER: {
                     if (!AccountManager.get(context).addAccountExplicitly(account, null, null)) throw new IllegalStateException("Account creation");
                     break;
                 }
-                case "publish-book": {
+                case ExternalSyncFixture.PUBLISH: {
                     ContentValues settings = new ContentValues();
                     settings.put("account_name", name); settings.put("account_type", account.type);
                     settings.put(ContactsContract.Settings.SHOULD_SYNC, 1); settings.put(ContactsContract.Settings.UNGROUPED_VISIBLE, 1);
                     if (resolver.insert(ContactsContract.Settings.CONTENT_URI, settings) == null) throw new IllegalStateException("Settings creation");
                     break;
                 }
-                case "seed-calendar": {
+                case ExternalSyncFixture.CALENDAR: {
                     ContentValues calendar = new ContentValues();
                     calendar.put(Calendars.ACCOUNT_NAME, name); calendar.put(Calendars.ACCOUNT_TYPE, account.type);
                     calendar.put(Calendars.NAME, name); calendar.put(Calendars.OWNER_ACCOUNT, name);
@@ -48,7 +48,7 @@ public class FixtureReceiver extends BroadcastReceiver {
                     resolver.insert(syncUri(Events.CONTENT_URI, account), event);
                     break;
                 }
-                case "cleanup": {
+                case ExternalSyncFixture.CLEANUP: {
                     String[] args = {name, account.type};
                     resolver.delete(syncUri(ContactsContract.RawContacts.CONTENT_URI, account), "account_name = ? AND account_type = ?", args);
                     resolver.delete(syncUri(Calendars.CONTENT_URI, account), "account_name = ? AND account_type = ?", args);

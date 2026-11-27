@@ -246,7 +246,7 @@ class ContactsMoverInstrumentedTest {
         assertEquals(f.aggregate(other), f.aggregate(f.rawIn(f.personal).single()))
     }
 
-    @Test fun rawContactChangeJobMovesToConfiguredPersonalAndRearms() = scenario { f ->
+    @Test @RequiresIsolatedPhoneBook fun rawContactChangeJobMovesToConfiguredPersonalAndRearms() = scenario { f ->
         requireIsolatedPhoneBook(f.context)
         f.config.write(ContactsSettings(f.personal))
         SyncRuntime.ensureArmed(f.context, queuePass = false)
@@ -256,7 +256,7 @@ class ContactsMoverInstrumentedTest {
         f.await { f.context.getSystemService(JobScheduler::class.java).getPendingJob(SyncRuntime.CONTACTS_JOB) != null }
     }
 
-    @Test fun oneTimeRuntimeActionUsesFamilyAndUnavailableTargetDoesNotDeletePhoneData() = scenario { f ->
+    @Test @RequiresIsolatedPhoneBook fun oneTimeRuntimeActionUsesFamilyAndUnavailableTargetDoesNotDeletePhoneData() = scenario { f ->
         requireIsolatedPhoneBook(f.context)
         val id = f.insert("One-time")
         f.config.write(ContactsSettings(f.family))
@@ -274,7 +274,7 @@ class ContactsMoverInstrumentedTest {
         assertEquals(listOf(remaining), f.rawIn(null)); assertFalse(f.rawIn(null).contains(id))
     }
 
-    @Test fun failedFamilyActionResumesAcrossReopenWithoutRoutingOldContactsToPersonalOrNewOnesToFamily() = scenario { f ->
+    @Test @RequiresIsolatedPhoneBook fun failedFamilyActionResumesAcrossReopenWithoutRoutingOldContactsToPersonalOrNewOnesToFamily() = scenario { f ->
         requireIsolatedPhoneBook(f.context)
         val old = f.insert("Existing")
         f.config.write(ContactsSettings(f.family))
@@ -293,15 +293,14 @@ class ContactsMoverInstrumentedTest {
         BridgeStore(f.context).use { assertNull(it.pendingContactsMove); assertEquals(status, it.syncStatus) }
     }
 
-    @Test fun contactsPermissionKeepsTheLastPassAndDoesNotDisableCalendarOrLoseThePendingAction() =
+    @Test @RequiresIsolatedPhoneBook fun contactsPermissionKeepsTheLastPassAndDoesNotDisableCalendarOrLoseThePendingAction() =
         scenario(::contactsPermissionRecovery)
 
     @Test fun contactsPermissionRecoveryRejectsAnUnrelatedPhoneSourceBeforeItCanMove() = scenario { f ->
-        requireIsolatedPhoneBook(f.context)
         val unrelated = f.insert("Synthetic unrelated source")
         val rejection = assertThrows(AssertionError::class.java) { contactsPermissionRecovery(f) }
         assertTrue(rejection.message.orEmpty().startsWith("Fresh-emulator precondition:"))
-        assertEquals(listOf(unrelated), f.rawIn(null))
+        assertEquals(f.baselinePhone + unrelated, f.rawIn(null).toSet())
         assertTrue(f.rawIn(f.personal).isEmpty())
         assertTrue(f.rawIn(f.family).isEmpty())
     }
@@ -326,7 +325,7 @@ class ContactsMoverInstrumentedTest {
         BridgeStore(f.context).use { assertNull(it.pendingContactsMove); assertEquals(0, it.syncStatus.contactsWaiting) }
     }
 
-    @Test fun confirmedContactsMovePersistsFreshWaitingCountButNotOnAccessDenial() = scenario { f ->
+    @Test @RequiresIsolatedPhoneBook fun confirmedContactsMovePersistsFreshWaitingCountButNotOnAccessDenial() = scenario { f ->
         requireIsolatedPhoneBook(f.context)
         repeat(3) { f.insert("Waiting $it") }
         f.config.write(ContactsSettings(f.family))
