@@ -1,5 +1,6 @@
 package com.alexindigo.kotatsu.sync
 
+import android.accounts.AccountManager
 import android.content.ContentProviderOperation
 import android.content.ContentResolver
 import android.content.ContentUris
@@ -20,12 +21,30 @@ import android.provider.ContactsContract.Settings
 class AndroidContacts(private val context: Context) : ContactsPort {
     private val resolver = context.contentResolver
 
-    override fun addressBooks(): Set<ContactAccount> {
-        val types = ContentResolver.getSyncAdapterTypes().filter {
-            it.authority == ContactsContract.AUTHORITY && it.supportsUploading()
-        }.map { it.accountType }.toSet()
-        return query(Settings.CONTENT_URI, arrayOf(Settings.ACCOUNT_NAME, Settings.ACCOUNT_TYPE, Settings.DATA_SET),
-            "${Settings.SHOULD_SYNC} = 1", null) { c -> account(c, 0) }.filterNotNull().filter { it.type in types }.toSet()
+    private fun uploadingTypes(): Set<String> = ContentResolver.getSyncAdapterTypes().filter {
+        it.authority == ContactsContract.AUTHORITY && it.supportsUploading()
+    }.map { it.accountType }.toSet()
+
+    private fun bookSettings(types: Set<String>, selection: String? = null): List<Pair<ContactAccount, Boolean>> =
+        query(Settings.CONTENT_URI, arrayOf(Settings.ACCOUNT_NAME, Settings.ACCOUNT_TYPE, Settings.DATA_SET, Settings.SHOULD_SYNC),
+            selection, null) { c -> account(c, 0)?.let { it to (c.getInt(3) == 1) } }
+            .filterNotNull().filter { (account, _) -> account.type in types }
+
+    override fun addressBooks(): Set<ContactAccount> = bookSettings(uploadingTypes(), "${Settings.SHOULD_SYNC} = 1")
+        .map { it.first }.toSet()
+
+    override fun addressBookCatalog(): AddressBookCatalog {
+        val types = uploadingTypes()
+        val settings = bookSettings(types)
+        val acknowledged = settings.map { (account, _) -> account.name to account.type }.toSet()
+        // Only DAVx5's per-collection types promise a Settings row for each address book.
+        // Read registrations after Settings so a new collection cannot look absent in both.
+        val unacknowledged = (types intersect DAVX5_BOOK_TYPES).flatMap { type ->
+            AccountManager.get(context).getAccountsByType(type)
+                .filterNot { (it.name to it.type) in acknowledged }
+                .map { ContactAccount(it.name, it.type) }
+        }.toSet()
+        return AddressBookCatalog(settings.filter { it.second }.map { it.first }.toSet(), unacknowledged)
     }
 
     override fun sources(): List<PhoneContact> {

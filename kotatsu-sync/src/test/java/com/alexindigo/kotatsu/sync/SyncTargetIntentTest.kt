@@ -27,8 +27,8 @@ class SyncTargetIntentTest {
         val type = "at.bitfire.davdroid.address_book"
         val family = ContactAccount("Family (Radicale) #3", type)
         val personal = ContactAccount("Personal (Radicale (Home)) #4", type, "set")
-        val before = addressBookChoices(setOf(family))
-        val after = addressBookChoices(setOf(personal, family))
+        val before = AddressBookCatalog(setOf(family))
+        val after = AddressBookCatalog(setOf(personal, family))
         assertEquals(AddressBookChoice(family, "Family"), ContactsSettings().destination(before))
         assertEquals(AddressBookChoice(personal, "Personal"), ContactsSettings().destination(after))
         assertEquals(family, ContactsSettings(family).destination(after)?.account)
@@ -36,5 +36,16 @@ class SyncTargetIntentTest {
         assertEquals("Friends (work)", addressBookLabel(ContactAccount("Friends (work) (Radicale) #12", type)))
         assertEquals("Personal (Radicale) #abc", addressBookLabel(ContactAccount("Personal (Radicale) #abc", type)))
         assertEquals("Personal (Radicale) #4", addressBookLabel(ContactAccount("Personal (Radicale) #4", "unrelated")))
+    }
+
+    @Test fun onlyAnUnacknowledgedPreferredBookBlocksAutomaticMoves() {
+        val personal = ContactAccount("Personal", "dav")
+        val family = ContactAccount("Family", "dav")
+        val pendingPersonal = AddressBookCatalog(setOf(family), setOf(personal))
+        assertEquals(listOf(family), pendingPersonal.choices.map { it.account })
+        assertNull(ContactsSettings().destination(pendingPersonal))
+        assertEquals(family, ContactsSettings(family).destination(pendingPersonal)?.account)
+        assertNull(ContactsSettings(personal).destination(pendingPersonal))
+        assertEquals(personal, ContactsSettings().destination(AddressBookCatalog(setOf(personal), setOf(family)))?.account)
     }
 }

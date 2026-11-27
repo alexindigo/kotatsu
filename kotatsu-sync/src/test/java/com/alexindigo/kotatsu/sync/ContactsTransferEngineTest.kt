@@ -21,9 +21,9 @@ class ContactsTransferEngineTest {
                 return true
             }
         }
-        val choices = port.addressBookChoices()
-        assertEquals(familyPersonal.name, choices.single { it.account == familyPersonal }.label)
-        assertEquals(familyPersonal, ContactsSettings(familyPersonal).destination(choices)?.account)
+        val catalog = port.addressBookCatalog()
+        assertEquals(familyPersonal.name, catalog.choices.single { it.account == familyPersonal }.label)
+        assertEquals(familyPersonal, ContactsSettings(familyPersonal).destination(catalog)?.account)
         val engine = ContactsTransferEngine(port, Store())
         assertEquals(1, engine.pass(ContactsSettings()).changes)
         assertEquals(1, engine.moveExisting(ContactsSettings()).changes)

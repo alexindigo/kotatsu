@@ -5,7 +5,8 @@ From the checkout in a prepared, disposable CI-style emulator inside the Kotatsu
     python3 kotatsu-sync/verify-test-isolation.py <disk-backed-results-directory>
 
 APKs must already be built. The real all-phone entry points deliberately fail
-their fresh-emulator preconditions; every other test must pass. Run the ordinary
+their fresh-emulator preconditions and are discovered by @RequiresIsolatedPhoneBook;
+every other test must pass. Run the ordinary
 suite on a fresh emulator too, to exercise those entry points. Seeds remain on
 the disposable device for inspection, never deleted to make a test pass.
 """
@@ -21,11 +22,35 @@ import sys
 import uuid
 import xml.etree.ElementTree as ET
 
+FIXTURE = "com.alexindigo.kotatsu.fakemuditacalendar.test"
+SYNC_TEST = "com.alexindigo.kotatsu.sync.debug.test"
+ISOLATION_ANNOTATION = "com.alexindigo.kotatsu.sync.RequiresIsolatedPhoneBook"
+
 
 def run_whole_suite(root, results):
     environment = {key: value for key, value in os.environ.items() if key not in ("CLASS", "SHARD")}
     return subprocess.run(["bash", str(root / "tools/ci/run-connected.sh"), "sync", str(results / "suite")],
                           cwd=root, timeout=1200, env=environment)
+
+
+def test_identity(case):
+    return case.attrib["classname"] + "." + case.attrib["name"]
+
+
+def discover_guarded_tests(shell, root, results):
+    runners = [line.split()[0].removeprefix("instrumentation:") for line in shell("pm", "list", "instrumentation").splitlines()
+               if line.startswith(f"instrumentation:{SYNC_TEST}/")]
+    if len(runners) != 1:
+        raise RuntimeError(f"Expected one Sync test runner, got {runners}")
+    output = shell("am", "instrument", "-r", "-w", "-e", "log", "true", "-e", "annotation", ISOLATION_ANNOTATION, runners[0])
+    raw, xml = results / "guarded.txt", results / "guarded.xml"
+    raw.write_text(output + "\n")
+    subprocess.run([sys.executable, str(root / "tools/ci/junit.py"), "convert", str(raw), str(xml), "--suite", "guarded"],
+                   check=True, timeout=30)
+    guarded = {test_identity(case) for case in ET.parse(xml).getroot().findall("testcase")}
+    if not guarded:
+        raise AssertionError("No @RequiresIsolatedPhoneBook tests discovered")
+    return guarded
 
 
 def main():
@@ -34,15 +59,14 @@ def main():
     root = Path(__file__).resolve().parent.parent
     adb = os.environ.get("ADB", "adb")
     name = "kotatsu-external-test-preserved-" + uuid.uuid4().hex
-    account_type = "com.alexindigo.kotatsu.fakesyncadapter.account"
     contacts = "content://com.android.contacts/"
     calendars = "content://com.android.calendar/"
 
     def shell(*args):
-        result = subprocess.run([adb, "shell", shlex.join(args)], check=True, text=True,
+        result = subprocess.run([adb, "shell", shlex.join(args)], text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=60)
-        if "Exception" in result.stderr or "Error" in result.stderr:
-            raise RuntimeError(result.stderr)
+        if result.returncode or "Exception" in result.stderr or "Error" in result.stderr:
+            raise RuntimeError(f"{args[0]} exited {result.returncode}:\n{result.stdout}{result.stderr}")
         return result.stdout.strip()
 
     def ids(table):
@@ -78,14 +102,15 @@ def main():
 
     subprocess.run(["bash", str(root / "tools/ci/prepare-emulator.sh"), "install", "sync",
                     str(results / "seed-prep")], check=True, cwd=root, timeout=300)
-    package = "com.alexindigo.kotatsu.fakemuditacalendar.test"
     for permission in ("READ_CONTACTS", "WRITE_CONTACTS", "READ_CALENDAR", "WRITE_CALENDAR"):
-        shell("pm", "grant", package, "android.permission." + permission)
-    seeded = shell("am", "broadcast", "--receiver-foreground", "--include-stopped-packages", "-n",
-                   package + "/com.alexindigo.kotatsu.fakesyncadapter.FixtureReceiver",
-                   "--es", "operation", "seed", "--es", "name", name)
-    if "result=0" not in seeded or "fixture complete" not in seeded:
-        raise RuntimeError(seeded)
+        shell("pm", "grant", FIXTURE, "android.permission." + permission)
+    paths = shell("pm", "path", FIXTURE).splitlines()
+    if len(paths) != 1 or not paths[0].startswith("package:"):
+        raise RuntimeError(f"Expected one fixture APK, got {paths}")
+    account_type = shell("su", "0", "timeout", "20", "env", "CLASSPATH=" + paths[0].removeprefix("package:"),
+                         "app_process", "/system/bin", "com.alexindigo.kotatsu.fakesyncadapter.ExternalSyncFixture", "seed", name)
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", account_type):
+        raise RuntimeError(f"External fixture didn't return its account type: {account_type}")
     phone = insert("raw_contacts", account_name=None, account_type=None)
     book = insert("raw_contacts", account_name=name, account_type=account_type)
     for raw, label in ((phone, "PreservedPhone"), (book, "PreservedBook")):
@@ -134,22 +159,12 @@ def main():
     if before != after:
         raise AssertionError(f"Unrelated provider data changed: {before} != {after}")
 
-    settings = "com.alexindigo.kotatsu.sync.SyncSettingsInstrumentedTest."
-    mover = "com.alexindigo.kotatsu.sync.ContactsMoverInstrumentedTest."
-    guarded = {settings + method for method in (
-        "launcherArmsJobsAndEveryCalendarAndPickerPersists",
-        "confirmedMoveUsesTheDisplayedBookAndOnlyTheDisplayedContacts",
-        "syncNowUpdatesLastSyncAfterTheConsumerChangesAndShowsStops",
-    )} | {mover + method for method in (
-        "rawContactChangeJobMovesToConfiguredPersonalAndRearms",
-        "oneTimeRuntimeActionUsesFamilyAndUnavailableTargetDoesNotDeletePhoneData",
-        "failedFamilyActionResumesAcrossReopenWithoutRoutingOldContactsToPersonalOrNewOnesToFamily",
-    )}
+    guarded = discover_guarded_tests(shell, root, results)
     suite = ET.parse(results / "suite/TEST-sync.xml").getroot()
     rejected = set()
     passed = 0
     for case in suite.findall("testcase"):
-        identity = case.attrib["classname"] + "." + case.attrib["name"]
+        identity = test_identity(case)
         failure = case.find("failure")
         if failure is not None:
             if identity not in guarded or not failure.attrib.get("message", "").startswith(

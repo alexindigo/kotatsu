@@ -16,14 +16,15 @@ data class SyncSettingsSnapshot(
     val calendarAccess: Boolean = false,
     val contactsAccess: Boolean = false,
     val calendars: List<SyncCalendar> = emptyList(),
-    val books: List<AddressBookChoice> = emptyList(),
+    val bookCatalog: AddressBookCatalog = AddressBookCatalog(),
     val settings: SyncSettings = SyncSettings(emptySet(), null),
     val contacts: ContactsSettings = ContactsSettings(),
     val status: SyncStatus = SyncStatus(),
     val loaded: Boolean = false,
 ) {
     val calendarTarget get() = settings.destination(calendars)
-    val contactTarget get() = contacts.destination(books)
+    val books get() = bookCatalog.choices
+    val contactTarget get() = contacts.destination(bookCatalog)
 }
 
 /** The settings owner shares the bridge lane; providers never run from composition. */
@@ -74,7 +75,7 @@ class SyncSettingsOwner(context: Context) {
         val calendarAccess = access(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
         val contactsAccess = access(Manifest.permission.READ_CONTACTS, Manifest.permission.WRITE_CONTACTS)
         val calendars = calendars()
-        val books = if (!contactsAccess) emptyList() else AndroidContacts(app).addressBookChoices()
+        val books = if (!contactsAccess) AddressBookCatalog() else AndroidContacts(app).addressBookCatalog()
         return BridgeStore(app).use { SyncSettingsSnapshot(calendarAccess, contactsAccess, calendars, books,
             PreferenceSyncConfig(app).read(), PreferenceContactsConfig(app).read(), it.syncStatus, true) }
     }
@@ -121,11 +122,13 @@ class SyncSettingsOwner(context: Context) {
                 val move = BridgeStore(app).use { store -> store.pendingContactsMove?.let {
                     it.copy(sourceIds = it.sourceIds.intersect(sources))
                 } ?: run {
-                    val target = checkNotNull(PreferenceContactsConfig(app).read()
-                        .destination(AndroidContacts(app).addressBookChoices())) { "contacts address book not available" }.account
-                    ContactsMove(target, sources)
+                    val catalog = AndroidContacts(app).addressBookCatalog()
+                    PreferenceContactsConfig(app).read().destination(catalog)?.let { ContactsMove(it.account, sources) }
                 } }
-                main.post { if (moveGeneration == request) confirmation = move }
+                main.post { if (moveGeneration == request) {
+                    confirmation = move
+                    if (move == null) refresh()
+                } }
             } catch (error: Exception) { failed(error); refreshOnMain() }
         }
     }
