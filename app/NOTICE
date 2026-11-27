@@ -1,9 +1,5 @@
 Default app icons (app/src/main/res/drawable):
 
-kotatsu_clock: Kotatsu's own clock drawing (glyph only, no tile frame).
-
-kotatsu_folder: Kotatsu's own folder drawing (glyph only, no tile frame).
-
 delta_chat: the speech bubble from the icon of Mudita's Kompakt Messages app (Mudita), with the
 delta letter from Delta Chat's logo (https://github.com/deltachat/deltachat-pages,
 assets/logos/delta-chat.svg, GNU General Public License v3.0) in place of the dots.

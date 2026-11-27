@@ -5,10 +5,9 @@ catalogue's material-icons:outlined:air SVG. ic_delete: Material Icons Round
 "delete", the icon Kotatsu's own widget menu uses. Google Material Icons / Symbols,
 Apache License 2.0 (https://www.apache.org/licenses/LICENSE-2.0).
 
-App icon ic_kotatsu_weather: Kotatsu's own drawing (K and cloud) inside the
-shared tile frame. The frame path matches ic_calculator_icon.xml in Mudita's
-Kompakt Calculator (https://github.com/mudita/MuditaOS-K-Calculator-opensource).
-The upstream README states: "This project is licensed under GPLv3".
+App icon frame: the tile frame path is from ic_calculator_icon.xml in Mudita's
+Kompakt Calculator (https://github.com/mudita/MuditaOS-K-Calculator-opensource),
+GNU General Public License v3.0.
 
 Lato Regular and Bold, Copyright (c) 2010-2014 Łukasz Dziedzic.
 SIL Open Font License 1.1; see LICENSE-Lato.txt in this module.
