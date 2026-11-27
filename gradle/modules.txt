@@ -5,6 +5,6 @@ weather-mudita=non-app
 kotatsu-weather=release
 kotatsu-notes=release
 paper-ui=non-app
-# Sync is not released yet; the fake calendar is a test-only fixture.
-kotatsu-sync=non-release
+kotatsu-sync=release
+# The fake calendar is a test-only fixture.
 fake-mudita-calendar=non-release

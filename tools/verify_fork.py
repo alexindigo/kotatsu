@@ -28,9 +28,9 @@ RELEASE_APPS={
     'app':{'applicationId':RELEASE_ID,'namespace':NAMESPACE,'versionCode':18,'label':'Kotatsu','debugVersionSuffix':'-debug'},
     'kotatsu-weather':{'applicationId':RELEASE_ID+'.weather','namespace':RELEASE_ID+'.weather','versionCode':13,'label':'Kotatsu Weather','debugVersionSuffix':''},
     'kotatsu-notes':{'applicationId':RELEASE_ID+'.notes','namespace':RELEASE_ID+'.notes','versionCode':12,'label':'Kotatsu Notes','debugVersionSuffix':''},
+    'kotatsu-sync':{'applicationId':RELEASE_ID+'.sync','namespace':RELEASE_ID+'.sync','versionCode':12,'label':'Kotatsu Sync','debugVersionSuffix':''},
 }
 NON_RELEASE_APPS={
-    'kotatsu-sync':'Not released yet',
     'fake-mudita-calendar':'Test fixture; never released',
 }
 ANDROID='{http://schemas.android.com/apk/res/android}'
@@ -389,7 +389,7 @@ def build_identity(args,root,apk,provenance,index_digest):
     require(receipt.get('deferredIndexSha256')==index_digest,'Build asset index mismatch')
     tasks=receipt.get('tasks',[])
     expected_tasks=[':'+module+':'+task for module in RELEASE_APPS for task in ('testReleaseUnitTest','lintRelease','assembleRelease')]
-    require([t.get('task') for t in tasks]==expected_tasks,'Missing current release task evidence for all three apps')
+    require([t.get('task') for t in tasks]==expected_tasks,'Missing current release task evidence for all four apps')
     for task in tasks:
         require(task.get('exitCode')==0,'Unsuccessful build task receipt')
         log=Path(task.get('log',''));require(log.is_file() and sha(log.read_bytes())==task.get('logSha256'),'Build log changed/missing')
@@ -439,6 +439,80 @@ def unique_apk(directory,root,variant,module='app'):
     return candidates[0]
 
 
+def compiled_sync_release(args,root,apk,manifest,package):
+    """Check Sync's known fixture boundary and required shipped notices."""
+    app=manifest.find('application')
+    require(app is not None,'Missing compiled Sync application')
+    require(not any(node.get(ANDROID+'name')=='android.permission.INTERNET' for node in manifest
+                    if node.tag.startswith('uses-permission') or node.tag=='permission'),
+            'Sync release declares INTERNET')
+    mudita='com.mudita.calendar'
+    def authorities(node):
+        return set(node.get(ANDROID+'authorities','').split(';'))
+    require(not any(mudita in authorities(node) for node in app.findall('provider')),
+            'Sync release declares the Mudita Calendar provider authority')
+    require(any(mudita in authorities(node) for node in manifest.findall('queries/provider')),
+            'Missing compiled Sync Mudita Calendar provider query')
+    require(any(node.get(ANDROID+'name')=='android.content.SyncAdapter'
+                for node in manifest.findall('queries/intent/action')),
+            'Missing compiled SyncAdapter query')
+
+    fixture=re.compile(r'\b(?:SyncSettingsHostActivity|TestEntryProvider|TestAccountService|TestContactsSyncService|'
+                       r'FakeCalendarProvider|SchemaReceiver|FixtureReceiver|fakemuditacalendar|fakesyncadapter|'
+                       r'test_account_name|test_account|test_contacts_sync|Kotatsu Sync test account)\b|'
+                       r'\.test-entry\b|com\.alexindigo\.kotatsu\.sync\.test\b',re.I)
+    def no_fixture(text,surface):
+        match=fixture.search(text)
+        require(match is None,f'Sync release fixture in {surface}: {match[0] if match else ""}')
+
+    no_fixture(ET.tostring(manifest,encoding='unicode'),'manifest')
+    resource_text=command(args.aapt2,'dump','resources',apk)
+    resource_names={entry['name'] for entry in resource_files(resource_text).values()}
+    require('string/app_name' in resource_names,'Missing compiled Sync app_name resource')
+    no_fixture(resource_text,'resources')
+
+    mapping=confined(root,'kotatsu-sync/build/outputs/mapping/release/mapping.txt')
+    require(mapping.read_bytes().strip(),'Empty Sync release mapping')
+    dex=command(args.apkanalyzer,'dex','packages','--defined-only','--proguard-mappings',str(mapping),apk)
+    rows=dex.splitlines()
+    classes=set(re.findall(r'^C d \d+\s+\d+\s+\d+\s+(\S+)',dex,re.M))
+    require(classes and any(row.startswith('P d ') and row.endswith('<TOTAL>') for row in rows),
+            'Missing/malformed Sync defined-only DEX output')
+    require(not any(re.match(r'^[CMF] [^d]',row) for row in rows),'Sync DEX output includes nondefined entries')
+    no_fixture('\n'.join(row for row in rows if row.startswith(('P d ','C d ','M d ','F d '))),'DEX')
+
+    def qualified(name):
+        if name.startswith('.'):return package+name
+        return name if '.' in name else package+'.'+name
+
+    components={'application':('SyncApplication',),'activity':('SyncSettingsActivity',),
+                'service':('CalendarChangedJob','ContactsChangedJob','PeriodicPassJob','HorizonJob','BootPassJob'),
+                'receiver':('BootReceiver','PackageReplacedReceiver')}
+    for tag,names in components.items():
+        declared={qualified(node.get(ANDROID+'name','')) for node in ([app] if tag=='application' else app.findall(tag))}
+        for name in names:
+            full=qualified(name)
+            require(full in declared,'Missing compiled Sync manifest component: '+full)
+            require(full in classes,'Missing compiled Sync DEX component: '+full)
+
+    notices={}
+    with zipfile.ZipFile(apk) as archive:
+        members=archive.namelist()
+        for source in ('kotatsu-sync/NOTICE','paper-ui/LICENSE-Lato.txt'):
+            name=Path(source).name
+            path='assets/notices/'+name
+            expected=confined(root,source).read_bytes()
+            require(confined(root,'kotatsu-sync/src/main/'+path).read_bytes()==expected,
+                    'Sync notice source/asset mismatch: '+name)
+            require(members.count(path)==1,'Missing/duplicate packaged Sync notice: '+name)
+            actual=archive.read(path)
+            require(actual==expected,'Changed packaged Sync notice: '+name)
+            notices[path]=sha(actual)
+    return {'knownFixturesAbsent':True,'productionComponentsVerified':True,'providerQueriesVerified':True,
+            'internetPermissionAbsent':True,'notices':notices,'definedDexSha256':sha(dex.encode()),
+            'resourceTableSha256':sha(resource_text.encode())}
+
+
 def compiled_app_identity(args,root,module,inspect_unsigned=False):
     spec=RELEASE_APPS[module];variant=args.variant
     apk=unique_apk(root/module/'build/outputs/apk'/variant,root,variant,module)
@@ -452,6 +526,9 @@ def compiled_app_identity(args,root,module,inspect_unsigned=False):
     require(badging['package']==expected and badging['versionCode']==str(spec['versionCode']) and badging['versionName']==version,'Compiled APK version/ID mismatch: '+module)
     label=spec['label']+(' Debug' if module=='app' and variant=='debug' else '')
     require(all(v==label for v in badging['labels'].values()),'Wrong compiled locale label: '+module)
+    if module=='kotatsu-sync':
+        require({locale.removeprefix('-') for locale in LOCALES if locale}<=badging['labels'].keys(),
+                'Missing compiled existing locale labels: '+module)
     require(badging['debuggable']==(variant=='debug'),'Compiled debuggability mismatch: '+module)
     require(command(args.apkanalyzer,'manifest','min-sdk',apk).strip()=='30' and command(args.apkanalyzer,'manifest','target-sdk',apk).strip()=='36','Compiled SDK mismatch: '+module)
     cert=None
@@ -459,12 +536,15 @@ def compiled_app_identity(args,root,module,inspect_unsigned=False):
         require(re.fullmatch(r'[0-9a-fA-F]{64}',args.expected_cert_sha256 or ''),'Independent expected certificate required')
         cert=signer(args.apksigner,apk)
         require(cert==args.expected_cert_sha256.lower(),'APK signer mismatch: '+module)
-    return {'path':str(apk),'sha256':sha(apk.read_bytes()),'applicationId':expected,'versionCode':spec['versionCode'],
-            'versionName':version,'labels':badging['labels'],'signerSha256':cert}
+    row={'path':str(apk),'sha256':sha(apk.read_bytes()),'applicationId':expected,'versionCode':spec['versionCode'],
+         'versionName':version,'labels':badging['labels'],'signerSha256':cert}
+    if module=='kotatsu-sync' and variant=='release':
+        row['syncReleaseBoundary']=compiled_sync_release(args,root,apk,manifest,expected)
+    return row
 
 
 def release_identity(args):
-    """Current three-APK gate, separate from the historical launcher branding audit."""
+    """Current four-APK gate, separate from the historical launcher branding audit."""
     root=Path(args.root).absolute()
     provenance=execution_identity(root,args.baseline,args)
     sources=source_release_identities(root)
@@ -847,7 +927,7 @@ def main():
     pre=subs.add_parser('prereqs');pre.add_argument('--root',required=True)
     for flag in ('jdk-home','sdk-root','gradle-user-home','apkanalyzer','aapt2','apksigner'):pre.add_argument('--'+flag,required=True)
     identity=subs.add_parser('identity');apk=subs.add_parser('apk-identity')
-    release=subs.add_parser('release-identity',help='Verify source and APK identities for all three apps (no historical branding audit)')
+    release=subs.add_parser('release-identity',help='Verify source and APK identities for all four apps (no historical branding audit)')
     for parser in (identity,apk):
         parser.add_argument('--root',required=True);parser.add_argument('--baseline',required=True);parser.add_argument('--deferred-assets-index',required=True,help='Original provenance index (legacy argument name); not the approved delivery manifest')
         for flag in ('expected-source-head','expected-source-tree','source-receipt','expected-source-receipt-sha256'):parser.add_argument('--'+flag,required=True)

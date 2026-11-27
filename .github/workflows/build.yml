@@ -31,7 +31,7 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew :app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease
+        run: ./gradlew :app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease :kotatsu-sync:assembleRelease
 
       - name: Name release assets
         env:

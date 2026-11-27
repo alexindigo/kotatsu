@@ -171,6 +171,7 @@
                 <span>kotatsu-notes-v0.7.1.apk</span>
             </div>
             <p>Release asset names use <code>kotatsu-v&lt;version&gt;.apk</code>, <code>kotatsu-weather-v&lt;version&gt;.apk</code> and <code>kotatsu-notes-v&lt;version&gt;.apk</code>.</p>
+            <p>Kotatsu Sync can be built from source and is prepared for the next release as <code>kotatsu-sync-v&lt;version&gt;.apk</code>. It is not in the current download set.</p>
             <p><a href="https://github.com/alexindigo/kotatsu/releases/tag/v0.7.1">Release notes and assets</a></p>
             <details>
                 <summary>Signing certificate SHA-256</summary>
@@ -209,8 +210,13 @@
                 <p>Check Settings → Notification Log. Kotatsu reads notifications Android actually has; it cannot show one that never arrived or clear one Android keeps active. Some apps depend on Google Play Services for push delivery. For ordinary app dots, Android's per-app Allow notification dot setting controls whether a dot is allowed.</p>
             </details>
             <details>
+                <summary>What does Kotatsu Sync do?</summary>
+                <p>Kotatsu Sync is a separate optional app for Mudita Kompakt. To sync with a CalDAV/CardDAV server, install <a href="https://f-droid.org/packages/at.bitfire.davdroid/">DAVx5</a> separately, add your server account there and enable the calendars and address books you want. Then open Kotatsu Sync, grant the relevant Android Calendar/Contacts access and choose what to bridge. Kotatsu Sync mirrors selected calendars with supported Mudita Calendar and moves phone contacts into a selected sync address book. Sync has no Internet permission; DAVx5 talks to your server. Last sync in Kotatsu Sync reports local bridge work, not a successful server transfer.</p>
+                <p>The calendar bridge follows the verified <a href="https://github.com/alexindigo/kotatsu/blob/main/kotatsu-sync/MUDITA_CONTRACT.md">Mudita Calendar 1.2.1 contract</a>. Debug and release are separate installs with separate grants, settings and bridge state. Nothing migrates automatically; do not run both against the same data.</p>
+            </details>
+            <details>
                 <summary>Can I build it myself?</summary>
-                <p>Yes. Use JDK 21, Android SDK 36.1 and the repository's Gradle wrapper. Run <code>./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug :kotatsu-notes:assembleDebug</code>. See the <a href="https://github.com/alexindigo/kotatsu#build-from-source">README build instructions</a> for output paths and release signing.</p>
+                <p>Yes. Use JDK 21, Android SDK 36.1 and the repository's Gradle wrapper. Run <code>./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug :kotatsu-notes:assembleDebug :kotatsu-sync:assembleDebug</code>. See the <a href="https://github.com/alexindigo/kotatsu#build-from-source">README build instructions</a> for output paths and release signing.</p>
             </details>
         </div>
     </section>
@@ -221,6 +227,7 @@
     <p>Kotatsu is based on <a href="https://github.com/gezimos/Katapult">Katapult by gezimos</a>, <a href="https://github.com/alexindigo/kotatsu/blob/main/LICENSE">GPL-3.0</a>.</p>
     <p>Lato by Łukasz Dziedzic, <a href="fonts/OFL.txt">SIL Open Font License 1.1</a>. Simple Icons: CC0-1.0 with per-logo disclaimers and trademark restrictions. Tabler by Paweł Kuna: MIT. Material Icons by Google: Apache-2.0. AndroidSVG by Paul LeBeau / Cave Rock Software Ltd.: Apache-2.0. <a href="https://github.com/alexindigo/kotatsu/blob/main/docs/ICON_CATALOGUE.md#attribution">Icon provenance and full notices</a>.</p>
     <p>Weather data by <a href="https://open-meteo.com/">Open-Meteo</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. <a href="https://github.com/alexindigo/kotatsu/blob/main/kotatsu-weather/NOTICE">Weather artwork notices</a>. The accessibility-overlay approach was inspired by <a href="https://github.com/zacharee/LockscreenWidgets">Lockscreen Widgets</a> by Zachary Wander; no code was copied.</p>
+    <p><a href="https://github.com/alexindigo/kotatsu/blob/main/kotatsu-sync/NOTICE">Kotatsu Sync artwork and font notice</a>.</p>
     <a href="https://github.com/alexindigo/kotatsu">Kotatsu source on GitHub</a>
 </footer>
 </body>

@@ -59,6 +59,8 @@ Get the APKs from [Kotatsu Releases](https://github.com/alexindigo/kotatsu/relea
 
 Release asset names follow `kotatsu-v<version>.apk`, `kotatsu-weather-v<version>.apk` and `kotatsu-notes-v<version>.apk`.
 
+Kotatsu Sync can be built from source and is prepared for the next release as `kotatsu-sync-v<version>.apk`. It is not in the current download set.
+
 Open the downloaded APK on the phone and allow installation from that source when Android asks. Open Kotatsu to preview it; choose it as the default Home app in Android settings when ready. Updates are installed manually from Releases.
 
 The release APK signing certificate's **SHA-256** is:
@@ -154,6 +156,12 @@ An editor left open in Mudita Notes can still overwrite these checks when saved;
 immediately after an external check. Kotatsu Notes does not edit text or add tasks. Kotatsu itself no longer reads
 Mudita Notes.
 
+## Kotatsu Sync
+
+Kotatsu Sync is a separate optional app for Mudita Kompakt. To sync with a CalDAV/CardDAV server, install [DAVx5](https://f-droid.org/packages/at.bitfire.davdroid/) separately, add your server account there and enable the calendars and address books you want. Then open Kotatsu Sync, grant the relevant Android Calendar/Contacts access and choose what to bridge. Kotatsu Sync mirrors selected calendars with supported Mudita Calendar and moves phone contacts into a selected sync address book. Sync has no Internet permission; DAVx5 talks to your server. Last sync in Kotatsu Sync reports local bridge work, not a successful server transfer.
+
+The calendar bridge follows the verified [Mudita Calendar 1.2.1 contract](kotatsu-sync/MUDITA_CONTRACT.md), not a guarantee for all Mudita OS versions. Debug and release are separate installs with separate grants, settings and bridge state. Nothing migrates automatically; do not run both against the same data.
+
 ## Privacy and permissions
 
 The launcher has **no Internet permission and no built-in updater**. Apps and providers opened from Kotatsu (including browsers, document providers and Mudita weather handoffs) can network independently. Android-managed backup and device transfer remain enabled. This is a launcher permission boundary, not a promise that the whole phone is offline.
@@ -178,6 +186,9 @@ Kotatsu Notes separately declares Mudita `READ_NOTES` and `WRITE_NOTES` to list 
 check/uncheck the selected list. The launcher declares neither Notes permission. Kotatsu Notes has no Internet
 permission.
 
+Kotatsu Sync separately requests Android Calendar and Contacts read/write access
+for the local bridge. It does not request Internet or phone/SIM access.
+
 ## Build from source
 
 Use JDK 21 and the Android SDK for compile SDK 36.1. The Gradle wrapper supplies the project's Gradle version.
@@ -185,12 +196,12 @@ Use JDK 21 and the Android SDK for compile SDK 36.1. The Gradle wrapper supplies
 ```sh
 git clone https://github.com/alexindigo/kotatsu.git
 cd kotatsu
-./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug :kotatsu-notes:assembleDebug
+./gradlew :app:assembleDebug :kotatsu-weather:assembleDebug :kotatsu-notes:assembleDebug :kotatsu-sync:assembleDebug
 ```
 
-Debug APKs are written under each app's `build/outputs/apk/debug/`: `app/`, `kotatsu-weather/` and `kotatsu-notes/`. Release builds use `:app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease` with `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` set for your own signing key. A self-signed build cannot replace an installed release signed with a different key.
+Debug APKs are written under `build/outputs/apk/debug/` in `app/`, `kotatsu-weather/`, `kotatsu-notes/` and `kotatsu-sync/`. Release builds use `:app:assembleRelease :kotatsu-weather:assembleRelease :kotatsu-notes:assembleRelease :kotatsu-sync:assembleRelease`, with APKs under each app's `build/outputs/apk/release/`. Set `KEYSTORE_FILE`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` and `KEY_PASSWORD` for your own signing key. A self-signed build cannot replace an installed release signed with a different key.
 
-See [release tooling](docs/RELEASE_TOOLING.md) for the three-APK identity gate, build receipts and asset naming.
+See [release tooling](docs/RELEASE_TOOLING.md) for the four-APK identity gate, build receipts and asset naming.
 
 ## Tests
 
@@ -207,7 +218,7 @@ python3 -B -m unittest discover -s tools/tests -p 'test_*.py'
 
 If you changed a screen, also run its connected test class on an API 31 emulator, for example `./gradlew :app:connectedDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.gezimos.katapult.SettingsPageFillInstrumentedTest`. `tools/ci/prepare-emulator.sh device <evidence-dir>` sets a booted device up the way the tests expect, and `tools/ci/run-connected.sh` runs a suite the way CI does.
 
-Every pull request runs the full connected suites in CI on a fresh emulator: Kotatsu in four shards, Weather, Notes and Mudita. A pull request merges only when the "CI summary" check passes. When a UI wait times out, the failing test saves a window dump and logcat; CI attaches them to the run.
+Every pull request runs the full connected suites in CI on a fresh emulator: Kotatsu in four shards, Weather, Notes, Mudita and Sync. A pull request merges only when the "CI summary" check passes. When a UI wait times out, the failing test saves a window dump and logcat; CI attaches them to the run.
 
 ## Troubleshooting
 
@@ -233,4 +244,4 @@ Kotatsu is based on [Katapult by gezimos](https://github.com/gezimos/Katapult), 
 | 5 | AndroidSVG 1.4 | Paul LeBeau / Cave Rock Software Ltd.; [Apache-2.0](app/src/main/assets/icons/notices/androidsvg-LICENSE) |
 | 6 | Weather data | [Open-Meteo](https://open-meteo.com/); [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 
-See the [icon catalogue](docs/ICON_CATALOGUE.md) for provenance and packaged notices, and [Kotatsu Weather's NOTICE](kotatsu-weather/NOTICE) for its Material weather icons and the shared tile frame. The accessibility-overlay approach was inspired by [Lockscreen Widgets](https://github.com/zacharee/LockscreenWidgets) by Zachary Wander; no code was copied.
+See the [icon catalogue](docs/ICON_CATALOGUE.md), [Weather notice](kotatsu-weather/NOTICE) and [Sync notice](kotatsu-sync/NOTICE) for artwork and font attribution. The accessibility-overlay approach was inspired by [Lockscreen Widgets](https://github.com/zacharee/LockscreenWidgets) by Zachary Wander; no code was copied.
