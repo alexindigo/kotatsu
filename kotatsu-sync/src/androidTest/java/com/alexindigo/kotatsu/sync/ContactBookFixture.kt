@@ -40,6 +40,12 @@ internal fun Instrumentation.awaitContactsProviderAccounts(books: List<ContactAc
 
 internal const val EXTERNAL_FIXTURE_PACKAGE = "com.alexindigo.kotatsu.fakemuditacalendar.test"
 
+internal fun Instrumentation.awaitCalendarProviderAccount(name: String) {
+    check(name.matches(ACCOUNT_TOKEN)) { "Invalid calendar fixture account name" }
+    val output = runFixtureTool("CalendarProviderAccounts", name)
+    check(output == "calendar provider ready") { "CalendarProvider acknowledgement failed for $name: $output" }
+}
+
 internal fun Instrumentation.runFixtureTool(tool: String, args: String): String {
     fun shell(command: String) = ParcelFileDescriptor.AutoCloseInputStream(uiAutomation.executeShellCommand(command))
         .bufferedReader().use { it.readText().trim() }

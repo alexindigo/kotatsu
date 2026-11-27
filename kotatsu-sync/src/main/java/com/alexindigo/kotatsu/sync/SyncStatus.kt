@@ -9,7 +9,8 @@ enum class SyncStopReason(val code: String) {
     ADDRESS_BOOK_REQUIRED("address_book"),
     RETRY_REQUIRED("retry"),
     REVIEW_REQUIRED("review"),
-    SCHEDULING_FAILED("scheduling");
+    SCHEDULING_FAILED("scheduling"),
+    SELECTED_CALENDAR_UNAVAILABLE("selected_calendar_unavailable");
 
     val accessRequired get() = this == CALENDAR_ACCESS_REQUIRED || this == CONTACTS_ACCESS_REQUIRED
 

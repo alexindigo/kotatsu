@@ -1113,6 +1113,7 @@ class CalendarBridgeInstrumentedTest {
                 instrumentation.uiAutomation.grantRuntimePermission(context.packageName, permission)
             accountAdded = AccountManager.get(context).addAccountExplicitly(account, null, null)
             check(accountAdded)
+            instrumentation.awaitCalendarProviderAccount(account.name)
             val uri = resolver.insert(syncUri(Calendars.CONTENT_URI), ContentValues().apply {
                 put(Calendars.ACCOUNT_NAME, account.name); put(Calendars.ACCOUNT_TYPE, account.type)
                 put(Calendars.NAME, account.name); put(Calendars.CALENDAR_DISPLAY_NAME, "Bridge tests")

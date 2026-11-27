@@ -20,6 +20,7 @@ class BridgeEngine(
         val calendars = standard.calendars().associateBy { it.id }
         val eligible = calendars.values.filter { it.eligible }.map { it.id }.toSet()
         val chosen = settings.calendars.intersect(eligible)
+        val missingSelection = chosen != settings.calendars
         val destination = settings.destination(calendars.values)?.identity
         if (settings.horizonWeeks !in calendarHorizonWeeks) {
             mappings.status = "stopped: invalid calendar horizon"
@@ -38,6 +39,7 @@ class BridgeEngine(
             guard.recordTrusted(mudita.all(), journal, mappings.firstRunDone)
             return PassResult(journal.retry, journal.unresolved, changes,
                 buildSet {
+                    if (missingSelection) add(SyncStopReason.SELECTED_CALENDAR_UNAVAILABLE)
                     if (journal.retry) add(SyncStopReason.RETRY_REQUIRED)
                     if (journal.unresolved > 0 || mappings.pending().isNotEmpty() && !journal.retry) add(SyncStopReason.REVIEW_REQUIRED)
                 }, guard.reasons())
@@ -142,14 +144,18 @@ class BridgeEngine(
         val pending = mappings.pending().size
         guard.recordTrusted(mudita.all(), journal, mappings.firstRunDone)
         val retry = journal.retry || uploadRetry
-        mappings.status = if (guard.reasons().isNotEmpty()) "calendar pass held"
-            else if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
-            else "calendar pass incomplete: $pending pending writes; retry=$retry"
-        return PassResult(retry, journal.unresolved, changes, buildSet {
+        val stops = buildSet {
+            if (missingSelection) add(SyncStopReason.SELECTED_CALENDAR_UNAVAILABLE)
             if (!firstRunComplete && destination == null) add(SyncStopReason.CALENDAR_SETTINGS_REQUIRED)
             if (journal.unresolved > 0 || pending > 0 && !retry) add(SyncStopReason.REVIEW_REQUIRED)
             if (retry) add(SyncStopReason.RETRY_REQUIRED)
-        }, guard.reasons())
+        }
+        val holds = guard.reasons()
+        mappings.status = if (holds.isNotEmpty()) "calendar pass held"
+            else if (missingSelection) "stopped: selected calendar unavailable"
+            else if (firstRunComplete && !retry && pending == 0) "calendar pass complete"
+            else "calendar pass incomplete: $pending pending writes; retry=$retry"
+        return PassResult(retry, journal.unresolved, changes, stops, holds)
     }
 
     private fun observe(calendars: Map<Long, SyncCalendar>, selected: Set<Long>, scope: SyncScope,

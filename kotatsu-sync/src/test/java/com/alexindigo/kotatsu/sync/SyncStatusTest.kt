@@ -16,6 +16,7 @@ class SyncStatusTest {
         val expected = mapOf(
             SyncStopReason.MUDITA_CALENDAR_CHANGED to R.string.stopped_calendar_changed,
             SyncStopReason.CALENDAR_SETTINGS_REQUIRED to R.string.stopped_calendar_settings,
+            SyncStopReason.SELECTED_CALENDAR_UNAVAILABLE to R.string.chosen_calendar_unavailable,
             SyncStopReason.ADDRESS_BOOK_REQUIRED to R.string.stopped_address_book,
             SyncStopReason.RETRY_REQUIRED to R.string.stopped_retry,
             SyncStopReason.REVIEW_REQUIRED to R.string.stopped_review,

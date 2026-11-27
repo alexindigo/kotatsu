@@ -202,6 +202,44 @@ class BridgeEngineTest {
         assertTrue(phone.rows.isEmpty())
     }
 
+    @Test fun absentSelectedCalendarWithoutMappingsIsReportedWhileHealthyCalendarImports() {
+        settings = SyncSettings(setOf(1, 2), 1)
+        val saved = settings
+        server.calendarList = listOf(SyncCalendar(2, "dav", true))
+        val healthy = event(2).copy(calendarId = 2)
+        server.rows[healthy.key] = healthy
+
+        val result = engine.pass(now)
+
+        assertEquals(1, result.changes)
+        assertEquals(healthy.title, phone.rows.values.single().title)
+        assertEquals(saved, settings)
+        assertEquals(0, server.writes)
+        assertEquals(setOf(SyncStopReason.SELECTED_CALENDAR_UNAVAILABLE), result.stopReasons)
+        assertNotEquals("calendar pass complete", store.status)
+    }
+
+    @Test fun disappearingSelectedCalendarHoldsMappedCopiesWithoutDeletingEitherSide() {
+        val phoneCopy = seed()
+        val pair = store.all().single()
+        val saved = settings
+        val standardCopy = server.rows.getValue(pair.standardKey)
+        val phoneWrites = phone.writes
+        server.calendarList = emptyList()
+
+        val result = engine.pass(now)
+
+        assertEquals(LossDirection.STANDARD, result.held.single().direction)
+        assertEquals(setOf(SyncStopReason.SELECTED_CALENDAR_UNAVAILABLE), result.stopReasons)
+        assertEquals(0, result.changes)
+        assertEquals(phoneCopy, phone.rows[phoneCopy.id])
+        assertEquals(phoneWrites, phone.writes)
+        assertEquals(standardCopy, server.rows[pair.standardKey])
+        assertEquals(0, server.writes)
+        assertEquals(listOf(pair), store.all())
+        assertEquals(saved, settings)
+    }
+
     @Test fun threeIndependentStandardLossesAcrossPopulatedCalendarsHoldBeforeAnyRetirement() {
         settings = SyncSettings(setOf(1, 2, 3), 1)
         server.calendarList = (1L..3).map { SyncCalendar(it, "dav", true) }

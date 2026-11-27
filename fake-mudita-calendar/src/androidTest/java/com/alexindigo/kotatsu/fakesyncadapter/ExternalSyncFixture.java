@@ -1,9 +1,6 @@
 package com.alexindigo.kotatsu.fakesyncadapter;
 
-import android.os.Build;
-import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 
 /** Shell entry point shared by Sync instrumentation and the seeded suite verifier. */
 public final class ExternalSyncFixture {
@@ -18,8 +15,7 @@ public final class ExternalSyncFixture {
 
     public static void main(String[] args) {
         try {
-            if (!"ranchu".equals(Build.HARDWARE) || !"userdebug".equals(Build.TYPE) || Build.VERSION.SDK_INT != 31)
-                throw new IllegalStateException("External fixture requires a disposable AOSP API 31 AVD");
+            FixtureShell.requireCiAvd();
             if (args.length != 2 || !validName(args[1])) throw new IllegalArgumentException("Fixture name");
             String name = args[1];
             switch (args[0]) {
@@ -27,6 +23,7 @@ public final class ExternalSyncFixture {
                     broadcast(REGISTER, name);
                     try {
                         publishBook(name);
+                        CalendarProviderAccounts.acknowledge(name, ACCOUNT_TYPE);
                         broadcast(CALENDAR, name);
                     } catch (Exception error) {
                         try { broadcast(CLEANUP, name); } catch (Exception cleanup) { error.addSuppressed(cleanup); }
@@ -53,26 +50,15 @@ public final class ExternalSyncFixture {
     }
 
     private static void publishBook(String name) throws Exception {
-        shell("content", "query", "--uri", "content://com.android.contacts/raw_contacts", "--projection", "_id", "--where", "0");
+        FixtureShell.run("content", "query", "--uri", "content://com.android.contacts/raw_contacts", "--projection", "_id", "--where", "0");
         ContactsProviderAccounts.await(name + ":" + ACCOUNT_TYPE);
         broadcast(PUBLISH, name);
     }
 
     private static void broadcast(String operation, String name) throws Exception {
-        String output = shell("am", "broadcast", "--receiver-foreground", "--include-stopped-packages", "-n",
+        String output = FixtureShell.run("am", "broadcast", "--receiver-foreground", "--include-stopped-packages", "-n",
                 PACKAGE + "/" + FixtureReceiver.class.getName(), "--es", "operation", operation, "--es", "name", name);
         if (!output.contains("result=0, data=\"fixture complete\"")) throw new IOException(output);
     }
 
-    private static String shell(String... args) throws Exception {
-        Process process = new ProcessBuilder(args).redirectErrorStream(true).start();
-        ByteArrayOutputStream captured = new ByteArrayOutputStream();
-        try (var stream = process.getInputStream()) {
-            byte[] buffer = new byte[4096];
-            for (int count; (count = stream.read(buffer)) != -1; ) captured.write(buffer, 0, count);
-        }
-        String output = new String(captured.toByteArray(), StandardCharsets.UTF_8);
-        if (process.waitFor() != 0) throw new IOException(output);
-        return output;
-    }
 }

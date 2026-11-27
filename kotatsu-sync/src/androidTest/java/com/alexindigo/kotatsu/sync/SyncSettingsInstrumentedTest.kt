@@ -492,6 +492,26 @@ class SyncSettingsInstrumentedTest {
         }
     }
 
+    @Test fun vanishedSelectedCalendarIsReportedInLastSyncWithoutUnselectingIt() = fixture(ownerOnly = true) { f ->
+        val chosen = SyncSettings(setOf(f.personalCalendar, f.familyCalendar), f.familyCalendar)
+        PreferenceSyncConfig(context).write(chosen)
+        // Remove the selected fixture calendar before its first mapping, as CalendarProvider can do.
+        assertEquals(1, resolver.delete(f.syncUri(ContentUris.withAppendedId(Calendars.CONTENT_URI, f.personalCalendar)), null, null))
+        val phoneBefore = phoneSourceIds(context)
+        val runtime = ownerTestContext(context, readContactSources = false)
+        SyncRuntime.enqueue { SyncRuntime.pass(runtime) }.get(15, TimeUnit.SECONDS)
+        assertEquals(chosen.calendars, config().calendars)
+        assertEquals(f.familyCalendar, config().newEventCalendar)
+        assertEquals(phoneBefore, phoneSourceIds(context))
+        val activity = openHost()
+        withFixtureCleanup({ close(activity) }) {
+            seek("Last sync")
+            val unavailable = context.getString(R.string.chosen_calendar_unavailable)
+            seek(unavailable)
+            ui.await(unavailable)
+        }
+    }
+
     @Test fun everyStatusIsFullyReadableAtNormalAndEnlargedText() = fixture(withAccounts = false, ownerOnly = true) {
         val activity = openHost(bookNames = emptySet())
         withFixtureCleanup({ close(activity) }) {
@@ -866,6 +886,7 @@ class SyncSettingsInstrumentedTest {
             ownsMuditaProvider = true
             if (withAccounts) {
                 instrumentation.registerContactBooks(listOf(personal, family), accounts)
+                instrumentation.awaitCalendarProviderAccount(personal.name)
                 familyCalendar = calendar(familyCalendarName, type)
                 personalCalendar = calendar(personalCalendarName, type)
                 calendar(localCalendarName, "LOCAL")
